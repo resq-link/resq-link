@@ -69,8 +69,12 @@ export const mockData = {
   login: {
     user: {
       id: "mock-user-123",
-      phone_number: "0000000000",
+      uid: "mock-user-123",
+      email: "civilian@test.com",
+      phone_number: "+639123456789",
+      phone: "+639123456789",
       name: "Test User",
+      role: "civilian",
       created_at: new Date().toISOString(),
     },
   },

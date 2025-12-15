@@ -18,10 +18,30 @@ import ErrorAlert from "../components/ErrorAlert";
 import useUserStore from "../utils/userStore";
 import { getApiUrl, UI_MODE, mockData } from "../utils/api";
 
+// Import Firebase - will be used when UI_MODE is false
+let signInCivilian = null;
+let firebaseError = null;
+
+if (!UI_MODE) {
+  try {
+    // Use dynamic import to handle cases where Firebase might not be configured
+    const firebaseModule = require("@packages/firebase");
+    if (firebaseModule && firebaseModule.signInCivilian) {
+      signInCivilian = firebaseModule.signInCivilian;
+    } else {
+      firebaseError = "signInCivilian function not exported from Firebase module";
+    }
+  } catch (error) {
+    console.error("Firebase import error:", error);
+    firebaseError = error.message || error.toString() || "Failed to load Firebase module. Make sure you have created a .env file with Firebase credentials.";
+  }
+}
+
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [phoneNumber, setPhoneNumber] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showHeaderBorder, setShowHeaderBorder] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -38,13 +58,23 @@ export default function LoginScreen() {
     return null;
   }
 
-  const validatePhoneNumber = (phone) => {
-    return phone.length >= 10;
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validatePassword = (password) => {
+    return password.length >= 6;
   };
 
   const handleLogin = async () => {
-    if (!phoneNumber || !validatePhoneNumber(phoneNumber)) {
-      setError("Please enter a valid phone number");
+    if (!email || !validateEmail(email)) {
+      setError("Please enter a valid email address");
+      return;
+    }
+
+    if (!password || !validatePassword(password)) {
+      setError("Password must be at least 6 characters");
       return;
     }
 
@@ -61,9 +91,11 @@ export default function LoginScreen() {
         const data = {
           success: true,
           user: {
-            ...mockData.login.user,
-            phone_number: phoneNumber.replace(/\D/g, ""),
-            name: phoneNumber === "0000000000" ? "Test User" : "Demo User",
+            uid: "mock-user-123",
+            email: email,
+            name: email === "civilian@test.com" ? "Civilian Test" : "Demo User",
+            phone: "+639123456789",
+            role: "civilian",
           },
         };
         
@@ -73,51 +105,44 @@ export default function LoginScreen() {
         setSuccess(true);
         
         setTimeout(() => {
-          router.replace("/dashboard");
+          try {
+            router.replace("/dashboard");
+          } catch (navError) {
+            console.error("Navigation error:", navError);
+            // Fallback navigation
+            router.push("/dashboard");
+          }
         }, 1500);
         return;
       }
 
-      // Normalize phone number (remove non-digits for comparison)
-      const normalizedPhone = phoneNumber.replace(/\D/g, "");
-      
-      // Add timeout to prevent hanging
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("Request timeout")), 10000);
-      });
-      
-      const fetchPromise = fetch(getApiUrl("/api/auth/login"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumber: normalizedPhone }),
-      });
-      
-      const response = await Promise.race([fetchPromise, timeoutPromise]);
-
-      if (!response.ok) {
-        let errorMessage = "Login failed";
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorMessage;
-        } catch (e) {
-          // If response is not JSON, use status text
-          errorMessage = response.statusText || errorMessage;
-        }
-        throw new Error(errorMessage);
+      // Sign in with Firebase
+      if (!signInCivilian) {
+        const errorMsg = firebaseError 
+          ? `Firebase not available: ${firebaseError}. Please check your .env file and Firebase configuration.`
+          : "Firebase authentication is not available. Please configure Firebase or enable UI_MODE.";
+        throw new Error(errorMsg);
       }
 
-      const data = await response.json();
-      console.log("Login response:", data);
+      const { user, profile } = await signInCivilian(email, password);
       
-      if (!data || !data.user) {
-        throw new Error("Invalid response from server");
-      }
+      console.log("Login successful:", user.uid);
+      console.log("User profile:", profile);
 
-      // Set user first
-      console.log("Setting user:", data.user);
-      await setUser(data.user);
+      // Format user data for the store (matching expected format)
+      const userData = {
+        uid: profile.uid,
+        email: profile.email,
+        name: profile.name,
+        phone_number: profile.phone,
+        phone: profile.phone,
+        role: profile.role,
+      };
+
+      // Set user in store
+      await setUser(userData);
       
-      // Then update loading state before success
+      // Update loading state
       setIsLoading(false);
       
       // Set success state
@@ -126,19 +151,33 @@ export default function LoginScreen() {
       // Navigate after a short delay
       console.log("Navigating to dashboard...");
       setTimeout(() => {
-        router.replace("/dashboard");
+        try {
+          router.replace("/dashboard");
+        } catch (navError) {
+          console.error("Navigation error:", navError);
+          // Fallback navigation
+          router.push("/dashboard");
+        }
       }, 1500);
     } catch (err) {
       console.error("Login error:", err);
       setIsLoading(false);
       
-      if (err.message === "Request timeout") {
-        setError("Request timed out. Please check your connection and try again.");
-      } else if (err.message?.includes("Could not connect") || err.message?.includes("fetch failed")) {
-        setError("Cannot connect to server. Make sure:\n1. Web server is running on port 4000\n2. Your device can reach the server IP\n3. Check API_SETUP.md for configuration help");
-      } else {
-        setError(err.message || "Login failed. Please try again.");
+      // Handle Firebase auth errors
+      let errorMessage = "Login failed. Please try again.";
+      if (err.message?.includes("user-not-found")) {
+        errorMessage = "No account found with this email.";
+      } else if (err.message?.includes("wrong-password")) {
+        errorMessage = "Incorrect password. Please try again.";
+      } else if (err.message?.includes("invalid-email")) {
+        errorMessage = "Invalid email address.";
+      } else if (err.message?.includes("network")) {
+        errorMessage = "Network error. Please check your connection.";
+      } else if (err.message) {
+        errorMessage = err.message;
       }
+      
+      setError(errorMessage);
     }
   };
 
@@ -220,11 +259,22 @@ export default function LoginScreen() {
         />
 
         <FormInput
-          label="Phone Number"
-          placeholder="+1 234 567 8900"
-          value={phoneNumber}
-          onChangeText={setPhoneNumber}
-          keyboardType="phone-pad"
+          label="Email"
+          placeholder="your.email@example.com"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          variant="login"
+          required
+        />
+
+        <FormInput
+          label="Password"
+          placeholder="Enter your password"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
           variant="login"
           required
         />
@@ -234,7 +284,7 @@ export default function LoginScreen() {
           onPress={handleLogin}
           variant="primary"
           buttonVariant="login"
-          disabled={!phoneNumber || !validatePhoneNumber(phoneNumber)}
+          disabled={!email || !password || !validateEmail(email) || !validatePassword(password)}
         />
 
         <View

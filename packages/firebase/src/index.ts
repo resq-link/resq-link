@@ -11,9 +11,11 @@ export {
   verifyPhoneCodeAndCreateProfile,
   signInDispatcher,
   signInCommandCenter,
+  signInCivilian,
   type DispatcherRole,
   type DispatcherAccount,
   type UserAccount,
   type CommandCenterAccount,
+  type CivilianUserProfile,
 } from './auth';
 

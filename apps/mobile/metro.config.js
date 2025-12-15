@@ -61,6 +61,10 @@ config.watchFolders = [
 // Ensure Metro can resolve the shared Firebase package
 config.resolver = {
   ...config.resolver,
+  // Add support for .cjs files (required for Firebase)
+  sourceExts: [...(config.resolver?.sourceExts || []), 'cjs'],
+  // Disable unstable package exports resolution (fixes Firebase module resolution)
+  unstable_enablePackageExports: false,
   extraNodeModules: {
     ...config.resolver?.extraNodeModules,
     '@packages/firebase': packagesFirebase,

@@ -260,3 +260,56 @@ export async function signInCommandCenter(
   }
 }
 
+/**
+ * Civilian user profile interface (from Firestore)
+ */
+export interface CivilianUserProfile {
+  uid: string;
+  name: string;
+  phone: string;
+  email: string;
+  role: string;
+  createdAt?: any;
+  updatedAt?: any;
+}
+
+/**
+ * Sign in civilian user with email and password and fetch profile from Firestore
+ * @param email - Email address
+ * @param password - Password
+ * @returns User object and profile data from Firestore
+ */
+export async function signInCivilian(
+  email: string,
+  password: string
+): Promise<{ user: User; profile: CivilianUserProfile }> {
+  try {
+    // Sign in with email and password
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+
+    // Fetch user profile from Firestore
+    const userDocRef = doc(firestore, 'users', user.uid);
+    const userDoc = await getDoc(userDocRef);
+
+    if (!userDoc.exists()) {
+      throw new Error('User profile not found. Please contact support.');
+    }
+
+    const profileData = userDoc.data();
+    const profile: CivilianUserProfile = {
+      uid: user.uid,
+      name: profileData.name || '',
+      phone: profileData.phone || '',
+      email: profileData.email || email,
+      role: profileData.role || 'civilian',
+      createdAt: profileData.createdAt,
+      updatedAt: profileData.updatedAt,
+    };
+
+    return { user, profile };
+  } catch (error: any) {
+    throw new Error(`Failed to sign in: ${error.message}`);
+  }
+}
+
