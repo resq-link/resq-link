@@ -27,6 +27,7 @@ import LoadingScreen from "../components/LoadingScreen";
 import useUserStore from "../utils/userStore";
 import useUpload from "../utils/useUpload";
 import { getApiUrl, UI_MODE, mockData } from "../utils/api";
+import { submitEmergencyReport } from "@packages/firebase";
 
 const INCIDENT_TYPES = [
   { id: "fire", label: "🔥 Fire", emoji: "🔥" },
@@ -181,30 +182,26 @@ export default function EmergencyFormScreen() {
         imageUrl = uploadResult.url;
       }
 
-      // Submit emergency report
-      const response = await fetch(getApiUrl("/api/emergency/submit"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: user.id,
-          incidentType,
-          locationText: locationText.trim(),
-          latitude,
-          longitude,
-          imageUrl,
-          description: description.trim() || null,
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to submit report");
+      // Submit emergency report to Firestore
+      const userId = user.uid || user.id;
+      if (!userId) {
+        throw new Error("User ID not found. Please login again.");
       }
 
-      const data = await response.json();
+      const report = await submitEmergencyReport({
+        userId,
+        incidentType,
+        locationText: locationText.trim(),
+        latitude,
+        longitude,
+        imageUrl,
+        description: description.trim() || null,
+        status: "pending",
+      });
+
       router.replace({
         pathname: "/emergency-confirmation",
-        params: { reportId: data.report.id },
+        params: { reportId: report.id },
       });
     } catch (err) {
       console.error(err);

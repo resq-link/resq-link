@@ -17,6 +17,7 @@ import {
 import { useFonts } from "expo-font";
 import useUserStore from "@/utils/userStore";
 import { getApiUrl, UI_MODE, mockData } from "@/utils/api";
+import { getUserEmergencyReports } from "@packages/firebase";
 
 export default function HistoryScreen() {
   const insets = useSafeAreaInsets();
@@ -50,11 +51,30 @@ export default function HistoryScreen() {
         return;
       }
 
-      const response = await fetch(getApiUrl(`/api/emergency/list?userId=${user.id}`));
-      if (!response.ok) throw new Error("Failed to fetch reports");
+      // Fetch reports from Firestore
+      const userId = user.uid || user.id;
+      if (!userId) {
+        console.error("User ID not found");
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
 
-      const data = await response.json();
-      setReports(data.reports || []);
+      const reports = await getUserEmergencyReports(userId, 100);
+      
+      // Convert to expected format
+      const formattedReports = reports.map(report => ({
+        id: report.id,
+        incident_type: report.incidentType,
+        location_text: report.locationText,
+        status: report.status,
+        description: report.description || null,
+        created_at: report.createdAt instanceof Date 
+          ? report.createdAt.toISOString() 
+          : (report.createdAt ? new Date(report.createdAt).toISOString() : new Date().toISOString()),
+      }));
+      
+      setReports(formattedReports);
     } catch (error) {
       console.error("Error fetching reports:", error);
     } finally {

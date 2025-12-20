@@ -25,6 +25,7 @@ import { useFonts } from "expo-font";
 import useUserStore from "../utils/userStore";
 import CustomButton from "../components/CustomButton";
 import { getApiUrl, UI_MODE, mockData } from "../utils/api";
+import { getUserEmergencyReports } from "@packages/firebase";
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
@@ -59,11 +60,28 @@ export default function DashboardScreen() {
         return;
       }
 
-      const response = await fetch(getApiUrl(`/api/emergency/list?userId=${user.id}`));
-      if (response.ok) {
-        const data = await response.json();
-        setReports(data.reports || []);
+      // Fetch reports from Firestore
+      const userId = user.uid || user.id;
+      if (!userId) {
+        console.error("User ID not found");
+        setRefreshing(false);
+        return;
       }
+
+      const reports = await getUserEmergencyReports(userId, 50);
+      
+      // Convert to expected format
+      const formattedReports = reports.map(report => ({
+        id: report.id,
+        incident_type: report.incidentType,
+        location_text: report.locationText,
+        status: report.status,
+        created_at: report.createdAt instanceof Date 
+          ? report.createdAt.toISOString() 
+          : (report.createdAt ? new Date(report.createdAt).toISOString() : new Date().toISOString()),
+      }));
+      
+      setReports(formattedReports);
     } catch (error) {
       console.error("Error fetching reports:", error);
     } finally {

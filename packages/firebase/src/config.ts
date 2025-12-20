@@ -45,32 +45,43 @@ const getConfigValue = (
 };
 
 // Try to get Firebase config from Expo Constants (app.json extra.firebase)
+// Skip in Next.js/web environments to avoid bundling React Native modules
 let expoFirebaseConfig = null;
-try {
-  // Use require to avoid import issues in non-Expo environments
-  const Constants = require('expo-constants');
-  if (Constants) {
-    // Try multiple paths to get the config
-    expoFirebaseConfig = Constants.default?.expoConfig?.extra?.firebase || 
-                         Constants.expoConfig?.extra?.firebase ||
-                         Constants.default?.manifest?.extra?.firebase ||
-                         Constants.manifest?.extra?.firebase ||
-                         Constants.default?.manifest2?.extra?.firebase ||
-                         Constants.manifest2?.extra?.firebase;
-    
-    if (expoFirebaseConfig) {
-      // Check if API key is a placeholder
-      if (isPlaceholder(expoFirebaseConfig.apiKey)) {
-        console.log('⚠️ Firebase config in app.json contains placeholder values, falling back to environment variables');
-      } else {
-        console.log('✅ Firebase config loaded from app.json');
-      }
+
+// Check if we're in a Next.js environment (has process.env.NEXT_RUNTIME or is server-side rendering)
+const isNextJs = typeof process !== 'undefined' && (process.env.NEXT_RUNTIME || process.env.NODE_ENV === 'production');
+const isBrowser = typeof window !== 'undefined';
+const isReactNative = typeof navigator !== 'undefined' && navigator.product === 'ReactNative';
+
+// Only try to load Expo Constants in React Native environments, not in Next.js
+if (!isNextJs && (isReactNative || (!isBrowser && !isNextJs))) {
+  try {
+    // Use dynamic require - webpack may still try to resolve this, but it should fail gracefully
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const Constants = require('expo-constants');
+    if (Constants) {
+      // Try multiple paths to get the config
+      expoFirebaseConfig = Constants.default?.expoConfig?.extra?.firebase || 
+                           Constants.expoConfig?.extra?.firebase ||
+                           Constants.default?.manifest?.extra?.firebase ||
+                           Constants.manifest?.extra?.firebase ||
+                           Constants.default?.manifest2?.extra?.firebase ||
+                           Constants.manifest2?.extra?.firebase;
     }
+  } catch (e) {
+    // Constants not available (not in Expo environment) - this is fine
+    // Will fall back to environment variables
   }
-} catch (e) {
-  // Constants not available (not in Expo environment) - this is fine
-  // Will fall back to environment variables
-  console.log('⚠️ Could not load Expo Constants, using environment variables');
+}
+
+if (expoFirebaseConfig) {
+  // Check if API key is a placeholder
+  if (isPlaceholder(expoFirebaseConfig.apiKey)) {
+    console.log('⚠️ Firebase config in app.json contains placeholder values, falling back to environment variables');
+    expoFirebaseConfig = null;
+  } else {
+    console.log('✅ Firebase config loaded from app.json');
+  }
 }
 
 const firebaseConfig = {
@@ -183,14 +194,15 @@ function getAuthInstance(): Auth {
   try {
     // Check if we're in React Native environment
     const isReactNative = typeof navigator !== 'undefined' && navigator.product === 'ReactNative';
-    const isExpo = typeof require !== 'undefined';
     
-    if (isReactNative || isExpo) {
+    if (isReactNative) {
       // React Native/Expo: Use initializeAuth with AsyncStorage
       try {
         // For React Native, we need to use getReactNativePersistence
-        // Import it dynamically to avoid issues in non-React Native environments
+        // Use dynamic require to avoid Next.js bundling issues
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
         const { getReactNativePersistence } = require('firebase/auth');
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
         const AsyncStorage = require('@react-native-async-storage/async-storage').default;
         _auth = initializeAuth(app, {
           persistence: getReactNativePersistence(AsyncStorage)
@@ -204,7 +216,7 @@ function getAuthInstance(): Auth {
         return _auth;
       }
     } else {
-      // Web/Next.js: Use getAuth
+      // Web/Next.js: Use getAuth (default web persistence)
       _auth = getAuth(app);
       console.log('✅ Firebase Auth initialized (web)');
       return _auth;

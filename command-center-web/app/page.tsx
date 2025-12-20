@@ -1,74 +1,100 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import IncidentCard from '@/components/IncidentCard'
 import StatusBadge from '@/components/StatusBadge'
+import { subscribeToEmergencyReports, type EmergencyReport } from '@packages/firebase'
+import { useAuth } from '@/contexts/AuthContext'
+import ProtectedRoute from '@/components/ProtectedRoute'
 
-// Mock data for UI purposes
-const mockIncidents = [
-  {
-    id: '1',
-    type: 'Medical Emergency',
-    location: '123 Main St, Downtown',
-    priority: 'high',
-    status: 'active',
-    reportedAt: new Date(Date.now() - 5 * 60000), // 5 minutes ago
-    description: 'Cardiac arrest reported, CPR in progress',
-    responder: 'Unit Alpha-1',
-  },
-  {
-    id: '2',
-    type: 'Fire',
-    location: '456 Oak Ave, Industrial District',
-    priority: 'critical',
-    status: 'active',
-    reportedAt: new Date(Date.now() - 15 * 60000), // 15 minutes ago
-    description: 'Structure fire, multiple units responding',
-    responder: 'Fire Engine 3',
-  },
-  {
-    id: '3',
-    type: 'Traffic Accident',
-    location: 'Highway 101, Mile Marker 42',
-    priority: 'medium',
-    status: 'active',
-    reportedAt: new Date(Date.now() - 8 * 60000), // 8 minutes ago
-    description: 'Multi-vehicle collision, injuries reported',
-    responder: 'Unit Bravo-2',
-  },
-  {
-    id: '4',
-    type: 'Medical Emergency',
-    location: '789 Elm St, Residential Area',
-    priority: 'medium',
-    status: 'pending',
-    reportedAt: new Date(Date.now() - 2 * 60000), // 2 minutes ago
-    description: 'Elderly fall, requesting ambulance',
-    responder: null,
-  },
-]
+// Map incident type to display name
+const getIncidentTypeName = (incidentType: string): string => {
+  const typeMap: Record<string, string> = {
+    fire: 'Fire',
+    medical: 'Medical Emergency',
+    crime: 'Crime',
+    accident: 'Traffic Accident',
+    flood: 'Flood',
+    other: 'Other Emergency',
+  }
+  return typeMap[incidentType] || 'Emergency'
+}
+
+// Convert EmergencyReport to Incident format
+const convertToIncident = (report: EmergencyReport) => {
+  return {
+    id: report.id || '',
+    type: getIncidentTypeName(report.incidentType),
+    location: report.locationText,
+    priority: report.priority || 'medium',
+    status: report.status === 'resolved' ? 'resolved' : (report.status === 'active' ? 'active' : 'pending') as 'active' | 'pending' | 'resolved',
+    reportedAt: report.createdAt instanceof Date 
+      ? report.createdAt 
+      : (report.createdAt && typeof report.createdAt === 'object' && 'toDate' in report.createdAt)
+      ? (report.createdAt as any).toDate()
+      : new Date(report.createdAt || Date.now()),
+    description: report.description || 'No description provided',
+    responder: report.responder || null,
+  }
+}
 
 export default function Home() {
-  const [incidents, setIncidents] = useState(mockIncidents)
+  const [incidents, setIncidents] = useState<ReturnType<typeof convertToIncident>[]>([])
   const [activeCount, setActiveCount] = useState(0)
   const [pendingCount, setPendingCount] = useState(0)
+  const [isLoading, setIsLoading] = useState(true)
+  const { user } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    // Redirect to login if not authenticated
+    if (!user) {
+      router.push('/login')
+      return
+    }
+
+    console.log('Setting up emergency reports subscription...')
+    console.log('✅ User authenticated:', user.uid)
+    
+    // Subscribe to real-time emergency reports from Firestore
+    const unsubscribe = subscribeToEmergencyReports(
+      (reports: EmergencyReport[]) => {
+        console.log('Received emergency reports:', reports.length)
+        
+        // Filter to show only active and pending incidents
+        const activeReports = reports.filter(
+          (r) => r.status === 'active' || r.status === 'pending'
+        )
+        
+        console.log('Active/pending reports:', activeReports.length)
+        
+        // Convert to Incident format
+        const convertedIncidents = activeReports.map(convertToIncident)
+        setIncidents(convertedIncidents)
+        setIsLoading(false)
+      },
+      {
+        statusFilter: 'all', // Get all, we'll filter in the callback
+        limitCount: 100,
+      }
+    )
+
+    return () => {
+      console.log('Unsubscribing from emergency reports')
+      unsubscribe()
+    }
+  }, [user, router])
 
   useEffect(() => {
     // Update counts
     setActiveCount(incidents.filter(i => i.status === 'active').length)
     setPendingCount(incidents.filter(i => i.status === 'pending').length)
-
-    // Simulate real-time updates (for UI demo purposes)
-    const interval = setInterval(() => {
-      // In a real app, this would fetch from Firebase
-      console.log('Simulating real-time update...')
-    }, 5000)
-
-    return () => clearInterval(interval)
   }, [incidents])
 
   return (
-    <div className="space-y-6">
+    <ProtectedRoute>
+      <div className="space-y-6">
       {/* Header Section */}
       <div className="bg-white rounded-lg shadow-md p-6">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -172,22 +198,35 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="space-y-4">
-          {incidents.map((incident) => (
-            <IncidentCard key={incident.id} incident={incident} />
-          ))}
-        </div>
-
-        {incidents.length === 0 && (
+        {isLoading ? (
           <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">No active incidents</p>
-            <p className="text-gray-400 text-sm mt-2">
-              All clear - no emergencies reported
-            </p>
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+            <p className="text-gray-500 text-lg mt-4">Loading incidents...</p>
           </div>
+        ) : (
+          <>
+            <div className="space-y-4">
+              {incidents.map((incident) => (
+                <IncidentCard key={incident.id} incident={incident} />
+              ))}
+            </div>
+
+            {incidents.length === 0 && !isLoading && (
+              <div className="text-center py-12">
+                <p className="text-gray-500 text-lg">No active incidents</p>
+                <p className="text-gray-400 text-sm mt-2">
+                  All clear - no emergencies reported
+                </p>
+                <p className="text-yellow-600 text-sm mt-4">
+                  💡 Tip: Check browser console for debugging information
+                </p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
+    </ProtectedRoute>
   )
 }
 

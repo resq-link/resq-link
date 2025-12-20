@@ -11,6 +11,7 @@ Shared Firebase package for RESCUE mobile applications.
 - **[EXAMPLES.md](./EXAMPLES.md)** - Code examples for each app
 - **[scripts/README.md](./scripts/README.md)** - Scripts for creating test accounts
 - **[ENV_SETUP.md](./ENV_SETUP.md)** - Environment variables setup guide
+- **[FIRESTORE_SECURITY_RULES.md](./FIRESTORE_SECURITY_RULES.md)** - ⚠️ **IMPORTANT**: Firestore security rules setup guide
 
 ## Installation
 
@@ -148,4 +149,15 @@ const { user, accountData } = await verifyPhoneCodeAndCreateProfile(
 - `dispatchers/{id}` - Dispatcher accounts
 - `users/{id}` - User (citizen) accounts
 - `commandCenters/{id}` - Command center accounts
+- `emergencies/{id}` - Emergency reports
+
+## 🔒 Security Rules Setup
+
+**⚠️ IMPORTANT**: Before using the app, you must set up Firestore security rules!
+
+1. **Read the guide**: See **[FIRESTORE_SECURITY_RULES.md](./FIRESTORE_SECURITY_RULES.md)**
+2. **Deploy rules**: Copy `firestore.rules` to Firebase Console → Firestore → Rules
+3. **Publish**: Click "Publish" to activate the rules
+
+Without proper security rules, you'll get "Missing insufficient permissions" errors when trying to create emergency reports.
 

@@ -1,16 +1,28 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function Navigation() {
   const pathname = usePathname()
+  const router = useRouter()
+  const { user, signOut } = useAuth()
 
   const navItems = [
     { href: '/', label: 'Live Incidents', icon: '📡' },
     { href: '/map', label: 'Map', icon: '🗺️' },
     { href: '/history', label: 'History', icon: '📋' },
   ]
+
+  // Don't show navigation on login page
+  if (pathname === '/login') {
+    return null
+  }
+
+  const handleSignOut = async () => {
+    await signOut()
+  }
 
   return (
     <nav className="bg-white shadow-lg border-b border-gray-200">
@@ -39,7 +51,7 @@ export default function Navigation() {
             </Link>
           </div>
 
-          <div className="flex items-center space-x-1">
+          <div className="flex items-center space-x-4">
             {navItems.map((item) => {
               const isActive = pathname === item.href
               return (
@@ -57,6 +69,20 @@ export default function Navigation() {
                 </Link>
               )
             })}
+            
+            {user && (
+              <div className="flex items-center space-x-3 pl-4 border-l border-gray-200">
+                <div className="text-sm text-gray-600">
+                  <span className="font-medium">{user.email}</span>
+                </div>
+                <button
+                  onClick={handleSignOut}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  Sign Out
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
