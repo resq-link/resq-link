@@ -53,6 +53,8 @@ export default function EmergencyFormScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showHeaderBorder, setShowHeaderBorder] = useState(false);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [locationStatus, setLocationStatus] = useState(null); // 'success', 'error', null
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -68,12 +70,87 @@ export default function EmergencyFormScreen() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === "granted") {
-        const location = await Location.getCurrentPositionAsync({});
-        setLatitude(location.coords.latitude);
-        setLongitude(location.coords.longitude);
+        await getCurrentLocation();
+      } else {
+        setLocationStatus("error");
       }
     } catch (err) {
       console.error("Location error:", err);
+      setLocationStatus("error");
+    }
+  };
+
+  const getCurrentLocation = async () => {
+    setIsGettingLocation(true);
+    setLocationStatus(null);
+    setError("");
+
+    try {
+      // Check and request permission
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Location Permission Required",
+          "Please enable location permissions in your device settings to automatically get your current location."
+        );
+        setLocationStatus("error");
+        setIsGettingLocation(false);
+        return;
+      }
+
+      // Get current position with better accuracy
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      setLatitude(location.coords.latitude);
+      setLongitude(location.coords.longitude);
+
+      // Reverse geocode to get address
+      try {
+        const addresses = await Location.reverseGeocodeAsync({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        });
+
+        if (addresses && addresses.length > 0) {
+          const address = addresses[0];
+          // Format address: street number + street name, city, state
+          const addressParts = [];
+          if (address.streetNumber) addressParts.push(address.streetNumber);
+          if (address.street) addressParts.push(address.street);
+          if (addressParts.length > 0) {
+            addressParts.push(addressParts.join(" "));
+            addressParts.pop(); // Remove the duplicate
+          }
+          if (address.city) addressParts.push(address.city);
+          if (address.region) addressParts.push(address.region);
+          
+          const formattedAddress = addressParts.length > 0 
+            ? addressParts.join(", ")
+            : address.formattedAddress || `${location.coords.latitude.toFixed(6)}, ${location.coords.longitude.toFixed(6)}`;
+          
+          setLocationText(formattedAddress);
+        } else {
+          // Fallback to coordinates if reverse geocoding fails
+          setLocationText(`${location.coords.latitude.toFixed(6)}, ${location.coords.longitude.toFixed(6)}`);
+        }
+      } catch (geocodeError) {
+        console.error("Reverse geocoding error:", geocodeError);
+        // Fallback to coordinates
+        setLocationText(`${location.coords.latitude.toFixed(6)}, ${location.coords.longitude.toFixed(6)}`);
+      }
+
+      setLocationStatus("success");
+    } catch (err) {
+      console.error("Location error:", err);
+      setLocationStatus("error");
+      Alert.alert(
+        "Location Error",
+        "Unable to get your current location. Please enter your location manually."
+      );
+    } finally {
+      setIsGettingLocation(false);
     }
   };
 
@@ -335,34 +412,115 @@ export default function EmergencyFormScreen() {
         </View>
 
         {/* Location */}
-        <Text
-          style={{
-            fontFamily: "Inter_600SemiBold",
-            fontSize: 14,
-            color: "#FFFFFF",
-            marginBottom: 8,
-          }}
-        >
-          Location <Text style={{ color: "#9AFF55" }}>*</Text>
-        </Text>
-        <TextInput
-          style={{
-            height: 50,
-            borderWidth: 1,
-            borderColor: "#6C6C6C",
-            borderRadius: 12,
-            paddingHorizontal: 16,
-            fontFamily: "Inter_400Regular",
-            fontSize: 16,
-            color: "#FFFFFF",
-            backgroundColor: "transparent",
-            marginBottom: 24,
-          }}
-          placeholder="Enter location or address"
-          placeholderTextColor="#C1C1C1"
-          value={locationText}
-          onChangeText={setLocationText}
-        />
+        <View style={{ marginBottom: 24 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: 8,
+            }}
+          >
+            <Text
+              style={{
+                fontFamily: "Inter_600SemiBold",
+                fontSize: 14,
+                color: "#FFFFFF",
+              }}
+            >
+              Location <Text style={{ color: "#9AFF55" }}>*</Text>
+            </Text>
+            <TouchableOpacity
+              onPress={getCurrentLocation}
+              disabled={isGettingLocation}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                backgroundColor: locationStatus === "success" ? "#9AFF5520" : "#252525",
+                borderWidth: 1,
+                borderColor: locationStatus === "success" ? "#9AFF55" : "#404040",
+                borderRadius: 8,
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                opacity: isGettingLocation ? 0.6 : 1,
+              }}
+            >
+              {isGettingLocation ? (
+                <>
+                  <Text
+                    style={{
+                      fontFamily: "Inter_400Regular",
+                      fontSize: 12,
+                      color: "#9AFF55",
+                      marginRight: 6,
+                    }}
+                  >
+                    Getting...
+                  </Text>
+                </>
+              ) : locationStatus === "success" ? (
+                <>
+                  <MapPin size={14} color="#9AFF55" style={{ marginRight: 4 }} />
+                  <Text
+                    style={{
+                      fontFamily: "Inter_600SemiBold",
+                      fontSize: 12,
+                      color: "#9AFF55",
+                    }}
+                  >
+                    Location Found
+                  </Text>
+                </>
+              ) : (
+                <>
+                  <MapPin size={14} color="#9AFF55" style={{ marginRight: 4 }} />
+                  <Text
+                    style={{
+                      fontFamily: "Inter_600SemiBold",
+                      fontSize: 12,
+                      color: "#9AFF55",
+                    }}
+                  >
+                    Get Current
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+          <TextInput
+            style={{
+              height: 50,
+              borderWidth: 1,
+              borderColor: locationStatus === "success" ? "#9AFF55" : "#6C6C6C",
+              borderRadius: 12,
+              paddingHorizontal: 16,
+              fontFamily: "Inter_400Regular",
+              fontSize: 16,
+              color: "#FFFFFF",
+              backgroundColor: "transparent",
+            }}
+            placeholder="Enter location or address"
+            placeholderTextColor="#C1C1C1"
+            value={locationText}
+            onChangeText={(text) => {
+              setLocationText(text);
+              setLocationStatus(null); // Reset status when user manually edits
+            }}
+          />
+          {latitude && longitude && (
+            <Text
+              style={{
+                fontFamily: "Inter_400Regular",
+                fontSize: 11,
+                color: "#9AFF55",
+                marginTop: 4,
+                opacity: 0.7,
+              }}
+            >
+              Coordinates: {latitude.toFixed(6)}, {longitude.toFixed(6)}
+            </Text>
+          )}
+        </View>
 
         {/* Description */}
         <Text

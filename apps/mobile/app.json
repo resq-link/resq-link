@@ -19,7 +19,9 @@
       },
       "permissions": [
         "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
       ],
       "package": "xyz.create.CreateExpoEnvironment"
     },
@@ -53,7 +55,15 @@
       ],
       "expo-font",
       "expo-secure-store",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location to report emergencies accurately.",
+          "locationAlwaysPermission": "Allow $(PRODUCT_NAME) to use your location to report emergencies accurately.",
+          "locationWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location to report emergencies accurately."
+        }
+      ]
     ],
     "web": {
       "bundler": "metro",
