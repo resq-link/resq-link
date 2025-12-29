@@ -36,6 +36,7 @@ const convertToIncident = (report: EmergencyReport) => {
       : new Date(report.createdAt || Date.now()),
     description: report.description || 'No description provided',
     responder: report.responder || null,
+    dispatcherId: report.dispatcherId || null,
   }
 }
 
@@ -207,7 +208,14 @@ export default function Home() {
           <>
             <div className="space-y-4">
               {incidents.map((incident) => (
-                <IncidentCard key={incident.id} incident={incident} />
+                <IncidentCard 
+                  key={incident.id} 
+                  incident={incident}
+                  onUpdate={() => {
+                    // The subscription will automatically update, but we can force a refresh if needed
+                    console.log('Incident updated, subscription will refresh automatically')
+                  }}
+                />
               ))}
             </div>
 

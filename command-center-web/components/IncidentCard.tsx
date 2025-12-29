@@ -1,6 +1,8 @@
 'use client'
 
+import { useState } from 'react'
 import StatusBadge from './StatusBadge'
+import AssignDispatcherModal from './AssignDispatcherModal'
 
 interface Incident {
   id: string
@@ -11,13 +13,16 @@ interface Incident {
   reportedAt: Date
   description: string
   responder: string | null
+  dispatcherId?: string | null
 }
 
 interface IncidentCardProps {
   incident: Incident
+  onUpdate?: () => void
 }
 
-export default function IncidentCard({ incident }: IncidentCardProps) {
+export default function IncidentCard({ incident, onUpdate }: IncidentCardProps) {
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'critical':
@@ -121,10 +126,24 @@ export default function IncidentCard({ incident }: IncidentCardProps) {
         <button className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium">
           View Details
         </button>
-        <button className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium">
-          Assign Responder
+        <button
+          onClick={() => setIsAssignModalOpen(true)}
+          className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+        >
+          {incident.dispatcherId ? 'Change Dispatcher' : 'Assign Dispatcher'}
         </button>
       </div>
+
+      <AssignDispatcherModal
+        isOpen={isAssignModalOpen}
+        onClose={() => setIsAssignModalOpen(false)}
+        incidentId={incident.id}
+        currentDispatcherId={incident.dispatcherId || null}
+        onAssignSuccess={() => {
+          setIsAssignModalOpen(false)
+          onUpdate?.()
+        }}
+      />
     </div>
   )
 }

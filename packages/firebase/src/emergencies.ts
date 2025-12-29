@@ -6,11 +6,14 @@ import {
   orderBy, 
   limit,
   getDocs,
+  getDoc,
   onSnapshot,
   Timestamp,
   DocumentData,
   QuerySnapshot,
-  QueryConstraint
+  QueryConstraint,
+  doc,
+  updateDoc
 } from 'firebase/firestore';
 import { firestore, auth } from './config';
 
@@ -29,6 +32,7 @@ export interface EmergencyReport {
   createdAt?: Date | Timestamp;
   updatedAt?: Date | Timestamp;
   responder?: string | null;
+  dispatcherId?: string | null;
 }
 
 // Convert Firestore document to EmergencyReport
@@ -48,6 +52,7 @@ const convertFirestoreDoc = (doc: DocumentData): EmergencyReport => {
     createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : (data.created_at?.toDate ? data.created_at.toDate() : new Date()),
     updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : (data.updated_at?.toDate ? data.updated_at.toDate() : null),
     responder: data.responder || null,
+    dispatcherId: data.dispatcherId || data.dispatcher_id || null,
   };
 };
 
@@ -100,6 +105,7 @@ export async function submitEmergencyReport(report: Omit<EmergencyReport, 'id' |
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
       responder: report.responder || null,
+      dispatcherId: report.dispatcherId || null,
     };
 
     const docRef = await addDoc(reportsRef, reportData);
@@ -324,5 +330,134 @@ export function subscribeToActiveEmergencyReports(
     statusFilter: 'all', // Get all, but we'll filter active/pending in the query
     limitCount,
   });
+}
+
+/**
+ * Assign a dispatcher to an emergency report
+ * @param reportId - Emergency report ID
+ * @param dispatcherId - Dispatcher user ID (null to unassign)
+ * @returns Updated emergency report
+ */
+export async function assignDispatcherToEmergency(
+  reportId: string,
+  dispatcherId: string | null
+): Promise<EmergencyReport> {
+  try {
+    // Verify user is authenticated
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('User must be authenticated to assign dispatchers');
+    }
+
+    const reportRef = doc(firestore, 'emergencies', reportId);
+    
+    // Get the current document to preserve existing data
+    const reportDocSnap = await getDoc(reportRef);
+    if (!reportDocSnap.exists()) {
+      throw new Error('Emergency report not found');
+    }
+    
+    const currentData = reportDocSnap.data();
+    
+    // Update the report with dispatcher assignment
+    const updateData: any = {
+      dispatcherId: dispatcherId || null,
+      updatedAt: Timestamp.now(),
+    };
+    
+    // Only change status to active if assigning (not unassigning)
+    if (dispatcherId) {
+      updateData.status = currentData.status === 'resolved' ? 'resolved' : 'active';
+    }
+    
+    await updateDoc(reportRef, updateData);
+
+    // Fetch and return the updated report
+    const updatedDocSnap = await getDoc(reportRef);
+    if (!updatedDocSnap.exists()) {
+      throw new Error('Emergency report not found after update');
+    }
+    
+    return convertFirestoreDoc(updatedDocSnap);
+  } catch (error: any) {
+    console.error('Error assigning dispatcher to emergency:', error);
+    throw new Error(`Failed to assign dispatcher: ${error.message}`);
+  }
+}
+
+/**
+ * Subscribe to real-time updates of emergency reports assigned to a specific dispatcher
+ * @param dispatcherId - Dispatcher user ID
+ * @param callback - Callback function to receive reports
+ * @param options - Optional filter and limit options
+ * @returns Unsubscribe function
+ */
+export function subscribeToDispatcherAssignedEmergencies(
+  dispatcherId: string,
+  callback: (reports: EmergencyReport[]) => void,
+  options?: {
+    statusFilter?: 'pending' | 'active' | 'resolved' | 'all';
+    limitCount?: number;
+  }
+): () => void {
+  try {
+    const reportsRef = collection(firestore, 'emergencies');
+    
+    // Build query to get emergencies assigned to this dispatcher
+    const constraints: QueryConstraint[] = [
+      where('dispatcherId', '==', dispatcherId),
+    ];
+    
+    // Apply status filter if specified
+    if (options?.statusFilter && options.statusFilter !== 'all') {
+      constraints.push(where('status', '==', options.statusFilter));
+    }
+    
+    // Apply limit
+    const fetchLimit = options?.limitCount || 100;
+    constraints.push(limit(fetchLimit));
+    
+    const q = query(reportsRef, ...constraints);
+
+    // Helper function to get timestamp from createdAt
+    const getTime = (date: Date | Timestamp | undefined): number => {
+      if (!date) return 0;
+      if (date instanceof Date) return date.getTime();
+      if (date && typeof date === 'object' && 'toDate' in date) {
+        return (date as Timestamp).toDate().getTime();
+      }
+      return 0;
+    };
+
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot: QuerySnapshot) => {
+        console.log(`[subscribeToDispatcherAssignedEmergencies] Snapshot received: ${snapshot.docs.length} documents for dispatcher ${dispatcherId}`);
+        let reports = snapshot.docs.map(convertFirestoreDoc);
+        
+        // Sort by createdAt descending (newest first)
+        reports.sort((a, b) => {
+          const timeA = getTime(a.createdAt);
+          const timeB = getTime(b.createdAt);
+          return timeB - timeA; // Descending order
+        });
+        
+        console.log(`[subscribeToDispatcherAssignedEmergencies] Calling callback with ${reports.length} reports`);
+        callback(reports);
+      },
+      (error) => {
+        console.error('Error in dispatcher assigned emergencies subscription:', error);
+        console.error('Error code:', error.code);
+        console.error('Error message:', error.message);
+        // Still call callback with empty array to show loading is done
+        callback([]);
+      }
+    );
+
+    return unsubscribe;
+  } catch (error: any) {
+    console.error('Error setting up dispatcher assigned emergencies subscription:', error);
+    return () => {}; // Return empty unsubscribe function
+  }
 }
 

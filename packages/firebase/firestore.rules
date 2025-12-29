@@ -34,6 +34,8 @@ service cloud.firestore {
     
     // Dispatchers collection - dispatchers can read their own, command center can read all
     match /dispatchers/{userId} {
+      // Allow reading individual dispatcher documents and collection queries
+      // Command center can read all dispatchers (needed for getAllDispatchers query)
       allow read: if isOwner(userId) || isCommandCenter();
       allow create: if isAuthenticated() && isOwner(userId);
       allow update: if isOwner(userId) || isCommandCenter();
@@ -57,9 +59,10 @@ service cloud.firestore {
       
       // Allow authenticated users to read all emergency reports
       // This is appropriate for a command center dashboard where authenticated users should see all emergencies
+      // Dispatchers can query by dispatcherId to see only their assigned emergencies
       allow read: if isAuthenticated();
       
-      // Only command center and dispatchers can update reports (to change status, assign responder, etc.)
+      // Only command center and dispatchers can update reports (to change status, assign dispatcher, etc.)
       allow update: if isAuthenticated() && 
                       (isCommandCenter() || isDispatcher());
       

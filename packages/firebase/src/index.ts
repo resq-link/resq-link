@@ -1,6 +1,9 @@
 // Export Firebase instances
 export { auth, firestore } from './config';
 
+// Export Firestore functions
+export { getDoc, doc, updateDoc, Timestamp } from 'firebase/firestore';
+
 // Export Firebase Auth types and functions
 export type { User } from 'firebase/auth';
 export { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -16,6 +19,8 @@ export {
   signInDispatcher,
   signInCommandCenter,
   signInCivilian,
+  getAllDispatchers,
+  verifyCommandCenterUser,
   type DispatcherRole,
   type DispatcherAccount,
   type UserAccount,
@@ -31,6 +36,8 @@ export {
   getActiveEmergencyReports,
   subscribeToEmergencyReports,
   subscribeToActiveEmergencyReports,
+  assignDispatcherToEmergency,
+  subscribeToDispatcherAssignedEmergencies,
   type EmergencyReport,
 } from './emergencies';
 

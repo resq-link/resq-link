@@ -8,7 +8,7 @@ import {
   signInWithCredential,
   ConfirmationResult,
 } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { auth, firestore } from './config';
 
 // Dispatcher roles
@@ -310,6 +310,74 @@ export async function signInCivilian(
     return { user, profile };
   } catch (error: any) {
     throw new Error(`Failed to sign in: ${error.message}`);
+  }
+}
+
+/**
+ * Verify if the current user is a command center user
+ * @returns true if user is a command center, false otherwise
+ */
+export async function verifyCommandCenterUser(): Promise<boolean> {
+  try {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      return false;
+    }
+    
+    const commandCenterDoc = await getDoc(doc(firestore, 'commandCenters', currentUser.uid));
+    return commandCenterDoc.exists();
+  } catch (error: any) {
+    console.error('Error verifying command center user:', error);
+    return false;
+  }
+}
+
+/**
+ * Get all active dispatchers from Firestore
+ * @returns Array of dispatcher accounts with their UIDs
+ */
+export async function getAllDispatchers(): Promise<Array<{ uid: string; account: DispatcherAccount }>> {
+  try {
+    console.log('[getAllDispatchers] Starting to fetch dispatchers...');
+    const dispatchersRef = collection(firestore, 'dispatchers');
+    
+    // Try to query with active filter first, but fall back to getting all if it fails
+    let querySnapshot;
+    try {
+      const q = query(dispatchersRef, where('active', '==', true));
+      querySnapshot = await getDocs(q);
+      console.log(`[getAllDispatchers] Query with active filter returned ${querySnapshot.size} documents`);
+    } catch (queryError: any) {
+      // If query fails (e.g., missing index), get all dispatchers and filter in memory
+      console.warn('[getAllDispatchers] Query with active filter failed, fetching all dispatchers:', queryError.message);
+      querySnapshot = await getDocs(dispatchersRef);
+      console.log(`[getAllDispatchers] Fetched all ${querySnapshot.size} dispatcher documents`);
+    }
+    
+    const dispatchers: Array<{ uid: string; account: DispatcherAccount }> = [];
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      // Filter in memory if we got all documents (active might be missing or false)
+      const isActive = data.active !== false && data.active !== undefined;
+      
+      if (isActive) {
+        dispatchers.push({
+          uid: doc.id,
+          account: {
+            email: data.email || '',
+            role: data.role || 'BFP',
+            createdAt: data.createdAt,
+            active: true,
+          },
+        });
+      }
+    });
+    
+    console.log(`[getAllDispatchers] Returning ${dispatchers.length} active dispatchers`);
+    return dispatchers;
+  } catch (error: any) {
+    console.error('[getAllDispatchers] Error fetching dispatchers:', error);
+    throw new Error(`Failed to fetch dispatchers: ${error.message}`);
   }
 }
 
