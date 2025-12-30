@@ -1,12 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import IncidentCard from '@/components/IncidentCard'
 import StatusBadge from '@/components/StatusBadge'
+import AlarmControl from '@/components/AlarmControl'
 import { subscribeToEmergencyReports, type EmergencyReport } from '@packages/firebase'
 import { useAuth } from '@/contexts/AuthContext'
 import ProtectedRoute from '@/components/ProtectedRoute'
+import { playAlarmSound, initAudioContext } from '@/utils/alarmSound'
 
 // Map incident type to display name
 const getIncidentTypeName = (incidentType: string): string => {
@@ -45,8 +47,41 @@ export default function Home() {
   const [activeCount, setActiveCount] = useState(0)
   const [pendingCount, setPendingCount] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
+  const [isAlarmMuted, setIsAlarmMuted] = useState(false)
   const { user } = useAuth()
   const router = useRouter()
+  
+  // Track previous incident IDs to detect new ones
+  const previousIncidentIdsRef = useRef<Set<string>>(new Set())
+  const isInitialLoadRef = useRef(true)
+  const audioInitializedRef = useRef(false)
+
+  useEffect(() => {
+    // Initialize audio context on first user interaction
+    const initAudio = () => {
+      if (!audioInitializedRef.current) {
+        const ctx = initAudioContext()
+        if (ctx) {
+          console.log('✅ Audio context initialized')
+          audioInitializedRef.current = true
+        }
+      }
+    }
+    
+    // Initialize audio on any user interaction (required for browser autoplay policies)
+    const events = ['click', 'touchstart', 'keydown', 'mousedown']
+    const handlers: Array<() => void> = []
+    
+    events.forEach(event => {
+      const handler = initAudio
+      window.addEventListener(event, handler, { once: true, passive: true })
+      handlers.push(() => window.removeEventListener(event, handler))
+    })
+    
+    return () => {
+      handlers.forEach(cleanup => cleanup())
+    }
+  }, [])
 
   useEffect(() => {
     // Redirect to login if not authenticated
@@ -72,6 +107,37 @@ export default function Home() {
         
         // Convert to Incident format
         const convertedIncidents = activeReports.map(convertToIncident)
+        
+        // Detect new incidents by comparing IDs
+        if (!isInitialLoadRef.current) {
+          const currentIds = new Set(convertedIncidents.map(inc => inc.id))
+          const previousIds = previousIncidentIdsRef.current
+          
+          // Find new incidents (in current but not in previous)
+          const newIncidents = convertedIncidents.filter(
+            inc => !previousIds.has(inc.id)
+          )
+          
+          if (newIncidents.length > 0) {
+            console.log(`🚨 New incident(s) detected: ${newIncidents.length}`)
+            console.log('New incident IDs:', newIncidents.map(inc => inc.id))
+            
+            // Play alarm sound for new incidents
+            if (!isAlarmMuted) {
+              console.log('Playing alarm sound for new incidents...')
+              playAlarmSound(false)
+            } else {
+              console.log('Alarm is muted, skipping sound')
+            }
+          }
+        } else {
+          // Mark initial load as complete after first data arrives
+          isInitialLoadRef.current = false
+        }
+        
+        // Update previous IDs for next comparison
+        previousIncidentIdsRef.current = new Set(convertedIncidents.map(inc => inc.id))
+        
         setIncidents(convertedIncidents)
         setIsLoading(false)
       },
@@ -85,7 +151,7 @@ export default function Home() {
       console.log('Unsubscribing from emergency reports')
       unsubscribe()
     }
-  }, [user, router])
+  }, [user, router, isAlarmMuted])
 
   useEffect(() => {
     // Update counts
@@ -193,9 +259,15 @@ export default function Home() {
           <h2 className="text-2xl font-bold text-gray-900">
             Live Incidents
           </h2>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-            <span className="text-sm text-gray-600">Live</span>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
+              <span className="text-sm text-gray-600">Live</span>
+            </div>
+            <AlarmControl
+              isMuted={isAlarmMuted}
+              onToggle={() => setIsAlarmMuted(!isAlarmMuted)}
+            />
           </div>
         </div>
 

@@ -32,6 +32,7 @@ interface MapComponentProps {
   selectedIncident: string | null
   onIncidentSelect: (id: string) => void
   userLocation?: [number, number] | null
+  centerLocation?: [number, number] | null
 }
 
 // Component to handle map center updates
@@ -48,6 +49,7 @@ export default function MapComponent({
   selectedIncident,
   onIncidentSelect,
   userLocation,
+  centerLocation,
 }: MapComponentProps) {
   const mapRef = useRef<L.Map | null>(null)
 
@@ -55,9 +57,9 @@ export default function MapComponent({
   const defaultCenter: [number, number] = [37.7749, -122.4194]
   const defaultZoom = 12
   
-  // Use user location if available, otherwise use default
-  const mapCenter = userLocation || defaultCenter
-  const mapZoom = userLocation ? 14 : defaultZoom // Zoom in more when showing user location
+  // Priority: centerLocation (selected incident) > userLocation > default
+  const mapCenter = centerLocation || userLocation || defaultCenter
+  const mapZoom = centerLocation ? 15 : (userLocation ? 14 : defaultZoom) // Zoom in more for selected incident
 
   const getMarkerColor = (priority: string, status: string) => {
     if (status === 'pending') return '#eab308' // yellow
