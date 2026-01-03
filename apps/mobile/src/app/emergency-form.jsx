@@ -6,11 +6,11 @@ import {
   ScrollView,
   TextInput,
   Alert,
+  Image,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
-import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { Camera, MapPin, Upload } from "lucide-react-native";
@@ -25,9 +25,8 @@ import CustomButton from "../components/CustomButton";
 import ErrorAlert from "../components/ErrorAlert";
 import LoadingScreen from "../components/LoadingScreen";
 import useUserStore from "../utils/userStore";
-import useUpload from "../utils/useUpload";
 import { getApiUrl, UI_MODE, mockData } from "../utils/api";
-import { submitEmergencyReport } from "@packages/firebase";
+import { submitEmergencyReport, uploadImageToStorage } from "@packages/firebase";
 
 const INCIDENT_TYPES = [
   { id: "fire", label: "🔥 Fire", emoji: "🔥" },
@@ -42,7 +41,6 @@ export default function EmergencyFormScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useUserStore();
-  const [upload, { loading: uploading }] = useUpload();
 
   const [incidentType, setIncidentType] = useState("");
   const [locationText, setLocationText] = useState("");
@@ -65,6 +63,11 @@ export default function EmergencyFormScreen() {
   useEffect(() => {
     requestLocationPermission();
   }, []);
+
+  // Debug: Log imageUri changes
+  useEffect(() => {
+    console.log("imageUri state changed:", imageUri);
+  }, [imageUri]);
 
   const requestLocationPermission = async () => {
     try {
@@ -164,17 +167,23 @@ export default function EmergencyFormScreen() {
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
+        allowsEditing: false, // Remove editing for consistency and faster selection
         quality: 0.8,
+        selectionLimit: 1,
       });
 
-      if (!result.canceled && result.assets[0]) {
-        setImageUri(result.assets[0].uri);
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const uri = result.assets[0].uri;
+        console.log("Image selected successfully:", uri);
+        setImageUri(uri);
+        console.log("Image URI set to state");
+      } else {
+        console.log("Image selection was canceled");
       }
     } catch (err) {
       console.error("Image picker error:", err);
       setError("Failed to pick image");
+      Alert.alert("Gallery Error", "Failed to pick image. Please try again.");
     }
   };
 
@@ -187,17 +196,23 @@ export default function EmergencyFormScreen() {
       }
 
       const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        aspect: [4, 3],
+        allowsEditing: false, // Remove editing for faster emergency reporting
         quality: 0.8,
+        exif: false,
       });
 
-      if (!result.canceled && result.assets[0]) {
-        setImageUri(result.assets[0].uri);
+      if (!result.canceled && result.assets && result.assets[0]) {
+        const uri = result.assets[0].uri;
+        console.log("Photo taken successfully:", uri);
+        setImageUri(uri);
+        console.log("Photo URI set to state");
+      } else {
+        console.log("Photo capture was canceled");
       }
     } catch (err) {
       console.error("Camera error:", err);
       setError("Failed to take photo");
+      Alert.alert("Camera Error", "Failed to take photo. Please try again.");
     }
   };
 
@@ -242,21 +257,16 @@ export default function EmergencyFormScreen() {
 
       let imageUrl = null;
 
-      // Upload image if present
+      // Upload image to Firebase Storage if present
       if (imageUri) {
-        const uploadResult = await upload({
-          reactNativeAsset: {
-            uri: imageUri,
-            type: "image/jpeg",
-            name: "emergency-photo.jpg",
-          },
-        });
-
-        if (uploadResult.error) {
-          throw new Error(uploadResult.error);
+        try {
+          // Generate a unique file name for this emergency report
+          const fileName = `emergency_${Date.now()}_${Math.random().toString(36).substring(7)}.jpg`;
+          imageUrl = await uploadImageToStorage(imageUri, 'emergencies/photos/', fileName);
+        } catch (uploadError) {
+          console.error('Image upload error:', uploadError);
+          throw new Error(`Failed to upload image: ${uploadError.message || 'Unknown error'}`);
         }
-
-        imageUrl = uploadResult.url;
       }
 
       // Submit emergency report to Firestore
@@ -297,10 +307,10 @@ export default function EmergencyFormScreen() {
     return null;
   }
 
-  if (isLoading || uploading) {
+  if (isLoading) {
     return (
       <LoadingScreen
-        title={uploading ? "Uploading image..." : "Submitting report..."}
+        title="Submitting report..."
         subtitle="Please wait"
         variant="login"
       />
@@ -577,11 +587,19 @@ export default function EmergencyFormScreen() {
                 height: 200,
                 borderRadius: 12,
                 marginBottom: 12,
+                backgroundColor: "#252525",
               }}
-              contentFit="cover"
+              resizeMode="cover"
+              onError={(error) => {
+                console.error("Image load error:", error);
+                setError("Failed to load image. Please try again.");
+              }}
             />
             <TouchableOpacity
-              onPress={() => setImageUri(null)}
+              onPress={() => {
+                console.log("Removing photo");
+                setImageUri(null);
+              }}
               style={{
                 backgroundColor: "#FF3B30",
                 borderRadius: 8,

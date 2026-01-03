@@ -1,5 +1,5 @@
 // Export Firebase instances
-export { auth, firestore } from './config';
+export { auth, firestore, storage } from './config';
 
 // Export Firestore functions
 export { getDoc, doc, updateDoc, Timestamp } from 'firebase/firestore';
@@ -40,4 +40,7 @@ export {
   subscribeToDispatcherAssignedEmergencies,
   type EmergencyReport,
 } from './emergencies';
+
+// Export storage functions
+export { uploadImageToStorage } from './storage';
 

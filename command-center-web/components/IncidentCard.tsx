@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import StatusBadge from './StatusBadge'
 import AssignDispatcherModal from './AssignDispatcherModal'
+import IncidentDetailsModal from './IncidentDetailsModal'
 
 interface Incident {
   id: string
@@ -14,6 +15,9 @@ interface Incident {
   description: string
   responder: string | null
   dispatcherId?: string | null
+  imageUrl?: string | null
+  latitude?: number | null
+  longitude?: number | null
 }
 
 interface IncidentCardProps {
@@ -23,6 +27,7 @@ interface IncidentCardProps {
 
 export default function IncidentCard({ incident, onUpdate }: IncidentCardProps) {
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'critical':
@@ -123,7 +128,10 @@ export default function IncidentCard({ incident, onUpdate }: IncidentCardProps) 
         </div>
       </div>
       <div className="flex gap-2 pt-4 border-t border-gray-200">
-        <button className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium">
+        <button 
+          onClick={() => setIsDetailsModalOpen(true)}
+          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+        >
           View Details
         </button>
         <button
@@ -133,6 +141,12 @@ export default function IncidentCard({ incident, onUpdate }: IncidentCardProps) 
           {incident.dispatcherId ? 'Change Dispatcher' : 'Assign Dispatcher'}
         </button>
       </div>
+
+      <IncidentDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        incident={incident}
+      />
 
       <AssignDispatcherModal
         isOpen={isAssignModalOpen}

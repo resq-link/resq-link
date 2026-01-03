@@ -1,10 +1,13 @@
 import React from "react";
-import { View, Text, ScrollView } from "react-native";
-import { MapPin, Clock, User, AlertCircle } from "lucide-react-native";
+import { View, Text, ScrollView, TouchableOpacity, Modal, StyleSheet } from "react-native";
+import { Image } from "expo-image";
+import { MapPin, Clock, User, AlertCircle, X } from "lucide-react-native";
 import CaseStatusBadge from "./CaseStatusBadge";
 import PriorityBadge from "./PriorityBadge";
 
 export default function CaseInfoCard({ case: caseData, reporterInfo }) {
+  const [imageModalVisible, setImageModalVisible] = React.useState(false);
+
   const formatDate = (dateString) => {
     if (!dateString) return "Unknown";
     const date = new Date(dateString);
@@ -74,6 +77,40 @@ export default function CaseInfoCard({ case: caseData, reporterInfo }) {
             >
               {caseData.description}
             </Text>
+          </View>
+        )}
+
+        {/* Photo */}
+        {caseData.imageUrl && (
+          <View style={{ backgroundColor: "#FFFFFF", borderRadius: 12, padding: 16, marginBottom: 12 }}>
+            <Text
+              style={{
+                fontFamily: "Inter_600SemiBold",
+                fontSize: 16,
+                color: "#1C1C1E",
+                marginBottom: 12,
+              }}
+            >
+              Photo
+            </Text>
+            <TouchableOpacity
+              onPress={() => setImageModalVisible(true)}
+              style={{
+                borderRadius: 8,
+                overflow: "hidden",
+              }}
+            >
+              <Image
+                source={{ uri: caseData.imageUrl }}
+                style={{
+                  width: "100%",
+                  height: 200,
+                  borderRadius: 8,
+                }}
+                contentFit="cover"
+                transition={200}
+              />
+            </TouchableOpacity>
           </View>
         )}
 
@@ -212,7 +249,71 @@ export default function CaseInfoCard({ case: caseData, reporterInfo }) {
           )}
         </View>
       </View>
+
+      {/* Image Modal */}
+      <Modal
+        visible={imageModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setImageModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <TouchableOpacity
+            style={styles.modalBackdrop}
+            activeOpacity={1}
+            onPress={() => setImageModalVisible(false)}
+          >
+            <View style={styles.modalContent}>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setImageModalVisible(false)}
+              >
+                <X size={24} color="#FFFFFF" />
+              </TouchableOpacity>
+              <Image
+                source={{ uri: caseData.imageUrl }}
+                style={styles.modalImage}
+                contentFit="contain"
+                transition={200}
+              />
+            </View>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  modalContainer: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.9)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalBackdrop: {
+    flex: 1,
+    width: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    width: "90%",
+    height: "80%",
+    position: "relative",
+  },
+  modalImage: {
+    width: "100%",
+    height: "100%",
+  },
+  closeButton: {
+    position: "absolute",
+    top: 20,
+    right: 20,
+    zIndex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    borderRadius: 20,
+    padding: 8,
+  },
+});
 

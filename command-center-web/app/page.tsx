@@ -39,6 +39,9 @@ const convertToIncident = (report: EmergencyReport) => {
     description: report.description || 'No description provided',
     responder: report.responder || null,
     dispatcherId: report.dispatcherId || null,
+    imageUrl: report.imageUrl || null,
+    latitude: report.latitude || null,
+    longitude: report.longitude || null,
   }
 }
 
@@ -98,6 +101,15 @@ export default function Home() {
       (reports: EmergencyReport[]) => {
         console.log('Received emergency reports:', reports.length)
         
+        // Debug: Check imageUrl in raw reports
+        reports.forEach((report, index) => {
+          if (report.imageUrl) {
+            console.log(`Report ${index} (ID: ${report.id}) has imageUrl:`, report.imageUrl)
+          } else {
+            console.log(`Report ${index} (ID: ${report.id}) has NO imageUrl`)
+          }
+        })
+        
         // Filter to show only active and pending incidents
         const activeReports = reports.filter(
           (r) => r.status === 'active' || r.status === 'pending'
@@ -107,6 +119,11 @@ export default function Home() {
         
         // Convert to Incident format
         const convertedIncidents = activeReports.map(convertToIncident)
+        
+        // Debug: Log imageUrl in converted incidents
+        convertedIncidents.forEach(inc => {
+          console.log(`Incident ${inc.id} - imageUrl:`, inc.imageUrl || 'NO IMAGE URL')
+        })
         
         // Detect new incidents by comparing IDs
         if (!isInitialLoadRef.current) {

@@ -1,6 +1,7 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
 import { getAuth, initializeAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
 
 // Firebase configuration - these should be set via environment variables or app.json
 // Supports both NEXT_PUBLIC_/EXPO_PUBLIC_ prefixes (for apps) and FIREBASE_ prefix (for scripts)
@@ -137,6 +138,7 @@ const isConfigValid = () => {
 let _app: FirebaseApp | null = null;
 let _auth: Auth | null = null;
 let _firestore: Firestore | null = null;
+let _storage: FirebaseStorage | null = null;
 
 function getApp(): FirebaseApp {
   if (_app) {
@@ -245,8 +247,26 @@ function getFirestoreInstance(): Firestore {
   }
 }
 
+function getStorageInstance(): FirebaseStorage {
+  if (_storage) {
+    return _storage;
+  }
+
+  const app = getApp();
+  
+  try {
+    _storage = getStorage(app);
+    console.log('✅ Firebase Storage initialized');
+    return _storage;
+  } catch (error: any) {
+    console.error('❌ Error initializing Storage:', error.message);
+    throw new Error(`Failed to initialize Firebase Storage: ${error.message}`);
+  }
+}
+
 // Export getters that initialize lazily
 export const app = getApp();
 export const auth = getAuthInstance();
 export const firestore = getFirestoreInstance();
+export const storage = getStorageInstance();
 
