@@ -86,12 +86,12 @@ function playWebAudioAlarm(ctx: AudioContext): void {
     const beepDuration = 0.2 // Each beep is 0.2 seconds (short)
     const pauseDuration = 0.1 // Very short pause between beeps for faster rhythm
     
-    frequencies.forEach((freq, index) => {
+    frequencies.forEach((freq: number, index: number) => {
       const oscillator: OscillatorNode = ctx.createOscillator()
       const gainNode: GainNode = ctx.createGain()
       
       oscillator.connect(gainNode)
-      gainNode.connect(ctx.destination)
+      gainNode.connect(ctx.destination as AudioDestinationNode)
       
       oscillator.frequency.value = freq
       oscillator.type = 'sine'
@@ -134,21 +134,21 @@ function playWebAudioAlarm(ctx: AudioContext): void {
 function playFallbackAlarm(): void {
   try {
     // Create a simple beep using Audio API
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+    const ctx: AudioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
     const oscillator: OscillatorNode = ctx.createOscillator()
     const gainNode: GainNode = ctx.createGain()
     
     oscillator.connect(gainNode)
-    gainNode.connect(ctx.destination)
+    gainNode.connect(ctx.destination as AudioDestinationNode)
     
     // Play longer beeps
-    [800, 1000, 1200].forEach((freq, i) => {
+    [800, 1000, 1200].forEach((freq: number, i: number) => {
       setTimeout(() => {
         const osc: OscillatorNode = ctx.createOscillator()
         const gain: GainNode = ctx.createGain()
         
         osc.connect(gain)
-        gain.connect(ctx.destination)
+        gain.connect(ctx.destination as AudioDestinationNode)
         
         osc.frequency.value = freq
         osc.type = 'sine'
@@ -190,7 +190,7 @@ export function playNotificationSound(isMuted: boolean = false): void {
     const gainNode: GainNode = ctx.createGain()
     
     oscillator.connect(gainNode)
-    gainNode.connect(ctx.destination)
+    gainNode.connect(ctx.destination as AudioDestinationNode)
     
     oscillator.frequency.value = 600
     oscillator.type = 'sine'
