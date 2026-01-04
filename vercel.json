@@ -1,6 +1,6 @@
 {
-    "buildCommand": "cd packages/firebase && npm install && npm run build && cd ../../command-center-web && npm install && npm run build",
-    "outputDirectory": "command-center-web/.next",
-    "installCommand": "cd packages/firebase && npm install && cd ../.. && cd command-center-web && npm install",
+    "buildCommand": "cd ../packages/firebase && npm install && npm run build && cd ../../command-center-web && npm install && npm run build",
+    "outputDirectory": ".next",
+    "installCommand": "cd ../packages/firebase && npm install && cd ../../command-center-web && npm install",
     "framework": "nextjs"
   }
