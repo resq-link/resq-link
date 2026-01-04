@@ -27,7 +27,7 @@ export interface EmergencyReport {
   longitude: number | null;
   description?: string | null;
   imageUrl?: string | null;
-  status: 'pending' | 'active' | 'resolved';
+  status: 'pending' | 'enroute' | 'on_scene' | 'done' | 'active' | 'resolved'; // Support both old and new statuses for backward compatibility
   priority?: 'low' | 'medium' | 'high' | 'critical';
   createdAt?: Date | Timestamp;
   updatedAt?: Date | Timestamp;
@@ -382,6 +382,125 @@ export async function assignDispatcherToEmergency(
   } catch (error: any) {
     console.error('Error assigning dispatcher to emergency:', error);
     throw new Error(`Failed to assign dispatcher: ${error.message}`);
+  }
+}
+
+/**
+ * Accept a case (update status from pending to enroute)
+ * Only the assigned dispatcher can accept their assigned case
+ * @param reportId - Emergency report ID
+ * @returns Updated emergency report
+ */
+export async function acceptCase(reportId: string): Promise<EmergencyReport> {
+  try {
+    // Verify user is authenticated
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('User must be authenticated to accept cases');
+    }
+
+    const reportRef = doc(firestore, 'emergencies', reportId);
+    
+    // Get the current document to verify assignment
+    const reportDocSnap = await getDoc(reportRef);
+    if (!reportDocSnap.exists()) {
+      throw new Error('Emergency report not found');
+    }
+    
+    const currentData = reportDocSnap.data();
+    const currentDispatcherId = currentData.dispatcherId || currentData.dispatcher_id;
+    
+    // Verify the dispatcher is assigned to this case
+    if (currentDispatcherId !== currentUser.uid) {
+      throw new Error('Only the assigned dispatcher can accept this case');
+    }
+    
+    // Verify the case is in pending or active status
+    const currentStatus = currentData.status || 'pending';
+    if (currentStatus !== 'pending' && currentStatus !== 'active') {
+      throw new Error('Case can only be accepted when status is pending or active');
+    }
+    
+    // Update the report status to enroute
+    await updateDoc(reportRef, {
+      status: 'enroute',
+      updatedAt: Timestamp.now(),
+    });
+
+    // Fetch and return the updated report
+    const updatedDocSnap = await getDoc(reportRef);
+    if (!updatedDocSnap.exists()) {
+      throw new Error('Emergency report not found after update');
+    }
+    
+    return convertFirestoreDoc(updatedDocSnap);
+  } catch (error: any) {
+    console.error('Error accepting case:', error);
+    throw new Error(`Failed to accept case: ${error.message}`);
+  }
+}
+
+/**
+ * Update case status (enroute, on_scene, or done)
+ * Only the assigned dispatcher can update their assigned case
+ * @param reportId - Emergency report ID
+ * @param newStatus - New status (enroute, on_scene, or done)
+ * @returns Updated emergency report
+ */
+export async function updateCaseStatus(
+  reportId: string,
+  newStatus: 'enroute' | 'on_scene' | 'done'
+): Promise<EmergencyReport> {
+  try {
+    // Verify user is authenticated
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      throw new Error('User must be authenticated to update case status');
+    }
+
+    // Validate status
+    if (!['enroute', 'on_scene', 'done'].includes(newStatus)) {
+      throw new Error('Invalid status. Must be enroute, on_scene, or done');
+    }
+
+    const reportRef = doc(firestore, 'emergencies', reportId);
+    
+    // Get the current document to verify assignment
+    const reportDocSnap = await getDoc(reportRef);
+    if (!reportDocSnap.exists()) {
+      throw new Error('Emergency report not found');
+    }
+    
+    const currentData = reportDocSnap.data();
+    const currentDispatcherId = currentData.dispatcherId || currentData.dispatcher_id;
+    const currentStatus = currentData.status || 'pending';
+    
+    // Verify the dispatcher is assigned to this case
+    if (currentDispatcherId !== currentUser.uid) {
+      throw new Error('Only the assigned dispatcher can update this case');
+    }
+    
+    // Prevent updating if already done
+    if (currentStatus === 'done') {
+      throw new Error('Cannot update case status once it is marked as done');
+    }
+    
+    // Update the report status
+    await updateDoc(reportRef, {
+      status: newStatus,
+      updatedAt: Timestamp.now(),
+    });
+
+    // Fetch and return the updated report
+    const updatedDocSnap = await getDoc(reportRef);
+    if (!updatedDocSnap.exists()) {
+      throw new Error('Emergency report not found after update');
+    }
+    
+    return convertFirestoreDoc(updatedDocSnap);
+  } catch (error: any) {
+    console.error('Error updating case status:', error);
+    throw new Error(`Failed to update case status: ${error.message}`);
   }
 }
 

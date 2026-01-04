@@ -100,8 +100,15 @@ export default function DashboardScreen() {
     );
   }
 
-  const activeCount = cases.filter((c) => c.status === "active" || c.status === "pending").length;
-  const resolvedCount = cases.filter((c) => c.status === "resolved").length;
+  // Count active cases (pending, enroute, on_scene, or legacy active)
+  const activeCount = cases.filter((c) => 
+    c.status === "pending" || 
+    c.status === "enroute" || 
+    c.status === "on_scene" || 
+    c.status === "active"
+  ).length;
+  // Count resolved cases (done or legacy resolved)
+  const resolvedCount = cases.filter((c) => c.status === "done" || c.status === "resolved").length;
 
   return (
     <View style={{ flex: 1, backgroundColor: "#F5F5F5" }}>
@@ -262,6 +269,10 @@ export default function DashboardScreen() {
               key={caseData.id}
               case={caseData}
               onPress={() => handleCasePress(caseData)}
+              onStatusUpdate={() => {
+                // The real-time subscription will automatically update the cases
+                // This callback is kept for potential future use
+              }}
             />
           ))
         )}

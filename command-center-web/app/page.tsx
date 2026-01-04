@@ -25,12 +25,22 @@ const getIncidentTypeName = (incidentType: string): string => {
 
 // Convert EmergencyReport to Incident format
 const convertToIncident = (report: EmergencyReport) => {
+  // Map status to new system, keeping legacy support
+  let status: 'pending' | 'enroute' | 'on_scene' | 'done' | 'active' | 'resolved' = 'pending'
+  if (['pending', 'enroute', 'on_scene', 'done'].includes(report.status)) {
+    status = report.status as 'pending' | 'enroute' | 'on_scene' | 'done'
+  } else if (report.status === 'active') {
+    status = 'active' // Legacy support
+  } else if (report.status === 'resolved') {
+    status = 'resolved' // Legacy support, map to 'done' for new system
+  }
+
   return {
     id: report.id || '',
     type: getIncidentTypeName(report.incidentType),
     location: report.locationText,
     priority: report.priority || 'medium',
-    status: report.status === 'resolved' ? 'resolved' : (report.status === 'active' ? 'active' : 'pending') as 'active' | 'pending' | 'resolved',
+    status,
     reportedAt: report.createdAt instanceof Date 
       ? report.createdAt 
       : (report.createdAt && typeof report.createdAt === 'object' && 'toDate' in report.createdAt)
@@ -49,6 +59,9 @@ export default function Home() {
   const [incidents, setIncidents] = useState<ReturnType<typeof convertToIncident>[]>([])
   const [activeCount, setActiveCount] = useState(0)
   const [pendingCount, setPendingCount] = useState(0)
+  const [enrouteCount, setEnrouteCount] = useState(0)
+  const [onSceneCount, setOnSceneCount] = useState(0)
+  const [doneCount, setDoneCount] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [isAlarmMuted, setIsAlarmMuted] = useState(false)
   const { user } = useAuth()
@@ -110,10 +123,8 @@ export default function Home() {
           }
         })
         
-        // Filter to show only active and pending incidents
-        const activeReports = reports.filter(
-          (r) => r.status === 'active' || r.status === 'pending'
-        )
+        // Show all incidents including done/resolved
+        const activeReports = reports
         
         console.log('Active/pending reports:', activeReports.length)
         
@@ -131,15 +142,16 @@ export default function Home() {
           const previousIds = previousIncidentIdsRef.current
           
           // Find new incidents (in current but not in previous)
+          // Only trigger alarm for new incidents that are not done/resolved
           const newIncidents = convertedIncidents.filter(
-            inc => !previousIds.has(inc.id)
+            inc => !previousIds.has(inc.id) && inc.status !== 'done' && inc.status !== 'resolved'
           )
           
           if (newIncidents.length > 0) {
             console.log(`🚨 New incident(s) detected: ${newIncidents.length}`)
             console.log('New incident IDs:', newIncidents.map(inc => inc.id))
             
-            // Play alarm sound for new incidents
+            // Play alarm sound for new incidents (only non-done cases)
             if (!isAlarmMuted) {
               console.log('Playing alarm sound for new incidents...')
               playAlarmSound(false)
@@ -171,9 +183,20 @@ export default function Home() {
   }, [user, router, isAlarmMuted])
 
   useEffect(() => {
-    // Update counts
-    setActiveCount(incidents.filter(i => i.status === 'active').length)
+    // Update counts for all statuses
     setPendingCount(incidents.filter(i => i.status === 'pending').length)
+    setEnrouteCount(incidents.filter(i => i.status === 'enroute').length)
+    setOnSceneCount(incidents.filter(i => i.status === 'on_scene').length)
+    setDoneCount(incidents.filter(i => i.status === 'done' || i.status === 'resolved').length)
+    // Active count includes pending, enroute, on_scene, and legacy active
+    setActiveCount(
+      incidents.filter(i => 
+        i.status === 'pending' || 
+        i.status === 'enroute' || 
+        i.status === 'on_scene' || 
+        i.status === 'active'
+      ).length
+    )
   }, [incidents])
 
   return (
@@ -190,7 +213,7 @@ export default function Home() {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -246,7 +269,7 @@ export default function Home() {
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Pending Response</p>
+              <p className="text-sm font-medium text-gray-600">Pending</p>
               <p className="text-3xl font-bold text-yellow-600 mt-2">
                 {pendingCount}
               </p>
@@ -263,6 +286,90 @@ export default function Home() {
                   strokeLinejoin="round"
                   strokeWidth={2}
                   d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">En Route</p>
+              <p className="text-3xl font-bold text-blue-600 mt-2">
+                {enrouteCount}
+              </p>
+            </div>
+            <div className="bg-blue-100 rounded-full p-4">
+              <svg
+                className="w-8 h-8 text-blue-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">On Scene</p>
+              <p className="text-3xl font-bold text-purple-600 mt-2">
+                {onSceneCount}
+              </p>
+            </div>
+            <div className="bg-purple-100 rounded-full p-4">
+              <svg
+                className="w-8 h-8 text-purple-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Done</p>
+              <p className="text-3xl font-bold text-green-600 mt-2">
+                {doneCount}
+              </p>
+            </div>
+            <div className="bg-green-100 rounded-full p-4">
+              <svg
+                className="w-8 h-8 text-green-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
             </div>

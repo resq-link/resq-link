@@ -10,7 +10,7 @@ import {
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
 import { useFonts } from "expo-font";
-import { getDoc, doc, firestore } from "@packages/firebase";
+import { getDoc, doc, firestore, onSnapshot } from "@packages/firebase";
 import CaseInfoCard from "@/components/CaseInfoCard";
 import LoadingScreen from "@/components/LoadingScreen";
 import ErrorAlert from "@/components/ErrorAlert";
@@ -37,76 +37,82 @@ export default function CaseDetailScreen() {
       return;
     }
 
-    fetchCaseDetails();
-  }, [caseId]);
-
-  const fetchCaseDetails = async () => {
-    try {
-      setLoading(true);
-      setError("");
-
-      // Fetch case details
-      const caseDocRef = doc(firestore, "emergencies", caseId);
-      const caseDoc = await getDoc(caseDocRef);
-
-      if (!caseDoc.exists()) {
-        throw new Error("Case not found");
-      }
-
-      const data = caseDoc.data();
-      const caseInfo = {
-        id: caseDoc.id,
-        userId: data.userId || data.user_id || "",
-        incidentType: data.incidentType || data.incident_type || "other",
-        locationText: data.locationText || data.location_text || "",
-        latitude: data.latitude ?? null,
-        longitude: data.longitude ?? null,
-        description: data.description || null,
-        imageUrl: data.imageUrl || data.image_url || null,
-        status: data.status || "pending",
-        priority: data.priority || "medium",
-        createdAt: data.createdAt?.toDate
-          ? data.createdAt.toDate()
-          : data.created_at?.toDate
-          ? data.created_at.toDate()
-          : new Date(data.createdAt || Date.now()),
-        updatedAt: data.updatedAt?.toDate
-          ? data.updatedAt.toDate()
-          : data.updated_at?.toDate
-          ? data.updated_at.toDate()
-          : null,
-        dispatcherId: data.dispatcherId || data.dispatcher_id || null,
-      };
-
-      setCaseData(caseInfo);
-
-      // Fetch reporter information if userId is available
-      if (caseInfo.userId) {
+    // Subscribe to real-time updates
+    const caseDocRef = doc(firestore, "emergencies", caseId);
+    const unsubscribe = onSnapshot(
+      caseDocRef,
+      async (docSnap) => {
         try {
-          const userDocRef = doc(firestore, "users", caseInfo.userId);
-          const userDoc = await getDoc(userDocRef);
-
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
-            setReporterInfo({
-              fullName: userData.fullName || userData.name || "",
-              phone: userData.phone || userData.phone_number || "",
-              email: userData.email || "",
-            });
+          setError("");
+          if (!docSnap.exists()) {
+            throw new Error("Case not found");
           }
-        } catch (userError) {
-          console.error("Error fetching reporter info:", userError);
-          // Don't fail the whole screen if reporter info fails
-        }
-      }
 
-      setLoading(false);
-    } catch (err) {
-      console.error("Error fetching case details:", err);
-      setError(err.message || "Failed to load case details");
-      setLoading(false);
-    }
-  };
+          const data = docSnap.data();
+          const caseInfo = {
+            id: docSnap.id,
+            userId: data.userId || data.user_id || "",
+            incidentType: data.incidentType || data.incident_type || "other",
+            locationText: data.locationText || data.location_text || "",
+            latitude: data.latitude ?? null,
+            longitude: data.longitude ?? null,
+            description: data.description || null,
+            imageUrl: data.imageUrl || data.image_url || null,
+            status: data.status || "pending",
+            priority: data.priority || "medium",
+            createdAt: data.createdAt?.toDate
+              ? data.createdAt.toDate()
+              : data.created_at?.toDate
+              ? data.created_at.toDate()
+              : new Date(data.createdAt || Date.now()),
+            updatedAt: data.updatedAt?.toDate
+              ? data.updatedAt.toDate()
+              : data.updated_at?.toDate
+              ? data.updated_at.toDate()
+              : null,
+            dispatcherId: data.dispatcherId || data.dispatcher_id || null,
+          };
+
+          setCaseData(caseInfo);
+
+          // Fetch reporter information if userId is available
+          if (caseInfo.userId) {
+            try {
+              const userDocRef = doc(firestore, "users", caseInfo.userId);
+              const userDoc = await getDoc(userDocRef);
+
+              if (userDoc.exists()) {
+                const userData = userDoc.data();
+                setReporterInfo({
+                  fullName: userData.fullName || userData.name || "",
+                  phone: userData.phone || userData.phone_number || "",
+                  email: userData.email || "",
+                });
+              }
+            } catch (userError) {
+              console.error("Error fetching reporter info:", userError);
+              // Don't fail the whole screen if reporter info fails
+            }
+          }
+
+          setLoading(false);
+        } catch (err) {
+          console.error("Error processing case data:", err);
+          setError(err.message || "Failed to load case details");
+          setLoading(false);
+        }
+      },
+      (err) => {
+        console.error("Error in case subscription:", err);
+        setError(err.message || "Failed to subscribe to case updates");
+        setLoading(false);
+      }
+    );
+
+    return () => {
+      unsubscribe();
+    };
+  }, [caseId]);
 
   if (!fontsLoaded) {
     return null;
@@ -220,7 +226,14 @@ export default function CaseDetailScreen() {
       )}
 
       {caseData && (
-        <CaseInfoCard case={caseData} reporterInfo={reporterInfo} />
+        <CaseInfoCard 
+          case={caseData} 
+          reporterInfo={reporterInfo}
+          onStatusUpdate={() => {
+            // The real-time subscription will automatically update the case data
+            // This callback is kept for potential future use
+          }}
+        />
       )}
     </View>
   );

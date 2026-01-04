@@ -2,7 +2,7 @@
 export { auth, firestore, storage } from './config';
 
 // Export Firestore functions
-export { getDoc, doc, updateDoc, Timestamp } from 'firebase/firestore';
+export { getDoc, doc, updateDoc, Timestamp, onSnapshot } from 'firebase/firestore';
 
 // Export Firebase Auth types and functions
 export type { User } from 'firebase/auth';
@@ -38,6 +38,8 @@ export {
   subscribeToActiveEmergencyReports,
   assignDispatcherToEmergency,
   subscribeToDispatcherAssignedEmergencies,
+  acceptCase,
+  updateCaseStatus,
   type EmergencyReport,
 } from './emergencies';
 

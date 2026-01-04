@@ -10,7 +10,7 @@ interface Incident {
   type: string
   location: string
   priority: 'low' | 'medium' | 'high' | 'critical'
-  status: 'active' | 'pending' | 'resolved'
+  status: 'pending' | 'enroute' | 'on_scene' | 'done' | 'active' | 'resolved' // Support both new and legacy statuses
   reportedAt: Date
   description: string
   responder: string | null
@@ -113,16 +113,23 @@ export default function IncidentCard({ incident, onUpdate }: IncidentCardProps) 
           </div>
         </div>
         <div className="ml-6 text-right">
-          {incident.responder ? (
+          {incident.dispatcherId ? (
             <>
-              <p className="text-sm text-gray-500 mb-1">Responder</p>
+              <p className="text-sm text-gray-500 mb-1">Dispatcher</p>
               <p className="font-semibold text-gray-900">
-                {incident.responder}
+                Assigned
               </p>
+              {incident.status === 'pending' || incident.status === 'active' ? (
+                <p className="text-xs text-yellow-600 mt-1">Awaiting Acceptance</p>
+              ) : incident.status === 'enroute' ? (
+                <p className="text-xs text-blue-600 mt-1">En Route</p>
+              ) : incident.status === 'on_scene' ? (
+                <p className="text-xs text-purple-600 mt-1">On Scene</p>
+              ) : null}
             </>
           ) : (
             <span className="px-3 py-1 bg-yellow-100 text-yellow-800 text-sm font-medium rounded-full">
-              Awaiting Response
+              Unassigned
             </span>
           )}
         </div>

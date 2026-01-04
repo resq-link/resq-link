@@ -1,10 +1,41 @@
-import React from "react";
+import React, { useState } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { MapPin, Clock, AlertCircle } from "lucide-react-native";
+import { acceptCase } from "@packages/firebase";
+import useUserStore from "@/utils/userStore";
 import CaseStatusBadge from "./CaseStatusBadge";
 import PriorityBadge from "./PriorityBadge";
 
-export default function CaseCard({ case: caseData, onPress }) {
+export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
+  const [isAccepting, setIsAccepting] = useState(false);
+  const { user } = useUserStore();
+
+  // Check if the current user is the assigned dispatcher
+  const isAssignedDispatcher = user && caseData.dispatcherId === user.uid;
+  
+  // Show Accept button if status is pending or active and user is assigned
+  const showAcceptButton = isAssignedDispatcher && (caseData.status === "pending" || caseData.status === "active");
+
+  const handleAcceptCase = async () => {
+    if (!caseData.id) {
+      return;
+    }
+
+    try {
+      setIsAccepting(true);
+      await acceptCase(caseData.id);
+      // Call onStatusUpdate callback if provided to refresh the case data
+      if (onStatusUpdate) {
+        onStatusUpdate();
+      }
+    } catch (err) {
+      console.error("Error accepting case:", err);
+      // You could show an error alert here if needed
+    } finally {
+      setIsAccepting(false);
+    }
+  };
+
   const formatDate = (dateString) => {
     if (!dateString) return "Unknown";
     const date = new Date(dateString);
@@ -31,6 +62,7 @@ export default function CaseCard({ case: caseData, onPress }) {
   return (
     <TouchableOpacity
       onPress={onPress}
+      activeOpacity={0.7}
       style={{
         backgroundColor: "#FFFFFF",
         borderRadius: 12,
@@ -94,7 +126,7 @@ export default function CaseCard({ case: caseData, onPress }) {
         </Text>
       </View>
 
-      <View style={{ flexDirection: "row", alignItems: "center" }}>
+      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: showAcceptButton ? 12 : 0 }}>
         <Clock size={16} color="#8E8E93" />
         <Text
           style={{
@@ -107,6 +139,39 @@ export default function CaseCard({ case: caseData, onPress }) {
           {formatDate(caseData.createdAt)}
         </Text>
       </View>
+
+      {/* Accept Case Button */}
+      {showAcceptButton && (
+        <View style={{ marginTop: 12 }}>
+          <TouchableOpacity
+            onPress={(e) => {
+              e.stopPropagation();
+              handleAcceptCase();
+            }}
+            disabled={isAccepting}
+            activeOpacity={0.7}
+          >
+            <View
+              style={{
+                backgroundColor: isAccepting ? "#C7C7CC" : "#007AFF",
+                borderRadius: 12,
+                padding: 14,
+                alignItems: "center",
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: "Inter_600SemiBold",
+                  fontSize: 16,
+                  color: "#FFFFFF",
+                }}
+              >
+                {isAccepting ? "Accepting..." : "Accept Case"}
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+      )}
     </TouchableOpacity>
   );
 }
