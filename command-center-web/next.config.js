@@ -1,10 +1,13 @@
+const path = require('path');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   webpack: (config, { isServer }) => {
-    // Ignore React Native modules that aren't available in Next.js
+    // Preserve existing aliases and add path alias
     config.resolve.alias = {
       ...config.resolve.alias,
+      '@': path.resolve(__dirname),
       'expo-constants': false,
       '@react-native-async-storage/async-storage': false,
     };
