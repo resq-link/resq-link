@@ -87,8 +87,8 @@ function playWebAudioAlarm(ctx: AudioContext): void {
     const pauseDuration = 0.1 // Very short pause between beeps for faster rhythm
     
     frequencies.forEach((freq, index) => {
-      const oscillator = ctx.createOscillator()
-      const gainNode = ctx.createGain()
+      const oscillator: OscillatorNode = ctx.createOscillator()
+      const gainNode: GainNode = ctx.createGain()
       
       oscillator.connect(gainNode)
       gainNode.connect(ctx.destination)
@@ -135,8 +135,8 @@ function playFallbackAlarm(): void {
   try {
     // Create a simple beep using Audio API
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
-    const oscillator = ctx.createOscillator()
-    const gainNode = ctx.createGain()
+    const oscillator: OscillatorNode = ctx.createOscillator()
+    const gainNode: GainNode = ctx.createGain()
     
     oscillator.connect(gainNode)
     gainNode.connect(ctx.destination)
@@ -144,8 +144,8 @@ function playFallbackAlarm(): void {
     // Play longer beeps
     [800, 1000, 1200].forEach((freq, i) => {
       setTimeout(() => {
-        const osc = ctx.createOscillator()
-        const gain = ctx.createGain()
+        const osc: OscillatorNode = ctx.createOscillator()
+        const gain: GainNode = ctx.createGain()
         
         osc.connect(gain)
         gain.connect(ctx.destination)
@@ -186,8 +186,8 @@ export function playNotificationSound(isMuted: boolean = false): void {
   if (!ctx) return
 
   try {
-    const oscillator = ctx.createOscillator()
-    const gainNode = ctx.createGain()
+    const oscillator: OscillatorNode = ctx.createOscillator()
+    const gainNode: GainNode = ctx.createGain()
     
     oscillator.connect(gainNode)
     gainNode.connect(ctx.destination)
