@@ -6,8 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "vercel-build": "cd ../packages/firebase && npm install && npm run build && cd ../../command-center-web && npm install && npm run build"
+    "lint": "next lint"
   },
   "dependencies": {
     "next": "^14.2.0",
@@ -15,17 +14,17 @@
     "react-dom": "^18.3.0",
     "leaflet": "^1.9.4",
     "react-leaflet": "^4.2.1",
-    "@packages/firebase": "file:../packages/firebase",
-    "autoprefixer": "^10.4.17",
-    "postcss": "^8.4.33",
-    "tailwindcss": "^3.4.1",
-    "typescript": "^5.3.3",
+    "@packages/firebase": "file:../packages/firebase"
+  },
+  "devDependencies": {
+    "@types/leaflet": "^1.9.8",
     "@types/node": "^20.11.0",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
-    "@types/leaflet": "^1.9.8",
-    "eslint": "^8.57.0",
-    "eslint-config-next": "^14.2.0"
+    "autoprefixer": "^10.4.17",
+    "postcss": "^8.4.33",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.3.3"
   }
 }
 

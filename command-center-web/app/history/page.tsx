@@ -5,20 +5,7 @@ import IncidentCard from '@/components/IncidentCard'
 import StatusBadge from '@/components/StatusBadge'
 
 // Mock historical data for UI purposes
-type IncidentStatus = 'pending' | 'enroute' | 'on_scene' | 'done' | 'active' | 'resolved'
-
-const mockHistory: Array<{
-  id: string
-  type: string
-  location: string
-  priority: string
-  status: IncidentStatus
-  reportedAt: Date
-  resolvedAt: Date | null
-  description: string
-  responder: string
-  duration: string
-}> = [
+const mockHistory = [
   {
     id: '101',
     type: 'Medical Emergency',

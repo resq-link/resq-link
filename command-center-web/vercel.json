@@ -1,7 +1,0 @@
-{
-  "buildCommand": "npm run vercel-build",
-  "outputDirectory": ".next",
-  "installCommand": "cd ../packages/firebase && npm install && cd ../../command-center-web && npm install",
-  "framework": "nextjs"
-}
-
