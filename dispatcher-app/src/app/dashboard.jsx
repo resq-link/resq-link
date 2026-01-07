@@ -9,7 +9,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
-import { LogOut, AlertCircle } from "lucide-react-native";
+import { LogOut, AlertCircle, Map } from "lucide-react-native";
 import {
   Inter_400Regular,
   Inter_600SemiBold,
@@ -17,7 +17,8 @@ import {
 } from "@expo-google-fonts/inter";
 import { useFonts } from "expo-font";
 import useUserStore from "@/utils/userStore";
-import { subscribeToDispatcherAssignedEmergencies, signOut, auth } from "@packages/firebase";
+import { subscribeToDispatcherAssignedEmergencies, signOut, auth, updateDispatcherLocation, setDispatcherOnlineStatus } from "@packages/firebase";
+import * as Location from "expo-location";
 import CaseCard from "@/components/CaseCard";
 import LoadingScreen from "@/components/LoadingScreen";
 
@@ -62,6 +63,87 @@ export default function DashboardScreen() {
     };
   }, [user, router]);
 
+  // Track dispatcher location in real-time
+  useEffect(() => {
+    if (!user) return;
+
+    let locationSubscription = null;
+    let locationUpdateInterval = null;
+
+    const startLocationTracking = async () => {
+      try {
+        // Request location permission
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") {
+          console.warn("Location permission not granted");
+          return;
+        }
+
+        // Set dispatcher as online
+        await setDispatcherOnlineStatus(true);
+
+        // Update location immediately
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
+        await updateDispatcherLocation(
+          location.coords.latitude,
+          location.coords.longitude
+        );
+
+        // Watch location changes
+        locationSubscription = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.High,
+            timeInterval: 30000, // Update every 30 seconds
+            distanceInterval: 50, // Update every 50 meters
+          },
+          async (location) => {
+            try {
+              await updateDispatcherLocation(
+                location.coords.latitude,
+                location.coords.longitude
+              );
+            } catch (error) {
+              console.error("Error updating location:", error);
+            }
+          }
+        );
+
+        // Fallback: Update location every 60 seconds even if not moving
+        locationUpdateInterval = setInterval(async () => {
+          try {
+            const location = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.High,
+            });
+            await updateDispatcherLocation(
+              location.coords.latitude,
+              location.coords.longitude
+            );
+          } catch (error) {
+            console.error("Error updating location:", error);
+          }
+        }, 60000);
+      } catch (error) {
+        console.error("Error setting up location tracking:", error);
+      }
+    };
+
+    startLocationTracking();
+
+    // Cleanup: Set offline when component unmounts
+    return () => {
+      if (locationSubscription) {
+        locationSubscription.remove();
+      }
+      if (locationUpdateInterval) {
+        clearInterval(locationUpdateInterval);
+      }
+      // Set dispatcher as offline
+      setDispatcherOnlineStatus(false).catch(console.error);
+    };
+  }, [user]);
+
   const onRefresh = () => {
     setRefreshing(true);
     // The subscription will automatically update
@@ -69,12 +151,19 @@ export default function DashboardScreen() {
 
   const handleLogout = async () => {
     try {
+      // Set dispatcher offline before logging out
+      await setDispatcherOnlineStatus(false);
       await signOut(auth);
       await logout();
       router.replace("/login");
     } catch (error) {
       console.error("Logout error:", error);
       // Still logout locally even if Firebase signout fails
+      try {
+        await setDispatcherOnlineStatus(false);
+      } catch (e) {
+        // Ignore errors when setting offline status
+      }
       await logout();
       router.replace("/login");
     }
@@ -147,14 +236,26 @@ export default function DashboardScreen() {
               {user?.email || "Dispatcher"}
             </Text>
           </View>
-          <TouchableOpacity
-            onPress={handleLogout}
-            style={{
-              padding: 8,
-            }}
-          >
-            <LogOut size={24} color="#FF3B30" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <TouchableOpacity
+              onPress={() => router.push("/map")}
+              style={{
+                padding: 8,
+                backgroundColor: "#007AFF",
+                borderRadius: 8,
+              }}
+            >
+              <Map size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleLogout}
+              style={{
+                padding: 8,
+              }}
+            >
+              <LogOut size={24} color="#FF3B30" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Stats */}

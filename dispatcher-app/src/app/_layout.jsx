@@ -55,6 +55,7 @@ export default function RootLayout() {
           <Stack.Screen name="login" />
           <Stack.Screen name="dashboard" />
           <Stack.Screen name="case-detail" />
+          <Stack.Screen name="map" />
         </Stack>
       </GestureHandlerRootView>
     </QueryClientProvider>

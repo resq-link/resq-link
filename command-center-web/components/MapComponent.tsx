@@ -27,8 +27,19 @@ interface Incident {
   responder: string | null
 }
 
+interface DispatcherLocation {
+  dispatcherId: string
+  email: string
+  role: string
+  latitude: number
+  longitude: number
+  lastUpdated: Date
+  isOnline: boolean
+}
+
 interface MapComponentProps {
   incidents: Incident[]
+  dispatcherLocations?: DispatcherLocation[]
   selectedIncident: string | null
   onIncidentSelect: (id: string) => void
   userLocation?: [number, number] | null
@@ -46,6 +57,7 @@ function MapCenter({ center, zoom }: { center: [number, number]; zoom: number })
 
 export default function MapComponent({
   incidents,
+  dispatcherLocations = [],
   selectedIncident,
   onIncidentSelect,
   userLocation,
@@ -99,6 +111,41 @@ export default function MapComponent({
       iconSize: [24, 24],
       iconAnchor: [12, 24],
       popupAnchor: [0, -24],
+    })
+  }
+
+  // Create minimal dispatcher location marker icon
+  const createDispatcherIcon = (role: string) => {
+    const roleColors: Record<string, string> = {
+      BFP: '#dc2626', // red
+      PNP: '#1e40af', // blue
+      MDRRMO: '#059669', // green
+      AMBULANCE: '#ea580c', // orange
+      PCG: '#0284c7', // cyan
+    }
+    const color = roleColors[role] || '#6b7280' // gray default
+    
+    return L.divIcon({
+      className: 'dispatcher-marker',
+      html: `
+        <div style="
+          position: relative;
+          width: 24px;
+          height: 24px;
+        ">
+          <div style="
+            width: 24px;
+            height: 24px;
+            background-color: ${color};
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+          "></div>
+        </div>
+      `,
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+      popupAnchor: [0, -12],
     })
   }
 
@@ -228,6 +275,78 @@ export default function MapComponent({
           </Popup>
         </Marker>
       )}
+      {/* Dispatcher Location Markers */}
+      {dispatcherLocations.length > 0 && (
+        <>
+          {dispatcherLocations.map((dispatcher) => {
+            // Validate coordinates
+            if (
+              !dispatcher.latitude ||
+              !dispatcher.longitude ||
+              dispatcher.latitude === 0 ||
+              dispatcher.longitude === 0 ||
+              isNaN(dispatcher.latitude) ||
+              isNaN(dispatcher.longitude)
+            ) {
+              console.warn('Invalid dispatcher coordinates:', dispatcher)
+              return null
+            }
+            
+            return (
+              <Marker
+                key={dispatcher.dispatcherId}
+                position={[dispatcher.latitude, dispatcher.longitude]}
+                icon={createDispatcherIcon(dispatcher.role)}
+                zIndexOffset={1000}
+              >
+                <Popup>
+                  <div className="p-3 min-w-[200px]">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{
+                          backgroundColor:
+                            dispatcher.role === 'BFP'
+                              ? '#dc2626'
+                              : dispatcher.role === 'PNP'
+                              ? '#1e40af'
+                              : dispatcher.role === 'MDRRMO'
+                              ? '#059669'
+                              : dispatcher.role === 'AMBULANCE'
+                              ? '#ea580c'
+                              : dispatcher.role === 'PCG'
+                              ? '#0284c7'
+                              : '#6b7280',
+                        }}
+                      ></div>
+                      <h3 className="font-bold text-slate-100 text-base">
+                        {dispatcher.role} Dispatcher
+                      </h3>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-slate-300">
+                        <span className="font-medium">Email:</span> {dispatcher.email}
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        <span className="font-medium">Status:</span>{' '}
+                        <span className="text-green-400">● Online</span>
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        <span className="font-medium">Last updated:</span>{' '}
+                        {new Date(dispatcher.lastUpdated).toLocaleTimeString()}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-2">
+                        {dispatcher.latitude.toFixed(6)}, {dispatcher.longitude.toFixed(6)}
+                      </p>
+                    </div>
+                  </div>
+                </Popup>
+              </Marker>
+            )
+          })}
+        </>
+      )}
+      {/* Incident Markers */}
       {incidents.map((incident) => (
         <Marker
           key={incident.id}

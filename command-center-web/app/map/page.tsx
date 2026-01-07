@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
-import { subscribeToEmergencyReports, type EmergencyReport } from '@packages/firebase'
+import { subscribeToEmergencyReports, subscribeToDispatcherLocations, type EmergencyReport, type DispatcherLocation } from '@packages/firebase'
 import { useAuth } from '@/contexts/AuthContext'
 import ProtectedRoute from '@/components/ProtectedRoute'
 
@@ -46,6 +46,7 @@ const convertToMapIncident = (report: EmergencyReport) => {
 
 export default function MapPage() {
   const [incidents, setIncidents] = useState<ReturnType<typeof convertToMapIncident>[]>([])
+  const [dispatcherLocations, setDispatcherLocations] = useState<DispatcherLocation[]>([])
   const [selectedIncident, setSelectedIncident] = useState<string | null>(null)
   const [centerLocation, setCenterLocation] = useState<[number, number] | null>(null)
   const [filter, setFilter] = useState<string>('all')
@@ -118,6 +119,39 @@ export default function MapPage() {
     }
   }, [user, router])
 
+  // Subscribe to real-time dispatcher locations
+  useEffect(() => {
+    if (!user) return
+
+    console.log('📍 Setting up dispatcher locations subscription...')
+    
+    const unsubscribe = subscribeToDispatcherLocations(
+      (locations: DispatcherLocation[]) => {
+        console.log('📍 Received dispatcher locations:', locations.length)
+        console.log('📍 Dispatcher data:', locations)
+        
+        // Filter out invalid locations
+        const validLocations = locations.filter(
+          (loc) =>
+            loc.latitude != null &&
+            loc.longitude != null &&
+            loc.latitude !== 0 &&
+            loc.longitude !== 0 &&
+            !isNaN(loc.latitude) &&
+            !isNaN(loc.longitude)
+        )
+        
+        console.log('📍 Valid dispatcher locations:', validLocations.length)
+        setDispatcherLocations(validLocations)
+      }
+    )
+
+    return () => {
+      console.log('📍 Unsubscribing from dispatcher locations')
+      unsubscribe()
+    }
+  }, [user])
+
   // Get user's current location on component mount
   useEffect(() => {
     getCurrentLocation()
@@ -172,11 +206,40 @@ export default function MapPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold text-slate-100 mb-2">
-                Incident Map
+                Command Center Map
               </h1>
               <p className="text-slate-400">
-                Real-time geographic view of all incidents
+                Real-time view of incidents and dispatcher locations
               </p>
+              <div className="flex items-center gap-4 mt-2">
+                <p className="text-sm text-slate-500">
+                  {dispatcherLocations.length} dispatcher{dispatcherLocations.length !== 1 ? 's' : ''} online
+                </p>
+                {dispatcherLocations.length > 0 && (
+                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                    <span className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                      Fire
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-blue-600"></div>
+                      Police
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-green-600"></div>
+                      MDRRMO
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                      Medical
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-cyan-500"></div>
+                      Coast Guard
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="flex gap-2">
               <button
@@ -226,6 +289,7 @@ export default function MapPage() {
             ) : (
               <MapComponent
                 incidents={filteredIncidents}
+                dispatcherLocations={dispatcherLocations}
                 selectedIncident={selectedIncident}
                 onIncidentSelect={handleIncidentClick}
                 userLocation={userLocation}

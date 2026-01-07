@@ -46,3 +46,12 @@ export {
 // Export storage functions
 export { uploadImageToStorage } from './storage';
 
+// Export dispatcher location functions
+export {
+  updateDispatcherLocation,
+  setDispatcherOnlineStatus,
+  subscribeToDispatcherLocations,
+  getActiveDispatcherLocations,
+  type DispatcherLocation,
+} from './dispatchers';
+
