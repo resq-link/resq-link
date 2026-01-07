@@ -31,15 +31,15 @@ export default function IncidentCard({ incident, onUpdate }: IncidentCardProps) 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'critical':
-        return 'bg-red-100 text-red-800 border-red-300'
+        return 'bg-red-500/10 text-red-200 border-red-500/30'
       case 'high':
-        return 'bg-orange-100 text-orange-800 border-orange-300'
+        return 'bg-orange-500/10 text-orange-200 border-orange-500/30'
       case 'medium':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-300'
+        return 'bg-yellow-500/10 text-yellow-200 border-yellow-500/30'
       case 'low':
-        return 'bg-green-100 text-green-800 border-green-300'
+        return 'bg-emerald-500/10 text-emerald-200 border-emerald-500/30'
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-300'
+        return 'bg-slate-800 text-slate-200 border-slate-700'
     }
   }
 
@@ -54,11 +54,11 @@ export default function IncidentCard({ incident, onUpdate }: IncidentCardProps) 
   }
 
   return (
-    <div className="border border-gray-200 rounded-lg p-6 hover:shadow-lg transition-shadow bg-white">
+    <div className="border border-slate-800 rounded-lg p-6 hover:shadow-lg transition-shadow bg-slate-900/70 shadow-black/20">
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-2">
-            <h3 className="text-xl font-semibold text-gray-900">
+            <h3 className="text-xl font-semibold text-slate-100">
               {incident.type}
             </h3>
             <StatusBadge status={incident.status} />
@@ -70,8 +70,8 @@ export default function IncidentCard({ incident, onUpdate }: IncidentCardProps) 
               {incident.priority.toUpperCase()}
             </span>
           </div>
-          <p className="text-gray-700 mb-3">{incident.description}</p>
-          <div className="flex items-center gap-4 text-sm text-gray-600">
+          <p className="text-slate-300 mb-3">{incident.description}</p>
+          <div className="flex items-center gap-4 text-sm text-slate-400">
             <span className="flex items-center gap-1">
               <svg
                 className="w-4 h-4"
@@ -115,26 +115,26 @@ export default function IncidentCard({ incident, onUpdate }: IncidentCardProps) 
         <div className="ml-6 text-right">
           {incident.dispatcherId ? (
             <>
-              <p className="text-sm text-gray-500 mb-1">Dispatcher</p>
-              <p className="font-semibold text-gray-900">
+              <p className="text-sm text-slate-500 mb-1">Dispatcher</p>
+              <p className="font-semibold text-slate-100">
                 Assigned
               </p>
               {incident.status === 'pending' || incident.status === 'active' ? (
-                <p className="text-xs text-yellow-600 mt-1">Awaiting Acceptance</p>
+                <p className="text-xs text-yellow-300 mt-1">Awaiting Acceptance</p>
               ) : incident.status === 'enroute' ? (
-                <p className="text-xs text-blue-600 mt-1">En Route</p>
+                <p className="text-xs text-blue-300 mt-1">En Route</p>
               ) : incident.status === 'on_scene' ? (
-                <p className="text-xs text-purple-600 mt-1">On Scene</p>
+                <p className="text-xs text-purple-300 mt-1">On Scene</p>
               ) : null}
             </>
           ) : (
-            <span className="px-3 py-1 bg-yellow-100 text-yellow-800 text-sm font-medium rounded-full">
+            <span className="px-3 py-1 bg-yellow-500/10 text-yellow-200 text-sm font-medium rounded-full border border-yellow-500/30">
               Unassigned
             </span>
           )}
         </div>
       </div>
-      <div className="flex gap-2 pt-4 border-t border-gray-200">
+      <div className="flex gap-2 pt-4 border-t border-slate-800">
         <button 
           onClick={() => setIsDetailsModalOpen(true)}
           className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
@@ -143,7 +143,7 @@ export default function IncidentCard({ incident, onUpdate }: IncidentCardProps) 
         </button>
         <button
           onClick={() => setIsAssignModalOpen(true)}
-          className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+          className="px-4 py-2 bg-slate-800 text-slate-200 rounded-lg hover:bg-slate-700 transition-colors font-medium"
         >
           {incident.dispatcherId ? 'Change Dispatcher' : 'Assign Dispatcher'}
         </button>

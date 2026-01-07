@@ -203,28 +203,28 @@ export default function Home() {
     <ProtectedRoute>
       <div className="space-y-6">
       {/* Header Section */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+      <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
+        <h1 className="text-3xl font-bold text-slate-100 mb-2">
           Live Incident Dashboard
         </h1>
-        <p className="text-gray-600">
+        <p className="text-slate-400">
           Real-time monitoring of emergency incidents
         </p>
       </div>
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Incidents</p>
-              <p className="text-3xl font-bold text-gray-900 mt-2">
+              <p className="text-sm font-medium text-slate-400">Total Incidents</p>
+              <p className="text-3xl font-bold text-slate-100 mt-2">
                 {incidents.length}
               </p>
             </div>
-            <div className="bg-blue-100 rounded-full p-4">
+            <div className="bg-blue-500/10 rounded-full p-4 border border-blue-500/30">
               <svg
-                className="w-8 h-8 text-blue-600"
+                className="w-8 h-8 text-blue-200"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -240,17 +240,17 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Active Incidents</p>
-              <p className="text-3xl font-bold text-red-600 mt-2">
+              <p className="text-sm font-medium text-slate-400">Active Incidents</p>
+              <p className="text-3xl font-bold text-red-300 mt-2">
                 {activeCount}
               </p>
             </div>
-            <div className="bg-red-100 rounded-full p-4">
+            <div className="bg-red-500/10 rounded-full p-4 border border-red-500/30">
               <svg
-                className="w-8 h-8 text-red-600"
+                className="w-8 h-8 text-red-200"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -266,17 +266,17 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Pending</p>
-              <p className="text-3xl font-bold text-yellow-600 mt-2">
+              <p className="text-sm font-medium text-slate-400">Pending</p>
+              <p className="text-3xl font-bold text-yellow-300 mt-2">
                 {pendingCount}
               </p>
             </div>
-            <div className="bg-yellow-100 rounded-full p-4">
+            <div className="bg-yellow-500/10 rounded-full p-4 border border-yellow-500/30">
               <svg
-                className="w-8 h-8 text-yellow-600"
+                className="w-8 h-8 text-yellow-200"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -292,17 +292,17 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">En Route</p>
-              <p className="text-3xl font-bold text-blue-600 mt-2">
+              <p className="text-sm font-medium text-slate-400">En Route</p>
+              <p className="text-3xl font-bold text-blue-300 mt-2">
                 {enrouteCount}
               </p>
             </div>
-            <div className="bg-blue-100 rounded-full p-4">
+            <div className="bg-blue-500/10 rounded-full p-4 border border-blue-500/30">
               <svg
-                className="w-8 h-8 text-blue-600"
+                className="w-8 h-8 text-blue-200"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -318,17 +318,17 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">On Scene</p>
-              <p className="text-3xl font-bold text-purple-600 mt-2">
+              <p className="text-sm font-medium text-slate-400">On Scene</p>
+              <p className="text-3xl font-bold text-purple-300 mt-2">
                 {onSceneCount}
               </p>
             </div>
-            <div className="bg-purple-100 rounded-full p-4">
+            <div className="bg-purple-500/10 rounded-full p-4 border border-purple-500/30">
               <svg
-                className="w-8 h-8 text-purple-600"
+                className="w-8 h-8 text-purple-200"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -350,17 +350,17 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Done</p>
-              <p className="text-3xl font-bold text-green-600 mt-2">
+              <p className="text-sm font-medium text-slate-400">Done</p>
+              <p className="text-3xl font-bold text-emerald-300 mt-2">
                 {doneCount}
               </p>
             </div>
-            <div className="bg-green-100 rounded-full p-4">
+            <div className="bg-emerald-500/10 rounded-full p-4 border border-emerald-500/30">
               <svg
-                className="w-8 h-8 text-green-600"
+                className="w-8 h-8 text-emerald-200"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -378,15 +378,15 @@ export default function Home() {
       </div>
 
       {/* Live Incidents List */}
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">
+          <h2 className="text-2xl font-bold text-slate-100">
             Live Incidents
           </h2>
           <div className="flex items-center gap-4">
             <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-              <span className="text-sm text-gray-600">Live</span>
+              <div className="w-3 h-3 bg-secondary-400 rounded-full animate-pulse"></div>
+              <span className="text-sm text-slate-400">Live</span>
             </div>
             <AlarmControl
               isMuted={isAlarmMuted}
@@ -398,7 +398,7 @@ export default function Home() {
         {isLoading ? (
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-            <p className="text-gray-500 text-lg mt-4">Loading incidents...</p>
+            <p className="text-slate-400 text-lg mt-4">Loading incidents...</p>
           </div>
         ) : (
           <>
@@ -417,12 +417,12 @@ export default function Home() {
 
             {incidents.length === 0 && !isLoading && (
               <div className="text-center py-12">
-                <p className="text-gray-500 text-lg">No active incidents</p>
-                <p className="text-gray-400 text-sm mt-2">
+                <p className="text-slate-400 text-lg">No active incidents</p>
+                <p className="text-slate-500 text-sm mt-2">
                   All clear - no emergencies reported
                 </p>
-                <p className="text-yellow-600 text-sm mt-4">
-                  💡 Tip: Check browser console for debugging information
+                <p className="text-yellow-300 text-sm mt-4">
+                  Tip: Check browser console for debugging information
                 </p>
               </div>
             )}

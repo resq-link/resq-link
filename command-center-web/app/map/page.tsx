@@ -168,13 +168,13 @@ export default function MapPage() {
     <ProtectedRoute>
       <div className="space-y-6">
         {/* Header Section */}
-        <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              <h1 className="text-3xl font-bold text-slate-100 mb-2">
                 Incident Map
               </h1>
-              <p className="text-gray-600">
+              <p className="text-slate-400">
                 Real-time geographic view of all incidents
               </p>
             </div>
@@ -184,7 +184,7 @@ export default function MapPage() {
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                   filter === 'all'
                     ? 'bg-primary-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
                 }`}
               >
                 All
@@ -193,8 +193,8 @@ export default function MapPage() {
                 onClick={() => setFilter('active')}
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                   filter === 'active'
-                    ? 'bg-red-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-red-500/80 text-white'
+                    : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
                 }`}
               >
                 Active
@@ -203,8 +203,8 @@ export default function MapPage() {
                 onClick={() => setFilter('pending')}
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                   filter === 'pending'
-                    ? 'bg-yellow-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    ? 'bg-yellow-500/80 text-white'
+                    : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
                 }`}
               >
                 Pending
@@ -214,13 +214,13 @@ export default function MapPage() {
         </div>
 
         {/* Map Container */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 overflow-hidden">
           <div className="h-[600px] w-full relative">
             {isLoading ? (
-              <div className="h-full w-full flex items-center justify-center bg-gray-100">
+              <div className="h-full w-full flex items-center justify-center bg-slate-950">
                 <div className="text-center">
                   <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-                  <p className="text-gray-500 text-lg mt-4">Loading incidents...</p>
+                  <p className="text-slate-400 text-lg mt-4">Loading incidents...</p>
                 </div>
               </div>
             ) : (
@@ -237,7 +237,7 @@ export default function MapPage() {
             <button
               onClick={getCurrentLocation}
               disabled={isLocating}
-              className="bg-white hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg shadow-lg border border-gray-200 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-slate-900/90 hover:bg-slate-800 text-slate-200 px-4 py-2 rounded-lg shadow-lg border border-slate-800 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title="Get current location"
             >
               {isLocating ? (
@@ -290,7 +290,7 @@ export default function MapPage() {
               )}
             </button>
             {locationError && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm max-w-xs">
+              <div className="bg-red-950/40 border border-red-900/60 text-red-200 px-3 py-2 rounded-lg text-sm max-w-xs">
                 {locationError}
               </div>
             )}
@@ -299,19 +299,19 @@ export default function MapPage() {
       </div>
 
       {/* Incident List Sidebar */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+      <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
+          <h2 className="text-2xl font-bold text-slate-100 mb-4">
             Incidents on Map ({filteredIncidents.length})
           </h2>
           {isLoading ? (
             <div className="text-center py-12">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-              <p className="text-gray-500 text-lg mt-4">Loading incidents...</p>
+              <p className="text-slate-400 text-lg mt-4">Loading incidents...</p>
             </div>
           ) : filteredIncidents.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-500 text-lg">No incidents with location data</p>
-              <p className="text-gray-400 text-sm mt-2">
+              <p className="text-slate-400 text-lg">No incidents with location data</p>
+              <p className="text-slate-500 text-sm mt-2">
                 {incidents.length === 0 
                   ? 'No incidents found' 
                   : `${incidents.length - filteredIncidents.length} incident(s) without coordinates`}
@@ -325,32 +325,32 @@ export default function MapPage() {
                   onClick={() => handleIncidentClick(incident.id)}
                   className={`border rounded-lg p-4 cursor-pointer transition-all ${
                     selectedIncident === incident.id
-                      ? 'border-primary-500 bg-primary-50 shadow-md'
-                      : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
+                      ? 'border-primary-500 bg-primary-500/10 shadow-md shadow-black/30'
+                      : 'border-slate-800 hover:border-slate-700 hover:shadow-sm'
                   }`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-semibold text-gray-900">
+                        <h3 className="font-semibold text-slate-100">
                           {incident.type}
                         </h3>
                         <span
                           className={`px-2 py-1 text-xs font-medium rounded ${
                             incident.priority === 'critical'
-                              ? 'bg-red-100 text-red-800'
+                              ? 'bg-red-500/10 text-red-200'
                               : incident.priority === 'high'
-                              ? 'bg-orange-100 text-orange-800'
-                              : 'bg-yellow-100 text-yellow-800'
+                              ? 'bg-orange-500/10 text-orange-200'
+                              : 'bg-yellow-500/10 text-yellow-200'
                           }`}
                         >
                           {incident.priority}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600 mb-2">
+                      <p className="text-sm text-slate-400 mb-2">
                         {incident.location}
                       </p>
-                      <div className="flex items-center gap-4 text-xs text-gray-500">
+                      <div className="flex items-center gap-4 text-xs text-slate-500">
                         <span>
                           {incident.reportedAt.toLocaleTimeString()}
                         </span>

@@ -8,20 +8,20 @@ export default function StatusBadge({ status }: StatusBadgeProps) {
   const getStatusStyles = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-300'
+        return 'bg-yellow-500/10 text-yellow-200 border-yellow-500/30'
       case 'enroute':
-        return 'bg-blue-100 text-blue-800 border-blue-300'
+        return 'bg-blue-500/10 text-blue-200 border-blue-500/30'
       case 'on_scene':
-        return 'bg-purple-100 text-purple-800 border-purple-300'
+        return 'bg-purple-500/10 text-purple-200 border-purple-500/30'
       case 'done':
-        return 'bg-green-100 text-green-800 border-green-300'
+        return 'bg-emerald-500/10 text-emerald-200 border-emerald-500/30'
       // Legacy statuses for backward compatibility
       case 'active':
-        return 'bg-red-100 text-red-800 border-red-300'
+        return 'bg-red-500/10 text-red-200 border-red-500/30'
       case 'resolved':
-        return 'bg-green-100 text-green-800 border-green-300'
+        return 'bg-emerald-500/10 text-emerald-200 border-emerald-500/30'
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-300'
+        return 'bg-slate-800 text-slate-200 border-slate-700'
     }
   }
 
