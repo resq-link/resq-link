@@ -33,41 +33,41 @@ export default function IncidentDetailsModal({
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'critical':
-        return 'bg-red-100 text-red-800 border-red-300'
+        return 'bg-red-500/10 text-red-200 border-red-500/30'
       case 'high':
-        return 'bg-orange-100 text-orange-800 border-orange-300'
+        return 'bg-orange-500/10 text-orange-200 border-orange-500/30'
       case 'medium':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-300'
+        return 'bg-yellow-500/10 text-yellow-200 border-yellow-500/30'
       case 'low':
-        return 'bg-green-100 text-green-800 border-green-300'
+        return 'bg-emerald-500/10 text-emerald-200 border-emerald-500/30'
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-300'
+        return 'bg-slate-800 text-slate-200 border-slate-700'
     }
   }
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
-        return 'bg-red-100 text-red-800'
+        return 'bg-red-500/10 text-red-200'
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800'
+        return 'bg-yellow-500/10 text-yellow-200'
       case 'resolved':
-        return 'bg-green-100 text-green-800'
+        return 'bg-emerald-500/10 text-emerald-200'
       default:
-        return 'bg-gray-100 text-gray-800'
+        return 'bg-slate-800 text-slate-200'
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+      <div className="bg-slate-900 border border-slate-800 rounded-lg shadow-xl max-w-3xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Incident Details</h2>
+            <h2 className="text-2xl font-bold text-slate-100">Incident Details</h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-slate-400 hover:text-slate-200 transition-colors"
             >
               <svg
                 className="w-6 h-6"
@@ -90,12 +90,12 @@ export default function IncidentDetailsModal({
             {/* Image Section */}
             {incident.imageUrl && incident.imageUrl.trim() !== '' ? (
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Photo</h3>
-                <div className="rounded-lg overflow-hidden border border-gray-200">
+                <h3 className="text-lg font-semibold text-slate-100 mb-3">Photo</h3>
+                <div className="rounded-lg overflow-hidden border border-slate-800">
                   <img
                     src={incident.imageUrl}
                     alt="Incident photo"
-                    className="w-full h-auto max-h-96 object-contain bg-gray-50"
+                    className="w-full h-auto max-h-96 object-contain bg-slate-950"
                     onError={(e) => {
                       console.error('Image failed to load:', incident.imageUrl)
                       // Fallback if image fails to load
@@ -104,7 +104,7 @@ export default function IncidentDetailsModal({
                       const parent = target.parentElement
                       if (parent) {
                         parent.innerHTML = `
-                          <div class="p-8 text-center text-gray-500">
+                          <div class="p-8 text-center text-slate-400">
                             <p>Failed to load image</p>
                             <p class="text-sm mt-2 break-all">${incident.imageUrl}</p>
                           </div>
@@ -118,21 +118,21 @@ export default function IncidentDetailsModal({
                 </div>
               </div>
             ) : (
-              <div className="text-center py-4 text-gray-500 text-sm">
+              <div className="text-center py-4 text-slate-400 text-sm">
                 No photo available for this incident
               </div>
             )}
 
             {/* Basic Information */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">Basic Information</h3>
-              <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+              <h3 className="text-lg font-semibold text-slate-100 mb-3">Basic Information</h3>
+              <div className="bg-slate-950 rounded-lg p-4 space-y-3 border border-slate-800">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-600">Incident Type</span>
-                  <span className="text-sm font-semibold text-gray-900">{incident.type}</span>
+                  <span className="text-sm font-medium text-slate-400">Incident Type</span>
+                  <span className="text-sm font-semibold text-slate-100">{incident.type}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-600">Status</span>
+                  <span className="text-sm font-medium text-slate-400">Status</span>
                   <span
                     className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusColor(
                       incident.status
@@ -142,7 +142,7 @@ export default function IncidentDetailsModal({
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-600">Priority</span>
+                  <span className="text-sm font-medium text-slate-400">Priority</span>
                   <span
                     className={`px-3 py-1 text-xs font-semibold rounded-full border ${getPriorityColor(
                       incident.priority
@@ -152,8 +152,8 @@ export default function IncidentDetailsModal({
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-600">Reported At</span>
-                  <span className="text-sm text-gray-900">
+                  <span className="text-sm font-medium text-slate-400">Reported At</span>
+                  <span className="text-sm text-slate-100">
                     {incident.reportedAt.toLocaleString()}
                   </span>
                 </div>
@@ -162,11 +162,11 @@ export default function IncidentDetailsModal({
 
             {/* Location */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">Location</h3>
-              <div className="bg-gray-50 rounded-lg p-4">
+              <h3 className="text-lg font-semibold text-slate-100 mb-3">Location</h3>
+              <div className="bg-slate-950 rounded-lg p-4 border border-slate-800">
                 <div className="flex items-start gap-2">
                   <svg
-                    className="w-5 h-5 text-gray-500 mt-0.5 flex-shrink-0"
+                    className="w-5 h-5 text-slate-400 mt-0.5 flex-shrink-0"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -185,9 +185,9 @@ export default function IncidentDetailsModal({
                     />
                   </svg>
                   <div className="flex-1">
-                    <p className="text-gray-900">{incident.location}</p>
+                    <p className="text-slate-100">{incident.location}</p>
                     {incident.latitude && incident.longitude && (
-                      <p className="text-sm text-gray-500 mt-1">
+                      <p className="text-sm text-slate-400 mt-1">
                         Coordinates: {incident.latitude.toFixed(6)}, {incident.longitude.toFixed(6)}
                       </p>
                     )}
@@ -198,9 +198,9 @@ export default function IncidentDetailsModal({
 
             {/* Description */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">Description</h3>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-gray-900 whitespace-pre-wrap">
+              <h3 className="text-lg font-semibold text-slate-100 mb-3">Description</h3>
+              <div className="bg-slate-950 rounded-lg p-4 border border-slate-800">
+                <p className="text-slate-100 whitespace-pre-wrap">
                   {incident.description || 'No description provided'}
                 </p>
               </div>
@@ -209,24 +209,24 @@ export default function IncidentDetailsModal({
             {/* Responder Information */}
             {incident.responder && (
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">Assigned Responder</h3>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <p className="text-gray-900 font-medium">{incident.responder}</p>
+                <h3 className="text-lg font-semibold text-slate-100 mb-3">Assigned Responder</h3>
+                <div className="bg-slate-950 rounded-lg p-4 border border-slate-800">
+                  <p className="text-slate-100 font-medium">{incident.responder}</p>
                 </div>
               </div>
             )}
 
             {/* Incident ID */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">Incident ID</h3>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="text-sm font-mono text-gray-600">{incident.id}</p>
+              <h3 className="text-lg font-semibold text-slate-100 mb-3">Incident ID</h3>
+              <div className="bg-slate-950 rounded-lg p-4 border border-slate-800">
+                <p className="text-sm font-mono text-slate-400">{incident.id}</p>
               </div>
             </div>
           </div>
 
           {/* Footer */}
-          <div className="mt-6 pt-6 border-t border-gray-200">
+          <div className="mt-6 pt-6 border-t border-slate-800">
             <button
               onClick={onClose}
               className="w-full px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"

@@ -85,17 +85,17 @@ export default function HistoryPage() {
   return (
     <div className="space-y-6">
       {/* Header Section */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+      <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
+        <h1 className="text-3xl font-bold text-slate-100 mb-2">
           Incident History
         </h1>
-        <p className="text-gray-600">
+        <p className="text-slate-400">
           View past incidents and response records
         </p>
       </div>
 
       {/* Filters and Search */}
-      <div className="bg-white rounded-lg shadow-md p-6">
+      <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
         <div className="flex flex-col md:flex-row gap-4">
           {/* Search Bar */}
           <div className="flex-1">
@@ -104,7 +104,7 @@ export default function HistoryPage() {
               placeholder="Search by type or location..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-slate-800 bg-slate-950 text-slate-100 placeholder-slate-500 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
             />
           </div>
 
@@ -115,7 +115,7 @@ export default function HistoryPage() {
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 selectedFilter === 'all'
                   ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
               }`}
             >
               All
@@ -125,7 +125,7 @@ export default function HistoryPage() {
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                 selectedFilter === 'resolved'
                   ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
               }`}
             >
               Resolved
@@ -136,15 +136,15 @@ export default function HistoryPage() {
 
       {/* Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <p className="text-sm font-medium text-gray-600">Total Incidents</p>
-          <p className="text-3xl font-bold text-gray-900 mt-2">
+        <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
+          <p className="text-sm font-medium text-slate-400">Total Incidents</p>
+          <p className="text-3xl font-bold text-slate-100 mt-2">
             {mockHistory.length}
           </p>
         </div>
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <p className="text-sm font-medium text-gray-600">Resolved Today</p>
-          <p className="text-3xl font-bold text-green-600 mt-2">
+        <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
+          <p className="text-sm font-medium text-slate-400">Resolved Today</p>
+          <p className="text-3xl font-bold text-emerald-300 mt-2">
             {mockHistory.filter(
               (i) =>
                 i.resolvedAt &&
@@ -152,15 +152,15 @@ export default function HistoryPage() {
             ).length}
           </p>
         </div>
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <p className="text-sm font-medium text-gray-600">Avg Response Time</p>
-          <p className="text-3xl font-bold text-blue-600 mt-2">45 min</p>
+        <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
+          <p className="text-sm font-medium text-slate-400">Avg Response Time</p>
+          <p className="text-3xl font-bold text-blue-300 mt-2">45 min</p>
         </div>
       </div>
 
       {/* History List */}
-      <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">
+      <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
+        <h2 className="text-2xl font-bold text-slate-100 mb-6">
           Past Incidents ({filteredHistory.length})
         </h2>
 
@@ -168,18 +168,18 @@ export default function HistoryPage() {
           {filteredHistory.map((incident) => (
             <div
               key={incident.id}
-              className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
+              className="border border-slate-800 rounded-lg p-6 hover:shadow-md hover:shadow-black/30 transition-shadow bg-slate-950/60"
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
                   <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-xl font-semibold text-gray-900">
+                    <h3 className="text-xl font-semibold text-slate-100">
                       {incident.type}
                     </h3>
                     <StatusBadge status={incident.status} />
                   </div>
-                  <p className="text-gray-600 mb-2">{incident.description}</p>
-                  <div className="flex items-center gap-4 text-sm text-gray-500">
+                  <p className="text-slate-400 mb-2">{incident.description}</p>
+                  <div className="flex items-center gap-4 text-sm text-slate-500">
                     <span className="flex items-center gap-1">
                       <svg
                         className="w-4 h-4"
@@ -239,12 +239,12 @@ export default function HistoryPage() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm text-gray-500">Responder</p>
-                  <p className="font-medium text-gray-900">
+                  <p className="text-sm text-slate-500">Responder</p>
+                  <p className="font-medium text-slate-100">
                     {incident.responder}
                   </p>
                   {incident.duration && (
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="text-sm text-slate-500 mt-1">
                       Duration: {incident.duration}
                     </p>
                   )}
@@ -256,8 +256,8 @@ export default function HistoryPage() {
 
         {filteredHistory.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">No incidents found</p>
-            <p className="text-gray-400 text-sm mt-2">
+            <p className="text-slate-400 text-lg">No incidents found</p>
+            <p className="text-slate-500 text-sm mt-2">
               Try adjusting your search or filter criteria
             </p>
           </div>

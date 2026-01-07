@@ -1,13 +1,13 @@
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Space_Grotesk } from 'next/font/google'
 import './globals.css'
 import Navigation from '@/components/Navigation'
 import { AuthProvider } from '@/contexts/AuthContext'
 
-const inter = Inter({ subsets: ['latin'] })
+const spaceGrotesk = Space_Grotesk({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Command Center - Emergency Response System',
+  title: 'RESQ-Link - Emergency Response System',
   description: 'Live incident monitoring and management system',
 }
 
@@ -18,11 +18,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={`${spaceGrotesk.className} antialiased`}>
         <AuthProvider>
-          <div className="min-h-screen bg-gray-50">
+          <div className="min-h-screen text-slate-100">
             <Navigation />
-            <main className="container mx-auto px-4 py-8">
+            <main className="container mx-auto px-4 py-8 page-enter">
               {children}
             </main>
           </div>

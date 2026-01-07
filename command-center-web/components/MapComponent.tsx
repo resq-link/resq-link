@@ -156,11 +156,11 @@ export default function MapComponent({
   // Show error if Mapbox token is not configured
   if (!mapboxToken) {
     return (
-      <div className="h-full w-full flex items-center justify-center bg-gray-100 rounded-lg">
+      <div className="h-full w-full flex items-center justify-center bg-slate-950 rounded-lg border border-slate-800">
         <div className="text-center p-8">
           <div className="mb-4">
             <svg
-              className="w-16 h-16 mx-auto text-yellow-500"
+              className="w-16 h-16 mx-auto text-yellow-300"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -173,25 +173,25 @@ export default function MapComponent({
               />
             </svg>
           </div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+          <h3 className="text-xl font-semibold text-slate-100 mb-2">
             Mapbox API Key Required
           </h3>
-          <p className="text-gray-600 mb-4">
+          <p className="text-slate-400 mb-4">
             Please configure your Mapbox access token in the environment variables.
           </p>
-          <div className="bg-gray-800 text-gray-100 p-4 rounded-lg text-left text-sm font-mono">
-            <p className="mb-2">Create a <code className="text-blue-400">.env.local</code> file with:</p>
+          <div className="bg-slate-900 text-slate-100 p-4 rounded-lg text-left text-sm font-mono border border-slate-800">
+            <p className="mb-2">Create a <code className="text-secondary-300">.env.local</code> file with:</p>
             <code className="block">
               NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN=your_token_here
             </code>
           </div>
-          <p className="text-sm text-gray-500 mt-4">
+          <p className="text-sm text-slate-500 mt-4">
             Get your token from{' '}
             <a
               href="https://account.mapbox.com/access-tokens/"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-primary-600 hover:underline"
+              className="text-secondary-300 hover:underline"
             >
               Mapbox Account
             </a>
@@ -220,8 +220,8 @@ export default function MapComponent({
         <Marker position={userLocation} icon={createUserLocationIcon()}>
           <Popup>
             <div className="p-2">
-              <h3 className="font-bold text-gray-900 mb-1">Your Location</h3>
-              <p className="text-sm text-gray-600">
+              <h3 className="font-bold text-slate-100 mb-1">Your Location</h3>
+              <p className="text-sm text-slate-400">
                 {userLocation[0].toFixed(6)}, {userLocation[1].toFixed(6)}
               </p>
             </div>
@@ -239,10 +239,10 @@ export default function MapComponent({
         >
           <Popup>
             <div className="p-2">
-              <h3 className="font-bold text-gray-900 mb-1">
+              <h3 className="font-bold text-slate-100 mb-1">
                 {incident.type}
               </h3>
-              <p className="text-sm text-gray-600 mb-2">
+              <p className="text-sm text-slate-400 mb-2">
                 {incident.location}
               </p>
               <div className="flex items-center gap-2 mb-2">
@@ -270,11 +270,11 @@ export default function MapComponent({
                 </span>
               </div>
               {incident.responder && (
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-slate-500">
                   Responder: {incident.responder}
                 </p>
               )}
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-slate-500 mt-1">
                 {incident.reportedAt.toLocaleString()}
               </p>
             </div>

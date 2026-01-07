@@ -9,10 +9,10 @@ export default function AlarmControl({ isMuted, onToggle }: AlarmControlProps) {
   return (
     <button
       onClick={onToggle}
-      className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+      className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors border ${
         isMuted
-          ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          : 'bg-red-100 text-red-700 hover:bg-red-200'
+          ? 'bg-slate-900 text-slate-300 hover:bg-slate-800 border-slate-800'
+          : 'bg-red-500/10 text-red-200 hover:bg-red-500/20 border-red-500/30'
       }`}
       title={isMuted ? 'Unmute alarm' : 'Mute alarm'}
     >
