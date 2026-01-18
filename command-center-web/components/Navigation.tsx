@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
+import { LayoutDashboard, FileText, Radio, Map, History } from 'lucide-react'
 
 export default function Navigation() {
   const pathname = usePathname()
@@ -11,11 +12,11 @@ export default function Navigation() {
   const { user, signOut } = useAuth()
 
   const navItems = [
-    { href: '/overview', label: 'Overview', icon: 'OV' },
-    { href: '/intake', label: 'Intake', icon: 'IN' },
-    { href: '/', label: 'Live Incidents', icon: 'LI' },
-    { href: '/map', label: 'Map', icon: 'MP' },
-    { href: '/history', label: 'History', icon: 'HX' },
+    { href: '/overview', label: 'Overview', icon: LayoutDashboard },
+    { href: '/intake', label: 'Intake', icon: FileText },
+    { href: '/', label: 'Live Incidents', icon: Radio },
+    { href: '/map', label: 'Map', icon: Map },
+    { href: '/history', label: 'History', icon: History },
   ]
 
   // Don't show navigation on login page
@@ -53,21 +54,22 @@ export default function Navigation() {
             </Link>
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
             {navItems.map((item) => {
               const isActive = pathname === item.href
+              const IconComponent = item.icon
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2 ${
+                  title={item.label}
+                  className={`p-3 rounded-lg font-medium transition-colors flex items-center justify-center ${
                     isActive
                       ? 'bg-primary-600 text-white shadow-lg shadow-primary-900/20'
                       : 'text-slate-300 hover:bg-slate-900/60 hover:text-slate-100'
                   }`}
                 >
-                  <span>{item.icon}</span>
-                  <span>{item.label}</span>
+                  <IconComponent size={20} />
                 </Link>
               )
             })}

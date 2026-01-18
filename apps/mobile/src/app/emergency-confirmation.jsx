@@ -36,7 +36,7 @@ export default function EmergencyConfirmationScreen() {
           flex: 1,
           paddingHorizontal: 24,
           paddingTop: insets.top + 60,
-          paddingBottom: insets.bottom + 40,
+          paddingBottom: insets.bottom + 100, // Extra padding for custom nav bar
           justifyContent: "center",
           alignItems: "center",
         }}

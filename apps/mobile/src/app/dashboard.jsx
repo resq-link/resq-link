@@ -15,10 +15,9 @@ import * as Haptics from "expo-haptics";
 import {
   AlertCircle,
   Clock,
-  User,
   MapPin,
-  LogOut,
-  AlertTriangle,
+  Navigation,
+  Map,
 } from "lucide-react-native";
 import {
   Inter_400Regular,
@@ -27,18 +26,35 @@ import {
 } from "@expo-google-fonts/inter";
 import { useFonts } from "expo-font";
 import useUserStore from "../utils/userStore";
-import CustomButton from "../components/CustomButton";
 import { getApiUrl, UI_MODE, mockData } from "../utils/api";
-import { getUserEmergencyReports, submitEmergencyReport } from "@packages/firebase";
+import { getUserEmergencyReports, getAllEmergencyReports } from "@packages/firebase";
 import LoadingScreen from "../components/LoadingScreen";
+
+// Calculate distance between two coordinates (Haversine formula)
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
+  
+  const R = 6371; // Radius of the Earth in km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // Distance in km
+};
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { user, logout } = useUserStore();
-  const [reports, setReports] = useState([]);
+  const { user } = useUserStore();
+  const [recentReports, setRecentReports] = useState([]);
+  const [nearbyReports, setNearbyReports] = useState([]);
+  const [userLocation, setUserLocation] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [sosLoading, setSosLoading] = useState(false);
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -48,25 +64,56 @@ export default function DashboardScreen() {
 
   useEffect(() => {
     if (user) {
-      fetchReports();
+      fetchUserLocation();
+      fetchRecentReports();
     }
   }, [user]);
 
-  const fetchReports = async () => {
+  useEffect(() => {
+    if (userLocation) {
+      fetchNearbyReports();
+    }
+  }, [userLocation]);
+
+  const fetchUserLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === "granted") {
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        setUserLocation({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        });
+      }
+    } catch (error) {
+      console.error("Error getting user location:", error);
+    }
+  };
+
+  const fetchRecentReports = async () => {
     if (!user) return;
 
     try {
       // UI MODE: Use mock data for UI development
       if (UI_MODE) {
-        // Simulate API delay for realistic UI testing
         await new Promise(resolve => setTimeout(resolve, 500));
         console.log("🎨 UI MODE: Using mock emergency list data");
-        setReports(mockData.emergencyList.reports);
+        const mockReports = mockData.emergencyList.reports.map(report => ({
+          id: report.id,
+          incidentType: report.incident_type,
+          locationText: report.location_text,
+          status: report.status,
+          createdAt: new Date(report.created_at),
+          latitude: null,
+          longitude: null,
+        }));
+        setRecentReports(mockReports);
         setRefreshing(false);
         return;
       }
 
-      // Fetch reports from Firestore
       const userId = user.uid || user.id;
       if (!userId) {
         console.error("User ID not found");
@@ -74,176 +121,75 @@ export default function DashboardScreen() {
         return;
       }
 
-      const reports = await getUserEmergencyReports(userId, 50);
-      
-      // Convert to expected format
-      const formattedReports = reports.map(report => ({
-        id: report.id,
-        incident_type: report.incidentType,
-        location_text: report.locationText,
-        status: report.status,
-        created_at: report.createdAt instanceof Date 
-          ? report.createdAt.toISOString() 
-          : (report.createdAt ? new Date(report.createdAt).toISOString() : new Date().toISOString()),
-      }));
-      
-      setReports(formattedReports);
+      const reports = await getUserEmergencyReports(userId, 10);
+      setRecentReports(reports);
     } catch (error) {
-      console.error("Error fetching reports:", error);
+      console.error("Error fetching recent reports:", error);
     } finally {
       setRefreshing(false);
     }
   };
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchReports();
-  };
+  const fetchNearbyReports = async () => {
+    if (!userLocation) return;
 
-  const handleLogout = () => {
-    logout();
-    router.replace("/");
-  };
-
-  const handleSOS = async () => {
-    if (!user) {
-      Alert.alert("Login Required", "Please login to send an SOS signal.");
-      return;
-    }
-
-    // Request confirmation for SOS
-    Alert.alert(
-      "SOS Emergency",
-      "This will immediately send your location to the command center. Continue?",
-      [
-        {
-          text: "Cancel",
-          style: "cancel",
-        },
-        {
-          text: "Send SOS",
-          style: "destructive",
-          onPress: async () => {
-            await sendSOSReport();
-          },
-        },
-      ]
-    );
-  };
-
-  const sendSOSReport = async () => {
-    setSosLoading(true);
-    
     try {
-      // Haptic feedback
-      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-      // Get user ID
-      const userId = user.uid || user.id;
-      if (!userId) {
-        throw new Error("User ID not found. Please login again.");
-      }
-
-      // Request location permission and get current location
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert(
-          "Location Permission Required",
-          "SOS requires location access. Please enable location permissions in your device settings."
-        );
-        setSosLoading(false);
-        return;
-      }
-
-      // Get current position with high accuracy
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      });
-
-      const latitude = location.coords.latitude;
-      const longitude = location.coords.longitude;
-
-      // Reverse geocode to get address
-      let locationText = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
-      try {
-        const addresses = await Location.reverseGeocodeAsync({
-          latitude,
-          longitude,
-        });
-
-        if (addresses && addresses.length > 0) {
-          const address = addresses[0];
-          const addressParts = [];
-          if (address.streetNumber) addressParts.push(address.streetNumber);
-          if (address.street) addressParts.push(address.street);
-          if (address.city) addressParts.push(address.city);
-          if (address.region) addressParts.push(address.region);
-          
-          if (addressParts.length > 0) {
-            locationText = addressParts.join(", ");
-          } else if (address.formattedAddress) {
-            locationText = address.formattedAddress;
-          }
-        }
-      } catch (geocodeError) {
-        console.error("Reverse geocoding error:", geocodeError);
-        // Use coordinates as fallback
-      }
-
       // UI MODE: Use mock data for UI development
       if (UI_MODE) {
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        console.log("🎨 UI MODE: Using mock SOS emergency submit data");
-        
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        
-        const mockReport = {
-          ...mockData.emergencySubmit.report,
-          incident_type: "other",
-          location_text: locationText,
-        };
-        
-        router.push({
-          pathname: "/emergency-confirmation",
-          params: { reportId: mockReport.id },
-        });
-        setSosLoading(false);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const mockReports = [
+          {
+            id: "nearby-1",
+            incidentType: "fire",
+            locationText: "456 Oak Ave, 2.3 km away",
+            status: "pending",
+            createdAt: new Date(Date.now() - 1800000),
+            latitude: userLocation.latitude + 0.02,
+            longitude: userLocation.longitude + 0.02,
+          },
+          {
+            id: "nearby-2",
+            incidentType: "medical",
+            locationText: "789 Pine Rd, 5.1 km away",
+            status: "active",
+            createdAt: new Date(Date.now() - 3600000),
+            latitude: userLocation.latitude - 0.03,
+            longitude: userLocation.longitude + 0.04,
+          },
+        ];
+        setNearbyReports(mockReports);
         return;
       }
 
-      // Submit emergency report to Firestore
-      const report = await submitEmergencyReport({
-        userId,
-        incidentType: "other", // Default to "other" for SOS
-        locationText,
-        latitude,
-        longitude,
-        imageUrl: null,
-        description: "SOS Emergency - One Tap Alert",
-        status: "pending",
-      });
+      const allReports = await getAllEmergencyReports(100);
+      const userId = user.uid || user.id;
 
-      // Success haptic feedback
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      // Filter out user's own reports and calculate distances
+      const nearby = allReports
+        .filter(report => report.userId !== userId && report.latitude && report.longitude)
+        .map(report => {
+          const distance = calculateDistance(
+            userLocation.latitude,
+            userLocation.longitude,
+            report.latitude,
+            report.longitude
+          );
+          return { ...report, distance };
+        })
+        .filter(report => report.distance <= 10) // Within 10km
+        .sort((a, b) => a.distance - b.distance)
+        .slice(0, 5); // Top 5 nearest
 
-      // Navigate to confirmation screen
-      router.push({
-        pathname: "/emergency-confirmation",
-        params: { reportId: report.id },
-      });
-    } catch (err) {
-      console.error("SOS Error:", err);
-      
-      // Error haptic feedback
-      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      
-      Alert.alert(
-        "SOS Failed",
-        err.message || "Failed to send SOS signal. Please try again or use the Report Emergency form."
-      );
-    } finally {
-      setSosLoading(false);
+      setNearbyReports(nearby);
+    } catch (error) {
+      console.error("Error fetching nearby reports:", error);
     }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchUserLocation();
+    fetchRecentReports();
   };
 
   if (!fontsLoaded) {
@@ -254,34 +200,79 @@ export default function DashboardScreen() {
     switch (status) {
       case "pending":
         return "#FF9500";
+      case "active":
+      case "enroute":
       case "responding":
         return "#007AFF";
       case "resolved":
+      case "done":
         return "#9AFF55";
       default:
         return "#9A9A9A";
     }
   };
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case "pending":
+        return "PENDING";
+      case "active":
+        return "ACTIVE";
+      case "enroute":
+        return "EN ROUTE";
+      case "on_scene":
+        return "ON SCENE";
+      case "responding":
+        return "RESPONDING";
+      case "resolved":
+      case "done":
+        return "RESOLVED";
+      default:
+        return status.toUpperCase();
+    }
+  };
+
+  const getIncidentEmoji = (type) => {
+    switch (type) {
+      case "fire":
+        return "🔥";
+      case "medical":
+        return "🚑";
+      case "crime":
+        return "🚓";
+      case "accident":
+        return "🚗";
+      case "flood":
+        return "🌊";
+      default:
+        return "⚡";
+    }
+  };
+
+  const formatDate = (date) => {
+    if (!date) return "Unknown";
+    const dateObj = date instanceof Date ? date : new Date(date);
+    const now = new Date();
+    const diffMs = now - dateObj;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return dateObj.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
     });
   };
 
-  if (sosLoading) {
-    return (
-      <LoadingScreen
-        title="Sending SOS..."
-        subtitle="Getting your location and notifying command center"
-        variant="login"
-      />
-    );
-  }
+  const formatDistance = (distance) => {
+    if (distance === Infinity || !distance) return "Unknown";
+    if (distance < 1) return `${Math.round(distance * 1000)}m away`;
+    return `${distance.toFixed(1)}km away`;
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: "#000000" }}>
@@ -295,7 +286,7 @@ export default function DashboardScreen() {
           paddingBottom: 20,
           backgroundColor: "#000000",
           borderBottomWidth: 1,
-          borderBottomColor: "#404040",
+          borderBottomColor: "#1A1A1A",
         }}
       >
         <View
@@ -303,14 +294,13 @@ export default function DashboardScreen() {
             flexDirection: "row",
             justifyContent: "space-between",
             alignItems: "center",
-            marginBottom: 12,
           }}
         >
-          <View>
+          <View style={{ flex: 1 }}>
             <Text
               style={{
                 fontFamily: "Inter_700Bold",
-                fontSize: 28,
+                fontSize: 32,
                 color: "#FFFFFF",
                 marginBottom: 4,
               }}
@@ -328,12 +318,14 @@ export default function DashboardScreen() {
             </Text>
           </View>
           <TouchableOpacity
-            onPress={handleLogout}
+            onPress={() => router.push("/responder-map")}
             style={{
               padding: 8,
+              borderRadius: 8,
+              backgroundColor: "#1A1A1A",
             }}
           >
-            <LogOut size={24} color="#9A9A9A" />
+            <Map size={20} color="#9AFF55" />
           </TouchableOpacity>
         </View>
       </View>
@@ -343,8 +335,8 @@ export default function DashboardScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{
           paddingHorizontal: 24,
-          paddingTop: 24,
-          paddingBottom: insets.bottom + 20,
+          paddingTop: 32,
+          paddingBottom: insets.bottom + 100,
         }}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -352,51 +344,49 @@ export default function DashboardScreen() {
             refreshing={refreshing}
             onRefresh={onRefresh}
             tintColor="#9AFF55"
+            colors={["#9AFF55"]}
           />
         }
       >
-        {/* Quick Actions */}
-        <Text
-          style={{
-            fontFamily: "Inter_600SemiBold",
-            fontSize: 18,
-            color: "#FFFFFF",
-            marginBottom: 16,
-          }}
-        >
-          Quick Actions
-        </Text>
-
-        {/* Emergency Button */}
+        {/* Report Emergency Button */}
         <TouchableOpacity
           onPress={() => router.push("/emergency-form")}
+          activeOpacity={0.9}
           style={{
             backgroundColor: "#FF3B30",
-            borderRadius: 20,
-            padding: 24,
+            borderRadius: 24,
+            padding: 32,
             alignItems: "center",
-            marginBottom: 24,
-            borderWidth: 2,
-            borderColor: "#FF6B5E",
+            marginBottom: 40,
+            shadowColor: "#FF3B30",
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: 0.3,
+            shadowRadius: 16,
+            elevation: 8,
           }}
         >
           <View
             style={{
-              width: 64,
-              height: 64,
-              borderRadius: 32,
+              width: 80,
+              height: 80,
+              borderRadius: 40,
               backgroundColor: "#FFFFFF",
               justifyContent: "center",
               alignItems: "center",
-              marginBottom: 16,
+              marginBottom: 20,
+              shadowColor: "#000",
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.2,
+              shadowRadius: 8,
+              elevation: 4,
             }}
           >
-            <AlertCircle size={32} color="#FF3B30" />
+            <AlertCircle size={40} color="#FF3B30" strokeWidth={2.5} />
           </View>
           <Text
             style={{
               fontFamily: "Inter_700Bold",
-              fontSize: 20,
+              fontSize: 24,
               color: "#FFFFFF",
               marginBottom: 8,
             }}
@@ -406,333 +396,409 @@ export default function DashboardScreen() {
           <Text
             style={{
               fontFamily: "Inter_400Regular",
-              fontSize: 14,
+              fontSize: 15,
               color: "#FFFFFF",
               textAlign: "center",
-              opacity: 0.9,
+              opacity: 0.95,
+              lineHeight: 20,
             }}
           >
             Tap to report an emergency situation
           </Text>
         </TouchableOpacity>
 
-        {/* Action Cards */}
-        <View
-          style={{
-            flexDirection: "row",
-            flexWrap: "wrap",
-            gap: 12,
-            marginBottom: 32,
-          }}
-        >
-          <TouchableOpacity
-            onPress={() => router.push("/(tabs)/history")}
-            style={{
-              flex: 1,
-              minWidth: "45%",
-              backgroundColor: "#252525",
-              borderWidth: 1,
-              borderColor: "#404040",
-              borderRadius: 16,
-              padding: 20,
-            }}
-          >
-            <View
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 24,
-                backgroundColor: "#404040",
-                justifyContent: "center",
-                alignItems: "center",
-                marginBottom: 12,
-              }}
-            >
-              <Clock size={24} color="#9AFF55" />
-            </View>
-            <Text
-              style={{
-                fontFamily: "Inter_600SemiBold",
-                fontSize: 16,
-                color: "#FFFFFF",
-                marginBottom: 4,
-              }}
-            >
-              History
-            </Text>
-            <Text
-              style={{
-                fontFamily: "Inter_400Regular",
-                fontSize: 12,
-                color: "#9A9A9A",
-              }}
-            >
-              View reports
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => router.push("/responder-map")}
-            style={{
-              flex: 1,
-              minWidth: "45%",
-              backgroundColor: "#252525",
-              borderWidth: 1,
-              borderColor: "#404040",
-              borderRadius: 16,
-              padding: 20,
-            }}
-          >
-            <View
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 24,
-                backgroundColor: "#404040",
-                justifyContent: "center",
-                alignItems: "center",
-                marginBottom: 12,
-              }}
-            >
-              <MapPin size={24} color="#9AFF55" />
-            </View>
-            <Text
-              style={{
-                fontFamily: "Inter_600SemiBold",
-                fontSize: 16,
-                color: "#FFFFFF",
-                marginBottom: 4,
-              }}
-            >
-              Map
-            </Text>
-            <Text
-              style={{
-                fontFamily: "Inter_400Regular",
-                fontSize: 12,
-                color: "#9A9A9A",
-              }}
-            >
-              Responders
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => router.push("/(tabs)/profile")}
-            style={{
-              flex: 1,
-              minWidth: "45%",
-              backgroundColor: "#252525",
-              borderWidth: 1,
-              borderColor: "#404040",
-              borderRadius: 16,
-              padding: 20,
-            }}
-          >
-            <View
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 24,
-                backgroundColor: "#404040",
-                justifyContent: "center",
-                alignItems: "center",
-                marginBottom: 12,
-              }}
-            >
-              <User size={24} color="#9AFF55" />
-            </View>
-            <Text
-              style={{
-                fontFamily: "Inter_600SemiBold",
-                fontSize: 16,
-                color: "#FFFFFF",
-                marginBottom: 4,
-              }}
-            >
-              Profile
-            </Text>
-            <Text
-              style={{
-                fontFamily: "Inter_400Regular",
-                fontSize: 12,
-                color: "#9A9A9A",
-              }}
-            >
-              Account settings
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Recent Reports */}
-        <Text
-          style={{
-            fontFamily: "Inter_600SemiBold",
-            fontSize: 18,
-            color: "#FFFFFF",
-            marginBottom: 16,
-          }}
-        >
-          Recent Reports
-        </Text>
-
-        {reports.length === 0 ? (
+        {/* Recent Reports Section */}
+        <View style={{ marginBottom: 32 }}>
           <View
             style={{
-              backgroundColor: "#252525",
-              borderWidth: 1,
-              borderColor: "#404040",
-              borderRadius: 16,
-              padding: 32,
+              flexDirection: "row",
+              justifyContent: "space-between",
               alignItems: "center",
+              marginBottom: 20,
             }}
           >
-            <Clock size={48} color="#5A5A5A" style={{ marginBottom: 16 }} />
             <Text
               style={{
-                fontFamily: "Inter_600SemiBold",
-                fontSize: 16,
+                fontFamily: "Inter_700Bold",
+                fontSize: 20,
                 color: "#FFFFFF",
-                marginBottom: 8,
               }}
             >
-              No Reports Yet
+              Recent Reports
             </Text>
-            <Text
-              style={{
-                fontFamily: "Inter_400Regular",
-                fontSize: 14,
-                color: "#9A9A9A",
-                textAlign: "center",
-              }}
-            >
-              Your emergency reports will appear here
-            </Text>
+            {recentReports.length > 0 && (
+              <TouchableOpacity
+                onPress={() => router.push("/(tabs)/history")}
+                style={{ paddingVertical: 4 }}
+              >
+                <Text
+                  style={{
+                    fontFamily: "Inter_600SemiBold",
+                    fontSize: 14,
+                    color: "#9AFF55",
+                  }}
+                >
+                  View All
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
-        ) : (
-          reports.slice(0, 3).map((report) => (
-            <TouchableOpacity
-              key={report.id}
-              onPress={() => router.push("/(tabs)/history")}
+
+          {recentReports.length === 0 ? (
+            <View
               style={{
-                backgroundColor: "#252525",
+                backgroundColor: "#1A1A1A",
                 borderWidth: 1,
-                borderColor: "#404040",
-                borderRadius: 16,
-                padding: 16,
-                marginBottom: 12,
+                borderColor: "#2A2A2A",
+                borderRadius: 20,
+                padding: 40,
+                alignItems: "center",
               }}
             >
               <View
                 style={{
-                  flexDirection: "row",
+                  width: 64,
+                  height: 64,
+                  borderRadius: 32,
+                  backgroundColor: "#2A2A2A",
+                  justifyContent: "center",
                   alignItems: "center",
-                  marginBottom: 8,
+                  marginBottom: 16,
                 }}
               >
-                <Text style={{ fontSize: 24, marginRight: 12 }}>
-                  {report.incident_type === "fire"
-                    ? "🔥"
-                    : report.incident_type === "medical"
-                    ? "🚑"
-                    : report.incident_type === "crime"
-                    ? "🚓"
-                    : report.incident_type === "accident"
-                    ? "🚗"
-                    : report.incident_type === "flood"
-                    ? "🌊"
-                    : "⚡"}
-                </Text>
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={{
-                      fontFamily: "Inter_600SemiBold",
-                      fontSize: 14,
-                      color: "#FFFFFF",
-                      marginBottom: 2,
-                    }}
-                  >
-                    {report.incident_type.charAt(0).toUpperCase() +
-                      report.incident_type.slice(1)}{" "}
-                    Emergency
-                  </Text>
-                  <Text
-                    style={{
-                      fontFamily: "Inter_400Regular",
-                      fontSize: 12,
-                      color: "#9A9A9A",
-                    }}
-                  >
-                    {formatDate(report.created_at)}
-                  </Text>
-                </View>
-                <View
-                  style={{
-                    backgroundColor: getStatusColor(report.status) + "20",
-                    paddingHorizontal: 10,
-                    paddingVertical: 4,
-                    borderRadius: 8,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontFamily: "Inter_600SemiBold",
-                      fontSize: 10,
-                      color: getStatusColor(report.status),
-                    }}
-                  >
-                    {report.status.toUpperCase()}
-                  </Text>
-                </View>
+                <Clock size={32} color="#5A5A5A" />
               </View>
               <Text
                 style={{
-                  fontFamily: "Inter_400Regular",
-                  fontSize: 12,
-                  color: "#9A9A9A",
+                  fontFamily: "Inter_600SemiBold",
+                  fontSize: 16,
+                  color: "#FFFFFF",
+                  marginBottom: 8,
                 }}
               >
-                📍 {report.location_text}
+                No Reports Yet
               </Text>
-            </TouchableOpacity>
-          ))
-        )}
-      </ScrollView>
+              <Text
+                style={{
+                  fontFamily: "Inter_400Regular",
+                  fontSize: 14,
+                  color: "#9A9A9A",
+                  textAlign: "center",
+                  lineHeight: 20,
+                }}
+              >
+                Your emergency reports will appear here
+              </Text>
+            </View>
+          ) : (
+            recentReports.slice(0, 3).map((report) => (
+              <TouchableOpacity
+                key={report.id}
+                onPress={() => router.push("/(tabs)/history")}
+                activeOpacity={0.8}
+                style={{
+                  backgroundColor: "#1A1A1A",
+                  borderWidth: 1,
+                  borderColor: "#2A2A2A",
+                  borderRadius: 20,
+                  padding: 20,
+                  marginBottom: 12,
+                }}
+              >
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "flex-start",
+                    marginBottom: 12,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: 12,
+                      backgroundColor: "#2A2A2A",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      marginRight: 16,
+                    }}
+                  >
+                    <Text style={{ fontSize: 24 }}>
+                      {getIncidentEmoji(report.incidentType)}
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={{
+                        fontFamily: "Inter_600SemiBold",
+                        fontSize: 16,
+                        color: "#FFFFFF",
+                        marginBottom: 4,
+                        textTransform: "capitalize",
+                      }}
+                    >
+                      {report.incidentType} Emergency
+                    </Text>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        marginBottom: 8,
+                      }}
+                    >
+                      <MapPin size={14} color="#9A9A9A" style={{ marginRight: 6 }} />
+                      <Text
+                        style={{
+                          fontFamily: "Inter_400Regular",
+                          fontSize: 13,
+                          color: "#9A9A9A",
+                          flex: 1,
+                        }}
+                        numberOfLines={1}
+                      >
+                        {report.locationText}
+                      </Text>
+                    </View>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                        }}
+                      >
+                        <Clock size={12} color="#9A9A9A" style={{ marginRight: 6 }} />
+                        <Text
+                          style={{
+                            fontFamily: "Inter_400Regular",
+                            fontSize: 12,
+                            color: "#9A9A9A",
+                          }}
+                        >
+                          {formatDate(report.createdAt)}
+                        </Text>
+                      </View>
+                      <View
+                        style={{
+                          backgroundColor: getStatusColor(report.status) + "20",
+                          paddingHorizontal: 10,
+                          paddingVertical: 5,
+                          borderRadius: 8,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontFamily: "Inter_600SemiBold",
+                            fontSize: 10,
+                            color: getStatusColor(report.status),
+                            letterSpacing: 0.5,
+                          }}
+                        >
+                          {getStatusLabel(report.status)}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
 
-      {/* Floating SOS Button */}
-      <TouchableOpacity
-        onPress={handleSOS}
-        disabled={sosLoading}
-        style={{
-          position: "absolute",
-          bottom: insets.bottom + 20,
-          alignSelf: "center",
-          width: 64,
-          height: 64,
-          borderRadius: 32,
-          backgroundColor: "#FF3B30",
-          justifyContent: "center",
-          alignItems: "center",
-          borderWidth: 3,
-          borderColor: "#FFFFFF",
-          shadowColor: "#FF3B30",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.5,
-          shadowRadius: 12,
-          elevation: 10,
-        }}
-      >
-        <Text
-          style={{
-            fontFamily: "Inter_700Bold",
-            fontSize: 18,
-            color: "#FFFFFF",
-            letterSpacing: 1,
-          }}
-        >
-          SOS
-        </Text>
-      </TouchableOpacity>
+        {/* Reported Near You Section */}
+        <View style={{ marginBottom: 32 }}>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 20,
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Navigation size={20} color="#9AFF55" style={{ marginRight: 8 }} />
+              <Text
+                style={{
+                  fontFamily: "Inter_700Bold",
+                  fontSize: 20,
+                  color: "#FFFFFF",
+                }}
+              >
+                Reported Near You
+              </Text>
+            </View>
+          </View>
+
+          {nearbyReports.length === 0 ? (
+            <View
+              style={{
+                backgroundColor: "#1A1A1A",
+                borderWidth: 1,
+                borderColor: "#2A2A2A",
+                borderRadius: 20,
+                padding: 40,
+                alignItems: "center",
+              }}
+            >
+              <View
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: 32,
+                  backgroundColor: "#2A2A2A",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  marginBottom: 16,
+                }}
+              >
+                <MapPin size={32} color="#5A5A5A" />
+              </View>
+              <Text
+                style={{
+                  fontFamily: "Inter_600SemiBold",
+                  fontSize: 16,
+                  color: "#FFFFFF",
+                  marginBottom: 8,
+                }}
+              >
+                No Nearby Reports
+              </Text>
+              <Text
+                style={{
+                  fontFamily: "Inter_400Regular",
+                  fontSize: 14,
+                  color: "#9A9A9A",
+                  textAlign: "center",
+                  lineHeight: 20,
+                }}
+              >
+                Emergency reports near your location will appear here
+              </Text>
+            </View>
+          ) : (
+            nearbyReports.map((report) => (
+              <TouchableOpacity
+                key={report.id}
+                activeOpacity={0.8}
+                style={{
+                  backgroundColor: "#1A1A1A",
+                  borderWidth: 1,
+                  borderColor: "#2A2A2A",
+                  borderRadius: 20,
+                  padding: 20,
+                  marginBottom: 12,
+                }}
+              >
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "flex-start",
+                    marginBottom: 12,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: 12,
+                      backgroundColor: "#2A2A2A",
+                      justifyContent: "center",
+                      alignItems: "center",
+                      marginRight: 16,
+                    }}
+                  >
+                    <Text style={{ fontSize: 24 }}>
+                      {getIncidentEmoji(report.incidentType)}
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={{
+                        fontFamily: "Inter_600SemiBold",
+                        fontSize: 16,
+                        color: "#FFFFFF",
+                        marginBottom: 4,
+                        textTransform: "capitalize",
+                      }}
+                    >
+                      {report.incidentType} Emergency
+                    </Text>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        marginBottom: 8,
+                      }}
+                    >
+                      <MapPin size={14} color="#9AFF55" style={{ marginRight: 6 }} />
+                      <Text
+                        style={{
+                          fontFamily: "Inter_400Regular",
+                          fontSize: 13,
+                          color: "#9AFF55",
+                          flex: 1,
+                        }}
+                        numberOfLines={1}
+                      >
+                        {formatDistance(report.distance)} • {report.locationText}
+                      </Text>
+                    </View>
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                        }}
+                      >
+                        <Clock size={12} color="#9A9A9A" style={{ marginRight: 6 }} />
+                        <Text
+                          style={{
+                            fontFamily: "Inter_400Regular",
+                            fontSize: 12,
+                            color: "#9A9A9A",
+                          }}
+                        >
+                          {formatDate(report.createdAt)}
+                        </Text>
+                      </View>
+                      <View
+                        style={{
+                          backgroundColor: getStatusColor(report.status) + "20",
+                          paddingHorizontal: 10,
+                          paddingVertical: 5,
+                          borderRadius: 8,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            fontFamily: "Inter_600SemiBold",
+                            fontSize: 10,
+                            color: getStatusColor(report.status),
+                            letterSpacing: 0.5,
+                          }}
+                        >
+                          {getStatusLabel(report.status)}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
+      </ScrollView>
     </View>
   );
 }

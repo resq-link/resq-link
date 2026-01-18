@@ -182,7 +182,7 @@ export default function ResponderMapScreen() {
           borderRightWidth: 1,
           borderColor: "#404040",
           paddingTop: 20,
-          paddingBottom: insets.bottom + 20,
+          paddingBottom: insets.bottom + 100, // Extra padding for custom nav bar
           maxHeight: height * 0.4,
         }}
       >

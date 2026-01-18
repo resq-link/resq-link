@@ -2,6 +2,7 @@ import { useAuth } from "@/utils/auth/useAuth";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
+import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -11,6 +12,7 @@ import {
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
 import useUserStore from "@/utils/userStore";
+import CustomBottomNav from "@/components/CustomBottomNav";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -53,16 +55,19 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
-          <Stack.Screen name="index" />
-          <Stack.Screen name="login" />
-          <Stack.Screen name="register" />
-          <Stack.Screen name="dashboard" />
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="emergency-form" />
-          <Stack.Screen name="emergency-confirmation" />
-          <Stack.Screen name="responder-map" />
-        </Stack>
+        <View style={{ flex: 1 }}>
+          <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
+            <Stack.Screen name="index" />
+            <Stack.Screen name="login" />
+            <Stack.Screen name="register" />
+            <Stack.Screen name="dashboard" />
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="emergency-form" />
+            <Stack.Screen name="emergency-confirmation" />
+            <Stack.Screen name="responder-map" />
+          </Stack>
+          <CustomBottomNav />
+        </View>
       </GestureHandlerRootView>
     </QueryClientProvider>
   );

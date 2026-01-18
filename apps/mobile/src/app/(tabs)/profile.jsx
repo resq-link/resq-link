@@ -18,6 +18,7 @@ import {
 } from "@expo-google-fonts/inter";
 import { useFonts } from "expo-font";
 import useUserStore from "@/utils/userStore";
+import BackButton from "@/components/BackButton";
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -42,7 +43,7 @@ export default function ProfileScreen() {
         style: "destructive",
         onPress: async () => {
           await logout();
-          router.replace("/");
+          router.replace("/login");
         },
       },
     ]);
@@ -63,25 +64,47 @@ export default function ProfileScreen() {
           borderBottomColor: "#404040",
         }}
       >
-        <Text
+        <View
           style={{
-            fontFamily: "Inter_700Bold",
-            fontSize: 28,
-            color: "#FFFFFF",
-            marginBottom: 4,
+            flexDirection: "row",
+            alignItems: "center",
+            marginBottom: 12,
           }}
         >
-          Profile
-        </Text>
-        <Text
-          style={{
-            fontFamily: "Inter_400Regular",
-            fontSize: 14,
-            color: "#9A9A9A",
-          }}
-        >
-          Manage your account
-        </Text>
+          <BackButton
+            onPress={() => router.push("/dashboard")}
+            size={18}
+            style={{ 
+              marginRight: 12,
+              width: 32,
+              height: 32,
+              borderRadius: 16,
+              backgroundColor: "transparent",
+              borderWidth: 0,
+            }}
+          />
+          <View style={{ flex: 1 }}>
+            <Text
+              style={{
+                fontFamily: "Inter_700Bold",
+                fontSize: 28,
+                color: "#FFFFFF",
+                marginBottom: 4,
+              }}
+            >
+              Profile Settings
+            </Text>
+            <Text
+              style={{
+                fontFamily: "Inter_400Regular",
+                fontSize: 14,
+                color: "#9A9A9A",
+              }}
+            >
+              Manage your account
+            </Text>
+          </View>
+        </View>
       </View>
 
       {/* Content */}
@@ -90,7 +113,7 @@ export default function ProfileScreen() {
         contentContainerStyle={{
           paddingHorizontal: 24,
           paddingTop: 20,
-          paddingBottom: insets.bottom + 20,
+          paddingBottom: insets.bottom + 100, // Extra padding for custom nav bar
         }}
         showsVerticalScrollIndicator={false}
       >

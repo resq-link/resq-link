@@ -8,6 +8,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { useRouter } from "expo-router";
 import { Clock } from "lucide-react-native";
 import {
   Inter_400Regular,
@@ -18,9 +19,11 @@ import { useFonts } from "expo-font";
 import useUserStore from "@/utils/userStore";
 import { getApiUrl, UI_MODE, mockData } from "@/utils/api";
 import { getUserEmergencyReports } from "@packages/firebase";
+import BackButton from "@/components/BackButton";
 
 export default function HistoryScreen() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { user } = useUserStore();
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -142,25 +145,47 @@ export default function HistoryScreen() {
           borderBottomColor: "#404040",
         }}
       >
-        <Text
+        <View
           style={{
-            fontFamily: "Inter_700Bold",
-            fontSize: 28,
-            color: "#FFFFFF",
-            marginBottom: 4,
+            flexDirection: "row",
+            alignItems: "center",
+            marginBottom: 12,
           }}
         >
-          Emergency History
-        </Text>
-        <Text
-          style={{
-            fontFamily: "Inter_400Regular",
-            fontSize: 14,
-            color: "#9A9A9A",
-          }}
-        >
-          {reports.length} {reports.length === 1 ? "report" : "reports"}
-        </Text>
+          <BackButton
+            onPress={() => router.push("/dashboard")}
+            size={18}
+            style={{ 
+              marginRight: 12,
+              width: 32,
+              height: 32,
+              borderRadius: 16,
+              backgroundColor: "transparent",
+              borderWidth: 0,
+            }}
+          />
+          <View style={{ flex: 1 }}>
+            <Text
+              style={{
+                fontFamily: "Inter_700Bold",
+                fontSize: 28,
+                color: "#FFFFFF",
+                marginBottom: 4,
+              }}
+            >
+              Emergency History
+            </Text>
+            <Text
+              style={{
+                fontFamily: "Inter_400Regular",
+                fontSize: 14,
+                color: "#9A9A9A",
+              }}
+            >
+              {reports.length} {reports.length === 1 ? "report" : "reports"}
+            </Text>
+          </View>
+        </View>
       </View>
 
       {/* Content */}
@@ -169,7 +194,7 @@ export default function HistoryScreen() {
         contentContainerStyle={{
           paddingHorizontal: 24,
           paddingTop: 20,
-          paddingBottom: insets.bottom + 20,
+          paddingBottom: insets.bottom + 100, // Extra padding for custom nav bar
         }}
         showsVerticalScrollIndicator={false}
         refreshControl={

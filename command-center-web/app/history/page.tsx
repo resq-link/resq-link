@@ -1,78 +1,119 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import IncidentCard from '@/components/IncidentCard'
 import StatusBadge from '@/components/StatusBadge'
+import { subscribeToEmergencyReports, type EmergencyReport } from '@packages/firebase'
+import { useAuth } from '@/contexts/AuthContext'
+import ProtectedRoute from '@/components/ProtectedRoute'
 
-// Mock historical data for UI purposes
-const mockHistory = [
-  {
-    id: '101',
-    type: 'Medical Emergency',
-    location: '123 Main St, Downtown',
-    priority: 'high',
-    status: 'resolved',
-    reportedAt: new Date(Date.now() - 2 * 60 * 60000), // 2 hours ago
-    resolvedAt: new Date(Date.now() - 90 * 60000), // 90 minutes ago
-    description: 'Cardiac arrest, patient stabilized and transported',
-    responder: 'Unit Alpha-1',
-    duration: '30 minutes',
-  },
-  {
-    id: '102',
-    type: 'Fire',
-    location: '456 Oak Ave, Industrial District',
-    priority: 'critical',
-    status: 'resolved',
-    reportedAt: new Date(Date.now() - 4 * 60 * 60000), // 4 hours ago
-    resolvedAt: new Date(Date.now() - 3 * 60 * 60000), // 3 hours ago
-    description: 'Structure fire extinguished, no injuries',
-    responder: 'Fire Engine 3',
-    duration: '1 hour',
-  },
-  {
-    id: '103',
-    type: 'Traffic Accident',
-    location: 'Highway 101, Mile Marker 42',
-    priority: 'medium',
-    status: 'resolved',
-    reportedAt: new Date(Date.now() - 6 * 60 * 60000), // 6 hours ago
-    resolvedAt: new Date(Date.now() - 5 * 60 * 60000), // 5 hours ago
-    description: 'Multi-vehicle collision cleared, minor injuries treated',
-    responder: 'Unit Bravo-2',
-    duration: '1 hour',
-  },
-  {
-    id: '104',
-    type: 'Medical Emergency',
-    location: '789 Elm St, Residential Area',
-    priority: 'low',
-    status: 'resolved',
-    reportedAt: new Date(Date.now() - 8 * 60 * 60000), // 8 hours ago
-    resolvedAt: new Date(Date.now() - 7.5 * 60 * 60000), // 7.5 hours ago
-    description: 'Elderly fall, treated on scene',
-    responder: 'Unit Charlie-3',
-    duration: '30 minutes',
-  },
-  {
-    id: '105',
-    type: 'Fire Alarm',
-    location: '321 Pine St, Office Building',
-    priority: 'medium',
-    status: 'resolved',
-    reportedAt: new Date(Date.now() - 12 * 60 * 60000), // 12 hours ago
-    resolvedAt: new Date(Date.now() - 11.5 * 60 * 60000), // 11.5 hours ago
-    description: 'False alarm, system reset',
-    responder: 'Fire Engine 1',
-    duration: '30 minutes',
-  },
-]
+// Map incident type to display name
+const getIncidentTypeName = (incidentType: string): string => {
+  const typeMap: Record<string, string> = {
+    fire: 'Fire',
+    medical: 'Medical Emergency',
+    crime: 'Crime',
+    accident: 'Traffic Accident',
+    flood: 'Flood',
+    other: 'Other Emergency',
+  }
+  return typeMap[incidentType] || 'Emergency'
+}
+
+// Convert EmergencyReport to History Incident format
+const convertToHistoryIncident = (report: EmergencyReport) => {
+  const reportedAt = report.createdAt instanceof Date 
+    ? report.createdAt 
+    : (report.createdAt && typeof report.createdAt === 'object' && 'toDate' in report.createdAt)
+    ? (report.createdAt as any).toDate()
+    : new Date(report.createdAt || Date.now())
+
+  const resolvedAt = report.updatedAt instanceof Date 
+    ? report.updatedAt 
+    : (report.updatedAt && typeof report.updatedAt === 'object' && 'toDate' in report.updatedAt)
+    ? (report.updatedAt as any).toDate()
+    : null
+
+  // Calculate duration in minutes
+  let duration: string | null = null
+  if (resolvedAt && reportedAt) {
+    const durationMs = resolvedAt.getTime() - reportedAt.getTime()
+    const durationMinutes = Math.round(durationMs / 60000)
+    if (durationMinutes < 60) {
+      duration = `${durationMinutes} minutes`
+    } else {
+      const hours = Math.floor(durationMinutes / 60)
+      const minutes = durationMinutes % 60
+      duration = minutes > 0 ? `${hours}h ${minutes}m` : `${hours} hour${hours > 1 ? 's' : ''}`
+    }
+  }
+
+  return {
+    id: report.id || '',
+    type: getIncidentTypeName(report.incidentType),
+    location: report.locationText,
+    priority: report.priority || 'medium',
+    status: report.status === 'done' || report.status === 'resolved' ? 'resolved' : report.status,
+    reportedAt,
+    resolvedAt,
+    description: report.description || 'No description provided',
+    responder: report.responder || null,
+    duration,
+  }
+}
 
 export default function HistoryPage() {
   const [selectedFilter, setSelectedFilter] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const [history, setHistory] = useState<ReturnType<typeof convertToHistoryIncident>[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const { user } = useAuth()
+  const router = useRouter()
 
-  const filteredHistory = mockHistory.filter((incident) => {
+  // Subscribe to live data
+  useEffect(() => {
+    // Redirect to login if not authenticated
+    if (!user) {
+      router.push('/login')
+      return
+    }
+
+    console.log('Setting up emergency reports subscription for history...')
+    console.log('✅ User authenticated:', user.uid)
+    
+    // Subscribe to real-time emergency reports from Firestore
+    const unsubscribe = subscribeToEmergencyReports(
+      (reports: EmergencyReport[]) => {
+        console.log('Received emergency reports for history:', reports.length)
+        
+        // Filter for resolved/done incidents only
+        const resolvedReports = reports.filter(
+          report => report.status === 'done' || report.status === 'resolved'
+        )
+        
+        // Convert to history format
+        const historyIncidents = resolvedReports.map(convertToHistoryIncident)
+        
+        // Sort by reportedAt descending (newest first)
+        historyIncidents.sort((a, b) => b.reportedAt.getTime() - a.reportedAt.getTime())
+        
+        setHistory(historyIncidents)
+        setIsLoading(false)
+      },
+      {
+        statusFilter: 'all', // Get all, we'll filter in the callback
+        limitCount: 200, // Get more for history
+      }
+    )
+
+    return () => {
+      console.log('Unsubscribing from emergency reports')
+      unsubscribe()
+    }
+  }, [user, router])
+
+  const filteredHistory = history.filter((incident) => {
     const matchesFilter =
       selectedFilter === 'all' || incident.status === selectedFilter
     const matchesSearch =
@@ -82,8 +123,37 @@ export default function HistoryPage() {
     return matchesFilter && matchesSearch
   })
 
+  // Calculate statistics
+  const totalIncidents = history.length
+  const resolvedToday = history.filter(
+    (i) =>
+      i.resolvedAt &&
+      i.resolvedAt.getTime() > Date.now() - 24 * 60 * 60000
+  ).length
+
+  // Calculate average response time (time from reported to resolved)
+  const incidentsWithDuration = history.filter(i => i.duration !== null)
+  const avgResponseTime = incidentsWithDuration.length > 0
+    ? (() => {
+        const totalMinutes = incidentsWithDuration.reduce((sum, i) => {
+          if (!i.resolvedAt || !i.reportedAt) return sum
+          const durationMs = i.resolvedAt.getTime() - i.reportedAt.getTime()
+          return sum + Math.round(durationMs / 60000)
+        }, 0)
+        const avgMinutes = Math.round(totalMinutes / incidentsWithDuration.length)
+        if (avgMinutes < 60) {
+          return `${avgMinutes} min`
+        } else {
+          const hours = Math.floor(avgMinutes / 60)
+          const minutes = avgMinutes % 60
+          return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`
+        }
+      })()
+    : 'N/A'
+
   return (
-    <div className="space-y-6">
+    <ProtectedRoute>
+      <div className="space-y-6">
       {/* Header Section */}
       <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
         <h1 className="text-3xl font-bold text-slate-100 mb-2">
@@ -139,22 +209,20 @@ export default function HistoryPage() {
         <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
           <p className="text-sm font-medium text-slate-400">Total Incidents</p>
           <p className="text-3xl font-bold text-slate-100 mt-2">
-            {mockHistory.length}
+            {isLoading ? '...' : totalIncidents}
           </p>
         </div>
         <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
           <p className="text-sm font-medium text-slate-400">Resolved Today</p>
           <p className="text-3xl font-bold text-emerald-300 mt-2">
-            {mockHistory.filter(
-              (i) =>
-                i.resolvedAt &&
-                i.resolvedAt.getTime() > Date.now() - 24 * 60 * 60000
-            ).length}
+            {isLoading ? '...' : resolvedToday}
           </p>
         </div>
         <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
           <p className="text-sm font-medium text-slate-400">Avg Response Time</p>
-          <p className="text-3xl font-bold text-blue-300 mt-2">45 min</p>
+          <p className="text-3xl font-bold text-blue-300 mt-2">
+            {isLoading ? '...' : avgResponseTime}
+          </p>
         </div>
       </div>
 
@@ -164,8 +232,14 @@ export default function HistoryPage() {
           Past Incidents ({filteredHistory.length})
         </h2>
 
-        <div className="space-y-4">
-          {filteredHistory.map((incident) => (
+        {isLoading ? (
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+            <p className="text-slate-400 text-lg mt-4">Loading history...</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filteredHistory.map((incident) => (
             <div
               key={incident.id}
               className="border border-slate-800 rounded-lg p-6 hover:shadow-md hover:shadow-black/30 transition-shadow bg-slate-950/60"
@@ -251,19 +325,23 @@ export default function HistoryPage() {
                 </div>
               </div>
             </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
-        {filteredHistory.length === 0 && (
+        {!isLoading && filteredHistory.length === 0 && (
           <div className="text-center py-12">
             <p className="text-slate-400 text-lg">No incidents found</p>
             <p className="text-slate-500 text-sm mt-2">
-              Try adjusting your search or filter criteria
+              {history.length === 0 
+                ? 'No resolved incidents in history yet'
+                : 'Try adjusting your search or filter criteria'}
             </p>
           </div>
         )}
       </div>
     </div>
+    </ProtectedRoute>
   )
 }
 

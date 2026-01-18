@@ -1,5 +1,5 @@
-import React from "react";
-import { View, Text } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { View, Text, Animated } from "react-native";
 import { StatusBar } from "expo-status-bar";
 
 export default function LoadingScreen({
@@ -7,6 +7,25 @@ export default function LoadingScreen({
   subtitle = "Please wait",
   variant = "login",
 }) {
+  const spinValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const spin = Animated.loop(
+      Animated.timing(spinValue, {
+        toValue: 1,
+        duration: 1000,
+        useNativeDriver: true,
+      })
+    );
+    spin.start();
+    return () => spin.stop();
+  }, [spinValue]);
+
+  const spin = spinValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "360deg"],
+  });
+
   const getAccentColor = () => {
     return variant === "register" ? "#9AFF65" : "#9AFF55";
   };
@@ -22,7 +41,7 @@ export default function LoadingScreen({
           paddingHorizontal: variant === "register" ? 16 : 24,
         }}
       >
-        <View
+        <Animated.View
           style={{
             width: 60,
             height: 60,
@@ -31,6 +50,7 @@ export default function LoadingScreen({
             borderColor: getAccentColor(),
             borderTopColor: "transparent",
             marginBottom: 20,
+            transform: [{ rotate: spin }],
           }}
         >
           <View
@@ -41,7 +61,7 @@ export default function LoadingScreen({
               backgroundColor: "transparent",
             }}
           />
-        </View>
+        </Animated.View>
         <Text
           style={{
             fontFamily: "Inter_700Bold",

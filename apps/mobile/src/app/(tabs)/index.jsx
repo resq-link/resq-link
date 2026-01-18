@@ -71,7 +71,7 @@ export default function HomeScreen() {
           flexGrow: 1,
           paddingHorizontal: 24,
           paddingTop: 40,
-          paddingBottom: insets.bottom + 20,
+          paddingBottom: insets.bottom + 100, // Extra padding for custom nav bar
         }}
         showsVerticalScrollIndicator={false}
       >

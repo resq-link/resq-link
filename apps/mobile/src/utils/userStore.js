@@ -30,7 +30,7 @@ const useUserStore = create((set) => ({
 
   logout: async () => {
     await AsyncStorage.removeItem("user");
-    set({ user: null });
+    set({ user: null, isLoading: false });
   },
 }));
 

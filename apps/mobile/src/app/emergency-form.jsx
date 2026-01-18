@@ -357,7 +357,7 @@ export default function EmergencyFormScreen() {
           flexGrow: 1,
           paddingHorizontal: 16,
           paddingTop: insets.top + 160,
-          paddingBottom: insets.bottom + 20,
+          paddingBottom: insets.bottom + 100, // Extra padding for custom nav bar
         }}
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
