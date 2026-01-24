@@ -5,15 +5,15 @@ export default function PriorityBadge({ priority }) {
   const getPriorityConfig = () => {
     switch (priority) {
       case "critical":
-        return { color: "#FF3B30", bg: "#FFE6E6", text: "Critical" };
+        return { color: "#ef4444", bg: "#1e293b", text: "Critical" };
       case "high":
-        return { color: "#FF9500", bg: "#FFF4E6", text: "High" };
+        return { color: "#FF9500", bg: "#1e293b", text: "High" };
       case "medium":
-        return { color: "#FFCC00", bg: "#FFFBE6", text: "Medium" };
+        return { color: "#fbbf24", bg: "#1e293b", text: "Medium" };
       case "low":
-        return { color: "#34C759", bg: "#E6F7ED", text: "Low" };
+        return { color: "#34C759", bg: "#1e293b", text: "Low" };
       default:
-        return { color: "#8E8E93", bg: "#F2F2F7", text: "Medium" };
+        return { color: "#94a3b8", bg: "#1e293b", text: "Medium" };
     }
   };
 
@@ -30,7 +30,7 @@ export default function PriorityBadge({ priority }) {
     >
       <Text
         style={{
-          fontFamily: "Inter_600SemiBold",
+          fontFamily: "SpaceGrotesk_600SemiBold",
           fontSize: 12,
           color: config.color,
         }}

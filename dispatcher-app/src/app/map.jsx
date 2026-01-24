@@ -13,10 +13,10 @@ import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import * as Location from "expo-location";
 import { ArrowLeft, MapPin, AlertCircle } from "lucide-react-native";
 import {
-  Inter_400Regular,
-  Inter_600SemiBold,
-  Inter_700Bold,
-} from "@expo-google-fonts/inter";
+  SpaceGrotesk_400Regular,
+  SpaceGrotesk_600SemiBold,
+  SpaceGrotesk_700Bold,
+} from "@expo-google-fonts/space-grotesk";
 import { useFonts } from "expo-font";
 import useUserStore from "@/utils/userStore";
 import { subscribeToDispatcherAssignedEmergencies } from "@packages/firebase";
@@ -66,9 +66,9 @@ export default function MapScreen() {
   });
 
   const [fontsLoaded] = useFonts({
-    Inter_400Regular,
-    Inter_600SemiBold,
-    Inter_700Bold,
+    SpaceGrotesk_400Regular,
+    SpaceGrotesk_600SemiBold,
+    SpaceGrotesk_700Bold,
   });
 
   // Request location permission and get user location
@@ -203,7 +203,7 @@ export default function MapScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="dark" backgroundColor="#F5F5F5" />
+      <StatusBar style="light" backgroundColor="#0f172a" />
 
       {/* Header */}
       <View
@@ -220,7 +220,7 @@ export default function MapScreen() {
             onPress={() => router.back()}
             style={styles.backButton}
           >
-            <ArrowLeft size={24} color="#1C1C1E" />
+            <ArrowLeft size={24} color="#f1f5f9" />
           </TouchableOpacity>
           <View style={styles.headerText}>
             <Text style={styles.headerTitle}>Command Center Map</Text>
@@ -357,12 +357,12 @@ export default function MapScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F5F5F5",
+    backgroundColor: "#0f172a",
   },
   header: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#0f172a",
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E5EA",
+    borderBottomColor: "#1e293b",
     paddingHorizontal: 16,
   },
   headerContent: {
@@ -377,28 +377,30 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerTitle: {
-    fontFamily: "Inter_700Bold",
+    fontFamily: "SpaceGrotesk_700Bold",
     fontSize: 20,
-    color: "#1C1C1E",
+    color: "#f1f5f9",
   },
   headerSubtitle: {
-    fontFamily: "Inter_400Regular",
+    fontFamily: "SpaceGrotesk_400Regular",
     fontSize: 14,
-    color: "#8E8E93",
+    color: "#94a3b8",
     marginTop: 4,
   },
   mapContainer: {
     flex: 1,
     position: "relative",
+    paddingBottom: 200, // Add padding to prevent map from being hidden behind cases list
   },
   map: {
     flex: 1,
+    zIndex: 1, // Ensure map stays below the cases list
   },
   myLocationButton: {
     position: "absolute",
     top: 16,
     right: 16,
-    backgroundColor: "#007AFF",
+    backgroundColor: "#1e293b",
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -415,8 +417,8 @@ const styles = StyleSheet.create({
     top: 70,
     left: 16,
     right: 16,
-    backgroundColor: "#FFEBEE",
-    borderColor: "#FFCDD2",
+    backgroundColor: "#1e293b",
+    borderColor: "#ef4444",
     borderWidth: 1,
     borderRadius: 8,
     padding: 12,
@@ -425,37 +427,53 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   errorText: {
-    fontFamily: "Inter_400Regular",
+    fontFamily: "SpaceGrotesk_400Regular",
     fontSize: 12,
-    color: "#FF3B30",
+    color: "#f87171",
     flex: 1,
   },
   casesList: {
-    backgroundColor: "#FFFFFF",
-    borderTopWidth: 1,
-    borderTopColor: "#E5E5EA",
-    padding: 16,
-    maxHeight: 200,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#0f172a',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderWidth: 1,
+    borderColor: '#1e293b',
+    padding: 20,
+    paddingBottom: 40,
+    maxHeight: '50%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
+    zIndex: 10, // Ensure it stays above the map
   },
   casesListTitle: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 16,
-    color: "#1C1C1E",
-    marginBottom: 12,
+    fontFamily: "SpaceGrotesk_700Bold",
+    fontSize: 20,
+    color: "#f1f5f9",
+    marginBottom: 16,
+    paddingHorizontal: 4,
   },
   casesScroll: {
-    gap: 8,
+    gap: 12,
+    paddingBottom: 20,
+    maxHeight: 300,
   },
   caseCard: {
-    backgroundColor: "#F5F5F5",
+    backgroundColor: "#1e293b",
     borderRadius: 12,
-    padding: 12,
-    borderWidth: 2,
-    borderColor: "transparent",
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#334155",
   },
   caseCardSelected: {
-    borderColor: "#007AFF",
-    backgroundColor: "#E6F2FF",
+    borderColor: "#3b82f6",
+    backgroundColor: "#1e40af",
   },
   caseCardContent: {
     gap: 4,
@@ -466,9 +484,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   caseCardType: {
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "SpaceGrotesk_600SemiBold",
     fontSize: 14,
-    color: "#1C1C1E",
+    color: "#f1f5f9",
   },
   priorityBadge: {
     paddingHorizontal: 8,
@@ -476,41 +494,43 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   priorityText: {
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "SpaceGrotesk_600SemiBold",
     fontSize: 10,
     color: "#FFFFFF",
     textTransform: "uppercase",
   },
   caseCardLocation: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 12,
-    color: "#8E8E93",
+    fontFamily: "SpaceGrotesk_400Regular",
+    fontSize: 14,
+    color: "#94a3b8",
+    marginBottom: 4,
   },
   caseCardStatus: {
-    fontFamily: "Inter_400Regular",
+    fontFamily: "SpaceGrotesk_400Regular",
     fontSize: 11,
-    color: "#8E8E93",
+    color: "#94a3b8",
     textTransform: "capitalize",
   },
-  emptyState: {
+  emptyStateContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 32,
+    backgroundColor: "#0f172a",
   },
   emptyStateTitle: {
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "SpaceGrotesk_600SemiBold",
     fontSize: 18,
-    color: "#8E8E93",
+    color: "#f1f5f9",
     marginTop: 16,
-    marginBottom: 8,
+    textAlign: "center",
   },
   emptyStateText: {
-    fontFamily: "Inter_400Regular",
+    fontFamily: "SpaceGrotesk_400Regular",
     fontSize: 14,
-    color: "#8E8E93",
+    color: "#94a3b8",
+    marginTop: 8,
     textAlign: "center",
-    paddingHorizontal: 32,
+    lineHeight: 20,
   },
 });
-

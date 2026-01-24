@@ -5,20 +5,20 @@ export default function CaseStatusBadge({ status }) {
   const getStatusConfig = () => {
     switch (status) {
       case "pending":
-        return { color: "#FF9500", bg: "#FFF4E6", text: "Pending" };
+        return { color: "#FF9500", bg: "#1e293b", text: "Pending" };
       case "enroute":
-        return { color: "#007AFF", bg: "#E6F2FF", text: "En Route" };
+        return { color: "#007AFF", bg: "#1e293b", text: "En Route" };
       case "on_scene":
-        return { color: "#5856D6", bg: "#E5E5FA", text: "On Scene" };
+        return { color: "#818cf8", bg: "#1e293b", text: "On Scene" };
       case "done":
-        return { color: "#34C759", bg: "#E6F7ED", text: "Done" };
+        return { color: "#34C759", bg: "#1e293b", text: "Done" };
       // Legacy statuses for backward compatibility
       case "active":
-        return { color: "#007AFF", bg: "#E6F2FF", text: "Active" };
+        return { color: "#007AFF", bg: "#1e293b", text: "Active" };
       case "resolved":
-        return { color: "#34C759", bg: "#E6F7ED", text: "Resolved" };
+        return { color: "#34C759", bg: "#1e293b", text: "Resolved" };
       default:
-        return { color: "#8E8E93", bg: "#F2F2F7", text: "Unknown" };
+        return { color: "#94a3b8", bg: "#1e293b", text: "Unknown" };
     }
   };
 

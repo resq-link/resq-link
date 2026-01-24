@@ -5,10 +5,10 @@ import { StatusBar } from "expo-status-bar";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
 import {
-  Inter_400Regular,
-  Inter_600SemiBold,
-  Inter_700Bold,
-} from "@expo-google-fonts/inter";
+  SpaceGrotesk_400Regular,
+  SpaceGrotesk_600SemiBold,
+  SpaceGrotesk_700Bold,
+} from "@expo-google-fonts/space-grotesk";
 import { useFonts } from "expo-font";
 import { getDoc, doc, firestore, onSnapshot } from "@packages/firebase";
 import CaseInfoCard from "@/components/CaseInfoCard";
@@ -25,9 +25,9 @@ export default function CaseDetailScreen() {
   const [error, setError] = useState("");
 
   const [fontsLoaded] = useFonts({
-    Inter_400Regular,
-    Inter_600SemiBold,
-    Inter_700Bold,
+    SpaceGrotesk_400Regular,
+    SpaceGrotesk_600SemiBold,
+    SpaceGrotesk_700Bold,
   });
 
   useEffect(() => {
@@ -129,16 +129,16 @@ export default function CaseDetailScreen() {
 
   if (error && !caseData) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#F5F5F5" }}>
-        <StatusBar style="dark" backgroundColor="#F5F5F5" />
+      <View style={{ flex: 1, backgroundColor: "#0f172a" }}>
+        <StatusBar style="light" backgroundColor="#0f172a" />
         <View
           style={{
-            backgroundColor: "#FFFFFF",
+            backgroundColor: "#3b82f6",
             paddingTop: insets.top + 20,
             paddingHorizontal: 16,
             paddingBottom: 16,
             borderBottomWidth: 1,
-            borderBottomColor: "#E5E5EA",
+            borderBottomColor: "#1e293b",
             flexDirection: "row",
             alignItems: "center",
           }}
@@ -147,57 +147,66 @@ export default function CaseDetailScreen() {
             onPress={() => router.back()}
             style={{ marginRight: 16 }}
           >
-            <ArrowLeft size={24} color="#1C1C1E" />
+            <ArrowLeft size={24} color="#94a3b8" />
           </TouchableOpacity>
           <Text
             style={{
-              fontFamily: "Inter_700Bold",
+              fontFamily: "SpaceGrotesk_700Bold",
               fontSize: 20,
-              color: "#1C1C1E",
+              color: "#94a3b8",
             }}
           >
             Case Details
           </Text>
         </View>
-        <View style={{ flex: 1, padding: 16 }}>
-          <ErrorAlert message={error} />
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={{
-              backgroundColor: "#007AFF",
-              borderRadius: 12,
-              padding: 16,
-              alignItems: "center",
-            }}
-          >
-            <Text
+        <ScrollView style={{ flex: 1, backgroundColor: "#0f172a" }}>
+          <View style={{ padding: 16, backgroundColor: "#0f172a" }}>
+            <ErrorAlert message={error} />
+            <TouchableOpacity
+              onPress={() => router.back()}
               style={{
-                fontFamily: "Inter_600SemiBold",
-                fontSize: 16,
-                color: "#FFFFFF",
+                marginBottom: 16,
+                backgroundColor: "#0f172a",
+                borderRadius: 12,
+                padding: 16,
+                borderWidth: 1,
+                borderColor: "#1e293b",
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.3,
+                shadowRadius: 4,
+                elevation: 3,
               }}
             >
-              Go Back
-            </Text>
-          </TouchableOpacity>
-        </View>
+              <Text
+                style={{
+                  fontFamily: "SpaceGrotesk_600SemiBold",
+                  fontSize: 16,
+                  color: "#94a3b8",
+                }}
+              >
+                Go Back
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       </View>
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#F5F5F5" }}>
-      <StatusBar style="dark" backgroundColor="#F5F5F5" />
+    <View style={{ flex: 1, backgroundColor: "#0f172a" }}>
+      <StatusBar style="light" backgroundColor="#0f172a" />
 
       {/* Header */}
       <View
         style={{
-          backgroundColor: "#FFFFFF",
+          backgroundColor: "#0f172a",
           paddingTop: insets.top + 20,
           paddingHorizontal: 16,
           paddingBottom: 16,
           borderBottomWidth: 1,
-          borderBottomColor: "#E5E5EA",
+          borderBottomColor: "#1e293b",
           flexDirection: "row",
           alignItems: "center",
         }}
@@ -206,13 +215,13 @@ export default function CaseDetailScreen() {
           onPress={() => router.back()}
           style={{ marginRight: 16 }}
         >
-          <ArrowLeft size={24} color="#1C1C1E" />
+          <ArrowLeft size={24} color="#94a3b8" />
         </TouchableOpacity>
         <Text
           style={{
-            fontFamily: "Inter_700Bold",
+            fontFamily: "SpaceGrotesk_700Bold",
             fontSize: 20,
-            color: "#1C1C1E",
+            color: "#94a3b8",
           }}
         >
           Case Details
@@ -226,8 +235,8 @@ export default function CaseDetailScreen() {
       )}
 
       {caseData && (
-        <CaseInfoCard 
-          case={caseData} 
+        <CaseInfoCard
+          case={caseData}
           reporterInfo={reporterInfo}
           onStatusUpdate={() => {
             // The real-time subscription will automatically update the case data

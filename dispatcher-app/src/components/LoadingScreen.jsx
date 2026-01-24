@@ -7,8 +7,8 @@ export default function LoadingScreen({
   subtitle = "Please wait",
 }) {
   return (
-    <View style={{ flex: 1, backgroundColor: "#F5F5F5" }}>
-      <StatusBar style="dark" backgroundColor="#F5F5F5" />
+    <View style={{ flex: 1, backgroundColor: "#0f172a" }}>
+      <StatusBar style="light" backgroundColor="#0f172a" />
       <View
         style={{
           flex: 1,
@@ -17,12 +17,12 @@ export default function LoadingScreen({
           paddingHorizontal: 24,
         }}
       >
-        <ActivityIndicator size="large" color="#007AFF" style={{ marginBottom: 20 }} />
+        <ActivityIndicator size="large" color="#3b82f6" style={{ marginBottom: 20 }} />
         <Text
           style={{
-            fontFamily: "Inter_700Bold",
+            fontFamily: "SpaceGrotesk_700Bold",
             fontSize: 18,
-            color: "#1C1C1E",
+            color: "#f1f5f9",
             marginBottom: 8,
           }}
         >
@@ -30,9 +30,9 @@ export default function LoadingScreen({
         </Text>
         <Text
           style={{
-            fontFamily: "Inter_400Regular",
+            fontFamily: "SpaceGrotesk_400Regular",
             fontSize: 14,
-            color: "#8E8E93",
+            color: "#94a3b8",
             textAlign: "center",
           }}
         >

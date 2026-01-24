@@ -64,13 +64,15 @@ export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
       onPress={onPress}
       activeOpacity={0.7}
       style={{
-        backgroundColor: "#FFFFFF",
+        backgroundColor: "#0f172a",
         borderRadius: 12,
         padding: 16,
         marginBottom: 12,
+        borderWidth: 1,
+        borderColor: "#1e293b",
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
+        shadowOpacity: 0.3,
         shadowRadius: 4,
         elevation: 3,
       }}
@@ -79,9 +81,9 @@ export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
         <View style={{ flex: 1 }}>
           <Text
             style={{
-              fontFamily: "Inter_700Bold",
+              fontFamily: "SpaceGrotesk_700Bold",
               fontSize: 18,
-              color: "#1C1C1E",
+              color: "#f1f5f9",
               marginBottom: 4,
             }}
           >
@@ -98,9 +100,9 @@ export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
       {caseData.description && (
         <Text
           style={{
-            fontFamily: "Inter_400Regular",
+            fontFamily: "SpaceGrotesk_400Regular",
             fontSize: 14,
-            color: "#3A3A3C",
+            color: "#cbd5e1",
             marginBottom: 12,
             lineHeight: 20,
           }}
@@ -111,12 +113,12 @@ export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
       )}
 
       <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
-        <MapPin size={16} color="#8E8E93" />
+        <MapPin size={16} color="#94a3b8" />
         <Text
           style={{
-            fontFamily: "Inter_400Regular",
+            fontFamily: "SpaceGrotesk_400Regular",
             fontSize: 14,
-            color: "#8E8E93",
+            color: "#94a3b8",
             marginLeft: 6,
             flex: 1,
           }}
@@ -127,12 +129,12 @@ export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
       </View>
 
       <View style={{ flexDirection: "row", alignItems: "center", marginBottom: showAcceptButton ? 12 : 0 }}>
-        <Clock size={16} color="#8E8E93" />
+        <Clock size={16} color="#94a3b8" />
         <Text
           style={{
-            fontFamily: "Inter_400Regular",
+            fontFamily: "SpaceGrotesk_400Regular",
             fontSize: 12,
-            color: "#8E8E93",
+            color: "#94a3b8",
             marginLeft: 6,
           }}
         >
@@ -153,7 +155,7 @@ export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
           >
             <View
               style={{
-                backgroundColor: isAccepting ? "#C7C7CC" : "#007AFF",
+                backgroundColor: isAccepting ? "#475569" : "#007AFF",
                 borderRadius: 12,
                 padding: 14,
                 alignItems: "center",
@@ -161,7 +163,7 @@ export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
             >
               <Text
                 style={{
-                  fontFamily: "Inter_600SemiBold",
+                  fontFamily: "SpaceGrotesk_600SemiBold",
                   fontSize: 16,
                   color: "#FFFFFF",
                 }}

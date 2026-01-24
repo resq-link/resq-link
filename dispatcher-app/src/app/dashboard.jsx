@@ -9,12 +9,12 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
-import { LogOut, AlertCircle, Map } from "lucide-react-native";
+import { LogOut, AlertCircle, Map, Activity, CheckCircle, Users } from "lucide-react-native";
 import {
-  Inter_400Regular,
-  Inter_600SemiBold,
-  Inter_700Bold,
-} from "@expo-google-fonts/inter";
+  SpaceGrotesk_400Regular,
+  SpaceGrotesk_600SemiBold,
+  SpaceGrotesk_700Bold,
+} from "@expo-google-fonts/space-grotesk";
 import { useFonts } from "expo-font";
 import useUserStore from "@/utils/userStore";
 import { subscribeToDispatcherAssignedEmergencies, signOut, auth, updateDispatcherLocation, setDispatcherOnlineStatus } from "@packages/firebase";
@@ -31,9 +31,9 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const [fontsLoaded] = useFonts({
-    Inter_400Regular,
-    Inter_600SemiBold,
-    Inter_700Bold,
+    SpaceGrotesk_400Regular,
+    SpaceGrotesk_600SemiBold,
+    SpaceGrotesk_700Bold,
   });
 
   useEffect(() => {
@@ -198,38 +198,43 @@ export default function DashboardScreen() {
   ).length;
   // Count resolved cases (done or legacy resolved)
   const resolvedCount = cases.filter((c) => c.status === "done" || c.status === "resolved").length;
+  // Calculate total cases and percentage
+  const totalCases = cases.length;
+  const resolvedPercentage = totalCases > 0 ? Math.round((resolvedCount / totalCases) * 100) : 0;
+  // Mock number of responders available
+  const respondersAvailable = 12;
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#F5F5F5" }}>
-      <StatusBar style="dark" backgroundColor="#F5F5F5" />
+    <View style={{ flex: 1, backgroundColor: "#020617" }}>
+      <StatusBar style="light" backgroundColor="#020617" />
 
       {/* Header */}
       <View
         style={{
-          backgroundColor: "#FFFFFF",
+          backgroundColor: "#0f172a",
           paddingTop: insets.top + 20,
           paddingHorizontal: 16,
           paddingBottom: 16,
           borderBottomWidth: 1,
-          borderBottomColor: "#E5E5EA",
+          borderBottomColor: "#1e293b",
         }}
       >
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <View>
             <Text
               style={{
-                fontFamily: "Inter_700Bold",
+                fontFamily: "SpaceGrotesk_700Bold",
                 fontSize: 28,
-                color: "#1C1C1E",
+                color: "#f1f5f9",
               }}
             >
               Dashboard
             </Text>
             <Text
               style={{
-                fontFamily: "Inter_400Regular",
+                fontFamily: "SpaceGrotesk_400Regular",
                 fontSize: 14,
-                color: "#8E8E93",
+                color: "#94a3b8",
                 marginTop: 4,
               }}
             >
@@ -263,23 +268,54 @@ export default function DashboardScreen() {
           <View
             style={{
               flex: 1,
-              backgroundColor: "#E6F2FF",
+              backgroundColor: "#1e293b",
               borderRadius: 12,
               padding: 12,
+              position: "relative",
+              borderWidth: 1,
+              borderColor: "#334155",
             }}
           >
+            {/* Icon on top left */}
+            <View style={{ position: "absolute", top: 12, left: 12 }}>
+              <Activity size={20} color="#007AFF" />
+            </View>
+            {/* NOW badge on top right */}
+            <View
+              style={{
+                position: "absolute",
+                top: 8,
+                right: 8,
+                backgroundColor: "#007AFF",
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 8,
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: "SpaceGrotesk_600SemiBold",
+                  fontSize: 10,
+                  color: "#FFFFFF",
+                  textTransform: "uppercase",
+                }}
+              >
+                NOW
+              </Text>
+            </View>
             <Text
               style={{
-                fontFamily: "Inter_600SemiBold",
+                fontFamily: "SpaceGrotesk_600SemiBold",
                 fontSize: 24,
                 color: "#007AFF",
+                marginTop: 28,
               }}
             >
               {activeCount}
             </Text>
             <Text
               style={{
-                fontFamily: "Inter_400Regular",
+                fontFamily: "SpaceGrotesk_400Regular",
                 fontSize: 12,
                 color: "#007AFF",
                 marginTop: 4,
@@ -291,23 +327,53 @@ export default function DashboardScreen() {
           <View
             style={{
               flex: 1,
-              backgroundColor: "#E6F7ED",
+              backgroundColor: "#1e293b",
               borderRadius: 12,
               padding: 12,
+              position: "relative",
+              borderWidth: 1,
+              borderColor: "#334155",
             }}
           >
+            {/* Icon on top left */}
+            <View style={{ position: "absolute", top: 12, left: 12 }}>
+              <CheckCircle size={20} color="#34C759" />
+            </View>
+            {/* Percentage badge on top right */}
+            <View
+              style={{
+                position: "absolute",
+                top: 8,
+                right: 8,
+                backgroundColor: "#34C759",
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 8,
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: "SpaceGrotesk_600SemiBold",
+                  fontSize: 10,
+                  color: "#FFFFFF",
+                }}
+              >
+                {resolvedPercentage}%
+              </Text>
+            </View>
             <Text
               style={{
-                fontFamily: "Inter_600SemiBold",
+                fontFamily: "SpaceGrotesk_600SemiBold",
                 fontSize: 24,
                 color: "#34C759",
+                marginTop: 28,
               }}
             >
               {resolvedCount}
             </Text>
             <Text
               style={{
-                fontFamily: "Inter_400Regular",
+                fontFamily: "SpaceGrotesk_400Regular",
                 fontSize: 12,
                 color: "#34C759",
                 marginTop: 4,
@@ -316,12 +382,71 @@ export default function DashboardScreen() {
               Resolved
             </Text>
           </View>
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: "#1e293b",
+              borderRadius: 12,
+              padding: 12,
+              position: "relative",
+              borderWidth: 1,
+              borderColor: "#334155",
+            }}
+          >
+            {/* Icon on top left */}
+            <View style={{ position: "absolute", top: 12, left: 12 }}>
+              <Users size={20} color="#FF9500" />
+            </View>
+            {/* NOW badge on top right */}
+            <View
+              style={{
+                position: "absolute",
+                top: 8,
+                right: 8,
+                backgroundColor: "#FF9500",
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 8,
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: "SpaceGrotesk_600SemiBold",
+                  fontSize: 10,
+                  color: "#FFFFFF",
+                  textTransform: "uppercase",
+                }}
+              >
+                NOW
+              </Text>
+            </View>
+            <Text
+              style={{
+                fontFamily: "SpaceGrotesk_600SemiBold",
+                fontSize: 24,
+                color: "#FF9500",
+                marginTop: 28,
+              }}
+            >
+              {respondersAvailable}
+            </Text>
+            <Text
+              style={{
+                fontFamily: "SpaceGrotesk_400Regular",
+                fontSize: 12,
+                color: "#FF9500",
+                marginTop: 4,
+              }}
+            >
+              Responders
+            </Text>
+          </View>
         </View>
       </View>
 
       {/* Cases List */}
       <ScrollView
-        style={{ flex: 1 }}
+        style={{ flex: 1, backgroundColor: "#020617" }}
         contentContainerStyle={{
           padding: 16,
           paddingBottom: insets.bottom + 20,
@@ -340,12 +465,12 @@ export default function DashboardScreen() {
               paddingVertical: 60,
             }}
           >
-            <AlertCircle size={48} color="#C7C7CC" />
+            <AlertCircle size={48} color="#475569" />
             <Text
               style={{
-                fontFamily: "Inter_600SemiBold",
+                fontFamily: "SpaceGrotesk_600SemiBold",
                 fontSize: 18,
-                color: "#8E8E93",
+                color: "#94a3b8",
                 marginTop: 16,
                 marginBottom: 8,
               }}
@@ -354,9 +479,9 @@ export default function DashboardScreen() {
             </Text>
             <Text
               style={{
-                fontFamily: "Inter_400Regular",
+                fontFamily: "SpaceGrotesk_400Regular",
                 fontSize: 14,
-                color: "#8E8E93",
+                color: "#94a3b8",
                 textAlign: "center",
                 paddingHorizontal: 32,
               }}

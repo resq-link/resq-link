@@ -22,31 +22,32 @@ export default function FormInput({
     <View style={[{ marginBottom: 24 }, style]}>
       <Text
         style={{
-          fontFamily: "Inter_600SemiBold",
+          fontFamily: "SpaceGrotesk_600SemiBold",
           fontSize: 14,
-          color: "#1C1C1E",
+          color: "#f1f5f9",
           marginBottom: 8,
         }}
       >
         {label}
-        {required && <Text style={{ color: "#FF3B30" }}> *</Text>}
+        {required && <Text style={{ color: "#f87171" }}> *</Text>}
       </Text>
       <View style={{ position: "relative" }}>
         <TextInput
           style={{
             height: 50,
             borderWidth: focused ? 2 : 1,
-            borderColor: focused ? "#007AFF" : "#C7C7CC",
+            borderColor: focused ? "#3b82f6" : "#334155",
             borderRadius: 12,
             paddingHorizontal: 16,
             paddingRight: secureTextEntry ? 50 : 16,
-            fontFamily: "Inter_400Regular",
+            fontFamily: "SpaceGrotesk_400Regular",
             fontSize: 16,
-            color: "#1C1C1E",
-            backgroundColor: "#FFFFFF",
+            color: "#94a3b8",
+            padding: 8,
+            backgroundColor: "#1e293b",
           }}
           placeholder={placeholder}
-          placeholderTextColor="#8E8E93"
+          placeholderTextColor="#64748b"
           value={value}
           onChangeText={onChangeText}
           onFocus={() => setFocused(true)}

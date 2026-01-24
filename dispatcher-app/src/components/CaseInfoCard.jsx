@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, ScrollView, TouchableOpacity, Modal, StyleSheet } from "react-native";
+import { View, Text, ScrollView, TouchableOpacity, Modal, StyleSheet, Platform } from "react-native";
 import { Image } from "expo-image";
 import { MapPin, Clock, User, AlertCircle, X } from "lucide-react-native";
 import { Picker } from "@react-native-picker/picker";
@@ -117,15 +117,15 @@ export default function CaseInfoCard({ case: caseData, reporterInfo, onStatusUpd
   };
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: "#F5F5F5" }}>
+    <ScrollView style={{ flex: 1, backgroundColor: "#0f172a" }}>
       <View style={{ padding: 16 }}>
         {/* Header */}
-        <View style={{ backgroundColor: "#FFFFFF", borderRadius: 12, padding: 16, marginBottom: 12 }}>
+        <View style={{ backgroundColor: "#1e293b", borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: "#334155" }}>
           <Text
             style={{
-              fontFamily: "Inter_700Bold",
+              fontFamily: "SpaceGrotesk_700Bold",
               fontSize: 24,
-              color: "#1C1C1E",
+              color: "#f1f5f9",
               marginBottom: 12,
             }}
           >
@@ -140,12 +140,12 @@ export default function CaseInfoCard({ case: caseData, reporterInfo, onStatusUpd
 
         {/* Description */}
         {caseData.description && (
-          <View style={{ backgroundColor: "#FFFFFF", borderRadius: 12, padding: 16, marginBottom: 12 }}>
+          <View style={{ backgroundColor: "#1e293b", borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: "#334155" }}>
             <Text
               style={{
-                fontFamily: "Inter_600SemiBold",
+                fontFamily: "SpaceGrotesk_600SemiBold",
                 fontSize: 16,
-                color: "#1C1C1E",
+                color: "#f1f5f9",
                 marginBottom: 8,
               }}
             >
@@ -153,9 +153,9 @@ export default function CaseInfoCard({ case: caseData, reporterInfo, onStatusUpd
             </Text>
             <Text
               style={{
-                fontFamily: "Inter_400Regular",
+                fontFamily: "SpaceGrotesk_400Regular",
                 fontSize: 14,
-                color: "#3A3A3C",
+                color: "#cbd5e1",
                 lineHeight: 20,
               }}
             >
@@ -166,12 +166,12 @@ export default function CaseInfoCard({ case: caseData, reporterInfo, onStatusUpd
 
         {/* Photo */}
         {caseData.imageUrl && (
-          <View style={{ backgroundColor: "#FFFFFF", borderRadius: 12, padding: 16, marginBottom: 12 }}>
+          <View style={{ backgroundColor: "#1e293b", borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: "#334155" }}>
             <Text
               style={{
-                fontFamily: "Inter_600SemiBold",
+                fontFamily: "SpaceGrotesk_600SemiBold",
                 fontSize: 16,
-                color: "#1C1C1E",
+                color: "#f1f5f9",
                 marginBottom: 12,
               }}
             >
@@ -199,25 +199,22 @@ export default function CaseInfoCard({ case: caseData, reporterInfo, onStatusUpd
         )}
 
         {/* Location */}
-        <View style={{ backgroundColor: "#FFFFFF", borderRadius: 12, padding: 16, marginBottom: 12 }}>
-          <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
-            <MapPin size={20} color="#007AFF" />
-            <Text
-              style={{
-                fontFamily: "Inter_600SemiBold",
-                fontSize: 16,
-                color: "#1C1C1E",
-                marginLeft: 8,
-              }}
-            >
-              Location
-            </Text>
-          </View>
+        <View style={{ backgroundColor: "#1e293b", borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: "#334155" }}>
           <Text
             style={{
-              fontFamily: "Inter_400Regular",
+              fontFamily: "SpaceGrotesk_600SemiBold",
+              fontSize: 16,
+              color: "#f1f5f9",
+              marginBottom: 12,
+            }}
+          >
+            Location
+          </Text>
+          <Text
+            style={{
+              fontFamily: "SpaceGrotesk_400Regular",
               fontSize: 14,
-              color: "#3A3A3C",
+              color: "#cbd5e1",
               marginLeft: 28,
             }}
           >
@@ -226,9 +223,9 @@ export default function CaseInfoCard({ case: caseData, reporterInfo, onStatusUpd
           {caseData.latitude && caseData.longitude && (
             <Text
               style={{
-                fontFamily: "Inter_400Regular",
+                fontFamily: "SpaceGrotesk_400Regular",
                 fontSize: 12,
-                color: "#8E8E93",
+                color: "#94a3b8",
                 marginLeft: 28,
                 marginTop: 4,
               }}
@@ -240,25 +237,22 @@ export default function CaseInfoCard({ case: caseData, reporterInfo, onStatusUpd
 
         {/* Reporter Information */}
         {reporterInfo && (
-          <View style={{ backgroundColor: "#FFFFFF", borderRadius: 12, padding: 16, marginBottom: 12 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
-              <User size={20} color="#007AFF" />
-              <Text
-                style={{
-                  fontFamily: "Inter_600SemiBold",
-                  fontSize: 16,
-                  color: "#1C1C1E",
-                  marginLeft: 8,
-                }}
-              >
-                Reporter Information
-              </Text>
-            </View>
+          <View style={{ backgroundColor: "#1e293b", borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: "#334155" }}>
             <Text
               style={{
-                fontFamily: "Inter_400Regular",
+                fontFamily: "SpaceGrotesk_600SemiBold",
+                fontSize: 16,
+                color: "#f1f5f9",
+                marginBottom: 12,
+              }}
+            >
+              Reporter Information
+            </Text>
+            <Text
+              style={{
+                fontFamily: "SpaceGrotesk_400Regular",
                 fontSize: 14,
-                color: "#3A3A3C",
+                color: "#cbd5e1",
                 marginLeft: 28,
                 marginBottom: 4,
               }}
@@ -268,9 +262,9 @@ export default function CaseInfoCard({ case: caseData, reporterInfo, onStatusUpd
             {reporterInfo.phone && (
               <Text
                 style={{
-                  fontFamily: "Inter_400Regular",
+                  fontFamily: "SpaceGrotesk_400Regular",
                   fontSize: 14,
-                  color: "#3A3A3C",
+                  color: "#cbd5e1",
                   marginLeft: 28,
                   marginBottom: 4,
                 }}
@@ -281,9 +275,9 @@ export default function CaseInfoCard({ case: caseData, reporterInfo, onStatusUpd
             {reporterInfo.email && (
               <Text
                 style={{
-                  fontFamily: "Inter_400Regular",
+                  fontFamily: "SpaceGrotesk_400Regular",
                   fontSize: 14,
-                  color: "#3A3A3C",
+                  color: "#cbd5e1",
                   marginLeft: 28,
                 }}
               >
@@ -294,14 +288,14 @@ export default function CaseInfoCard({ case: caseData, reporterInfo, onStatusUpd
         )}
 
         {/* Timestamps */}
-        <View style={{ backgroundColor: "#FFFFFF", borderRadius: 12, padding: 16, marginBottom: 12 }}>
+        <View style={{ backgroundColor: "#1e293b", borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: "#334155" }}>
           <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
-            <Clock size={20} color="#007AFF" />
+            <Clock size={20} color="#f1f5f9" />
             <Text
               style={{
-                fontFamily: "Inter_600SemiBold",
+                fontFamily: "SpaceGrotesk_600SemiBold",
                 fontSize: 16,
-                color: "#1C1C1E",
+                color: "#f1f5f9",
                 marginLeft: 8,
               }}
             >
@@ -310,9 +304,9 @@ export default function CaseInfoCard({ case: caseData, reporterInfo, onStatusUpd
           </View>
           <Text
             style={{
-              fontFamily: "Inter_400Regular",
+              fontFamily: "SpaceGrotesk_400Regular",
               fontSize: 14,
-              color: "#3A3A3C",
+              color: "#cbd5e1",
               marginLeft: 28,
               marginBottom: 4,
             }}
@@ -322,9 +316,9 @@ export default function CaseInfoCard({ case: caseData, reporterInfo, onStatusUpd
           {caseData.updatedAt && (
             <Text
               style={{
-                fontFamily: "Inter_400Regular",
+                fontFamily: "SpaceGrotesk_400Regular",
                 fontSize: 14,
-                color: "#3A3A3C",
+                color: "#cbd5e1",
                 marginLeft: 28,
               }}
             >
@@ -335,7 +329,7 @@ export default function CaseInfoCard({ case: caseData, reporterInfo, onStatusUpd
 
         {/* Case Actions - Accept Button and Status Dropdown */}
         {isAssignedDispatcher && (
-          <View style={{ backgroundColor: "#FFFFFF", borderRadius: 12, padding: 16, marginBottom: 12 }}>
+          <View style={{ backgroundColor: "#1e293b", borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: "#334155" }}>
             {error && (
               <View style={{ marginBottom: 12 }}>
                 <ErrorAlert message={error} onDismiss={() => setError("")} />
@@ -352,34 +346,24 @@ export default function CaseInfoCard({ case: caseData, reporterInfo, onStatusUpd
             )}
 
             {showStatusDropdown && (
-              <View>
+              <View style={{ marginTop: 2, marginBottom: 12 }}>
                 <Text
                   style={{
-                    fontFamily: "Inter_600SemiBold",
+                    fontFamily: "SpaceGrotesk_600SemiBold",
                     fontSize: 16,
-                    color: "#1C1C1E",
-                    marginBottom: 12,
+                    color: "#f1f5f9",
+                    marginBottom: 16,
                   }}
                 >
                   Update Status
                 </Text>
-                <View
-                  style={{
-                    backgroundColor: "#F5F5F5",
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    borderColor: "#E5E5EA",
-                    overflow: "hidden",
-                  }}
-                >
+                <View style={styles.pickerShell}>
                   <Picker
                     selectedValue={selectedStatus}
                     onValueChange={handleStatusChange}
                     enabled={!isUpdating}
-                    style={{
-                      color: "#1C1C1E",
-                      fontFamily: "Inter_400Regular",
-                    }}
+                    style={styles.picker}
+                    itemStyle={styles.pickerItem}
                   >
                     <Picker.Item label="En Route" value="enroute" />
                     <Picker.Item label="On Scene" value="on_scene" />
@@ -392,7 +376,7 @@ export default function CaseInfoCard({ case: caseData, reporterInfo, onStatusUpd
             {caseData.status === "done" && (
               <View
                 style={{
-                  backgroundColor: "#E6F7ED",
+                  backgroundColor: "#2f4054",
                   borderRadius: 8,
                   padding: 12,
                   alignItems: "center",
@@ -400,7 +384,7 @@ export default function CaseInfoCard({ case: caseData, reporterInfo, onStatusUpd
               >
                 <Text
                   style={{
-                    fontFamily: "Inter_600SemiBold",
+                    fontFamily: "SpaceGrotesk_600SemiBold",
                     fontSize: 14,
                     color: "#34C759",
                   }}
@@ -409,7 +393,7 @@ export default function CaseInfoCard({ case: caseData, reporterInfo, onStatusUpd
                 </Text>
                 <Text
                   style={{
-                    fontFamily: "Inter_400Regular",
+                    fontFamily: "SpaceGrotesk_400Regular",
                     fontSize: 12,
                     color: "#34C759",
                     marginTop: 4,
@@ -445,7 +429,7 @@ export default function CaseInfoCard({ case: caseData, reporterInfo, onStatusUpd
               </TouchableOpacity>
               <Image
                 source={{ uri: caseData.imageUrl }}
-                style={styles.modalImage}
+                style={styles.fullImage}
                 contentFit="contain"
                 transition={200}
               />
@@ -475,18 +459,42 @@ const styles = StyleSheet.create({
     height: "80%",
     position: "relative",
   },
-  modalImage: {
+  fullImage: {
     width: "100%",
-    height: "100%",
+    height: "80%",
+    resizeMode: "contain",
   },
   closeButton: {
     position: "absolute",
-    top: 20,
+    top: 40,
     right: 20,
-    zIndex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "rgba(31, 41, 55, 0.8)",
+    width: 40,
+    height: 40,
     borderRadius: 20,
-    padding: 8,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#334155",
+  },
+  picker: {
+    height: Platform.OS === "ios" ? 220 : 56,
+    width: "100%",
+    color: "#f1f5f9",
+    backgroundColor: "transparent",
+  },
+  pickerShell: {
+    backgroundColor: "#0f172a",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#334155",
+    overflow: "hidden",
+    height: Platform.OS === "ios" ? 140 : 60,
+    justifyContent: "center",
+  },
+  pickerItem: {
+    color: "#f1f5f9",
+    fontFamily: "SpaceGrotesk_600SemiBold",
+    fontSize: 16,
   },
 });
-

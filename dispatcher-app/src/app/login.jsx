@@ -4,10 +4,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import {
-  Inter_400Regular,
-  Inter_600SemiBold,
-  Inter_700Bold,
-} from "@expo-google-fonts/inter";
+  SpaceGrotesk_400Regular,
+  SpaceGrotesk_600SemiBold,
+  SpaceGrotesk_700Bold,
+} from "@expo-google-fonts/space-grotesk";
 import { useFonts } from "expo-font";
 import FormInput from "@/components/FormInput";
 import CustomButton from "@/components/CustomButton";
@@ -26,9 +26,9 @@ export default function LoginScreen() {
   const { setUser } = useUserStore();
 
   const [fontsLoaded] = useFonts({
-    Inter_400Regular,
-    Inter_600SemiBold,
-    Inter_700Bold,
+    SpaceGrotesk_400Regular,
+    SpaceGrotesk_600SemiBold,
+    SpaceGrotesk_700Bold,
   });
 
   if (!fontsLoaded) {
@@ -113,34 +113,34 @@ export default function LoginScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#F5F5F5" }}>
-      <StatusBar style="dark" backgroundColor="#F5F5F5" />
+    <View style={{ flex: 1, backgroundColor: "#0f172a" }}>
+      <StatusBar style="light" backgroundColor="#0f172a" />
 
       {/* Header */}
       <View
         style={{
-          backgroundColor: "#FFFFFF",
+          backgroundColor: "#0f172a",
           paddingTop: insets.top + 20,
           paddingHorizontal: 16,
           paddingBottom: 20,
           borderBottomWidth: 1,
-          borderBottomColor: "#E5E5EA",
+          borderBottomColor: "#1e293b",
         }}
       >
         <Text
           style={{
-            fontFamily: "Inter_700Bold",
+            fontFamily: "SpaceGrotesk_700Bold",
             fontSize: 30,
-            color: "#1C1C1E",
+            color: "#f1f5f9",
           }}
         >
           Dispatcher Login
         </Text>
         <Text
           style={{
-            fontFamily: "Inter_400Regular",
+            fontFamily: "SpaceGrotesk_400Regular",
             fontSize: 14,
-            color: "#8E8E93",
+            color: "#94a3b8",
             marginTop: 4,
           }}
         >
@@ -155,6 +155,7 @@ export default function LoginScreen() {
           paddingHorizontal: 16,
           paddingTop: 24,
           paddingBottom: insets.bottom + 20,
+          backgroundColor: "#0f172a",
         }}
         showsVerticalScrollIndicator={false}
       >
