@@ -65,6 +65,12 @@ export default function RootLayout() {
             <Stack.Screen name="emergency-form" />
             <Stack.Screen name="emergency-confirmation" />
             <Stack.Screen name="responder-map" />
+            <Stack.Screen name="appearance" />
+            <Stack.Screen name="notifications" />
+            <Stack.Screen name="privacy-security" />
+            <Stack.Screen name="help-support" />
+            <Stack.Screen name="report-issue" />
+            <Stack.Screen name="faq" />
           </Stack>
           <CustomBottomNav />
         </View>

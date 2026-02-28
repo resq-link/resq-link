@@ -11,11 +11,13 @@ import {
 } from "@expo-google-fonts/inter";
 import { useFonts } from "expo-font";
 import CustomButton from "../components/CustomButton";
+import { useAppTheme } from "@/utils/useAppTheme";
 
 export default function EmergencyConfirmationScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { colors } = useAppTheme();
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -28,8 +30,8 @@ export default function EmergencyConfirmationScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#000000" }}>
-      <StatusBar style="light" backgroundColor="#000000" />
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar style={colors.statusBarStyle} backgroundColor={colors.background} />
 
       <View
         style={{
@@ -61,7 +63,7 @@ export default function EmergencyConfirmationScreen() {
           style={{
             fontFamily: "Inter_700Bold",
             fontSize: 28,
-            color: "#FFFFFF",
+            color: colors.text,
             marginBottom: 12,
             textAlign: "center",
           }}
@@ -73,7 +75,7 @@ export default function EmergencyConfirmationScreen() {
           style={{
             fontFamily: "Inter_400Regular",
             fontSize: 16,
-            color: "#9A9A9A",
+            color: colors.textSecondary,
             textAlign: "center",
             lineHeight: 24,
             marginBottom: 48,
@@ -106,10 +108,10 @@ export default function EmergencyConfirmationScreen() {
             style={{
               marginTop: 32,
               padding: 16,
-              backgroundColor: "#252525",
+              backgroundColor: colors.card,
               borderRadius: 12,
               borderWidth: 1,
-              borderColor: "#404040",
+              borderColor: colors.border,
               width: "100%",
             }}
           >
@@ -117,7 +119,7 @@ export default function EmergencyConfirmationScreen() {
               style={{
                 fontFamily: "Inter_400Regular",
                 fontSize: 12,
-                color: "#9A9A9A",
+                color: colors.textSecondary,
                 marginBottom: 4,
                 textAlign: "center",
               }}
@@ -128,7 +130,7 @@ export default function EmergencyConfirmationScreen() {
               style={{
                 fontFamily: "Inter_600SemiBold",
                 fontSize: 14,
-                color: "#FFFFFF",
+                color: colors.text,
                 textAlign: "center",
               }}
             >

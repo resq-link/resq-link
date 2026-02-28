@@ -5,15 +5,15 @@ import {
   TouchableOpacity,
   ScrollView,
   RefreshControl,
-  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import * as Location from "expo-location";
-import * as Haptics from "expo-haptics";
 import {
   AlertCircle,
+  AlertTriangle,
+  ArrowRight,
   Clock,
   MapPin,
   Navigation,
@@ -26,9 +26,9 @@ import {
 } from "@expo-google-fonts/inter";
 import { useFonts } from "expo-font";
 import useUserStore from "../utils/userStore";
-import { getApiUrl, UI_MODE, mockData } from "../utils/api";
+import { UI_MODE, mockData } from "../utils/api";
 import { getUserEmergencyReports, getAllEmergencyReports } from "@packages/firebase";
-import LoadingScreen from "../components/LoadingScreen";
+import { useAppTheme } from "@/utils/useAppTheme";
 
 // Calculate distance between two coordinates (Haversine formula)
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -55,6 +55,7 @@ export default function DashboardScreen() {
   const [nearbyReports, setNearbyReports] = useState([]);
   const [userLocation, setUserLocation] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const { colors, isLight } = useAppTheme();
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -213,6 +214,7 @@ export default function DashboardScreen() {
   };
 
   const getStatusLabel = (status) => {
+    const normalizedStatus = (status || "").toLowerCase();
     switch (status) {
       case "pending":
         return "PENDING";
@@ -228,7 +230,33 @@ export default function DashboardScreen() {
       case "done":
         return "RESOLVED";
       default:
-        return status.toUpperCase();
+        return normalizedStatus ? normalizedStatus.toUpperCase() : "UNKNOWN";
+    }
+  };
+
+  const getStatusBadgeStyle = (status) => {
+    const normalizedStatus = (status || "").toLowerCase();
+    if (!isLight) {
+      const color = getStatusColor(normalizedStatus);
+      return {
+        backgroundColor: color + "20",
+        textColor: color,
+      };
+    }
+
+    switch (normalizedStatus) {
+      case "pending":
+        return { backgroundColor: "#FFF4E5", textColor: "#B35A00" };
+      case "active":
+      case "enroute":
+      case "responding":
+      case "on_scene":
+        return { backgroundColor: "#E8F0FF", textColor: "#0B57D0" };
+      case "resolved":
+      case "done":
+        return { backgroundColor: "#E8F7ED", textColor: "#1E7A35" };
+      default:
+        return { backgroundColor: "#EEEEF2", textColor: "#616168" };
     }
   };
 
@@ -274,68 +302,19 @@ export default function DashboardScreen() {
     return `${distance.toFixed(1)}km away`;
   };
 
-  return (
-    <View style={{ flex: 1, backgroundColor: "#000000" }}>
-      <StatusBar style="light" backgroundColor="#000000" />
+  const displayName = user?.name || "John Doe";
+  const userInitial = displayName.trim().charAt(0).toUpperCase();
 
-      {/* Header */}
-      <View
-        style={{
-          paddingTop: insets.top + 20,
-          paddingHorizontal: 24,
-          paddingBottom: 20,
-          backgroundColor: "#000000",
-          borderBottomWidth: 1,
-          borderBottomColor: "#1A1A1A",
-        }}
-      >
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-        >
-          <View style={{ flex: 1 }}>
-            <Text
-              style={{
-                fontFamily: "Inter_700Bold",
-                fontSize: 32,
-                color: "#FFFFFF",
-                marginBottom: 4,
-              }}
-            >
-              Dashboard
-            </Text>
-            <Text
-              style={{
-                fontFamily: "Inter_400Regular",
-                fontSize: 14,
-                color: "#9A9A9A",
-              }}
-            >
-              Welcome back, {user?.name || "User"}
-            </Text>
-          </View>
-          <TouchableOpacity
-            onPress={() => router.push("/responder-map")}
-            style={{
-              padding: 8,
-              borderRadius: 8,
-              backgroundColor: "#1A1A1A",
-            }}
-          >
-            <Map size={20} color="#9AFF55" />
-          </TouchableOpacity>
-        </View>
-      </View>
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar style={colors.statusBarStyle} backgroundColor={colors.background} />
 
       {/* Content */}
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
           paddingHorizontal: 24,
-          paddingTop: 32,
+          paddingTop: insets.top + 16,
           paddingBottom: insets.bottom + 100,
         }}
         showsVerticalScrollIndicator={false}
@@ -348,64 +327,235 @@ export default function DashboardScreen() {
           />
         }
       >
-        {/* Report Emergency Button */}
-        <TouchableOpacity
-          onPress={() => router.push("/emergency-form")}
-          activeOpacity={0.9}
+        {/* Top Row */}
+        <View
           style={{
-            backgroundColor: "#FF3B30",
-            borderRadius: 24,
-            padding: 32,
+            flexDirection: "row",
+            justifyContent: "space-between",
             alignItems: "center",
-            marginBottom: 40,
-            shadowColor: "#FF3B30",
-            shadowOffset: { width: 0, height: 8 },
-            shadowOpacity: 0.3,
-            shadowRadius: 16,
-            elevation: 8,
+            marginBottom: 22,
           }}
         >
-          <View
-            style={{
-              width: 80,
-              height: 80,
-              borderRadius: 40,
-              backgroundColor: "#FFFFFF",
-              justifyContent: "center",
-              alignItems: "center",
-              marginBottom: 20,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.2,
-              shadowRadius: 8,
-              elevation: 4,
-            }}
-          >
-            <AlertCircle size={40} color="#FF3B30" strokeWidth={2.5} />
-          </View>
           <Text
             style={{
               fontFamily: "Inter_700Bold",
-              fontSize: 24,
-              color: "#FFFFFF",
+              fontSize: 28,
+              color: colors.text,
+              letterSpacing: 0.3,
+            }}
+          >
+            <Text style={{ color: "#22C55E" }}>R</Text>ESQ-LINK
+          </Text>
+
+          <TouchableOpacity
+            onPress={() => router.push("/(tabs)/profile")}
+            activeOpacity={0.85}
+            style={{
+              width: 42,
+              height: 42,
+              borderRadius: 21,
+              backgroundColor: colors.cardAlt,
+              borderWidth: 1,
+              borderColor: colors.borderAlt,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Text
+              style={{
+                fontFamily: "Inter_700Bold",
+                fontSize: 15,
+                color: colors.text,
+              }}
+            >
+              {userInitial}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Hero Card */}
+        <View
+          style={{
+            backgroundColor: isLight ? "#F8EAF1" : colors.cardAlt,
+            borderRadius: 22,
+            borderWidth: isLight ? 0 : 1,
+            borderColor: colors.borderAlt,
+            padding: 20,
+            paddingRight: 88,
+            overflow: "hidden",
+            marginBottom: 26,
+          }}
+        >
+          <View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              right: -34,
+              top: -16,
+              transform: [{ rotate: "16deg" }],
+            }}
+          >
+            <AlertTriangle
+              size={236}
+              color={isLight ? "rgba(255, 59, 48, 0.15)" : "rgba(255, 105, 97, 0.18)"}
+              strokeWidth={2}
+            />
+          </View>
+
+          <Text
+            style={{
+              fontFamily: "Inter_700Bold",
+              fontSize: 30,
+              color: colors.text,
               marginBottom: 8,
             }}
           >
-            Report Emergency
+            Let's Stay Safe!
           </Text>
           <Text
             style={{
               fontFamily: "Inter_400Regular",
               fontSize: 15,
-              color: "#FFFFFF",
-              textAlign: "center",
-              opacity: 0.95,
-              lineHeight: 20,
+              color: colors.textSecondary,
+              lineHeight: 22,
+              marginBottom: 16,
             }}
           >
-            Tap to report an emergency situation
+            Report incidents fast and monitor emergency activity near you.
           </Text>
-        </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => router.push("/emergency-form")}
+            activeOpacity={0.85}
+            style={{
+              width: 46,
+              height: 46,
+              borderRadius: 12,
+              backgroundColor: isLight ? "#FFFFFF" : colors.cardInner,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <ArrowRight size={20} color={colors.text} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Quick Actions */}
+        <View style={{ marginBottom: 30 }}>
+          <Text
+            style={{
+              fontFamily: "Inter_700Bold",
+              fontSize: 21,
+              color: colors.text,
+              marginBottom: 12,
+            }}
+          >
+            Quick Actions
+          </Text>
+
+          <TouchableOpacity
+            onPress={() => router.push("/emergency-form")}
+            activeOpacity={0.85}
+            style={{
+              backgroundColor: colors.cardAlt,
+              borderWidth: 1,
+              borderColor: colors.borderAlt,
+              borderRadius: 16,
+              paddingVertical: 14,
+              paddingHorizontal: 14,
+              flexDirection: "row",
+              alignItems: "center",
+              marginBottom: 10,
+            }}
+          >
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 12,
+                backgroundColor: isLight ? "#FFE7E3" : colors.cardInner,
+                alignItems: "center",
+                justifyContent: "center",
+                marginRight: 12,
+              }}
+            >
+              <AlertCircle size={19} color="#FF3B30" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  fontFamily: "Inter_600SemiBold",
+                  fontSize: 16,
+                  color: colors.text,
+                }}
+              >
+                Report Emergency
+              </Text>
+              <Text
+                style={{
+                  fontFamily: "Inter_400Regular",
+                  fontSize: 13,
+                  color: colors.textSecondary,
+                  marginTop: 2,
+                }}
+              >
+                Quickly notify responders
+              </Text>
+            </View>
+            <ArrowRight size={18} color={colors.text} />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => router.push("/responder-map")}
+            activeOpacity={0.85}
+            style={{
+              backgroundColor: colors.cardAlt,
+              borderWidth: 1,
+              borderColor: colors.borderAlt,
+              borderRadius: 16,
+              paddingVertical: 14,
+              paddingHorizontal: 14,
+              flexDirection: "row",
+              alignItems: "center",
+            }}
+          >
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 12,
+                backgroundColor: isLight ? "#E9F1FF" : colors.cardInner,
+                alignItems: "center",
+                justifyContent: "center",
+                marginRight: 12,
+              }}
+            >
+              <Map size={19} color="#2E72FF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text
+                style={{
+                  fontFamily: "Inter_600SemiBold",
+                  fontSize: 16,
+                  color: colors.text,
+                }}
+              >
+                Responder Map
+              </Text>
+              <Text
+                style={{
+                  fontFamily: "Inter_400Regular",
+                  fontSize: 13,
+                  color: colors.textSecondary,
+                  marginTop: 2,
+                }}
+              >
+                See nearby emergency activity
+              </Text>
+            </View>
+            <ArrowRight size={18} color={colors.text} />
+          </TouchableOpacity>
+        </View>
 
         {/* Recent Reports Section */}
         <View style={{ marginBottom: 32 }}>
@@ -420,8 +570,8 @@ export default function DashboardScreen() {
             <Text
               style={{
                 fontFamily: "Inter_700Bold",
-                fontSize: 20,
-                color: "#FFFFFF",
+                fontSize: 21,
+                color: colors.text,
               }}
             >
               Recent Reports
@@ -434,8 +584,8 @@ export default function DashboardScreen() {
                 <Text
                   style={{
                     fontFamily: "Inter_600SemiBold",
-                    fontSize: 14,
-                    color: "#9AFF55",
+                    fontSize: 13,
+                    color: colors.textSecondary,
                   }}
                 >
                   View All
@@ -447,9 +597,9 @@ export default function DashboardScreen() {
           {recentReports.length === 0 ? (
             <View
               style={{
-                backgroundColor: "#1A1A1A",
+                backgroundColor: colors.cardAlt,
                 borderWidth: 1,
-                borderColor: "#2A2A2A",
+                borderColor: colors.borderAlt,
                 borderRadius: 20,
                 padding: 40,
                 alignItems: "center",
@@ -460,7 +610,7 @@ export default function DashboardScreen() {
                   width: 64,
                   height: 64,
                   borderRadius: 32,
-                  backgroundColor: "#2A2A2A",
+                  backgroundColor: colors.cardInner,
                   justifyContent: "center",
                   alignItems: "center",
                   marginBottom: 16,
@@ -472,7 +622,7 @@ export default function DashboardScreen() {
                 style={{
                   fontFamily: "Inter_600SemiBold",
                   fontSize: 16,
-                  color: "#FFFFFF",
+                  color: colors.text,
                   marginBottom: 8,
                 }}
               >
@@ -482,7 +632,7 @@ export default function DashboardScreen() {
                 style={{
                   fontFamily: "Inter_400Regular",
                   fontSize: 14,
-                  color: "#9A9A9A",
+                  color: colors.textSecondary,
                   textAlign: "center",
                   lineHeight: 20,
                 }}
@@ -491,15 +641,17 @@ export default function DashboardScreen() {
               </Text>
             </View>
           ) : (
-            recentReports.slice(0, 3).map((report) => (
+            recentReports.slice(0, 3).map((report) => {
+              const badgeStyle = getStatusBadgeStyle(report.status);
+              return (
               <TouchableOpacity
                 key={report.id}
                 onPress={() => router.push("/(tabs)/history")}
                 activeOpacity={0.8}
                 style={{
-                  backgroundColor: "#1A1A1A",
+                  backgroundColor: colors.cardAlt,
                   borderWidth: 1,
-                  borderColor: "#2A2A2A",
+                  borderColor: colors.borderAlt,
                   borderRadius: 20,
                   padding: 20,
                   marginBottom: 12,
@@ -517,7 +669,7 @@ export default function DashboardScreen() {
                       width: 48,
                       height: 48,
                       borderRadius: 12,
-                      backgroundColor: "#2A2A2A",
+                      backgroundColor: colors.cardInner,
                       justifyContent: "center",
                       alignItems: "center",
                       marginRight: 16,
@@ -532,7 +684,7 @@ export default function DashboardScreen() {
                       style={{
                         fontFamily: "Inter_600SemiBold",
                         fontSize: 16,
-                        color: "#FFFFFF",
+                        color: colors.text,
                         marginBottom: 4,
                         textTransform: "capitalize",
                       }}
@@ -546,12 +698,12 @@ export default function DashboardScreen() {
                         marginBottom: 8,
                       }}
                     >
-                      <MapPin size={14} color="#9A9A9A" style={{ marginRight: 6 }} />
+                      <MapPin size={14} color={colors.textSecondary} style={{ marginRight: 6 }} />
                       <Text
                         style={{
                           fontFamily: "Inter_400Regular",
                           fontSize: 13,
-                          color: "#9A9A9A",
+                          color: colors.textSecondary,
                           flex: 1,
                         }}
                         numberOfLines={1}
@@ -572,12 +724,12 @@ export default function DashboardScreen() {
                           alignItems: "center",
                         }}
                       >
-                        <Clock size={12} color="#9A9A9A" style={{ marginRight: 6 }} />
+                        <Clock size={12} color={colors.textSecondary} style={{ marginRight: 6 }} />
                         <Text
                           style={{
                             fontFamily: "Inter_400Regular",
                             fontSize: 12,
-                            color: "#9A9A9A",
+                            color: colors.textSecondary,
                           }}
                         >
                           {formatDate(report.createdAt)}
@@ -585,7 +737,7 @@ export default function DashboardScreen() {
                       </View>
                       <View
                         style={{
-                          backgroundColor: getStatusColor(report.status) + "20",
+                          backgroundColor: badgeStyle.backgroundColor,
                           paddingHorizontal: 10,
                           paddingVertical: 5,
                           borderRadius: 8,
@@ -595,7 +747,7 @@ export default function DashboardScreen() {
                           style={{
                             fontFamily: "Inter_600SemiBold",
                             fontSize: 10,
-                            color: getStatusColor(report.status),
+                            color: badgeStyle.textColor,
                             letterSpacing: 0.5,
                           }}
                         >
@@ -606,7 +758,8 @@ export default function DashboardScreen() {
                   </View>
                 </View>
               </TouchableOpacity>
-            ))
+              );
+            })
           )}
         </View>
 
@@ -625,11 +778,11 @@ export default function DashboardScreen() {
               <Text
                 style={{
                   fontFamily: "Inter_700Bold",
-                  fontSize: 20,
-                  color: "#FFFFFF",
+                  fontSize: 21,
+                  color: colors.text,
                 }}
               >
-                Reported Near You
+                Nearby Alerts
               </Text>
             </View>
           </View>
@@ -637,9 +790,9 @@ export default function DashboardScreen() {
           {nearbyReports.length === 0 ? (
             <View
               style={{
-                backgroundColor: "#1A1A1A",
+                backgroundColor: colors.cardAlt,
                 borderWidth: 1,
-                borderColor: "#2A2A2A",
+                borderColor: colors.borderAlt,
                 borderRadius: 20,
                 padding: 40,
                 alignItems: "center",
@@ -650,7 +803,7 @@ export default function DashboardScreen() {
                   width: 64,
                   height: 64,
                   borderRadius: 32,
-                  backgroundColor: "#2A2A2A",
+                  backgroundColor: colors.cardInner,
                   justifyContent: "center",
                   alignItems: "center",
                   marginBottom: 16,
@@ -662,7 +815,7 @@ export default function DashboardScreen() {
                 style={{
                   fontFamily: "Inter_600SemiBold",
                   fontSize: 16,
-                  color: "#FFFFFF",
+                  color: colors.text,
                   marginBottom: 8,
                 }}
               >
@@ -672,7 +825,7 @@ export default function DashboardScreen() {
                 style={{
                   fontFamily: "Inter_400Regular",
                   fontSize: 14,
-                  color: "#9A9A9A",
+                  color: colors.textSecondary,
                   textAlign: "center",
                   lineHeight: 20,
                 }}
@@ -681,14 +834,16 @@ export default function DashboardScreen() {
               </Text>
             </View>
           ) : (
-            nearbyReports.map((report) => (
+            nearbyReports.map((report) => {
+              const badgeStyle = getStatusBadgeStyle(report.status);
+              return (
               <TouchableOpacity
                 key={report.id}
                 activeOpacity={0.8}
                 style={{
-                  backgroundColor: "#1A1A1A",
+                  backgroundColor: colors.cardAlt,
                   borderWidth: 1,
-                  borderColor: "#2A2A2A",
+                  borderColor: colors.borderAlt,
                   borderRadius: 20,
                   padding: 20,
                   marginBottom: 12,
@@ -706,7 +861,7 @@ export default function DashboardScreen() {
                       width: 48,
                       height: 48,
                       borderRadius: 12,
-                      backgroundColor: "#2A2A2A",
+                      backgroundColor: colors.cardInner,
                       justifyContent: "center",
                       alignItems: "center",
                       marginRight: 16,
@@ -721,7 +876,7 @@ export default function DashboardScreen() {
                       style={{
                         fontFamily: "Inter_600SemiBold",
                         fontSize: 16,
-                        color: "#FFFFFF",
+                        color: colors.text,
                         marginBottom: 4,
                         textTransform: "capitalize",
                       }}
@@ -761,12 +916,12 @@ export default function DashboardScreen() {
                           alignItems: "center",
                         }}
                       >
-                        <Clock size={12} color="#9A9A9A" style={{ marginRight: 6 }} />
+                        <Clock size={12} color={colors.textSecondary} style={{ marginRight: 6 }} />
                         <Text
                           style={{
                             fontFamily: "Inter_400Regular",
                             fontSize: 12,
-                            color: "#9A9A9A",
+                            color: colors.textSecondary,
                           }}
                         >
                           {formatDate(report.createdAt)}
@@ -774,7 +929,7 @@ export default function DashboardScreen() {
                       </View>
                       <View
                         style={{
-                          backgroundColor: getStatusColor(report.status) + "20",
+                          backgroundColor: badgeStyle.backgroundColor,
                           paddingHorizontal: 10,
                           paddingVertical: 5,
                           borderRadius: 8,
@@ -784,7 +939,7 @@ export default function DashboardScreen() {
                           style={{
                             fontFamily: "Inter_600SemiBold",
                             fontSize: 10,
-                            color: getStatusColor(report.status),
+                            color: badgeStyle.textColor,
                             letterSpacing: 0.5,
                           }}
                         >
@@ -795,7 +950,8 @@ export default function DashboardScreen() {
                   </View>
                 </View>
               </TouchableOpacity>
-            ))
+              );
+            })
           )}
         </View>
       </ScrollView>

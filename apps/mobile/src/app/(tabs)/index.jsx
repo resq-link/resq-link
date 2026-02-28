@@ -12,11 +12,13 @@ import {
 import { useFonts } from "expo-font";
 import useUserStore from "../../utils/userStore";
 import CustomButton from "../../components/CustomButton";
+import { useAppTheme } from "@/utils/useAppTheme";
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useUserStore();
+  const { colors } = useAppTheme();
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -29,8 +31,8 @@ export default function HomeScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#000000" }}>
-      <StatusBar style="light" backgroundColor="#000000" />
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar style={colors.statusBarStyle} backgroundColor={colors.background} />
 
       {/* Header */}
       <View
@@ -38,16 +40,16 @@ export default function HomeScreen() {
           paddingTop: insets.top + 20,
           paddingHorizontal: 24,
           paddingBottom: 20,
-          backgroundColor: "#000000",
+          backgroundColor: colors.headerBackground,
           borderBottomWidth: 1,
-          borderBottomColor: "#404040",
+          borderBottomColor: colors.border,
         }}
       >
         <Text
           style={{
             fontFamily: "Inter_700Bold",
             fontSize: 28,
-            color: "#FFFFFF",
+            color: colors.text,
             marginBottom: 4,
           }}
         >
@@ -57,7 +59,7 @@ export default function HomeScreen() {
           style={{
             fontFamily: "Inter_400Regular",
             fontSize: 14,
-            color: "#9A9A9A",
+            color: colors.textSecondary,
           }}
         >
           Report emergencies quickly
@@ -129,7 +131,7 @@ export default function HomeScreen() {
           style={{
             fontFamily: "Inter_600SemiBold",
             fontSize: 18,
-            color: "#FFFFFF",
+            color: colors.text,
             marginBottom: 16,
           }}
         >
@@ -139,9 +141,9 @@ export default function HomeScreen() {
         <TouchableOpacity
           onPress={() => router.push("/(tabs)/history")}
           style={{
-            backgroundColor: "#252525",
+            backgroundColor: colors.card,
             borderWidth: 1,
-            borderColor: "#404040",
+            borderColor: colors.border,
             borderRadius: 16,
             padding: 20,
             marginBottom: 12,
@@ -154,7 +156,7 @@ export default function HomeScreen() {
               width: 48,
               height: 48,
               borderRadius: 24,
-              backgroundColor: "#404040",
+              backgroundColor: colors.cardInner,
               justifyContent: "center",
               alignItems: "center",
               marginRight: 16,
@@ -167,7 +169,7 @@ export default function HomeScreen() {
               style={{
                 fontFamily: "Inter_600SemiBold",
                 fontSize: 16,
-                color: "#FFFFFF",
+                color: colors.text,
                 marginBottom: 4,
               }}
             >
@@ -177,7 +179,7 @@ export default function HomeScreen() {
               style={{
                 fontFamily: "Inter_400Regular",
                 fontSize: 12,
-                color: "#9A9A9A",
+                color: colors.textSecondary,
               }}
             >
               Check your emergency reports
@@ -188,9 +190,9 @@ export default function HomeScreen() {
         <TouchableOpacity
           onPress={() => router.push("/responder-map")}
           style={{
-            backgroundColor: "#252525",
+            backgroundColor: colors.card,
             borderWidth: 1,
-            borderColor: "#404040",
+            borderColor: colors.border,
             borderRadius: 16,
             padding: 20,
             marginBottom: 32,
@@ -203,7 +205,7 @@ export default function HomeScreen() {
               width: 48,
               height: 48,
               borderRadius: 24,
-              backgroundColor: "#404040",
+              backgroundColor: colors.cardInner,
               justifyContent: "center",
               alignItems: "center",
               marginRight: 16,
@@ -216,7 +218,7 @@ export default function HomeScreen() {
               style={{
                 fontFamily: "Inter_600SemiBold",
                 fontSize: 16,
-                color: "#FFFFFF",
+                color: colors.text,
                 marginBottom: 4,
               }}
             >
@@ -226,7 +228,7 @@ export default function HomeScreen() {
               style={{
                 fontFamily: "Inter_400Regular",
                 fontSize: 12,
-                color: "#9A9A9A",
+                color: colors.textSecondary,
               }}
             >
               View responder locations

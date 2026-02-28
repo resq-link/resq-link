@@ -19,6 +19,7 @@ import {
 import { useFonts } from "expo-font";
 import BackButton from "../components/BackButton";
 import { getApiUrl, UI_MODE, mockData } from "../utils/api";
+import { useAppTheme } from "@/utils/useAppTheme";
 
 const { height } = Dimensions.get("window");
 
@@ -27,6 +28,7 @@ export default function ResponderMapScreen() {
   const router = useRouter();
   const [responders, setResponders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { colors, isLight } = useAppTheme();
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -91,6 +93,28 @@ export default function ResponderMapScreen() {
     }
   };
 
+  const getStatusBadgeStyle = (status) => {
+    const normalizedStatus = (status || "").toLowerCase();
+    if (!isLight) {
+      const color = getStatusColor(normalizedStatus);
+      return {
+        backgroundColor: color + "20",
+        textColor: color,
+      };
+    }
+
+    switch (normalizedStatus) {
+      case "available":
+        return { backgroundColor: "#E8F7ED", textColor: "#1E7A35" };
+      case "en_route":
+        return { backgroundColor: "#FFF4E5", textColor: "#B35A00" };
+      case "busy":
+        return { backgroundColor: "#FDEBEC", textColor: "#B42318" };
+      default:
+        return { backgroundColor: "#EEEEF2", textColor: "#616168" };
+    }
+  };
+
   const initialRegion = {
     latitude:
       responders.length > 0 ? parseFloat(responders[0].latitude) : 14.5995,
@@ -101,8 +125,8 @@ export default function ResponderMapScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#000000" }}>
-      <StatusBar style="light" backgroundColor="#000000" />
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar style={colors.statusBarStyle} backgroundColor={colors.background} />
 
       {/* Header */}
       <View
@@ -114,18 +138,25 @@ export default function ResponderMapScreen() {
           paddingTop: insets.top + 20,
           paddingHorizontal: 16,
           paddingBottom: 16,
-          backgroundColor: "#000000",
+          backgroundColor: colors.headerBackground,
           zIndex: 1000,
           borderBottomWidth: 1,
-          borderBottomColor: "#404040",
+          borderBottomColor: colors.border,
         }}
       >
-        <BackButton variant="register" style={{ marginBottom: 16 }} />
+        <BackButton
+          variant="register"
+          iconColor={colors.text}
+          style={{
+            marginBottom: 16,
+            backgroundColor: colors.cardInner,
+          }}
+        />
         <Text
           style={{
             fontFamily: "Inter_700Bold",
             fontSize: 24,
-            color: "#FFFFFF",
+            color: colors.text,
           }}
         >
           Responder Locations
@@ -134,7 +165,7 @@ export default function ResponderMapScreen() {
           style={{
             fontFamily: "Inter_400Regular",
             fontSize: 14,
-            color: "#9A9A9A",
+            color: colors.textSecondary,
             marginTop: 4,
           }}
         >
@@ -174,13 +205,13 @@ export default function ResponderMapScreen() {
           bottom: 0,
           left: 0,
           right: 0,
-          backgroundColor: "#000000",
+          backgroundColor: colors.background,
           borderTopLeftRadius: 24,
           borderTopRightRadius: 24,
           borderTopWidth: 1,
           borderLeftWidth: 1,
           borderRightWidth: 1,
-          borderColor: "#404040",
+          borderColor: colors.border,
           paddingTop: 20,
           paddingBottom: insets.bottom + 100, // Extra padding for custom nav bar
           maxHeight: height * 0.4,
@@ -199,7 +230,7 @@ export default function ResponderMapScreen() {
             style={{
               fontFamily: "Inter_600SemiBold",
               fontSize: 18,
-              color: "#FFFFFF",
+              color: colors.text,
             }}
           >
             Active Responders
@@ -224,13 +255,15 @@ export default function ResponderMapScreen() {
           }}
           showsVerticalScrollIndicator={false}
         >
-          {responders.map((responder) => (
+          {responders.map((responder) => {
+            const badgeStyle = getStatusBadgeStyle(responder.status);
+            return (
             <View
               key={responder.id}
               style={{
-                backgroundColor: "#252525",
+                backgroundColor: colors.card,
                 borderWidth: 1,
-                borderColor: "#404040",
+                borderColor: colors.border,
                 borderRadius: 12,
                 padding: 16,
                 marginBottom: 12,
@@ -248,7 +281,7 @@ export default function ResponderMapScreen() {
                   style={{
                     fontFamily: "Inter_600SemiBold",
                     fontSize: 16,
-                    color: "#FFFFFF",
+                    color: colors.text,
                     flex: 1,
                   }}
                 >
@@ -256,7 +289,7 @@ export default function ResponderMapScreen() {
                 </Text>
                 <View
                   style={{
-                    backgroundColor: getStatusColor(responder.status) + "20",
+                    backgroundColor: badgeStyle.backgroundColor,
                     paddingHorizontal: 10,
                     paddingVertical: 4,
                     borderRadius: 6,
@@ -266,7 +299,7 @@ export default function ResponderMapScreen() {
                     style={{
                       fontFamily: "Inter_600SemiBold",
                       fontSize: 11,
-                      color: getStatusColor(responder.status),
+                      color: badgeStyle.textColor,
                       textTransform: "capitalize",
                     }}
                   >
@@ -284,14 +317,14 @@ export default function ResponderMapScreen() {
               >
                 <Navigation
                   size={14}
-                  color="#9A9A9A"
+                  color={colors.textSecondary}
                   style={{ marginRight: 8 }}
                 />
                 <Text
                   style={{
                     fontFamily: "Inter_400Regular",
                     fontSize: 14,
-                    color: "#9A9A9A",
+                    color: colors.textSecondary,
                   }}
                 >
                   {responder.unit_type}
@@ -305,12 +338,12 @@ export default function ResponderMapScreen() {
                     alignItems: "center",
                   }}
                 >
-                  <Phone size={14} color="#9A9A9A" style={{ marginRight: 8 }} />
+                  <Phone size={14} color={colors.textSecondary} style={{ marginRight: 8 }} />
                   <Text
                     style={{
                       fontFamily: "Inter_400Regular",
                       fontSize: 14,
-                      color: "#9A9A9A",
+                      color: colors.textSecondary,
                     }}
                   >
                     {responder.phone_number}
@@ -318,7 +351,8 @@ export default function ResponderMapScreen() {
                 </View>
               )}
             </View>
-          ))}
+            );
+          })}
         </ScrollView>
       </View>
     </View>

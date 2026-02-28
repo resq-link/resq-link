@@ -1,17 +1,16 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, ScrollView } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, TextInput, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import { Eye, EyeOff } from "lucide-react-native";
 import {
   Inter_400Regular,
   Inter_600SemiBold,
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
 import { useFonts } from "expo-font";
-import BackButton from "../components/BackButton";
-import FormInput from "../components/FormInput";
-import CustomButton from "../components/CustomButton";
 import LoadingScreen from "../components/LoadingScreen";
 import SuccessScreen from "../components/SuccessScreen";
 import ErrorAlert from "../components/ErrorAlert";
@@ -37,12 +36,15 @@ if (!UI_MODE) {
   }
 }
 
+const GOOGLE_ICON_URL = "https://companieslogo.com/img/orig/google-9646e5e7.png?t=1720244494";
+
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showHeaderBorder, setShowHeaderBorder] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -181,11 +183,6 @@ export default function LoginScreen() {
     }
   };
 
-  const handleScroll = (event) => {
-    const scrollY = event.nativeEvent.contentOffset.y;
-    setShowHeaderBorder(scrollY > 0);
-  };
-
   if (isLoading) {
     return (
       <LoadingScreen
@@ -207,116 +204,277 @@ export default function LoginScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#000000" }}>
-      <StatusBar style="light" backgroundColor="#000000" />
-
-      {/* Header */}
-      <View
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          backgroundColor: "#000000",
-          paddingTop: insets.top,
-          paddingHorizontal: 16,
-          paddingBottom: 20,
-          zIndex: 1000,
-          borderBottomWidth: showHeaderBorder ? 1 : 0,
-          borderBottomColor: "#404040",
-        }}
-      >
-        <View style={{ marginTop: 20, marginBottom: 20 }}>
-          <BackButton variant="login" />
-        </View>
-        <Text
-          style={{
-            fontFamily: "Inter_700Bold",
-            fontSize: 30,
-            color: "#FFFFFF",
-          }}
-        >
-          Login
-        </Text>
-      </View>
+    <LinearGradient
+      colors={["#121A12", "#0B100C", "#060906"]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+      style={{ flex: 1 }}
+    >
+      <StatusBar style="light" backgroundColor="#121A12" />
 
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{
           flexGrow: 1,
-          paddingHorizontal: 16,
-          paddingTop: insets.top + 160,
-          paddingBottom: insets.bottom + 20,
+          justifyContent: "flex-start",
+          paddingHorizontal: 22,
+          paddingTop: insets.top + 36,
+          paddingBottom: insets.bottom + 24,
         }}
         showsVerticalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
       >
-        <ErrorAlert
-          message={error}
-          onDismiss={() => setError("")}
-          variant="login"
-        />
+        <View>
+          <Text
+            style={{
+              fontFamily: "Inter_700Bold",
+              fontSize: 40,
+              lineHeight: 42,
+              color: "#FFFFFF",
+              marginBottom: 20,
+            }}
+          >
+            Login to your{"\n"}account
+          </Text>
 
-        <FormInput
-          label="Email"
-          placeholder="your.email@example.com"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          variant="login"
-          required
-        />
+          <ErrorAlert
+            message={error}
+            onDismiss={() => setError("")}
+            variant="login"
+          />
 
-        <FormInput
-          label="Password"
-          placeholder="Enter your password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          variant="login"
-          required
-        />
-
-        <CustomButton
-          title="Login"
-          onPress={handleLogin}
-          variant="primary"
-          buttonVariant="login"
-          disabled={!email || !password || !validateEmail(email) || !validatePassword(password)}
-        />
-
-        <View
-          style={{
-            flexDirection: "row",
-            justifyContent: "center",
-            alignItems: "center",
-            marginBottom: "auto",
-          }}
-        >
           <Text
             style={{
               fontFamily: "Inter_400Regular",
-              fontSize: 14,
-              color: "#8F8F8F",
+              fontSize: 13,
+              color: "#FFFFFF",
+              marginBottom: 8,
             }}
           >
-            Don't have an account?{" "}
+            Your number & email address
           </Text>
-          <TouchableOpacity onPress={() => router.push("/register")}>
+          <TextInput
+            value={email}
+            onChangeText={setEmail}
+            placeholder="your.email@example.com"
+            placeholderTextColor="#8EA38C"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            style={{
+              height: 50,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: "#4A6C45",
+              color: "#FFFFFF",
+              paddingHorizontal: 14,
+              fontFamily: "Inter_400Regular",
+              fontSize: 14,
+              backgroundColor: "rgba(154,255,85,0.04)",
+              marginBottom: 14,
+            }}
+          />
+
+          <Text
+            style={{
+              fontFamily: "Inter_400Regular",
+              fontSize: 13,
+              color: "#FFFFFF",
+              marginBottom: 8,
+            }}
+          >
+            Enter your password
+          </Text>
+          <View
+            style={{
+              height: 50,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: "#332640",
+              backgroundColor: "rgba(255,255,255,0.03)",
+              flexDirection: "row",
+              alignItems: "center",
+              paddingHorizontal: 14,
+              marginBottom: 12,
+            }}
+          >
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Enter your password"
+              placeholderTextColor="#8EA38C"
+              secureTextEntry={!showPassword}
+              style={{
+                flex: 1,
+                color: "#FFFFFF",
+                fontFamily: "Inter_400Regular",
+                fontSize: 14,
+              }}
+            />
+            <TouchableOpacity onPress={() => setShowPassword((prev) => !prev)}>
+              {showPassword ? (
+                <Eye size={18} color="#9AB795" />
+              ) : (
+                <EyeOff size={18} color="#9AB795" />
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 14,
+            }}
+          >
+            <TouchableOpacity
+              onPress={() => setRememberMe((prev) => !prev)}
+              style={{ flexDirection: "row", alignItems: "center" }}
+            >
+              <View
+                style={{
+                  width: 14,
+                  height: 14,
+                  borderRadius: 3,
+                  borderWidth: 1,
+                  borderColor: rememberMe ? "#9AFF55" : "#8DA888",
+                  backgroundColor: rememberMe ? "#9AFF55" : "transparent",
+                  marginRight: 8,
+                }}
+              />
+              <Text
+                style={{
+                  fontFamily: "Inter_400Regular",
+                  fontSize: 12,
+                  color: "#B7C8B4",
+                }}
+              >
+                Remember me
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => setError("Forgot password is not available yet.")}>
+              <Text
+                style={{
+                  fontFamily: "Inter_600SemiBold",
+                  fontSize: 12,
+                  color: "#9AFF55",
+                }}
+              >
+                Forget password
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            onPress={handleLogin}
+            disabled={!email || !password || !validateEmail(email) || !validatePassword(password)}
+            style={{
+              borderRadius: 10,
+              overflow: "hidden",
+              opacity:
+                !email || !password || !validateEmail(email) || !validatePassword(password)
+                  ? 0.6
+                  : 1,
+            }}
+          >
+            <LinearGradient
+              colors={["#76EA34", "#9AFF55"]}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={{
+                height: 50,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: "Inter_600SemiBold",
+                  fontSize: 15,
+                  color: "#0B1708",
+                }}
+              >
+                Log in
+              </Text>
+            </LinearGradient>
+          </TouchableOpacity>
+
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              marginTop: 16,
+              marginBottom: 16,
+            }}
+          >
+            <View style={{ flex: 1, height: 1, backgroundColor: "#2A3A28" }} />
+            <Text
+              style={{
+                marginHorizontal: 12,
+                fontFamily: "Inter_400Regular",
+                fontSize: 13,
+                color: "#B7C8B4",
+              }}
+            >
+              Or
+            </Text>
+            <View style={{ flex: 1, height: 1, backgroundColor: "#2A3A28" }} />
+          </View>
+
+          <TouchableOpacity
+            onPress={() => setError("Google sign in is not available yet.")}
+            style={{
+              height: 50,
+              borderRadius: 12,
+              borderWidth: 1,
+              borderColor: "#355032",
+              backgroundColor: "rgba(154,255,85,0.04)",
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              marginBottom: 14,
+            }}
+          >
+            <Image
+              source={{ uri: GOOGLE_ICON_URL }}
+              style={{ width: 18, height: 18, marginRight: 10 }}
+              resizeMode="contain"
+            />
             <Text
               style={{
                 fontFamily: "Inter_600SemiBold",
                 fontSize: 14,
-                color: "#9AFF55",
+                color: "#FFFFFF",
               }}
             >
-              Register
+              Continue with Google
             </Text>
           </TouchableOpacity>
+
+          <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center" }}>
+            <Text
+              style={{
+                fontFamily: "Inter_400Regular",
+                fontSize: 13,
+                color: "#B7C8B4",
+              }}
+            >
+              Don't have an account?{" "}
+            </Text>
+            <TouchableOpacity onPress={() => router.push("/register")}>
+              <Text
+                style={{
+                  fontFamily: "Inter_600SemiBold",
+                  fontSize: 13,
+                  color: "#9AFF55",
+                }}
+              >
+                Create an account
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
-    </View>
+    </LinearGradient>
   );
 }

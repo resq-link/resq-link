@@ -5,11 +5,12 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
+  StyleSheet,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
-import { Clock } from "lucide-react-native";
+import { Clock, ChevronLeft } from "lucide-react-native";
 import {
   Inter_400Regular,
   Inter_600SemiBold,
@@ -17,9 +18,9 @@ import {
 } from "@expo-google-fonts/inter";
 import { useFonts } from "expo-font";
 import useUserStore from "@/utils/userStore";
-import { getApiUrl, UI_MODE, mockData } from "@/utils/api";
+import { UI_MODE, mockData } from "@/utils/api";
 import { getUserEmergencyReports } from "@packages/firebase";
-import BackButton from "@/components/BackButton";
+import { useAppTheme } from "@/utils/useAppTheme";
 
 export default function HistoryScreen() {
   const insets = useSafeAreaInsets();
@@ -28,6 +29,7 @@ export default function HistoryScreen() {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const { colors, isLight } = useAppTheme();
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -120,6 +122,28 @@ export default function HistoryScreen() {
     }
   };
 
+  const getStatusBadgeStyle = (status) => {
+    const normalizedStatus = (status || "").toLowerCase();
+    if (!isLight) {
+      const color = getStatusColor(normalizedStatus);
+      return {
+        backgroundColor: color + "20",
+        textColor: color,
+      };
+    }
+
+    switch (normalizedStatus) {
+      case "pending":
+        return { backgroundColor: "#FFF4E5", textColor: "#B35A00" };
+      case "responding":
+        return { backgroundColor: "#E8F0FF", textColor: "#0B57D0" };
+      case "resolved":
+        return { backgroundColor: "#E8F7ED", textColor: "#1E7A35" };
+      default:
+        return { backgroundColor: "#EEEEF2", textColor: "#616168" };
+    }
+  };
+
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -131,70 +155,14 @@ export default function HistoryScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#000000" }}>
-      <StatusBar style="light" backgroundColor="#000000" />
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar style={colors.statusBarStyle} backgroundColor={colors.background} />
 
-      {/* Header */}
-      <View
-        style={{
-          paddingTop: insets.top + 20,
-          paddingHorizontal: 24,
-          paddingBottom: 20,
-          backgroundColor: "#000000",
-          borderBottomWidth: 1,
-          borderBottomColor: "#404040",
-        }}
-      >
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            marginBottom: 12,
-          }}
-        >
-          <BackButton
-            onPress={() => router.push("/dashboard")}
-            size={18}
-            style={{ 
-              marginRight: 12,
-              width: 32,
-              height: 32,
-              borderRadius: 16,
-              backgroundColor: "transparent",
-              borderWidth: 0,
-            }}
-          />
-          <View style={{ flex: 1 }}>
-            <Text
-              style={{
-                fontFamily: "Inter_700Bold",
-                fontSize: 28,
-                color: "#FFFFFF",
-                marginBottom: 4,
-              }}
-            >
-              Emergency History
-            </Text>
-            <Text
-              style={{
-                fontFamily: "Inter_400Regular",
-                fontSize: 14,
-                color: "#9A9A9A",
-              }}
-            >
-              {reports.length} {reports.length === 1 ? "report" : "reports"}
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Content */}
       <ScrollView
-        style={{ flex: 1 }}
+        style={styles.scroll}
         contentContainerStyle={{
-          paddingHorizontal: 24,
-          paddingTop: 20,
-          paddingBottom: insets.bottom + 100, // Extra padding for custom nav bar
+          paddingTop: insets.top + 12,
+          paddingBottom: insets.bottom + 96,
         }}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -205,26 +173,43 @@ export default function HistoryScreen() {
           />
         }
       >
+        <View style={styles.headerRow}>
+          <TouchableOpacity
+            onPress={() => router.push("/dashboard")}
+            style={styles.backButton}
+            accessibilityLabel="Go back"
+          >
+            <ChevronLeft size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>History</Text>
+          <View style={styles.headerSpacer} />
+        </View>
+
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          {reports.length} {reports.length === 1 ? "Report" : "Reports"}
+        </Text>
+
         {loading ? (
-          <View style={{ paddingTop: 60, alignItems: "center" }}>
+          <View style={[styles.stateCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
             <Text
               style={{
                 fontFamily: "Inter_400Regular",
                 fontSize: 14,
-                color: "#9A9A9A",
+                color: colors.textSecondary,
+                textAlign: "center",
               }}
             >
               Loading reports...
             </Text>
           </View>
         ) : reports.length === 0 ? (
-          <View style={{ paddingTop: 60, alignItems: "center" }}>
+          <View style={styles.emptyState}>
             <Clock size={48} color="#5A5A5A" style={{ marginBottom: 16 }} />
             <Text
               style={{
                 fontFamily: "Inter_600SemiBold",
                 fontSize: 18,
-                color: "#FFFFFF",
+                color: colors.text,
                 marginBottom: 8,
               }}
             >
@@ -234,7 +219,7 @@ export default function HistoryScreen() {
               style={{
                 fontFamily: "Inter_400Regular",
                 fontSize: 14,
-                color: "#9A9A9A",
+                color: colors.textSecondary,
                 textAlign: "center",
               }}
             >
@@ -242,105 +227,171 @@ export default function HistoryScreen() {
             </Text>
           </View>
         ) : (
-          reports.map((report) => (
-            <TouchableOpacity
-              key={report.id}
-              style={{
-                backgroundColor: "#252525",
-                borderWidth: 1,
-                borderColor: "#404040",
-                borderRadius: 16,
-                padding: 16,
-                marginBottom: 16,
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  marginBottom: 12,
-                }}
-              >
-                <Text style={{ fontSize: 32, marginRight: 12 }}>
-                  {getIncidentEmoji(report.incident_type)}
-                </Text>
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={{
-                      fontFamily: "Inter_600SemiBold",
-                      fontSize: 16,
-                      color: "#FFFFFF",
-                      marginBottom: 2,
-                    }}
-                  >
-                    {report.incident_type.charAt(0).toUpperCase() +
-                      report.incident_type.slice(1)}{" "}
-                    Emergency
-                  </Text>
-                  <Text
-                    style={{
-                      fontFamily: "Inter_400Regular",
-                      fontSize: 12,
-                      color: "#9A9A9A",
-                    }}
-                  >
-                    {formatDate(report.created_at)}
-                  </Text>
-                </View>
+          <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            {reports.map((report, index) => {
+              const badgeStyle = getStatusBadgeStyle(report.status);
+              return (
                 <View
-                  style={{
-                    backgroundColor: getStatusColor(report.status) + "20",
-                    paddingHorizontal: 12,
-                    paddingVertical: 6,
-                    borderRadius: 8,
-                  }}
+                  key={report.id}
+                  style={[
+                    styles.reportRow,
+                    { borderBottomColor: colors.separator },
+                    index === reports.length - 1 && styles.lastReportRow,
+                  ]}
                 >
-                  <Text
-                    style={{
-                      fontFamily: "Inter_600SemiBold",
-                      fontSize: 12,
-                      color: getStatusColor(report.status),
-                    }}
-                  >
-                    {report.status.toUpperCase()}
-                  </Text>
-                </View>
-              </View>
+                  <View style={styles.reportTop}>
+                    <View style={styles.reportTitleBlock}>
+                      <Text style={styles.emoji}>{getIncidentEmoji(report.incident_type)}</Text>
+                      <View style={styles.reportTitleText}>
+                        <Text
+                          style={{
+                            fontFamily: "Inter_600SemiBold",
+                            fontSize: 16,
+                            color: colors.text,
+                            marginBottom: 2,
+                          }}
+                        >
+                          {report.incident_type.charAt(0).toUpperCase() +
+                            report.incident_type.slice(1)}{" "}
+                          Emergency
+                        </Text>
+                        <Text
+                          style={{
+                            fontFamily: "Inter_400Regular",
+                            fontSize: 12,
+                            color: colors.textSecondary,
+                          }}
+                        >
+                          {formatDate(report.created_at)}
+                        </Text>
+                      </View>
+                    </View>
+                    <View
+                      style={{
+                        backgroundColor: badgeStyle.backgroundColor,
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 8,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontFamily: "Inter_600SemiBold",
+                          fontSize: 12,
+                          color: badgeStyle.textColor,
+                        }}
+                      >
+                        {report.status.toUpperCase()}
+                      </Text>
+                    </View>
+                  </View>
 
-              <View
-                style={{
-                  paddingTop: 12,
-                  borderTopWidth: 1,
-                  borderColor: "#404040",
-                }}
-              >
-                <Text
-                  style={{
-                    fontFamily: "Inter_400Regular",
-                    fontSize: 14,
-                    color: "#FFFFFF",
-                    marginBottom: 4,
-                  }}
-                >
-                  📍 {report.location_text}
-                </Text>
-                {report.description && (
                   <Text
                     style={{
                       fontFamily: "Inter_400Regular",
                       fontSize: 14,
-                      color: "#9A9A9A",
-                      marginTop: 8,
+                      color: colors.text,
+                      marginTop: 12,
                     }}
                   >
-                    {report.description}
+                    📍 {report.location_text}
                   </Text>
-                )}
-              </View>
-            </TouchableOpacity>
-          ))
+                  {report.description && (
+                    <Text
+                      style={{
+                        fontFamily: "Inter_400Regular",
+                        fontSize: 14,
+                        color: colors.textSecondary,
+                        marginTop: 8,
+                      }}
+                    >
+                      {report.description}
+                    </Text>
+                  )}
+                </View>
+              );
+            })}
+          </View>
         )}
       </ScrollView>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scroll: {
+    flex: 1,
+    paddingHorizontal: 24,
+  },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 28,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  headerTitle: {
+    flex: 1,
+    fontFamily: "Inter_700Bold",
+    fontSize: 40,
+    marginLeft: 8,
+  },
+  headerSpacer: {
+    width: 36,
+  },
+  sectionTitle: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 20,
+    marginBottom: 12,
+  },
+  card: {
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 16,
+  },
+  reportRow: {
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+  },
+  lastReportRow: {
+    borderBottomWidth: 0,
+  },
+  reportTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  reportTitleBlock: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  emoji: {
+    fontSize: 28,
+    marginRight: 12,
+  },
+  reportTitleText: {
+    flex: 1,
+    marginRight: 10,
+  },
+  stateCard: {
+    borderWidth: 1,
+    borderRadius: 20,
+    minHeight: 180,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  emptyState: {
+    paddingTop: 60,
+    alignItems: "center",
+  },
+});

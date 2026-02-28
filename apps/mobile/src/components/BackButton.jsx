@@ -8,6 +8,7 @@ export default function BackButton({
   onPress,
   size = 24,
   variant = "login",
+  iconColor = "#FFFFFF",
 }) {
   const router = useRouter();
 
@@ -54,7 +55,7 @@ export default function BackButton({
       onPress={handlePress}
       accessibilityLabel="Go back"
     >
-      <ChevronLeft size={variant === "register" ? 20 : size} color="#FFFFFF" />
+      <ChevronLeft size={variant === "register" ? 20 : size} color={iconColor} />
     </TouchableOpacity>
   );
 }
