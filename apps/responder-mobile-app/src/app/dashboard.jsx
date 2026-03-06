@@ -1,0 +1,518 @@
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  RefreshControl,
+  TouchableOpacity,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
+import { useRouter } from "expo-router";
+import { LogOut, AlertCircle, Map, Activity, CheckCircle, Users } from "lucide-react-native";
+import {
+  SpaceGrotesk_400Regular,
+  SpaceGrotesk_600SemiBold,
+  SpaceGrotesk_700Bold,
+} from "@expo-google-fonts/space-grotesk";
+import { useFonts } from "expo-font";
+import useUserStore from "@/utils/userStore";
+import { subscribeToDispatcherAssignedEmergencies, signOut, auth, updateDispatcherLocation, setDispatcherOnlineStatus } from "@packages/firebase";
+import * as Location from "expo-location";
+import CaseCard from "@/components/CaseCard";
+import LoadingScreen from "@/components/LoadingScreen";
+
+export default function DashboardScreen() {
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const { user, logout } = useUserStore();
+  const [cases, setCases] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const [fontsLoaded] = useFonts({
+    SpaceGrotesk_400Regular,
+    SpaceGrotesk_600SemiBold,
+    SpaceGrotesk_700Bold,
+  });
+
+  useEffect(() => {
+    if (!user) {
+      router.replace("/login");
+      return;
+    }
+
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser) {
+      router.replace("/login");
+      return;
+    }
+
+    // Subscribe to assigned cases
+    const unsubscribe = subscribeToDispatcherAssignedEmergencies(
+      firebaseUser.uid,
+      (reports) => {
+        console.log("Received assigned cases:", reports.length);
+        setCases(reports);
+        setLoading(false);
+        setRefreshing(false);
+      },
+      {
+        statusFilter: "all",
+        limitCount: 100,
+      }
+    );
+
+    return () => {
+      console.log("Unsubscribing from assigned cases");
+      unsubscribe();
+    };
+  }, [user, router]);
+
+  // Track dispatcher location in real-time
+  useEffect(() => {
+    if (!user) return;
+
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser) return;
+
+    let locationSubscription = null;
+    let locationUpdateInterval = null;
+
+    const startLocationTracking = async () => {
+      try {
+        // Request location permission
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") {
+          console.warn("Location permission not granted");
+          return;
+        }
+
+        // Set dispatcher as online
+        await setDispatcherOnlineStatus(true);
+
+        // Update location immediately
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.High,
+        });
+        await updateDispatcherLocation(
+          location.coords.latitude,
+          location.coords.longitude
+        );
+
+        // Watch location changes
+        locationSubscription = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.High,
+            timeInterval: 30000, // Update every 30 seconds
+            distanceInterval: 50, // Update every 50 meters
+          },
+          async (location) => {
+            try {
+              await updateDispatcherLocation(
+                location.coords.latitude,
+                location.coords.longitude
+              );
+            } catch (error) {
+              console.error("Error updating location:", error);
+            }
+          }
+        );
+
+        // Fallback: Update location every 60 seconds even if not moving
+        locationUpdateInterval = setInterval(async () => {
+          try {
+            const location = await Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.High,
+            });
+            await updateDispatcherLocation(
+              location.coords.latitude,
+              location.coords.longitude
+            );
+          } catch (error) {
+            console.error("Error updating location:", error);
+          }
+        }, 60000);
+      } catch (error) {
+        console.error("Error setting up location tracking:", error);
+      }
+    };
+
+    startLocationTracking();
+
+    // Cleanup: Set offline when component unmounts
+    return () => {
+      if (locationSubscription) {
+        locationSubscription.remove();
+      }
+      if (locationUpdateInterval) {
+        clearInterval(locationUpdateInterval);
+      }
+      // Set dispatcher as offline
+      setDispatcherOnlineStatus(false).catch(console.error);
+    };
+  }, [user]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    // The subscription will automatically update
+  };
+
+  const handleLogout = async () => {
+    try {
+      // Set dispatcher offline before logging out
+      await setDispatcherOnlineStatus(false);
+      await signOut(auth);
+      await logout();
+      router.replace("/login");
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Still logout locally even if Firebase signout fails
+      try {
+        await setDispatcherOnlineStatus(false);
+      } catch (e) {
+        // Ignore errors when setting offline status
+      }
+      await logout();
+      router.replace("/login");
+    }
+  };
+
+  const handleCasePress = (caseData) => {
+    router.push({
+      pathname: "/case-detail",
+      params: { caseId: caseData.id },
+    });
+  };
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
+  if (loading) {
+    return (
+      <LoadingScreen
+        title="Loading cases..."
+        subtitle="Fetching your assigned cases"
+      />
+    );
+  }
+
+  // Count active cases (pending, enroute, on_scene, or legacy active)
+  const activeCount = cases.filter((c) => 
+    c.status === "pending" || 
+    c.status === "enroute" || 
+    c.status === "on_scene" || 
+    c.status === "active"
+  ).length;
+  // Count resolved cases (done or legacy resolved)
+  const resolvedCount = cases.filter((c) => c.status === "done" || c.status === "resolved").length;
+  // Calculate total cases and percentage
+  const totalCases = cases.length;
+  const resolvedPercentage = totalCases > 0 ? Math.round((resolvedCount / totalCases) * 100) : 0;
+  // Mock number of responders available
+  const respondersAvailable = 12;
+
+  return (
+    <View style={{ flex: 1, backgroundColor: "#020617" }}>
+      <StatusBar style="light" backgroundColor="#020617" />
+
+      {/* Header */}
+      <View
+        style={{
+          backgroundColor: "#0f172a",
+          paddingTop: insets.top + 20,
+          paddingHorizontal: 16,
+          paddingBottom: 16,
+          borderBottomWidth: 1,
+          borderBottomColor: "#1e293b",
+        }}
+      >
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <View>
+            <Text
+              style={{
+                fontFamily: "SpaceGrotesk_700Bold",
+                fontSize: 28,
+                color: "#f1f5f9",
+              }}
+            >
+              Dashboard
+            </Text>
+            <Text
+              style={{
+                fontFamily: "SpaceGrotesk_400Regular",
+                fontSize: 14,
+                color: "#94a3b8",
+                marginTop: 4,
+              }}
+            >
+              {user?.email || "Responder"}
+            </Text>
+          </View>
+          <View style={{ flexDirection: "row", gap: 8 }}>
+            <TouchableOpacity
+              onPress={() => router.push("/map")}
+              style={{
+                padding: 8,
+                backgroundColor: "#10b981",
+                borderRadius: 8,
+              }}
+            >
+              <Map size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleLogout}
+              style={{
+                padding: 8,
+              }}
+            >
+              <LogOut size={24} color="#FF3B30" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Stats */}
+        <View style={{ flexDirection: "row", gap: 12, marginTop: 12 }}>
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: "#1e293b",
+              borderRadius: 12,
+              padding: 12,
+              position: "relative",
+              borderWidth: 1,
+              borderColor: "#334155",
+            }}
+          >
+            {/* Icon on top left */}
+            <View style={{ position: "absolute", top: 12, left: 12 }}>
+              <Activity size={20} color="#10b981" />
+            </View>
+            {/* NOW badge on top right */}
+            <View
+              style={{
+                position: "absolute",
+                top: 8,
+                right: 8,
+                backgroundColor: "#10b981",
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 8,
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: "SpaceGrotesk_600SemiBold",
+                  fontSize: 10,
+                  color: "#FFFFFF",
+                  textTransform: "uppercase",
+                }}
+              >
+                NOW
+              </Text>
+            </View>
+            <Text
+              style={{
+                fontFamily: "SpaceGrotesk_600SemiBold",
+                fontSize: 24,
+                color: "#10b981",
+                marginTop: 28,
+              }}
+            >
+              {activeCount}
+            </Text>
+            <Text
+              style={{
+                fontFamily: "SpaceGrotesk_400Regular",
+                fontSize: 12,
+                color: "#10b981",
+                marginTop: 4,
+              }}
+            >
+              Active Cases
+            </Text>
+          </View>
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: "#1e293b",
+              borderRadius: 12,
+              padding: 12,
+              position: "relative",
+              borderWidth: 1,
+              borderColor: "#334155",
+            }}
+          >
+            {/* Icon on top left */}
+            <View style={{ position: "absolute", top: 12, left: 12 }}>
+              <CheckCircle size={20} color="#34C759" />
+            </View>
+            {/* Percentage badge on top right */}
+            <View
+              style={{
+                position: "absolute",
+                top: 8,
+                right: 8,
+                backgroundColor: "#34C759",
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 8,
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: "SpaceGrotesk_600SemiBold",
+                  fontSize: 10,
+                  color: "#FFFFFF",
+                }}
+              >
+                {resolvedPercentage}%
+              </Text>
+            </View>
+            <Text
+              style={{
+                fontFamily: "SpaceGrotesk_600SemiBold",
+                fontSize: 24,
+                color: "#34C759",
+                marginTop: 28,
+              }}
+            >
+              {resolvedCount}
+            </Text>
+            <Text
+              style={{
+                fontFamily: "SpaceGrotesk_400Regular",
+                fontSize: 12,
+                color: "#34C759",
+                marginTop: 4,
+              }}
+            >
+              Resolved
+            </Text>
+          </View>
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: "#1e293b",
+              borderRadius: 12,
+              padding: 12,
+              position: "relative",
+              borderWidth: 1,
+              borderColor: "#334155",
+            }}
+          >
+            {/* Icon on top left */}
+            <View style={{ position: "absolute", top: 12, left: 12 }}>
+              <Users size={20} color="#FF9500" />
+            </View>
+            {/* NOW badge on top right */}
+            <View
+              style={{
+                position: "absolute",
+                top: 8,
+                right: 8,
+                backgroundColor: "#FF9500",
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 8,
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: "SpaceGrotesk_600SemiBold",
+                  fontSize: 10,
+                  color: "#FFFFFF",
+                  textTransform: "uppercase",
+                }}
+              >
+                NOW
+              </Text>
+            </View>
+            <Text
+              style={{
+                fontFamily: "SpaceGrotesk_600SemiBold",
+                fontSize: 24,
+                color: "#FF9500",
+                marginTop: 28,
+              }}
+            >
+              {respondersAvailable}
+            </Text>
+            <Text
+              style={{
+                fontFamily: "SpaceGrotesk_400Regular",
+                fontSize: 12,
+                color: "#FF9500",
+                marginTop: 4,
+              }}
+            >
+              Responders
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      {/* Cases List */}
+      <ScrollView
+        style={{ flex: 1, backgroundColor: "#020617" }}
+        contentContainerStyle={{
+          padding: 16,
+          paddingBottom: insets.bottom + 20,
+        }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        {cases.length === 0 ? (
+          <View
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              alignItems: "center",
+              paddingVertical: 60,
+            }}
+          >
+            <AlertCircle size={48} color="#475569" />
+            <Text
+              style={{
+                fontFamily: "SpaceGrotesk_600SemiBold",
+                fontSize: 18,
+                color: "#94a3b8",
+                marginTop: 16,
+                marginBottom: 8,
+              }}
+            >
+              No Assigned Cases
+            </Text>
+            <Text
+              style={{
+                fontFamily: "SpaceGrotesk_400Regular",
+                fontSize: 14,
+                color: "#94a3b8",
+                textAlign: "center",
+                paddingHorizontal: 32,
+              }}
+            >
+              You don't have any assigned cases yet. Cases will appear here when assigned by the command center.
+            </Text>
+          </View>
+        ) : (
+          cases.map((caseData) => (
+            <CaseCard
+              key={caseData.id}
+              case={caseData}
+              onPress={() => handleCasePress(caseData)}
+              onStatusUpdate={() => {
+                // The real-time subscription will automatically update the cases
+                // This callback is kept for potential future use
+              }}
+            />
+          ))
+        )}
+      </ScrollView>
+    </View>
+  );
+}
+

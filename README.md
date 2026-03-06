@@ -7,9 +7,9 @@ Welcome to the RESCUE Mobile App project! This monorepo contains multiple applic
 ```
 RESCUE_MOBILE APP/
 ├── apps/
-│   └── mobile/              # Mobile app for citizens (Expo/React Native)
-├── command-center-web/      # Web dashboard for command centers (Next.js)
-├── Dispatcher_mobileapp/    # Mobile app for dispatchers (Expo/React Native)
+│   ├── civilian-mobile-app/     # Mobile app for citizens (Expo/React Native)
+│   ├── dispatcher-web-app/      # Web dashboard for command centers (Next.js)
+│   └── responder-mobile-app/    # Mobile app for responders (Expo/React Native)
 └── packages/
     └── firebase/            # Shared Firebase package
 ```
@@ -21,6 +21,7 @@ RESCUE_MOBILE APP/
 **Contact**: **Shawn Mikel Campo** to get the Firebase API keys and configuration values.
 
 You will need the following Firebase configuration values:
+
 - `API_KEY`
 - `AUTH_DOMAIN`
 - `PROJECT_ID`
@@ -73,29 +74,30 @@ FIREBASE_APP_ID=your_app_id
 > **Note**: Get these values from **Shawn Mikel Campo**.
 
 **Additional Documentation**:
+
 - See `packages/firebase/README.md` for detailed usage
 - See `packages/firebase/ENV_SETUP.md` for environment variable details
 - See `packages/firebase/FIRESTORE_SECURITY_RULES.md` for security rules setup
 
 ---
 
-### 2. Setup `apps/mobile/` (Citizen Mobile App)
+### 2. Setup `apps/civilian-mobile-app/` (Citizen Mobile App)
 
 This is the mobile app for citizens to report emergencies.
 
 ```bash
 # Navigate to the mobile app directory
-cd apps/mobile
+cd apps/civilian-mobile-app
 
 # Install dependencies
 npm install
 
 # Create environment file
-# Create a .env file in apps/mobile/ directory
+# Create a .env file in apps/civilian-mobile-app/ directory
 ```
 
 **Environment Setup**:
-Create a `.env` file in `apps/mobile/` directory:
+Create a `.env` file in `apps/civilian-mobile-app/` directory:
 
 ```env
 EXPO_PUBLIC_FIREBASE_API_KEY=your_api_key
@@ -109,6 +111,7 @@ EXPO_PUBLIC_FIREBASE_APP_ID=your_app_id
 > **Note**: Get these values from **Shawn Mikel Campo**.
 
 **Running the App**:
+
 ```bash
 # Start the Expo development server
 npx expo start
@@ -118,28 +121,30 @@ npm start
 ```
 
 **Additional Documentation**:
-- See `apps/mobile/FIREBASE_INTEGRATION.md` for Firebase integration details
-- See `apps/mobile/API_SETUP.md` for API setup instructions
+
+- See `apps/civilian-mobile-app/README.md` for detailed project information
+- See `apps/civilian-mobile-app/FIREBASE_INTEGRATION.md` for Firebase integration details
+- See `apps/civilian-mobile-app/API_SETUP.md` for API setup instructions
 
 ---
 
-### 3. Setup `command-center-web/` (Web Dashboard)
+### 3. Setup `apps/dispatcher-web-app/` (Web Dashboard)
 
 This is the Next.js web application for command centers to monitor and manage emergencies.
 
 ```bash
 # Navigate to the command center web directory
-cd command-center-web
+cd apps/dispatcher-web-app
 
 # Install dependencies
 npm install
 
 # Create environment file
-# Create a .env.local file in command-center-web/ directory
+# Create a .env.local file in apps/dispatcher-web-app/ directory
 ```
 
 **Environment Setup**:
-Create a `.env.local` file in `command-center-web/` directory:
+Create a `.env.local` file in `apps/dispatcher-web-app/` directory:
 
 ```env
 NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
@@ -157,6 +162,7 @@ NEXT_PUBLIC_MAPBOX_STYLE=mapbox/streets-v12
 > **Note**: Get Firebase values from **Shawn Mikel Campo**. Mapbox token is optional and can be obtained from [Mapbox](https://account.mapbox.com/access-tokens/).
 
 **Running the App**:
+
 ```bash
 # Start the development server
 npm run dev
@@ -165,29 +171,30 @@ npm run dev
 ```
 
 **Additional Documentation**:
-- See `command-center-web/README.md` for detailed project information
-- See `command-center-web/FIREBASE_INTEGRATION.md` for Firebase integration details
-- See `command-center-web/AUTHENTICATION_SETUP.md` for authentication setup
+
+- See `apps/dispatcher-web-app/README.md` for detailed project information
+- See `apps/dispatcher-web-app/FIREBASE_INTEGRATION.md` for Firebase integration details
+- See `apps/dispatcher-web-app/AUTHENTICATION_SETUP.md` for authentication setup
 
 ---
 
-### 4. Setup `Dispatcher_mobileapp/` (Dispatcher Mobile App)
+### 4. Setup `apps/responder-mobile-app/` (Responder Mobile App)
 
 This is the mobile app for dispatchers to receive and manage emergency reports.
 
 ```bash
-# Navigate to the dispatcher app directory
-cd Dispatcher_mobileapp
+# Navigate to the responder app directory
+cd apps/responder-mobile-app
 
 # Install dependencies
 npm install
 
 # Create environment file
-# Create a .env file in Dispatcher_mobileapp/ directory
+# Create a .env file in apps/responder-mobile-app/ directory
 ```
 
 **Environment Setup**:
-Create a `.env` file in `Dispatcher_mobileapp/` directory:
+Create a `.env` file in `apps/responder-mobile-app/` directory:
 
 ```env
 EXPO_PUBLIC_FIREBASE_API_KEY=your_api_key
@@ -201,6 +208,7 @@ EXPO_PUBLIC_FIREBASE_APP_ID=your_app_id
 > **Note**: Get these values from **Shawn Mikel Campo**.
 
 **Running the App**:
+
 ```bash
 # Start the Expo development server
 npx expo start
@@ -210,8 +218,8 @@ npm start
 ```
 
 **Additional Documentation**:
-- See `Dispatcher_mobileapp/FIREBASE_INTEGRATION.md` for Firebase integration details
-- See `Dispatcher_mobileapp/API_SETUP.md` for API setup instructions
+
+- See `apps/responder-mobile-app/README.md` for detailed project information
 
 ---
 
@@ -221,13 +229,14 @@ For a fresh clone, follow this order:
 
 1. ✅ **First**: Setup `packages/firebase/` (required by all other projects)
 2. ✅ **Then**: Setup any of the three apps in any order:
-   - `apps/mobile/`
-   - `command-center-web/`
-   - `Dispatcher_mobileapp/`
+   - `apps/civilian-mobile-app/`
+   - `apps/dispatcher-web-app/`
+   - `apps/responder-mobile-app/`
 
 ## 🛠️ Common Commands
 
 ### Firebase Package
+
 ```bash
 cd packages/firebase
 npm install
@@ -235,16 +244,18 @@ npm run build          # Build the package
 npm run dev            # Watch mode for development
 ```
 
-### Mobile Apps (apps/mobile & Dispatcher_mobileapp)
+### Mobile Apps (apps/civilian-mobile-app & apps/responder-mobile-app)
+
 ```bash
-cd apps/mobile          # or cd Dispatcher_mobileapp
+cd apps/civilian-mobile-app          # or cd apps/responder-mobile-app
 npm install
 npx expo start          # Start Expo development server
 ```
 
 ### Command Center Web
+
 ```bash
-cd command-center-web
+cd apps/dispatcher-web-app
 npm install
 npm run dev             # Start development server (http://localhost:3000)
 npm run build           # Build for production
@@ -256,11 +267,11 @@ npm run lint            # Run ESLint
 
 1. **Firebase Package**: Must be built before other projects can use it. Run `npm run build` in `packages/firebase/` after installation.
 
-2. **Environment Variables**: 
+2. **Environment Variables**:
    - Never commit `.env` or `.env.local` files to git
    - Each project needs its own environment file with the correct prefix:
-     - `EXPO_PUBLIC_` for Expo apps (mobile, Dispatcher_mobileapp)
-     - `NEXT_PUBLIC_` for Next.js app (command-center-web)
+     - `EXPO_PUBLIC_` for Expo apps (apps/civilian-mobile-app, apps/responder-mobile-app)
+     - `NEXT_PUBLIC_` for Next.js app (apps/dispatcher-web-app)
      - `FIREBASE_` for scripts in packages/firebase
 
 3. **API Keys**: Contact **Shawn Mikel Campo** to obtain all Firebase API keys and configuration values.
@@ -270,33 +281,38 @@ npm run lint            # Run ESLint
 ## 🐛 Troubleshooting
 
 ### "Cannot find module '@packages/firebase'"
+
 - Make sure you've built the Firebase package: `cd packages/firebase && npm run build`
 - Make sure you've run `npm install` in the app directory
 
 ### "Invalid API Key" or Firebase connection errors
+
 - Verify your `.env` or `.env.local` file exists in the correct directory
 - Check that all environment variables are set correctly
 - Ensure variable names match exactly (case-sensitive)
 - Contact **Shawn Mikel Campo** to verify API keys are correct
 
 ### Expo/React Native build errors
+
 - Clear cache: `npx expo start -c`
 - Delete `node_modules` and reinstall: `rm -rf node_modules && npm install`
 - For iOS: `cd ios && pod install` (if applicable)
 
 ### Next.js build errors
+
 - Clear `.next` directory: `rm -rf .next`
 - Delete `node_modules` and reinstall: `rm -rf node_modules && npm install`
 
 ## 📚 Additional Resources
 
 - **Firebase Package**: See `packages/firebase/README.md` for detailed documentation
-- **Command Center**: See `command-center-web/README.md` for web app details
+- **Command Center**: See `apps/dispatcher-web-app/README.md` for web app details
 - **Mobile Apps**: See individual `FIREBASE_INTEGRATION.md` files in each mobile app directory
 
 ## 👥 Getting Help
 
 If you encounter issues:
+
 1. Check the troubleshooting section above
 2. Review the project-specific documentation files
 3. Contact **Shawn Mikel Campo** for API keys and configuration support
@@ -304,4 +320,3 @@ If you encounter issues:
 ---
 
 **Happy Coding! 🚀**
-
