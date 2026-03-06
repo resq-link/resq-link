@@ -86,12 +86,13 @@ function playWebAudioAlarm(ctx: AudioContext): void {
     const beepDuration = 0.2 // Each beep is 0.2 seconds (short)
     const pauseDuration = 0.1 // Very short pause between beeps for faster rhythm
     
-    frequencies.forEach((freq, index) => {
+    frequencies.forEach((freq: number, index: number) => {
       const oscillator = ctx.createOscillator()
       const gainNode = ctx.createGain()
       
       oscillator.connect(gainNode)
-      gainNode.connect(ctx.destination)
+      // @ts-ignore - Web Audio API typing issues with ctx.destination
+      gainNode.connect(ctx.destination as any)
       
       oscillator.frequency.value = freq
       oscillator.type = 'sine'
@@ -139,16 +140,19 @@ function playFallbackAlarm(): void {
     const gainNode = ctx.createGain()
     
     oscillator.connect(gainNode)
-    gainNode.connect(ctx.destination as AudioNode)
+    // @ts-ignore - Web Audio API typing issues with ctx.destination
+    gainNode.connect(ctx.destination as any)
     
     // Play longer beeps
-    [800, 1000, 1200].forEach((freq: number, i: number) => {
+    const frequencies = [800, 1000, 1200]
+    frequencies.forEach((freq: number, i: number) => {
       setTimeout(() => {
         const osc = ctx.createOscillator()
         const gain = ctx.createGain()
         
         osc.connect(gain)
-        gain.connect(ctx.destination as AudioNode)
+        // @ts-ignore - Web Audio API typing issues with ctx.destination
+        gain.connect(ctx.destination as any)
         
         osc.frequency.value = freq
         osc.type = 'sine'
