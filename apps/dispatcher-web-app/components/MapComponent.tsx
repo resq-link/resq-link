@@ -4,6 +4,7 @@ import { useRef, useEffect } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import type { DispatcherLocation } from '@packages/firebase'
 
 // Fix for default marker icons in Next.js
 if (typeof window !== 'undefined') {
@@ -25,16 +26,6 @@ interface Incident {
   lng: number
   reportedAt: Date
   responder: string | null
-}
-
-interface DispatcherLocation {
-  dispatcherId: string
-  email: string
-  role: string
-  latitude: number
-  longitude: number
-  lastUpdated: Date
-  isOnline: boolean
 }
 
 interface MapComponentProps {
@@ -64,6 +55,14 @@ export default function MapComponent({
   centerLocation,
 }: MapComponentProps) {
   const mapRef = useRef<L.Map | null>(null)
+
+  const getLastUpdatedDate = (value: DispatcherLocation['lastUpdated']) => {
+    if (!value) return null
+    if (value instanceof Date) return value
+    const maybeTimestamp = value as unknown as { toDate?: () => Date }
+    if (typeof maybeTimestamp?.toDate === 'function') return maybeTimestamp.toDate()
+    return new Date(value as unknown as string | number)
+  }
 
   // Default center (San Francisco - adjust to your area)
   const defaultCenter: [number, number] = [37.7749, -122.4194]
@@ -333,7 +332,7 @@ export default function MapComponent({
                       </p>
                       <p className="text-xs text-slate-400">
                         <span className="font-medium">Last updated:</span>{' '}
-                        {new Date(dispatcher.lastUpdated).toLocaleTimeString()}
+                        {(getLastUpdatedDate(dispatcher.lastUpdated) || new Date()).toLocaleTimeString()}
                       </p>
                       <p className="text-xs text-slate-500 mt-2">
                         {dispatcher.latitude.toFixed(6)}, {dispatcher.longitude.toFixed(6)}
