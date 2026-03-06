@@ -1,7 +1,7 @@
 'use client'
 
 interface StatusBadgeProps {
-  status: 'pending' | 'enroute' | 'on_scene' | 'done' | 'active' | 'resolved' // Support both new and legacy statuses
+  status: string
 }
 
 export default function StatusBadge({ status }: StatusBadgeProps) {
