@@ -8,7 +8,7 @@ interface IncidentDetailsModalProps {
     type: string
     location: string
     priority: 'low' | 'medium' | 'high' | 'critical'
-    status: 'active' | 'pending' | 'resolved'
+    status: string
     reportedAt: Date
     description: string
     responder: string | null
