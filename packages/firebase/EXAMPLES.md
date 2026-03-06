@@ -4,24 +4,27 @@
 
 ### 1. Install the package
 
-Add to `command-center-web/package.json`:
+Add to `apps/dispatcher-web-app/package.json`:
+
 ```json
 {
   "dependencies": {
-    "@packages/firebase": "file:../packages/firebase"
+    "@packages/firebase": "file:../../packages/firebase"
   }
 }
 ```
 
 Then run:
+
 ```bash
-cd command-center-web
+cd apps/dispatcher-web-app
 npm install
 ```
 
 ### 2. Set environment variables
 
 Create `.env.local`:
+
 ```env
 NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
@@ -34,10 +37,10 @@ NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 ### 3. Use in your code
 
 ```typescript
-// app/login/page.tsx
-import { 
-  createCommandCenterAccount, 
-  signInCommandCenter 
+// apps/dispatcher-web-app/app/login/page.tsx
+import {
+  createCommandCenterAccount,
+  signInCommandCenter
 } from "@packages/firebase";
 
 export default function LoginPage() {
@@ -79,24 +82,27 @@ export default function LoginPage() {
 
 ### 1. Install the package
 
-Add to `Dispatcher_mobileapp/package.json`:
+Add to `apps/responder-mobile-app/package.json`:
+
 ```json
 {
   "dependencies": {
-    "@packages/firebase": "file:../packages/firebase"
+    "@packages/firebase": "file:../../packages/firebase"
   }
 }
 ```
 
 Then run:
+
 ```bash
-cd Dispatcher_mobileapp
+cd apps/responder-mobile-app
 npm install
 ```
 
 ### 2. Set environment variables
 
 Create `.env`:
+
 ```env
 EXPO_PUBLIC_FIREBASE_API_KEY=your_api_key
 EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
@@ -109,7 +115,7 @@ EXPO_PUBLIC_FIREBASE_APP_ID=your_app_id
 ### 3. Use in your code
 
 ```typescript
-// src/app/register.jsx
+// apps/responder-mobile-app/src/app/register.jsx
 import { createDispatcherAccount } from "@packages/firebase";
 
 export default function RegisterScreen() {
@@ -138,7 +144,8 @@ export default function RegisterScreen() {
 
 ### 1. Install the package
 
-Add to `apps/mobile/package.json`:
+Add to `apps/civilian-mobile-app/package.json`:
+
 ```json
 {
   "dependencies": {
@@ -148,14 +155,16 @@ Add to `apps/mobile/package.json`:
 ```
 
 Then run:
+
 ```bash
-cd apps/mobile
+cd apps/civilian-mobile-app
 npm install
 ```
 
 ### 2. Set environment variables
 
 Create `.env`:
+
 ```env
 EXPO_PUBLIC_FIREBASE_API_KEY=your_api_key
 EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
@@ -169,9 +178,9 @@ EXPO_PUBLIC_FIREBASE_APP_ID=your_app_id
 
 ```typescript
 // src/app/login.jsx
-import { 
-  signInUserWithPhone, 
-  verifyPhoneCodeAndCreateProfile 
+import {
+  signInUserWithPhone,
+  verifyPhoneCodeAndCreateProfile
 } from "@packages/firebase";
 
 export default function LoginScreen() {
@@ -222,8 +231,8 @@ For web builds, add a container for reCAPTCHA:
 return (
   <View>
     {/* For web builds */}
-    {Platform.OS === 'web' && (
-      <div id="recaptcha-container" style={{ display: 'none' }} />
+    {Platform.OS === "web" && (
+      <div id="recaptcha-container" style={{ display: "none" }} />
     )}
     {/* Rest of your UI */}
   </View>
@@ -243,4 +252,3 @@ npm run build
 ```
 
 The compiled files will be in `packages/firebase/dist/`.
-

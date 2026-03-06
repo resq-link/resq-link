@@ -16,24 +16,17 @@ Shared Firebase package for RESCUE mobile applications.
 ## Installation
 
 This package is used by:
-- `command-center-web` (Next.js)
-- `apps/mobile` (Expo/React Native)
-- `Dispatcher_mobileapp` (Expo/React Native)
+
+- `apps/dispatcher-web-app` (Next.js)
+- `apps/civilian-mobile-app` (Expo/React Native)
+- `apps/responder-mobile-app` (Expo/React Native)
 
 ### Adding to your app
 
 Since this is a local package, add it to each app's `package.json`:
 
-**For command-center-web:**
-```json
-{
-  "dependencies": {
-    "@packages/firebase": "file:../packages/firebase"
-  }
-}
-```
+**For apps/dispatcher-web-app:**
 
-**For apps/mobile:**
 ```json
 {
   "dependencies": {
@@ -42,11 +35,22 @@ Since this is a local package, add it to each app's `package.json`:
 }
 ```
 
-**For Dispatcher_mobileapp:**
+**For apps/civilian-mobile-app:**
+
 ```json
 {
   "dependencies": {
-    "@packages/firebase": "file:../packages/firebase"
+    "@packages/firebase": "file:../../packages/firebase"
+  }
+}
+```
+
+**For apps/responder-mobile-app:**
+
+```json
+{
+  "dependencies": {
+    "@packages/firebase": "file:../../packages/firebase"
   }
 }
 ```
@@ -56,19 +60,22 @@ Then run `npm install` in each app directory.
 ## Setup
 
 1. Install dependencies:
+
 ```bash
 cd packages/firebase
 npm install
 ```
 
 2. Build the package:
+
 ```bash
 npm run build
 ```
 
 3. Configure environment variables in each app:
 
-### For Next.js (command-center-web):
+### For Next.js (apps/dispatcher-web-app):
+
 ```env
 NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
@@ -78,7 +85,8 @@ NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 ```
 
-### For Expo apps (mobile, Dispatcher_mobileapp):
+### For Expo apps (apps/civilian-mobile-app, apps/responder-mobile-app):
+
 ```env
 EXPO_PUBLIC_FIREBASE_API_KEY=your_api_key
 EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
@@ -93,12 +101,12 @@ EXPO_PUBLIC_FIREBASE_APP_ID=your_app_id
 ### Import in your app:
 
 ```typescript
-import { 
-  auth, 
-  firestore, 
-  createDispatcherAccount, 
-  createCommandCenterAccount, 
-  signInUserWithPhone 
+import {
+  auth,
+  firestore,
+  createDispatcherAccount,
+  createCommandCenterAccount,
+  signInUserWithPhone,
 } from "@packages/firebase";
 ```
 
@@ -110,7 +118,7 @@ import { createDispatcherAccount } from "@packages/firebase";
 const { user, accountData } = await createDispatcherAccount(
   "dispatcher@example.com",
   "password123",
-  "BFP"
+  "BFP",
 );
 ```
 
@@ -123,14 +131,17 @@ const { user, accountData } = await createCommandCenterAccount(
   "center@example.com",
   "password123",
   "Main Command Center",
-  "Manila, Philippines"
+  "Manila, Philippines",
 );
 ```
 
 ### Sign In User with Phone:
 
 ```typescript
-import { signInUserWithPhone, verifyPhoneCodeAndCreateProfile } from "@packages/firebase";
+import {
+  signInUserWithPhone,
+  verifyPhoneCodeAndCreateProfile,
+} from "@packages/firebase";
 
 // Step 1: Send verification code
 const { verificationId } = await signInUserWithPhone("+1234567890");
@@ -140,7 +151,7 @@ const { user, accountData } = await verifyPhoneCodeAndCreateProfile(
   verificationId,
   "123456", // code from SMS
   "John Doe",
-  "123 Main St, City"
+  "123 Main St, City",
 );
 ```
 
@@ -160,4 +171,3 @@ const { user, accountData } = await verifyPhoneCodeAndCreateProfile(
 3. **Publish**: Click "Publish" to activate the rules
 
 Without proper security rules, you'll get "Missing insufficient permissions" errors when trying to create emergency reports.
-

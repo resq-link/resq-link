@@ -37,4 +37,4 @@ e2b.local.toml
 e2b.*.local.toml
 
 **/.react-router
-apps/mobile/caches/*
+apps/civilian-mobile-app/caches/*

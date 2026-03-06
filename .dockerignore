@@ -52,4 +52,4 @@
 package.json
 bun.lock
 
-apps/mobile/caches/*
+apps/civilian-mobile-app/caches/*

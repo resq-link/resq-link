@@ -40,20 +40,24 @@ You have two options to deploy the storage rules:
 #### Option 2: Using Firebase CLI (For Development)
 
 1. **Install Firebase CLI** (if not already installed)
+
    ```bash
    npm install -g firebase-tools
    ```
 
 2. **Login to Firebase**
+
    ```bash
    firebase login
    ```
 
 3. **Initialize Firebase Storage** (if not already done)
+
    ```bash
    cd packages/firebase
    firebase init storage
    ```
+
    - Select your Firebase project
    - Use the existing `storage.rules` file when prompted
 
@@ -70,7 +74,7 @@ You have two options to deploy the storage rules:
    - Make sure this matches your `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET` environment variable
 
 2. **Verify Environment Variable**
-   - Check your `.env` file in `apps/mobile/`
+   - Check your `.env` file in `apps/civilian-mobile-app/`
    - Ensure `EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET` is set correctly
    - The value should be just the bucket name (e.g., `your-project.appspot.com`) or the full gs:// URL (e.g., `gs://your-project.appspot.com`)
 
@@ -96,8 +100,9 @@ The storage rules (`storage.rules`) enforce:
 ### Test Photo Upload
 
 1. **Run your mobile app**
+
    ```bash
-   cd apps/mobile
+   cd apps/civilian-mobile-app
    npm start
    ```
 
@@ -116,17 +121,20 @@ The storage rules (`storage.rules`) enforce:
 ### Common Issues
 
 #### Error: "Permission denied"
+
 - **Cause**: Storage rules not deployed or user not authenticated
-- **Solution**: 
+- **Solution**:
   - Verify storage rules are deployed
   - Check that user is logged in
   - Verify rules match the file path (`emergencies/photos/`)
 
 #### Error: "File size exceeds maximum"
+
 - **Cause**: File is larger than 10MB
 - **Solution**: Compress the image before upload (already handled in code with quality: 0.8)
 
 #### Error: "Storage bucket not found"
+
 - **Cause**: Storage bucket not configured or wrong bucket name
 - **Solution**:
   - Verify Storage is enabled in Firebase Console
@@ -136,15 +144,18 @@ The storage rules (`storage.rules`) enforce:
 ## 📝 Production Considerations
 
 ### File Size Limits
+
 - Current limit: 10MB per file
 - Consider reducing to 5MB for mobile uploads
 - Images are compressed (quality: 0.8) before upload
 
 ### Storage Costs
+
 - Firebase Storage has a free tier: 5GB storage, 1GB/day downloads
 - Monitor usage in Firebase Console → Usage and billing
 
 ### Cleanup Strategy
+
 - Consider implementing automatic deletion of old emergency photos
 - Or archive photos after reports are resolved
 
@@ -155,7 +166,11 @@ The storage rules (`storage.rules`) enforce:
 To change the storage path, update the path parameter in `emergency-form.jsx`:
 
 ```javascript
-imageUrl = await uploadImageToStorage(imageUri, 'emergencies/photos/', fileName);
+imageUrl = await uploadImageToStorage(
+  imageUri,
+  "emergencies/photos/",
+  fileName,
+);
 ```
 
 ### Adjust File Size Limit
@@ -163,7 +178,7 @@ imageUrl = await uploadImageToStorage(imageUri, 'emergencies/photos/', fileName)
 Edit `storage.rules`:
 
 ```javascript
-allow write: if isAuthenticated() 
+allow write: if isAuthenticated()
              && request.resource.size < 5 * 1024 * 1024  // 5MB max file size
              && request.resource.contentType.matches('image/.*');
 ```
@@ -173,8 +188,7 @@ allow write: if isAuthenticated()
 Edit `storage.rules`:
 
 ```javascript
-allow write: if isAuthenticated() 
+allow write: if isAuthenticated()
              && request.resource.size < 10 * 1024 * 1024
              && request.resource.contentType.matches('image/(jpeg|jpg|png)');
 ```
-
