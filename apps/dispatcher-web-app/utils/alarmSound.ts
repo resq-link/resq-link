@@ -139,16 +139,16 @@ function playFallbackAlarm(): void {
     const gainNode = ctx.createGain()
     
     oscillator.connect(gainNode)
-    gainNode.connect(ctx.destination)
+    gainNode.connect(ctx.destination as AudioNode)
     
     // Play longer beeps
-    [800, 1000, 1200].forEach((freq, i) => {
+    [800, 1000, 1200].forEach((freq: number, i: number) => {
       setTimeout(() => {
         const osc = ctx.createOscillator()
         const gain = ctx.createGain()
         
         osc.connect(gain)
-        gain.connect(ctx.destination)
+        gain.connect(ctx.destination as AudioNode)
         
         osc.frequency.value = freq
         osc.type = 'sine'
