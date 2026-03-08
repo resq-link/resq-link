@@ -1,5 +1,6 @@
 import React from "react";
 import { TouchableOpacity, Text } from "react-native";
+import { colors, radii } from "@/theme";
 
 export default function CustomButton({
   title,
@@ -8,24 +9,21 @@ export default function CustomButton({
   disabled = false,
   style,
   textStyle,
-  loading = false,
   ...props
 }) {
   const getButtonStyle = () => {
     const baseStyle = {
-      paddingVertical: 14,
-      paddingHorizontal: 20,
-      borderRadius: 14,
+      paddingVertical: 16,
+      paddingHorizontal: 24,
+      borderRadius: radii.md,
       alignItems: "center",
       justifyContent: "center",
-      flexDirection: "row",
-      gap: 8,
     };
 
     if (variant === "primary") {
       return {
         ...baseStyle,
-        backgroundColor: disabled ? "#C7C7CC" : "#10b981",
+        backgroundColor: disabled ? colors.disabled : colors.accent,
         ...style,
       };
     }
@@ -33,9 +31,9 @@ export default function CustomButton({
     if (variant === "secondary") {
       return {
         ...baseStyle,
-        backgroundColor: "#FFFFFF",
-        borderWidth: 1,
-        borderColor: "#C7C7CC",
+        backgroundColor: "transparent",
+        borderWidth: 2,
+        borderColor: colors.accent,
         ...style,
       };
     }
@@ -47,12 +45,13 @@ export default function CustomButton({
     const baseTextStyle = {
       fontFamily: "SpaceGrotesk_600SemiBold",
       fontSize: 16,
+      letterSpacing: 0.5,
     };
 
     if (variant === "primary") {
       return {
         ...baseTextStyle,
-        color: "#FFFFFF",
+        color: colors.white,
         ...textStyle,
       };
     }
@@ -60,7 +59,7 @@ export default function CustomButton({
     if (variant === "secondary") {
       return {
         ...baseTextStyle,
-        color: "#10b981",
+        color: colors.accent,
         ...textStyle,
       };
     }
@@ -73,10 +72,10 @@ export default function CustomButton({
       style={getButtonStyle()}
       onPress={onPress}
       disabled={disabled}
+      activeOpacity={0.85}
       {...props}
     >
       <Text style={getTextStyle()}>{title}</Text>
     </TouchableOpacity>
   );
 }
-

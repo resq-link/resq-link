@@ -1,5 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity } from "react-native";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useRouter, useLocalSearchParams } from "expo-router";
@@ -14,6 +19,7 @@ import { getDoc, doc, firestore, onSnapshot } from "@packages/firebase";
 import CaseInfoCard from "@/components/CaseInfoCard";
 import LoadingScreen from "@/components/LoadingScreen";
 import ErrorAlert from "@/components/ErrorAlert";
+import { colors, spacing } from "@/theme";
 
 export default function CaseDetailScreen() {
   const insets = useSafeAreaInsets();
@@ -37,7 +43,6 @@ export default function CaseDetailScreen() {
       return;
     }
 
-    // Subscribe to real-time updates
     const caseDocRef = doc(firestore, "emergencies", caseId);
     const unsubscribe = onSnapshot(
       caseDocRef,
@@ -63,24 +68,22 @@ export default function CaseDetailScreen() {
             createdAt: data.createdAt?.toDate
               ? data.createdAt.toDate()
               : data.created_at?.toDate
-              ? data.created_at.toDate()
-              : new Date(data.createdAt || Date.now()),
+                ? data.created_at.toDate()
+                : new Date(data.createdAt || Date.now()),
             updatedAt: data.updatedAt?.toDate
               ? data.updatedAt.toDate()
               : data.updated_at?.toDate
-              ? data.updated_at.toDate()
-              : null,
+                ? data.updated_at.toDate()
+                : null,
             dispatcherId: data.dispatcherId || data.dispatcher_id || null,
           };
 
           setCaseData(caseInfo);
 
-          // Fetch reporter information if userId is available
           if (caseInfo.userId) {
             try {
               const userDocRef = doc(firestore, "users", caseInfo.userId);
               const userDoc = await getDoc(userDocRef);
-
               if (userDoc.exists()) {
                 const userData = userDoc.data();
                 setReporterInfo({
@@ -91,32 +94,25 @@ export default function CaseDetailScreen() {
               }
             } catch (userError) {
               console.error("Error fetching reporter info:", userError);
-              // Don't fail the whole screen if reporter info fails
             }
           }
 
           setLoading(false);
         } catch (err) {
-          console.error("Error processing case data:", err);
           setError(err.message || "Failed to load case details");
           setLoading(false);
         }
       },
       (err) => {
-        console.error("Error in case subscription:", err);
         setError(err.message || "Failed to subscribe to case updates");
         setLoading(false);
       }
     );
 
-    return () => {
-      unsubscribe();
-    };
+    return () => unsubscribe();
   }, [caseId]);
 
-  if (!fontsLoaded) {
-    return null;
-  }
+  if (!fontsLoaded) return null;
 
   if (loading) {
     return (
@@ -129,16 +125,16 @@ export default function CaseDetailScreen() {
 
   if (error && !caseData) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#0f172a" }}>
-        <StatusBar style="light" backgroundColor="#0f172a" />
+      <View style={{ flex: 1, backgroundColor: colors.background }}>
+        <StatusBar style="light" backgroundColor={colors.background} />
         <View
           style={{
-            backgroundColor: "#3b82f6",
+            backgroundColor: colors.surface,
             paddingTop: insets.top + 20,
-            paddingHorizontal: 16,
-            paddingBottom: 16,
+            paddingHorizontal: spacing.lg,
+            paddingBottom: spacing.lg,
             borderBottomWidth: 1,
-            borderBottomColor: "#1e293b",
+            borderBottomColor: colors.border,
             flexDirection: "row",
             alignItems: "center",
           }}
@@ -147,42 +143,37 @@ export default function CaseDetailScreen() {
             onPress={() => router.back()}
             style={{ marginRight: 16 }}
           >
-            <ArrowLeft size={24} color="#94a3b8" />
+            <ArrowLeft size={24} color={colors.textSecondary} />
           </TouchableOpacity>
           <Text
             style={{
               fontFamily: "SpaceGrotesk_700Bold",
-              fontSize: 20,
-              color: "#94a3b8",
+              fontSize: 18,
+              color: colors.text,
             }}
           >
             Case Details
           </Text>
         </View>
-        <ScrollView style={{ flex: 1, backgroundColor: "#0f172a" }}>
-          <View style={{ padding: 16, backgroundColor: "#0f172a" }}>
+        <ScrollView style={{ flex: 1 }}>
+          <View style={{ padding: spacing.lg }}>
             <ErrorAlert message={error} />
             <TouchableOpacity
               onPress={() => router.back()}
               style={{
-                marginBottom: 16,
-                backgroundColor: "#0f172a",
+                marginTop: spacing.md,
+                backgroundColor: colors.surface,
                 borderRadius: 12,
                 padding: 16,
                 borderWidth: 1,
-                borderColor: "#1e293b",
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.3,
-                shadowRadius: 4,
-                elevation: 3,
+                borderColor: colors.border,
               }}
             >
               <Text
                 style={{
                   fontFamily: "SpaceGrotesk_600SemiBold",
                   fontSize: 16,
-                  color: "#94a3b8",
+                  color: colors.text,
                 }}
               >
                 Go Back
@@ -195,18 +186,17 @@ export default function CaseDetailScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#0f172a" }}>
-      <StatusBar style="light" backgroundColor="#0f172a" />
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar style="light" backgroundColor={colors.background} />
 
-      {/* Header */}
       <View
         style={{
-          backgroundColor: "#0f172a",
+          backgroundColor: colors.surface,
           paddingTop: insets.top + 20,
-          paddingHorizontal: 16,
-          paddingBottom: 16,
+          paddingHorizontal: spacing.lg,
+          paddingBottom: spacing.lg,
           borderBottomWidth: 1,
-          borderBottomColor: "#1e293b",
+          borderBottomColor: colors.border,
           flexDirection: "row",
           alignItems: "center",
         }}
@@ -215,13 +205,13 @@ export default function CaseDetailScreen() {
           onPress={() => router.back()}
           style={{ marginRight: 16 }}
         >
-          <ArrowLeft size={24} color="#94a3b8" />
+          <ArrowLeft size={24} color={colors.textSecondary} />
         </TouchableOpacity>
         <Text
           style={{
             fontFamily: "SpaceGrotesk_700Bold",
-            fontSize: 20,
-            color: "#94a3b8",
+            fontSize: 18,
+            color: colors.text,
           }}
         >
           Case Details
@@ -229,7 +219,7 @@ export default function CaseDetailScreen() {
       </View>
 
       {error && (
-        <View style={{ padding: 16 }}>
+        <View style={{ padding: spacing.lg }}>
           <ErrorAlert message={error} onDismiss={() => setError("")} />
         </View>
       )}
@@ -238,13 +228,9 @@ export default function CaseDetailScreen() {
         <CaseInfoCard
           case={caseData}
           reporterInfo={reporterInfo}
-          onStatusUpdate={() => {
-            // The real-time subscription will automatically update the case data
-            // This callback is kept for potential future use
-          }}
+          onStatusUpdate={() => {}}
         />
       )}
     </View>
   );
 }
-

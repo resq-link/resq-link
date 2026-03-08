@@ -1,8 +1,10 @@
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
+import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import CustomBottomNav from "@/components/CustomBottomNav";
 import {
   useFonts,
   SpaceGrotesk_400Regular,
@@ -50,13 +52,21 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
-          <Stack.Screen name="index" />
-          <Stack.Screen name="login" />
-          <Stack.Screen name="dashboard" />
-          <Stack.Screen name="case-detail" />
-          <Stack.Screen name="map" />
-        </Stack>
+        <View style={{ flex: 1 }}>
+          <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
+            <Stack.Screen name="index" />
+            <Stack.Screen name="login" />
+            <Stack.Screen name="dashboard" />
+            <Stack.Screen name="case-detail" />
+            <Stack.Screen name="map" />
+            <Stack.Screen name="settings" />
+            <Stack.Screen name="notifications" />
+            <Stack.Screen name="location" />
+            <Stack.Screen name="help-support" />
+            <Stack.Screen name="about" />
+          </Stack>
+          <CustomBottomNav />
+        </View>
       </GestureHandlerRootView>
     </QueryClientProvider>
   );
