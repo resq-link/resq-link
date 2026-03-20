@@ -15,6 +15,7 @@ import LoadingScreen from "@/components/LoadingScreen";
 import ErrorAlert from "@/components/ErrorAlert";
 import useUserStore from "@/utils/userStore";
 import { signInDispatcherWithVerification } from "@/utils/auth/dispatcherAuth";
+import { colors, spacing } from "@/theme";
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
@@ -31,25 +32,16 @@ export default function LoginScreen() {
     SpaceGrotesk_700Bold,
   });
 
-  if (!fontsLoaded) {
-    return null;
-  }
+  if (!fontsLoaded) return null;
 
-  const validateEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
-  const validatePassword = (password) => {
-    return password.length >= 6;
-  };
+  const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const validatePassword = (password) => password.length >= 6;
 
   const handleLogin = async () => {
     if (!email || !validateEmail(email)) {
       setError("Please enter a valid email address");
       return;
     }
-
     if (!password || !validatePassword(password)) {
       setError("Password must be at least 6 characters");
       return;
@@ -57,94 +49,76 @@ export default function LoginScreen() {
 
     setIsLoading(true);
     setError("");
-
     try {
-      const { user, profile } = await signInDispatcherWithVerification(email, password);
-      
-      console.log("Login successful:", user.uid);
-      console.log("Responder profile:", profile);
-
-      // Format user data for the store
-      const userData = {
+      const { user, profile } = await signInDispatcherWithVerification(
+        email,
+        password
+      );
+      await setUser({
         uid: profile.uid,
         email: profile.email,
         role: profile.role,
         active: profile.active,
-      };
-
-      // Set user in store
-      await setUser(userData);
-      
+      });
       setIsLoading(false);
-      
-      // Navigate to dashboard
       router.replace("/dashboard");
     } catch (err) {
       console.error("Login error:", err);
       setIsLoading(false);
-      
-      // Handle Firebase auth errors
       let errorMessage = "Login failed. Please try again.";
-      if (err.message?.includes("user-not-found")) {
+      if (err.message?.includes("user-not-found"))
         errorMessage = "No account found with this email.";
-      } else if (err.message?.includes("wrong-password")) {
+      else if (err.message?.includes("wrong-password"))
         errorMessage = "Incorrect password. Please try again.";
-      } else if (err.message?.includes("invalid-email")) {
+      else if (err.message?.includes("invalid-email"))
         errorMessage = "Invalid email address.";
-      } else if (err.message?.includes("Access denied")) {
+      else if (err.message?.includes("Access denied"))
         errorMessage = "Access denied. Responder account required.";
-      } else if (err.message?.includes("deactivated")) {
-        errorMessage = err.message;
-      } else if (err.message) {
-        errorMessage = err.message;
-      }
-      
+      else if (err.message?.includes("deactivated")) errorMessage = err.message;
+      else if (err.message) errorMessage = err.message;
       setError(errorMessage);
     }
   };
 
   if (isLoading) {
     return (
-      <LoadingScreen
-        title="Logging you in..."
-        subtitle="Please wait"
-      />
+      <LoadingScreen title="Logging you in..." subtitle="Please wait" />
     );
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#0f172a" }}>
-      <StatusBar style="light" backgroundColor="#0f172a" />
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar style="light" backgroundColor={colors.background} />
 
-      {/* Header */}
       <View
         style={{
-          backgroundColor: "#0f172a",
-          paddingTop: insets.top + 20,
-          paddingHorizontal: 16,
-          paddingBottom: 20,
+          backgroundColor: colors.background,
+          paddingTop: insets.top + 24,
+          paddingHorizontal: spacing.lg,
+          paddingBottom: spacing.xl,
           borderBottomWidth: 1,
-          borderBottomColor: "#1e293b",
+          borderBottomColor: colors.border,
         }}
       >
         <Text
           style={{
             fontFamily: "SpaceGrotesk_700Bold",
-            fontSize: 30,
-            color: "#f1f5f9",
+            fontSize: 28,
+            color: colors.text,
+            letterSpacing: -0.5,
           }}
         >
-          Responder Login
+          Responder
         </Text>
         <Text
           style={{
             fontFamily: "SpaceGrotesk_400Regular",
-            fontSize: 14,
-            color: "#94a3b8",
-            marginTop: 4,
+            fontSize: 15,
+            color: colors.textSecondary,
+            marginTop: 6,
           }}
         >
-          Sign in to view your assigned cases
+          Sign in to access your assigned cases
         </Text>
       </View>
 
@@ -152,17 +126,14 @@ export default function LoginScreen() {
         style={{ flex: 1 }}
         contentContainerStyle={{
           flexGrow: 1,
-          paddingHorizontal: 16,
-          paddingTop: 24,
-          paddingBottom: insets.bottom + 20,
-          backgroundColor: "#0f172a",
+          paddingHorizontal: spacing.lg,
+          paddingTop: spacing.xxl,
+          paddingBottom: insets.bottom + 24,
+          backgroundColor: colors.background,
         }}
         showsVerticalScrollIndicator={false}
       >
-        <ErrorAlert
-          message={error}
-          onDismiss={() => setError("")}
-        />
+        <ErrorAlert message={error} onDismiss={() => setError("")} />
 
         <FormInput
           label="Email"
@@ -184,13 +155,17 @@ export default function LoginScreen() {
         />
 
         <CustomButton
-          title="Login"
+          title="Sign In"
           onPress={handleLogin}
           variant="primary"
-          disabled={!email || !password || !validateEmail(email) || !validatePassword(password)}
+          disabled={
+            !email ||
+            !password ||
+            !validateEmail(email) ||
+            !validatePassword(password)
+          }
         />
       </ScrollView>
     </View>
   );
 }
-

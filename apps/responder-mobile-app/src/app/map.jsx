@@ -11,7 +11,7 @@ import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import * as Location from "expo-location";
-import { ArrowLeft, MapPin, AlertCircle } from "lucide-react-native";
+import { ArrowLeft, MapPin } from "lucide-react-native";
 import {
   SpaceGrotesk_400Regular,
   SpaceGrotesk_600SemiBold,
@@ -21,22 +21,19 @@ import { useFonts } from "expo-font";
 import useUserStore from "@/utils/userStore";
 import { subscribeToDispatcherAssignedEmergencies } from "@packages/firebase";
 import LoadingScreen from "@/components/LoadingScreen";
+import { colors, radii, spacing } from "@/theme";
 
-const { width, height } = Dimensions.get("window");
-
-// Get marker color based on priority and status
 const getMarkerColor = (priority, status) => {
-  if (status === "pending") return "#eab308"; // yellow
-  if (status === "enroute") return "#3b82f6"; // blue
-  if (status === "on_scene") return "#8b5cf6"; // purple
-  if (status === "done" || status === "resolved") return "#10b981"; // green
-  if (priority === "critical") return "#dc2626"; // red
-  if (priority === "high") return "#ea580c"; // orange
-  if (priority === "medium") return "#f59e0b"; // amber
-  return "#10b981"; // green
+  if (status === "pending") return colors.pending;
+  if (status === "enroute") return colors.enroute;
+  if (status === "on_scene") return colors.onScene;
+  if (status === "done" || status === "resolved") return colors.success;
+  if (priority === "critical") return colors.priorityCritical;
+  if (priority === "high") return colors.priorityHigh;
+  if (priority === "medium") return colors.priorityMedium;
+  return colors.priorityLow;
 };
 
-// Get incident type display name
 const getIncidentTypeName = (incidentType) => {
   const typeMap = {
     fire: "Fire",
@@ -71,7 +68,6 @@ export default function MapScreen() {
     SpaceGrotesk_700Bold,
   });
 
-  // Request location permission and get user location
   useEffect(() => {
     (async () => {
       try {
@@ -80,11 +76,9 @@ export default function MapScreen() {
           setLocationError("Location permission denied");
           return;
         }
-
         const location = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.High,
         });
-
         const { latitude, longitude } = location.coords;
         setUserLocation({ latitude, longitude });
         setMapRegion({
@@ -94,13 +88,11 @@ export default function MapScreen() {
           longitudeDelta: 0.0421,
         });
       } catch (error) {
-        console.error("Error getting location:", error);
         setLocationError("Failed to get location");
       }
     })();
   }, []);
 
-  // Subscribe to assigned cases with real-time updates
   useEffect(() => {
     if (!user) {
       router.replace("/login");
@@ -110,9 +102,6 @@ export default function MapScreen() {
     const unsubscribe = subscribeToDispatcherAssignedEmergencies(
       user.uid,
       (reports) => {
-        console.log("Received assigned cases for map:", reports.length);
-        
-        // Filter cases with valid coordinates
         const casesWithLocation = reports.filter(
           (c) =>
             c.latitude != null &&
@@ -120,32 +109,22 @@ export default function MapScreen() {
             c.latitude !== 0 &&
             c.longitude !== 0
         );
-
         setCases(reports);
-
-        // Auto-center map on first case if no user location
         if (casesWithLocation.length > 0 && !userLocation) {
-          const firstCase = casesWithLocation[0];
+          const first = casesWithLocation[0];
           setMapRegion({
-            latitude: firstCase.latitude,
-            longitude: firstCase.longitude,
+            latitude: first.latitude,
+            longitude: first.longitude,
             latitudeDelta: 0.0922,
             longitudeDelta: 0.0421,
           });
         }
-
         setLoading(false);
       },
-      {
-        statusFilter: "all",
-        limitCount: 100,
-      }
+      { statusFilter: "all", limitCount: 100 }
     );
 
-    return () => {
-      console.log("Unsubscribing from assigned cases");
-      unsubscribe();
-    };
+    return () => unsubscribe();
   }, [user, router, userLocation]);
 
   const handleCasePress = (caseData) => {
@@ -174,15 +153,11 @@ export default function MapScreen() {
         longitudeDelta: 0.0421,
       });
     } catch (error) {
-      console.error("Error getting location:", error);
       setLocationError("Failed to get location");
     }
   };
 
-  if (!fontsLoaded) {
-    return null;
-  }
-
+  if (!fontsLoaded) return null;
   if (loading) {
     return (
       <LoadingScreen
@@ -192,7 +167,6 @@ export default function MapScreen() {
     );
   }
 
-  // Filter cases with valid coordinates
   const casesWithLocation = cases.filter(
     (c) =>
       c.latitude != null &&
@@ -203,16 +177,12 @@ export default function MapScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" backgroundColor="#0f172a" />
+      <StatusBar style="light" backgroundColor={colors.background} />
 
-      {/* Header */}
       <View
         style={[
           styles.header,
-          {
-            paddingTop: insets.top + 20,
-            paddingBottom: 16,
-          },
+          { paddingTop: insets.top + 20, paddingBottom: spacing.lg },
         ]}
       >
         <View style={styles.headerContent}>
@@ -220,10 +190,10 @@ export default function MapScreen() {
             onPress={() => router.back()}
             style={styles.backButton}
           >
-            <ArrowLeft size={24} color="#f1f5f9" />
+            <ArrowLeft size={24} color={colors.text} />
           </TouchableOpacity>
           <View style={styles.headerText}>
-            <Text style={styles.headerTitle}>Command Center Map</Text>
+            <Text style={styles.headerTitle}>Map</Text>
             <Text style={styles.headerSubtitle}>
               {casesWithLocation.length} case
               {casesWithLocation.length !== 1 ? "s" : ""} with location
@@ -232,7 +202,6 @@ export default function MapScreen() {
         </View>
       </View>
 
-      {/* Map */}
       <View style={styles.mapContainer}>
         <MapView
           provider={PROVIDER_GOOGLE}
@@ -242,57 +211,47 @@ export default function MapScreen() {
           showsUserLocation={!!userLocation}
           showsMyLocationButton={false}
         >
-          {/* User Location Marker */}
           {userLocation && (
             <Marker
               coordinate={userLocation}
               title="Your Location"
-              pinColor="#3b82f6"
+              pinColor={colors.info}
             />
           )}
-
-          {/* Case Markers */}
-          {casesWithLocation.map((caseData) => {
-            const color = getMarkerColor(
-              caseData.priority || "medium",
-              caseData.status
-            );
-            return (
-              <Marker
-                key={caseData.id}
-                coordinate={{
-                  latitude: caseData.latitude,
-                  longitude: caseData.longitude,
-                }}
-                title={getIncidentTypeName(caseData.incidentType)}
-                description={caseData.locationText || "No address"}
-                pinColor={color}
-                onPress={() => handleCasePress(caseData)}
-              />
-            );
-          })}
+          {casesWithLocation.map((caseData) => (
+            <Marker
+              key={caseData.id}
+              coordinate={{
+                latitude: caseData.latitude,
+                longitude: caseData.longitude,
+              }}
+              title={getIncidentTypeName(caseData.incidentType)}
+              description={caseData.locationText || "No address"}
+              pinColor={getMarkerColor(
+                caseData.priority || "medium",
+                caseData.status
+              )}
+              onPress={() => handleCasePress(caseData)}
+            />
+          ))}
         </MapView>
 
-        {/* My Location Button */}
         <TouchableOpacity
           style={styles.myLocationButton}
           onPress={handleMyLocation}
         >
-          <MapPin size={20} color="#FFFFFF" />
+          <MapPin size={20} color={colors.white} />
         </TouchableOpacity>
 
-        {/* Location Error */}
         {locationError && (
           <View style={styles.errorBanner}>
-            <AlertCircle size={16} color="#FF3B30" />
             <Text style={styles.errorText}>{locationError}</Text>
           </View>
         )}
       </View>
 
-      {/* Cases List */}
-      {casesWithLocation.length > 0 && (
-        <View style={styles.casesList}>
+      {casesWithLocation.length > 0 ? (
+        <View style={[styles.casesList, { bottom: insets.bottom + 84 }]}>
           <Text style={styles.casesListTitle}>Assigned Cases</Text>
           <View style={styles.casesScroll}>
             {casesWithLocation.map((caseData) => (
@@ -329,19 +288,15 @@ export default function MapScreen() {
                     {caseData.locationText || "No address"}
                   </Text>
                   <Text style={styles.caseCardStatus}>
-                    Status: {caseData.status}
+                    {caseData.status.replace("_", " ")}
                   </Text>
                 </View>
               </TouchableOpacity>
             ))}
           </View>
         </View>
-      )}
-
-      {/* No Cases Message */}
-      {casesWithLocation.length === 0 && (
-        <View style={styles.emptyState}>
-          <AlertCircle size={48} color="#C7C7CC" />
+      ) : (
+        <View style={[styles.emptyStateContainer, { bottom: insets.bottom + 84 }]}>
           <Text style={styles.emptyStateTitle}>No Cases with Location</Text>
           <Text style={styles.emptyStateText}>
             {cases.length === 0
@@ -357,13 +312,13 @@ export default function MapScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#0f172a",
+    backgroundColor: colors.background,
   },
   header: {
-    backgroundColor: "#0f172a",
+    backgroundColor: colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: "#1e293b",
-    paddingHorizontal: 16,
+    borderBottomColor: colors.border,
+    paddingHorizontal: spacing.lg,
   },
   headerContent: {
     flexDirection: "row",
@@ -379,37 +334,37 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontFamily: "SpaceGrotesk_700Bold",
     fontSize: 20,
-    color: "#f1f5f9",
+    color: colors.text,
   },
   headerSubtitle: {
     fontFamily: "SpaceGrotesk_400Regular",
     fontSize: 14,
-    color: "#94a3b8",
+    color: colors.textSecondary,
     marginTop: 4,
   },
   mapContainer: {
     flex: 1,
     position: "relative",
-    paddingBottom: 200, // Add padding to prevent map from being hidden behind cases list
+    paddingBottom: 200,
   },
   map: {
     flex: 1,
-    zIndex: 1, // Ensure map stays below the cases list
+    zIndex: 1,
   },
   myLocationButton: {
     position: "absolute",
     top: 16,
     right: 16,
-    backgroundColor: "#1e293b",
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    backgroundColor: colors.accent,
+    width: 48,
+    height: 48,
+    borderRadius: radii.lg,
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowRadius: 4,
     elevation: 5,
   },
   errorBanner: {
@@ -417,47 +372,41 @@ const styles = StyleSheet.create({
     top: 70,
     left: 16,
     right: 16,
-    backgroundColor: "#1e293b",
-    borderColor: "#ef4444",
-    borderWidth: 1,
-    borderRadius: 8,
+    backgroundColor: colors.critical,
+    borderRadius: radii.md,
     padding: 12,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
   },
   errorText: {
     fontFamily: "SpaceGrotesk_400Regular",
-    fontSize: 12,
-    color: "#f87171",
-    flex: 1,
+    fontSize: 13,
+    color: colors.white,
+    textAlign: "center",
   },
   casesList: {
-    position: 'absolute',
-    bottom: 0,
+    position: "absolute",
+    bottom: 90,
     left: 0,
     right: 0,
-    backgroundColor: '#0f172a',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     borderWidth: 1,
-    borderColor: '#1e293b',
-    padding: 20,
+    borderColor: colors.border,
+    padding: spacing.xl,
     paddingBottom: 40,
-    maxHeight: '50%',
-    shadowColor: '#000',
+    maxHeight: "50%",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 10,
-    zIndex: 10, // Ensure it stays above the map
+    zIndex: 10,
   },
   casesListTitle: {
     fontFamily: "SpaceGrotesk_700Bold",
-    fontSize: 20,
-    color: "#f1f5f9",
-    marginBottom: 16,
-    paddingHorizontal: 4,
+    fontSize: 18,
+    color: colors.text,
+    marginBottom: spacing.lg,
   },
   casesScroll: {
     gap: 12,
@@ -465,15 +414,16 @@ const styles = StyleSheet.create({
     maxHeight: 300,
   },
   caseCard: {
-    backgroundColor: "#1e293b",
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: colors.surfaceElevated,
+    borderRadius: radii.lg,
+    padding: spacing.lg,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: colors.border,
   },
   caseCardSelected: {
-    borderColor: "#3b82f6",
-    backgroundColor: "#1e40af",
+    borderColor: colors.accent,
+    borderWidth: 2,
+    backgroundColor: colors.surfaceHighlight,
   },
   caseCardContent: {
     gap: 4,
@@ -486,50 +436,55 @@ const styles = StyleSheet.create({
   caseCardType: {
     fontFamily: "SpaceGrotesk_600SemiBold",
     fontSize: 14,
-    color: "#f1f5f9",
+    color: colors.text,
   },
   priorityBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: radii.sm,
   },
   priorityText: {
     fontFamily: "SpaceGrotesk_600SemiBold",
     fontSize: 10,
-    color: "#FFFFFF",
+    color: colors.white,
     textTransform: "uppercase",
   },
   caseCardLocation: {
     fontFamily: "SpaceGrotesk_400Regular",
-    fontSize: 14,
-    color: "#94a3b8",
+    fontSize: 13,
+    color: colors.textSecondary,
     marginBottom: 4,
   },
   caseCardStatus: {
     fontFamily: "SpaceGrotesk_400Regular",
     fontSize: 11,
-    color: "#94a3b8",
+    color: colors.textMuted,
     textTransform: "capitalize",
   },
   emptyStateContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 32,
-    backgroundColor: "#0f172a",
+    position: "absolute",
+    bottom: 90,
+    left: 0,
+    right: 0,
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: spacing.xxl,
+    paddingBottom: 60,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   emptyStateTitle: {
     fontFamily: "SpaceGrotesk_600SemiBold",
     fontSize: 18,
-    color: "#f1f5f9",
-    marginTop: 16,
+    color: colors.text,
+    marginBottom: 8,
     textAlign: "center",
   },
   emptyStateText: {
     fontFamily: "SpaceGrotesk_400Regular",
     fontSize: 14,
-    color: "#94a3b8",
-    marginTop: 8,
+    color: colors.textSecondary,
     textAlign: "center",
     lineHeight: 20,
   },

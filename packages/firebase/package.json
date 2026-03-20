@@ -4,12 +4,17 @@
   "description": "Shared Firebase package for RESCUE mobile apps",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./admin": "./dist/admin.js"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch"
   },
   "dependencies": {
-    "firebase": "^10.13.0"
+    "firebase": "^10.13.0",
+    "firebase-admin": "^12.0.0"
   },
   "devDependencies": {
     "typescript": "^5.3.3",

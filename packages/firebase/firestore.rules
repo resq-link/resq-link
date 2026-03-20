@@ -24,30 +24,42 @@ service cloud.firestore {
              exists(/databases/$(database)/documents/dispatchers/$(request.auth.uid));
     }
     
+    // Helper function to check if user is a super admin
+    function isSuperAdmin() {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+    
+    // Admins collection - only super admins can read (used for auth check)
+    match /admins/{userId} {
+      allow read: if isOwner(userId) || isSuperAdmin();
+      allow create, update, delete: if isSuperAdmin();
+    }
+    
     // Users collection - users can read/update their own profile
     match /users/{userId} {
-      allow read: if isOwner(userId) || isCommandCenter() || isDispatcher();
-      allow create: if isAuthenticated() && isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isOwner(userId);
+      allow read: if isOwner(userId) || isCommandCenter() || isDispatcher() || isSuperAdmin();
+      allow create: if (isAuthenticated() && isOwner(userId)) || isSuperAdmin();
+      allow update: if isOwner(userId) || isSuperAdmin();
+      allow delete: if isOwner(userId) || isSuperAdmin();
     }
     
     // Dispatchers collection - dispatchers can read their own, command center can read all
     match /dispatchers/{userId} {
       // Allow reading individual dispatcher documents and collection queries
       // Command center can read all dispatchers (needed for getAllDispatchers query)
-      allow read: if isOwner(userId) || isCommandCenter();
-      allow create: if isAuthenticated() && isOwner(userId);
-      allow update: if isOwner(userId) || isCommandCenter();
-      allow delete: if isCommandCenter();
+      allow read: if isOwner(userId) || isCommandCenter() || isSuperAdmin();
+      allow create: if (isAuthenticated() && isOwner(userId)) || isSuperAdmin();
+      allow update: if isOwner(userId) || isCommandCenter() || isSuperAdmin();
+      allow delete: if isCommandCenter() || isSuperAdmin();
     }
     
     // Command Centers collection - command centers can read their own
     match /commandCenters/{userId} {
-      allow read: if isOwner(userId) || isCommandCenter();
-      allow create: if isAuthenticated() && isOwner(userId);
-      allow update: if isOwner(userId);
-      allow delete: if isOwner(userId);
+      allow read: if isOwner(userId) || isCommandCenter() || isSuperAdmin();
+      allow create: if (isAuthenticated() && isOwner(userId)) || isSuperAdmin();
+      allow update: if isOwner(userId) || isSuperAdmin();
+      allow delete: if isOwner(userId) || isSuperAdmin();
     }
     
     // Emergency Reports collection

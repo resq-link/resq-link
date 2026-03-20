@@ -1,24 +1,24 @@
 import React from "react";
 import { View, Text } from "react-native";
+import { colors } from "@/theme";
 
 export default function CaseStatusBadge({ status }) {
   const getStatusConfig = () => {
     switch (status) {
       case "pending":
-        return { color: "#FF9500", bg: "#1e293b", text: "Pending" };
+        return { color: colors.pending, text: "Pending" };
       case "enroute":
-        return { color: "#10b981", bg: "#1e293b", text: "En Route" };
+        return { color: colors.enroute, text: "En Route" };
       case "on_scene":
-        return { color: "#818cf8", bg: "#1e293b", text: "On Scene" };
+        return { color: colors.onScene, text: "On Scene" };
       case "done":
-        return { color: "#34C759", bg: "#1e293b", text: "Done" };
-      // Legacy statuses for backward compatibility
+        return { color: colors.done, text: "Done" };
       case "active":
-        return { color: "#10b981", bg: "#1e293b", text: "Active" };
+        return { color: colors.enroute, text: "Active" };
       case "resolved":
-        return { color: "#34C759", bg: "#1e293b", text: "Resolved" };
+        return { color: colors.done, text: "Resolved" };
       default:
-        return { color: "#94a3b8", bg: "#1e293b", text: "Unknown" };
+        return { color: colors.textMuted, text: "Unknown" };
     }
   };
 
@@ -27,17 +27,21 @@ export default function CaseStatusBadge({ status }) {
   return (
     <View
       style={{
-        backgroundColor: config.bg,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
+        backgroundColor: colors.surfaceHighlight,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
         borderRadius: 6,
+        borderWidth: 1,
+        borderColor: config.color + "40",
       }}
     >
       <Text
         style={{
-          fontFamily: "Inter_600SemiBold",
-          fontSize: 12,
+          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontSize: 11,
           color: config.color,
+          textTransform: "uppercase",
+          letterSpacing: 0.5,
         }}
       >
         {config.text}
@@ -45,4 +49,3 @@ export default function CaseStatusBadge({ status }) {
     </View>
   );
 }
-

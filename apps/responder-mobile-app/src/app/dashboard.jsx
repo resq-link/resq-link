@@ -4,12 +4,11 @@ import {
   Text,
   ScrollView,
   RefreshControl,
-  TouchableOpacity,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import { useRouter } from "expo-router";
-import { LogOut, AlertCircle, Map, Activity, CheckCircle, Users } from "lucide-react-native";
+import { useRouter, useFocusEffect } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   SpaceGrotesk_400Regular,
   SpaceGrotesk_600SemiBold,
@@ -17,18 +16,26 @@ import {
 } from "@expo-google-fonts/space-grotesk";
 import { useFonts } from "expo-font";
 import useUserStore from "@/utils/userStore";
-import { subscribeToDispatcherAssignedEmergencies, signOut, auth, updateDispatcherLocation, setDispatcherOnlineStatus } from "@packages/firebase";
+import {
+  subscribeToDispatcherAssignedEmergencies,
+  auth,
+  updateDispatcherLocation,
+  setDispatcherOnlineStatus,
+} from "@packages/firebase";
 import * as Location from "expo-location";
+import { LOCATION_PAUSED_KEY } from "./location";
 import CaseCard from "@/components/CaseCard";
 import LoadingScreen from "@/components/LoadingScreen";
+import { colors, spacing, radii } from "@/theme";
 
 export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { user, logout } = useUserStore();
+  const { user } = useUserStore();
   const [cases, setCases] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [locationPaused, setLocationPaused] = useState(false);
 
   const [fontsLoaded] = useFonts({
     SpaceGrotesk_400Regular,
@@ -41,38 +48,40 @@ export default function DashboardScreen() {
       router.replace("/login");
       return;
     }
-
     const firebaseUser = auth.currentUser;
     if (!firebaseUser) {
       router.replace("/login");
       return;
     }
 
-    // Subscribe to assigned cases
     const unsubscribe = subscribeToDispatcherAssignedEmergencies(
       firebaseUser.uid,
       (reports) => {
-        console.log("Received assigned cases:", reports.length);
         setCases(reports);
         setLoading(false);
         setRefreshing(false);
       },
-      {
-        statusFilter: "all",
-        limitCount: 100,
-      }
+      { statusFilter: "all", limitCount: 100 }
     );
 
-    return () => {
-      console.log("Unsubscribing from assigned cases");
-      unsubscribe();
-    };
+    return () => unsubscribe();
   }, [user, router]);
 
-  // Track dispatcher location in real-time
+  useFocusEffect(
+    React.useCallback(() => {
+      let cancelled = false;
+      AsyncStorage.getItem(LOCATION_PAUSED_KEY).then((raw) => {
+        if (!cancelled) setLocationPaused(raw === "true");
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, [])
+  );
+
   useEffect(() => {
     if (!user) return;
-
+    if (locationPaused) return;
     const firebaseUser = auth.currentUser;
     if (!firebaseUser) return;
 
@@ -81,17 +90,10 @@ export default function DashboardScreen() {
 
     const startLocationTracking = async () => {
       try {
-        // Request location permission
         const { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== "granted") {
-          console.warn("Location permission not granted");
-          return;
-        }
+        if (status !== "granted") return;
 
-        // Set dispatcher as online
         await setDispatcherOnlineStatus(true);
-
-        // Update location immediately
         const location = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.High,
         });
@@ -100,95 +102,57 @@ export default function DashboardScreen() {
           location.coords.longitude
         );
 
-        // Watch location changes
         locationSubscription = await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.High,
-            timeInterval: 30000, // Update every 30 seconds
-            distanceInterval: 50, // Update every 50 meters
+            timeInterval: 30000,
+            distanceInterval: 50,
           },
-          async (location) => {
+          async (loc) => {
             try {
               await updateDispatcherLocation(
-                location.coords.latitude,
-                location.coords.longitude
+                loc.coords.latitude,
+                loc.coords.longitude
               );
-            } catch (error) {
-              console.error("Error updating location:", error);
+            } catch (e) {
+              console.error("Error updating location:", e);
             }
           }
         );
 
-        // Fallback: Update location every 60 seconds even if not moving
         locationUpdateInterval = setInterval(async () => {
           try {
-            const location = await Location.getCurrentPositionAsync({
+            const loc = await Location.getCurrentPositionAsync({
               accuracy: Location.Accuracy.High,
             });
             await updateDispatcherLocation(
-              location.coords.latitude,
-              location.coords.longitude
+              loc.coords.latitude,
+              loc.coords.longitude
             );
-          } catch (error) {
-            console.error("Error updating location:", error);
+          } catch (e) {
+            console.error("Error updating location:", e);
           }
         }, 60000);
-      } catch (error) {
-        console.error("Error setting up location tracking:", error);
+      } catch (e) {
+        console.error("Error setting up location tracking:", e);
       }
     };
 
     startLocationTracking();
 
-    // Cleanup: Set offline when component unmounts
     return () => {
-      if (locationSubscription) {
-        locationSubscription.remove();
-      }
-      if (locationUpdateInterval) {
-        clearInterval(locationUpdateInterval);
-      }
-      // Set dispatcher as offline
+      if (locationSubscription) locationSubscription.remove();
+      if (locationUpdateInterval) clearInterval(locationUpdateInterval);
       setDispatcherOnlineStatus(false).catch(console.error);
     };
-  }, [user]);
+  }, [user, locationPaused]);
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    // The subscription will automatically update
-  };
-
-  const handleLogout = async () => {
-    try {
-      // Set dispatcher offline before logging out
-      await setDispatcherOnlineStatus(false);
-      await signOut(auth);
-      await logout();
-      router.replace("/login");
-    } catch (error) {
-      console.error("Logout error:", error);
-      // Still logout locally even if Firebase signout fails
-      try {
-        await setDispatcherOnlineStatus(false);
-      } catch (e) {
-        // Ignore errors when setting offline status
-      }
-      await logout();
-      router.replace("/login");
-    }
-  };
-
+  const onRefresh = () => setRefreshing(true);
   const handleCasePress = (caseData) => {
-    router.push({
-      pathname: "/case-detail",
-      params: { caseId: caseData.id },
-    });
+    router.push({ pathname: "/case-detail", params: { caseId: caseData.id } });
   };
 
-  if (!fontsLoaded) {
-    return null;
-  }
-
+  if (!fontsLoaded) return null;
   if (loading) {
     return (
       <LoadingScreen
@@ -198,43 +162,50 @@ export default function DashboardScreen() {
     );
   }
 
-  // Count active cases (pending, enroute, on_scene, or legacy active)
-  const activeCount = cases.filter((c) => 
-    c.status === "pending" || 
-    c.status === "enroute" || 
-    c.status === "on_scene" || 
-    c.status === "active"
+  const activeCount = cases.filter(
+    (c) =>
+      c.status === "pending" ||
+      c.status === "enroute" ||
+      c.status === "on_scene" ||
+      c.status === "active"
   ).length;
-  // Count resolved cases (done or legacy resolved)
-  const resolvedCount = cases.filter((c) => c.status === "done" || c.status === "resolved").length;
-  // Calculate total cases and percentage
+  const resolvedCount = cases.filter(
+    (c) => c.status === "done" || c.status === "resolved"
+  ).length;
   const totalCases = cases.length;
-  const resolvedPercentage = totalCases > 0 ? Math.round((resolvedCount / totalCases) * 100) : 0;
-  // Mock number of responders available
+  const resolvedPercentage =
+    totalCases > 0 ? Math.round((resolvedCount / totalCases) * 100) : 0;
   const respondersAvailable = 12;
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#020617" }}>
-      <StatusBar style="light" backgroundColor="#020617" />
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar style="light" backgroundColor={colors.background} />
 
-      {/* Header */}
       <View
         style={{
-          backgroundColor: "#0f172a",
+          backgroundColor: colors.surface,
           paddingTop: insets.top + 20,
-          paddingHorizontal: 16,
-          paddingBottom: 16,
+          paddingHorizontal: spacing.lg,
+          paddingBottom: spacing.lg,
           borderBottomWidth: 1,
-          borderBottomColor: "#1e293b",
+          borderBottomColor: colors.border,
         }}
       >
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <View
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: spacing.lg,
+          }}
+        >
           <View>
             <Text
               style={{
                 fontFamily: "SpaceGrotesk_700Bold",
-                fontSize: 28,
-                color: "#f1f5f9",
+                fontSize: 26,
+                color: colors.text,
+                letterSpacing: -0.5,
               }}
             >
               Dashboard
@@ -243,81 +214,31 @@ export default function DashboardScreen() {
               style={{
                 fontFamily: "SpaceGrotesk_400Regular",
                 fontSize: 14,
-                color: "#94a3b8",
+                color: colors.textSecondary,
                 marginTop: 4,
               }}
             >
               {user?.email || "Responder"}
             </Text>
           </View>
-          <View style={{ flexDirection: "row", gap: 8 }}>
-            <TouchableOpacity
-              onPress={() => router.push("/map")}
-              style={{
-                padding: 8,
-                backgroundColor: "#10b981",
-                borderRadius: 8,
-              }}
-            >
-              <Map size={20} color="#FFFFFF" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleLogout}
-              style={{
-                padding: 8,
-              }}
-            >
-              <LogOut size={24} color="#FF3B30" />
-            </TouchableOpacity>
-          </View>
         </View>
 
-        {/* Stats */}
-        <View style={{ flexDirection: "row", gap: 12, marginTop: 12 }}>
+        <View style={{ flexDirection: "row", gap: 10 }}>
           <View
             style={{
               flex: 1,
-              backgroundColor: "#1e293b",
-              borderRadius: 12,
-              padding: 12,
-              position: "relative",
+              backgroundColor: colors.surfaceElevated,
+              borderRadius: radii.lg,
+              padding: spacing.md,
               borderWidth: 1,
-              borderColor: "#334155",
+              borderColor: colors.border,
             }}
           >
-            {/* Icon on top left */}
-            <View style={{ position: "absolute", top: 12, left: 12 }}>
-              <Activity size={20} color="#10b981" />
-            </View>
-            {/* NOW badge on top right */}
-            <View
-              style={{
-                position: "absolute",
-                top: 8,
-                right: 8,
-                backgroundColor: "#10b981",
-                paddingHorizontal: 8,
-                paddingVertical: 4,
-                borderRadius: 8,
-              }}
-            >
-              <Text
-                style={{
-                  fontFamily: "SpaceGrotesk_600SemiBold",
-                  fontSize: 10,
-                  color: "#FFFFFF",
-                  textTransform: "uppercase",
-                }}
-              >
-                NOW
-              </Text>
-            </View>
             <Text
               style={{
-                fontFamily: "SpaceGrotesk_600SemiBold",
-                fontSize: 24,
-                color: "#10b981",
-                marginTop: 28,
+                fontFamily: "SpaceGrotesk_700Bold",
+                fontSize: 28,
+                color: colors.pending,
               }}
             >
               {activeCount}
@@ -326,56 +247,28 @@ export default function DashboardScreen() {
               style={{
                 fontFamily: "SpaceGrotesk_400Regular",
                 fontSize: 12,
-                color: "#10b981",
+                color: colors.textSecondary,
                 marginTop: 4,
               }}
             >
-              Active Cases
+              Active
             </Text>
           </View>
           <View
             style={{
               flex: 1,
-              backgroundColor: "#1e293b",
-              borderRadius: 12,
-              padding: 12,
-              position: "relative",
+              backgroundColor: colors.surfaceElevated,
+              borderRadius: radii.lg,
+              padding: spacing.md,
               borderWidth: 1,
-              borderColor: "#334155",
+              borderColor: colors.border,
             }}
           >
-            {/* Icon on top left */}
-            <View style={{ position: "absolute", top: 12, left: 12 }}>
-              <CheckCircle size={20} color="#34C759" />
-            </View>
-            {/* Percentage badge on top right */}
-            <View
-              style={{
-                position: "absolute",
-                top: 8,
-                right: 8,
-                backgroundColor: "#34C759",
-                paddingHorizontal: 8,
-                paddingVertical: 4,
-                borderRadius: 8,
-              }}
-            >
-              <Text
-                style={{
-                  fontFamily: "SpaceGrotesk_600SemiBold",
-                  fontSize: 10,
-                  color: "#FFFFFF",
-                }}
-              >
-                {resolvedPercentage}%
-              </Text>
-            </View>
             <Text
               style={{
-                fontFamily: "SpaceGrotesk_600SemiBold",
-                fontSize: 24,
-                color: "#34C759",
-                marginTop: 28,
+                fontFamily: "SpaceGrotesk_700Bold",
+                fontSize: 28,
+                color: colors.success,
               }}
             >
               {resolvedCount}
@@ -384,7 +277,7 @@ export default function DashboardScreen() {
               style={{
                 fontFamily: "SpaceGrotesk_400Regular",
                 fontSize: 12,
-                color: "#34C759",
+                color: colors.textSecondary,
                 marginTop: 4,
               }}
             >
@@ -394,47 +287,18 @@ export default function DashboardScreen() {
           <View
             style={{
               flex: 1,
-              backgroundColor: "#1e293b",
-              borderRadius: 12,
-              padding: 12,
-              position: "relative",
+              backgroundColor: colors.surfaceElevated,
+              borderRadius: radii.lg,
+              padding: spacing.md,
               borderWidth: 1,
-              borderColor: "#334155",
+              borderColor: colors.border,
             }}
           >
-            {/* Icon on top left */}
-            <View style={{ position: "absolute", top: 12, left: 12 }}>
-              <Users size={20} color="#FF9500" />
-            </View>
-            {/* NOW badge on top right */}
-            <View
-              style={{
-                position: "absolute",
-                top: 8,
-                right: 8,
-                backgroundColor: "#FF9500",
-                paddingHorizontal: 8,
-                paddingVertical: 4,
-                borderRadius: 8,
-              }}
-            >
-              <Text
-                style={{
-                  fontFamily: "SpaceGrotesk_600SemiBold",
-                  fontSize: 10,
-                  color: "#FFFFFF",
-                  textTransform: "uppercase",
-                }}
-              >
-                NOW
-              </Text>
-            </View>
             <Text
               style={{
-                fontFamily: "SpaceGrotesk_600SemiBold",
-                fontSize: 24,
-                color: "#FF9500",
-                marginTop: 28,
+                fontFamily: "SpaceGrotesk_700Bold",
+                fontSize: 28,
+                color: colors.info,
               }}
             >
               {respondersAvailable}
@@ -443,25 +307,28 @@ export default function DashboardScreen() {
               style={{
                 fontFamily: "SpaceGrotesk_400Regular",
                 fontSize: 12,
-                color: "#FF9500",
+                color: colors.textSecondary,
                 marginTop: 4,
               }}
             >
-              Responders
+              Online
             </Text>
           </View>
         </View>
       </View>
 
-      {/* Cases List */}
       <ScrollView
-        style={{ flex: 1, backgroundColor: "#020617" }}
+        style={{ flex: 1, backgroundColor: colors.background }}
         contentContainerStyle={{
-          padding: 16,
-          paddingBottom: insets.bottom + 20,
+          padding: spacing.lg,
+          paddingBottom: insets.bottom + 100,
         }}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.accent}
+          />
         }
         showsVerticalScrollIndicator={false}
       >
@@ -471,17 +338,27 @@ export default function DashboardScreen() {
               flex: 1,
               justifyContent: "center",
               alignItems: "center",
-              paddingVertical: 60,
+              paddingVertical: 48,
             }}
           >
-            <AlertCircle size={48} color="#475569" />
+            <View
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: 32,
+                backgroundColor: colors.surfaceElevated,
+                borderWidth: 1,
+                borderColor: colors.border,
+                marginBottom: spacing.lg,
+              }}
+            />
             <Text
               style={{
                 fontFamily: "SpaceGrotesk_600SemiBold",
                 fontSize: 18,
-                color: "#94a3b8",
-                marginTop: 16,
+                color: colors.text,
                 marginBottom: 8,
+                textAlign: "center",
               }}
             >
               No Assigned Cases
@@ -490,12 +367,12 @@ export default function DashboardScreen() {
               style={{
                 fontFamily: "SpaceGrotesk_400Regular",
                 fontSize: 14,
-                color: "#94a3b8",
+                color: colors.textSecondary,
                 textAlign: "center",
                 paddingHorizontal: 32,
               }}
             >
-              You don't have any assigned cases yet. Cases will appear here when assigned by the command center.
+              Cases will appear here when assigned by the command center.
             </Text>
           </View>
         ) : (
@@ -504,10 +381,7 @@ export default function DashboardScreen() {
               key={caseData.id}
               case={caseData}
               onPress={() => handleCasePress(caseData)}
-              onStatusUpdate={() => {
-                // The real-time subscription will automatically update the cases
-                // This callback is kept for potential future use
-              }}
+              onStatusUpdate={() => {}}
             />
           ))
         )}
@@ -515,4 +389,3 @@ export default function DashboardScreen() {
     </View>
   );
 }
-
