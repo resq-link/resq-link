@@ -64,8 +64,8 @@ export default function MapComponent({
     return new Date(value as unknown as string | number)
   }
 
-  // Default center (San Francisco - adjust to your area)
-  const defaultCenter: [number, number] = [37.7749, -122.4194]
+  // Default center (Tuguegarao City, Cagayan)
+  const defaultCenter: [number, number] = [17.6132, 121.7270]
   const defaultZoom = 12
   
   // Priority: centerLocation (selected incident) > userLocation > default

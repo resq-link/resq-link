@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -117,9 +117,9 @@ export default function ResponderMapScreen() {
 
   const initialRegion = {
     latitude:
-      responders.length > 0 ? parseFloat(responders[0].latitude) : 14.5995,
+      responders.length > 0 ? parseFloat(responders[0].latitude) : 17.6132,
     longitude:
-      responders.length > 0 ? parseFloat(responders[0].longitude) : 120.9842,
+      responders.length > 0 ? parseFloat(responders[0].longitude) : 121.7270,
     latitudeDelta: 0.05,
     longitudeDelta: 0.05,
   };
