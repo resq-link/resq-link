@@ -1,4 +1,4 @@
-# RESCUE Mobile App - Project Setup Guide
+# RESQ-Link - Project Setup Guide
 
 Welcome to the RESCUE Mobile App project! This monorepo contains multiple applications and a shared Firebase package. This guide will help you set up each component of the project.
 

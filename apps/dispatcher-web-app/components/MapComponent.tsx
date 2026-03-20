@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useEffect } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, useMap, Polygon } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { DispatcherLocation } from '@packages/firebase'
@@ -67,6 +67,22 @@ export default function MapComponent({
   // Default center (Tuguegarao City, Cagayan)
   const defaultCenter: [number, number] = [17.6132, 121.7270]
   const defaultZoom = 12
+
+  // Tuguegarao City Boundary Polygon
+  const TUGUEGARAO_BOUNDARY: [number, number][] = [
+    [17.572822, 121.682675],
+    [17.605113,121.685138],
+    [17.667388,121.711474],
+    [17.684329, 121.753949],
+    [17.684819, 121.783966],
+    [17.643110, 121.759095],
+    [17.531672,121.821358],
+    [17.525943, 121.789454],
+    [17.560152,121.775578],
+    [17.579299,121.744189],
+    [17.603844,121.724618],
+    [17.570790,121.697535]
+  ]
   
   // Priority: centerLocation (selected incident) > userLocation > default
   const mapCenter = centerLocation || userLocation || defaultCenter
@@ -261,6 +277,24 @@ export default function MapComponent({
         tileSize={512}
         zoomOffset={-1}
       />
+      {/* Geofence Polygon */}
+      <Polygon
+        positions={TUGUEGARAO_BOUNDARY}
+        pathOptions={{
+          color: '#ef4444',
+          dashArray: '10, 10',
+          fillColor: '#ef4444',
+          fillOpacity: 0.1,
+          weight: 3,
+        }}
+      >
+        <Popup>
+          <div className="p-1">
+            <p className="font-bold text-red-400">Tuguegarao City Geofence</p>
+            <p className="text-xs text-slate-400 font-medium italic mt-1">Operational Area</p>
+          </div>
+        </Popup>
+      </Polygon>
       {/* User Location Marker */}
       {userLocation && (
         <Marker position={userLocation} icon={createUserLocationIcon()}>
