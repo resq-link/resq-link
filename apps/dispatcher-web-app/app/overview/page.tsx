@@ -118,7 +118,7 @@ export default function OverviewPage() {
   const recentIncidents = useMemo(() => {
     return [...mapIncidents]
       .sort((a, b) => b.reportedAt.getTime() - a.reportedAt.getTime())
-      .slice(0, 5)
+      .slice(0, 20)
   }, [mapIncidents])
 
   const incidentTimeline = useMemo(() => {
@@ -301,11 +301,11 @@ export default function OverviewPage() {
           </div>
 
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-semibold text-slate-100">Latest Reports</h2>
               <span className="text-xs text-slate-400">Newest first</span>
             </div>
-            <div className="mt-6 space-y-4">
+            <div className="flex-1 space-y-4 overflow-y-auto pr-2 max-h-[360px]">
               {recentIncidents.length === 0 ? (
                 <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 text-sm text-slate-400">
                   No reports yet.
