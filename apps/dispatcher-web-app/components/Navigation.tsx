@@ -36,7 +36,7 @@ export default function Navigation() {
             <Link href="/" className="flex items-center gap-3">
               <div className="bg-slate-900 border border-slate-800 p-2 rounded-xl">
                 <Image
-                  src="/branding/resq-link-logo.png"
+                  src="/branding/resq-link-icon.png"
                   alt="RESQ-Link"
                   width={24}
                   height={24}

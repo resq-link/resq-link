@@ -9,6 +9,9 @@ const spaceGrotesk = Space_Grotesk({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'RESQ-Link - Emergency Response System',
   description: 'Live incident monitoring and management system',
+  icons: {
+    icon: '/branding/resq-link-favicon.png',
+  },
 }
 
 export default function RootLayout({
