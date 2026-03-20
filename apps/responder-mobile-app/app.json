@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Responder App",
+    "name": "RESQ-Link Responder",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -8,6 +8,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.tuguegarao.resqlink.responder",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -21,7 +22,7 @@
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION"
       ],
-      "package": "com.rescue.responder"
+      "package": "com.tuguegarao.resqlink.responder"
     },
     "plugins": [
       [

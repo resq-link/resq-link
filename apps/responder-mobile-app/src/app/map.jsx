@@ -56,8 +56,8 @@ export default function MapScreen() {
   const [locationError, setLocationError] = useState(null);
   const [selectedCase, setSelectedCase] = useState(null);
   const [mapRegion, setMapRegion] = useState({
-    latitude: 37.7749,
-    longitude: -122.4194,
+    latitude: 17.6132, // Default: Tuguegarao City
+    longitude: 121.7270,
     latitudeDelta: 0.0922,
     longitudeDelta: 0.0421,
   });

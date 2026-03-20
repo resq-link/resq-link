@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Anything mobile app",
+    "name": "RESQ-Link",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -8,6 +8,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.tuguegarao.resqlink",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -23,7 +24,7 @@
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION"
       ],
-      "package": "xyz.create.CreateExpoEnvironment"
+      "package": "com.tuguegarao.resqlink"
     },
     "plugins": [
       [

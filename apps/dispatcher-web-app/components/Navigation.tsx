@@ -99,40 +99,30 @@ export default function Navigation() {
   )
 
   return (
-    <header
-      className={`sticky top-0 z-50 w-full transition-all duration-300 ${
-        scrolled
-          ? 'bg-slate-950/95 border-b border-slate-800/80 shadow-lg shadow-black/10 backdrop-blur-xl'
-          : 'bg-slate-950/90 border-b border-slate-800/60 backdrop-blur-md'
-      }`}
-    >
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between lg:h-[72px]">
-          {/* Logo */}
-          <Link
-            href="/"
-            className="flex items-center gap-3 group shrink-0"
-            aria-label="RESQ-Link Command - Home"
-          >
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900/80 border border-slate-700/60 shadow-inner group-hover:border-primary-500/40 transition-colors">
-              <Image
-                src="/branding/resq-link-logo.png"
-                alt=""
-                width={24}
-                height={24}
-                priority
-                className="opacity-95"
-              />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-lg font-semibold tracking-tight text-slate-100">
-                RESQ-Link
-              </span>
-              <span className="text-[10px] font-medium uppercase tracking-[0.2em] text-primary-400/90">
-                Command Center
-              </span>
-            </div>
-          </Link>
+    <nav className="bg-slate-950/80 border-b border-slate-800 backdrop-blur">
+      <div className="container mx-auto px-4">
+        <div className="flex items-center justify-between h-16">
+          <div className="flex items-center">
+            <Link href="/" className="flex items-center gap-3">
+              <div className="bg-slate-900 border border-slate-800 p-2 rounded-xl">
+                <Image
+                  src="/branding/resq-link-icon.png"
+                  alt="RESQ-Link"
+                  width={24}
+                  height={24}
+                  priority
+                />
+              </div>
+              <div className="flex flex-col leading-none">
+                <span className="text-lg font-semibold text-slate-100">
+                  RESQ-Link
+                </span>
+                <span className="text-xs uppercase tracking-[0.2em] text-secondary-300">
+                  Command
+                </span>
+              </div>
+            </Link>
+          </div>
 
           {/* Desktop Nav */}
           <nav className="hidden lg:flex items-center gap-1" aria-label="Main navigation">
