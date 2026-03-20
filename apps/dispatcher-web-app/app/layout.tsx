@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   title: 'RESQ-Link - Emergency Response System',
   description: 'Live incident monitoring and management system',
   icons: {
-    icon: '/branding/resq-link-favicon.png',
+    icon: '/branding/resq-link-icon.png',
   },
 }
 
