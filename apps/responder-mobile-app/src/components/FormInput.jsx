@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, TextInput, TouchableOpacity } from "react-native";
 import { Eye, EyeOff } from "lucide-react-native";
+import { colors, radii, spacing } from "@/theme";
 
 export default function FormInput({
   label,
@@ -19,35 +20,35 @@ export default function FormInput({
   const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <View style={[{ marginBottom: 24 }, style]}>
+    <View style={[{ marginBottom: spacing.xxl }, style]}>
       <Text
         style={{
           fontFamily: "SpaceGrotesk_600SemiBold",
           fontSize: 14,
-          color: "#f1f5f9",
-          marginBottom: 8,
+          color: colors.text,
+          marginBottom: spacing.sm,
+          letterSpacing: 0.3,
         }}
       >
         {label}
-        {required && <Text style={{ color: "#f87171" }}> *</Text>}
+        {required && <Text style={{ color: colors.critical }}> *</Text>}
       </Text>
       <View style={{ position: "relative" }}>
         <TextInput
           style={{
-            height: 50,
-            borderWidth: focused ? 2 : 1,
-            borderColor: focused ? "#3b82f6" : "#334155",
-            borderRadius: 12,
-            paddingHorizontal: 16,
-            paddingRight: secureTextEntry ? 50 : 16,
+            height: 52,
+            borderWidth: 2,
+            borderColor: focused ? colors.accent : colors.border,
+            borderRadius: radii.md,
+            paddingHorizontal: spacing.lg,
+            paddingRight: secureTextEntry ? 52 : spacing.lg,
             fontFamily: "SpaceGrotesk_400Regular",
             fontSize: 16,
-            color: "#94a3b8",
-            padding: 8,
-            backgroundColor: "#1e293b",
+            color: colors.text,
+            backgroundColor: colors.surface,
           }}
           placeholder={placeholder}
-          placeholderTextColor="#64748b"
+          placeholderTextColor={colors.textMuted}
           value={value}
           onChangeText={onChangeText}
           onFocus={() => setFocused(true)}
@@ -62,8 +63,8 @@ export default function FormInput({
           <TouchableOpacity
             style={{
               position: "absolute",
-              right: 16,
-              top: 13,
+              right: spacing.lg,
+              top: 14,
               width: 24,
               height: 24,
               justifyContent: "center",
@@ -75,9 +76,9 @@ export default function FormInput({
             }
           >
             {showPassword ? (
-              <EyeOff size={20} color="#8E8E93" />
+              <EyeOff size={20} color={colors.textMuted} />
             ) : (
-              <Eye size={20} color="#8E8E93" />
+              <Eye size={20} color={colors.textMuted} />
             )}
           </TouchableOpacity>
         )}
@@ -85,4 +86,3 @@ export default function FormInput({
     </View>
   );
 }
-

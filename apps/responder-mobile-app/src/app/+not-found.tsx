@@ -1,16 +1,20 @@
-import { Stack, useRouter } from 'expo-router';
-import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
+import { Stack, useRouter } from "expo-router";
+import { StyleSheet, View, Text, TouchableOpacity } from "react-native";
+import { colors, radii, spacing } from "@/theme";
 
 export default function NotFoundScreen() {
   const router = useRouter();
-  
+
   return (
     <>
-      <Stack.Screen options={{ title: 'Oops! Not Found' }} />
+      <Stack.Screen options={{ title: "Not Found" }} />
       <View style={styles.container}>
-        <Text style={styles.title}>This screen doesn't exist.</Text>
-        <TouchableOpacity onPress={() => router.replace('/')} style={styles.button}>
-          <Text style={styles.buttonText}>Go to home screen</Text>
+        <Text style={styles.title}>This screen doesn&apos;t exist.</Text>
+        <TouchableOpacity
+          onPress={() => router.replace("/")}
+          style={styles.button}
+        >
+          <Text style={styles.buttonText}>Go to home</Text>
         </TouchableOpacity>
       </View>
     </>
@@ -20,27 +24,26 @@ export default function NotFoundScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-    backgroundColor: '#0f172a',
+    alignItems: "center",
+    justifyContent: "center",
+    padding: spacing.xl,
+    backgroundColor: colors.background,
   },
   title: {
-    fontSize: 20,
-    fontFamily: 'Inter_600SemiBold',
-    color: '#1C1C1E',
-    marginBottom: 20,
+    fontSize: 18,
+    fontFamily: "SpaceGrotesk_600SemiBold",
+    color: colors.text,
+    marginBottom: spacing.xl,
   },
   button: {
-    backgroundColor: '#10b981',
+    backgroundColor: colors.accent,
     paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 14,
+    borderRadius: radii.md,
   },
   buttonText: {
-    color: '#FFFFFF',
-    fontFamily: 'Inter_600SemiBold',
+    color: colors.white,
+    fontFamily: "SpaceGrotesk_600SemiBold",
     fontSize: 16,
   },
 });
-

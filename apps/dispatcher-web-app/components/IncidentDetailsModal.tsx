@@ -1,7 +1,16 @@
 'use client'
 
-import { useState } from 'react'
 import { createPortal } from 'react-dom'
+import dynamic from 'next/dynamic'
+
+const IncidentMap = dynamic(() => import('./IncidentMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-full w-full flex items-center justify-center bg-slate-900 text-slate-400">
+      <span>Loading map...</span>
+    </div>
+  ),
+})
 
 interface IncidentDetailsModalProps {
   isOpen: boolean
@@ -198,37 +207,76 @@ export default function IncidentDetailsModal({
               {/* Location */}
               <div>
                 <h3 className="text-lg font-semibold text-slate-100 mb-2">Location</h3>
-                <div className="bg-slate-950 rounded-lg p-4 border border-slate-800">
-                  <div className="flex items-start gap-2">
-                    <svg
-                      className="w-5 h-5 text-slate-400 mt-0.5 flex-shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                {incident.latitude != null && incident.longitude != null ? (
+                  <div className="space-y-3">
+                    <div className="h-[220px] w-full bg-slate-950 rounded-lg overflow-hidden border border-slate-800">
+                      <IncidentMap
+                        latitude={incident.latitude}
+                        longitude={incident.longitude}
+                        locationText={incident.location}
+                        incidentType={incident.type}
+                        className="h-full w-full"
                       />
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                      />
-                    </svg>
-                    <div className="flex-1">
-                      <p className="text-slate-100">{incident.location}</p>
-                      {incident.latitude && incident.longitude && (
-                        <p className="text-sm text-slate-400 mt-1">
-                          Coordinates: {incident.latitude.toFixed(6)}, {incident.longitude.toFixed(6)}
-                        </p>
-                      )}
+                    </div>
+                    <div className="bg-slate-950 rounded-lg p-4 border border-slate-800">
+                      <div className="flex items-start gap-2">
+                        <svg
+                          className="w-5 h-5 text-slate-400 mt-0.5 flex-shrink-0"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                          />
+                        </svg>
+                        <div className="flex-1">
+                          <p className="text-slate-100">{incident.location}</p>
+                          <p className="text-sm text-slate-400 mt-1">
+                            Coordinates: {incident.latitude.toFixed(6)}, {incident.longitude.toFixed(6)}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="bg-slate-950 rounded-lg p-4 border border-slate-800">
+                    <div className="flex items-start gap-2">
+                      <svg
+                        className="w-5 h-5 text-slate-400 mt-0.5 flex-shrink-0"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                        />
+                      </svg>
+                      <div className="flex-1">
+                        <p className="text-slate-100">{incident.location}</p>
+                        <p className="text-sm text-slate-400 mt-2">Map unavailable — no coordinates recorded</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Description */}

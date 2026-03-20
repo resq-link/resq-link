@@ -1,14 +1,15 @@
 import React from "react";
 import { View, Text, ActivityIndicator } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { colors } from "@/theme";
 
 export default function LoadingScreen({
   title = "Loading...",
   subtitle = "Please wait",
 }) {
   return (
-    <View style={{ flex: 1, backgroundColor: "#0f172a" }}>
-      <StatusBar style="light" backgroundColor="#0f172a" />
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar style="light" backgroundColor={colors.background} />
       <View
         style={{
           flex: 1,
@@ -17,13 +18,18 @@ export default function LoadingScreen({
           paddingHorizontal: 24,
         }}
       >
-        <ActivityIndicator size="large" color="#3b82f6" style={{ marginBottom: 20 }} />
+        <ActivityIndicator
+          size="large"
+          color={colors.accent}
+          style={{ marginBottom: 24 }}
+        />
         <Text
           style={{
             fontFamily: "SpaceGrotesk_700Bold",
             fontSize: 18,
-            color: "#f1f5f9",
+            color: colors.text,
             marginBottom: 8,
+            letterSpacing: 0.5,
           }}
         >
           {title}
@@ -32,7 +38,7 @@ export default function LoadingScreen({
           style={{
             fontFamily: "SpaceGrotesk_400Regular",
             fontSize: 14,
-            color: "#94a3b8",
+            color: colors.textSecondary,
             textAlign: "center",
           }}
         >
@@ -42,4 +48,3 @@ export default function LoadingScreen({
     </View>
   );
 }
-
