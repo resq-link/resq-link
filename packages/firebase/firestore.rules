@@ -81,6 +81,12 @@ service cloud.firestore {
       // Only command center can delete reports
       allow delete: if isCommandCenter();
     }
+
+    // Resources collection
+    match /resources/{resourceId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAuthenticated() && (isCommandCenter() || isDispatcher());
+    }
     
     // Default: deny all other access
     match /{document=**} {

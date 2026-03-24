@@ -55,3 +55,15 @@ export {
   type DispatcherLocation,
 } from './dispatchers';
 
+// Export resource management functions
+export {
+  createResource,
+  updateResource,
+  deleteResource,
+  getAllResources,
+  subscribeToResources,
+  type ResourceRecord,
+  type ResourceStatus,
+  type ResourceType,
+} from './resources';
+
