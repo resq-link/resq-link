@@ -11,6 +11,7 @@ import {
   Radio,
   Map,
   History,
+  Ambulance,
   Menu,
   X,
   ChevronDown,
@@ -23,6 +24,7 @@ const navItems = [
   { href: '/intake', label: 'Intake', icon: FileText },
   { href: '/', label: 'Live Incidents', icon: Radio },
   { href: '/map', label: 'Map', icon: Map },
+  { href: '/resources', label: 'Resources', icon: Ambulance },
   { href: '/history', label: 'History', icon: History },
 ]
 
