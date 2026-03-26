@@ -67,3 +67,34 @@ export {
   type ResourceType,
 } from './resources';
 
+// Export incident management functions
+export {
+  createIncident,
+  dispatchIncidentResources,
+  saveIncidentTypeRule,
+  subscribeToIncidents,
+  subscribeToIncidentTypeRules,
+  getIncidentTypeRules,
+  getIncidentTypeRuleById,
+  resolveIncidentTypeRuleById,
+  getAgencyLabel,
+  getExpectedResourceTypesForAgencies,
+  formatIncidentStatus,
+  getIncidentPriorityTone,
+  getIncidentResourceMatch,
+  validateIncidentAgencyRouting,
+  incidentAgencyCatalog,
+  incidentTypeRules,
+  type AgencyCode,
+  type CreateIncidentInput,
+  type IncidentCategory,
+  type IncidentDispatchRecord,
+  type IncidentPriority,
+  type IncidentRecord,
+  type IncidentSource,
+  type IncidentStatus,
+  type IncidentTypeRule,
+  type ResolutionStatus,
+  type SaveIncidentTypeRuleInput,
+} from './incidents';
+

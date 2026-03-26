@@ -1,0 +1,1058 @@
+import {
+  Timestamp,
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  limit,
+  onSnapshot,
+  query,
+  setDoc,
+  updateDoc,
+  writeBatch,
+  type DocumentData,
+  type QuerySnapshot,
+} from 'firebase/firestore';
+import { auth, firestore } from './config';
+import type { ResourceRecord, ResourceStatus, ResourceType } from './resources';
+
+export type IncidentSource = 'civilian_app' | 'call' | 'sms' | 'walk_in' | 'radio' | 'manual';
+export type IncidentCategory =
+  | 'fire'
+  | 'peace_and_order'
+  | 'medical'
+  | 'vehicular'
+  | 'utility'
+  | 'community'
+  | 'other';
+export type IncidentPriority = 'low' | 'medium' | 'high' | 'critical';
+export type IncidentStatus =
+  | 'new'
+  | 'awaiting_resources'
+  | 'liaison_pending'
+  | 'dispatched'
+  | 'enroute'
+  | 'on_scene'
+  | 'resolved'
+  | 'unresolved';
+export type ResolutionStatus = 'open' | 'resolved' | 'unresolved';
+export type AgencyCode =
+  | 'PNP'
+  | 'RESCUE_1111'
+  | 'TCPGH'
+  | 'CHO'
+  | 'BFP'
+  | 'TFLC'
+  | 'PCG'
+  | 'PSSO_TCTMG'
+  | 'BARANGAY_OFFICIALS'
+  | 'WATER_DISTRICT'
+  | 'CAGELCO_1'
+  | 'COMMAND_CENTER'
+  | 'OTHER';
+
+export interface IncidentTypeRule {
+  id: string;
+  label: string;
+  category: IncidentCategory;
+  priority: IncidentPriority;
+  recommendedAgencies: AgencyCode[];
+  suggestedResourceTypes: ResourceType[];
+  requiresExternalAgency: boolean;
+  requiresVehicularReason?: boolean;
+}
+
+export interface IncidentRecord {
+  id?: string;
+  referenceNumber: string;
+  source: IncidentSource;
+  createdByUserId: string;
+  commandCenterAdminId: string;
+  incidentCategory: IncidentCategory;
+  incidentSubtypeId: string;
+  incidentSubtypeLabel: string;
+  priority: IncidentPriority;
+  locationText: string;
+  landmark?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  callerName?: string | null;
+  callerContact?: string | null;
+  description?: string | null;
+  vehicularAccidentReason?: string | null;
+  notes?: string | null;
+  requiresExternalAgency: boolean;
+  recommendedAgencies: AgencyCode[];
+  assignedAgencies: AgencyCode[];
+  assignedResourceIds: string[];
+  teamId?: string | null;
+  teamName?: string | null;
+  status: IncidentStatus;
+  resolutionStatus: ResolutionStatus;
+  createdAt?: Date | Timestamp;
+  updatedAt?: Date | Timestamp;
+  resolvedAt?: Date | Timestamp | null;
+}
+
+export interface IncidentDispatchRecord {
+  id?: string;
+  incidentId: string;
+  incidentReferenceNumber: string;
+  agency: AgencyCode;
+  resourceId: string;
+  resourceName: string;
+  resourceType: ResourceType;
+  resourceCode?: string | null;
+  teamId?: string | null;
+  teamName?: string | null;
+  status: 'assigned';
+  createdAt?: Date | Timestamp;
+  updatedAt?: Date | Timestamp;
+}
+
+export interface CreateIncidentInput {
+  source: IncidentSource;
+  incidentSubtypeId: string;
+  locationText: string;
+  landmark?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  callerName?: string | null;
+  callerContact?: string | null;
+  description?: string | null;
+  vehicularAccidentReason?: string | null;
+  notes?: string | null;
+  teamId?: string | null;
+  teamName?: string | null;
+}
+
+export interface SaveIncidentTypeRuleInput {
+  id: string;
+  label: string;
+  category: IncidentCategory;
+  priority: IncidentPriority;
+  recommendedAgencies: AgencyCode[];
+  suggestedResourceTypes: ResourceType[];
+  requiresExternalAgency: boolean;
+  requiresVehicularReason?: boolean;
+}
+
+type RuleSeed = Omit<IncidentTypeRule, 'id' | 'label'> & {
+  id: string;
+  label: string;
+};
+
+const resourceTypeByAgency: Partial<Record<AgencyCode, ResourceType>> = {
+  PNP: 'PNP',
+  RESCUE_1111: 'MDRRMO',
+  TCPGH: 'AMBULANCE',
+  CHO: 'AMBULANCE',
+  BFP: 'BFP',
+  TFLC: 'MDRRMO',
+  PCG: 'PCG',
+  PSSO_TCTMG: 'OTHER',
+};
+
+const agencyCatalog: Record<AgencyCode, string> = {
+  PNP: 'PNP',
+  RESCUE_1111: 'Rescue 1111',
+  TCPGH: 'Tuguegarao City People’s General Hospital (TCPGH)',
+  CHO: 'City Health Office (CHO)',
+  BFP: 'BFP',
+  TFLC: 'Task Force Lingkod Cagayan (TFLC)',
+  PCG: 'Philippine Coast Guard (PCG)',
+  PSSO_TCTMG: 'PSSO / TCTMG',
+  BARANGAY_OFFICIALS: 'Barangay Officials',
+  WATER_DISTRICT: 'Water District',
+  CAGELCO_1: 'CAGELCO 1',
+  COMMAND_CENTER: 'Command Center',
+  OTHER: 'Others',
+};
+
+const baseRules: RuleSeed[] = [
+  {
+    id: 'fire-grass-forest',
+    label: 'Fire (Grass/Forest)',
+    category: 'fire',
+    priority: 'high',
+    recommendedAgencies: ['BFP', 'TFLC'],
+    suggestedResourceTypes: ['BFP', 'MDRRMO'],
+    requiresExternalAgency: false,
+  },
+  {
+    id: 'fire-residential',
+    label: 'Fire (Residential)',
+    category: 'fire',
+    priority: 'critical',
+    recommendedAgencies: ['BFP', 'RESCUE_1111', 'TCPGH'],
+    suggestedResourceTypes: ['BFP', 'MDRRMO', 'AMBULANCE'],
+    requiresExternalAgency: false,
+  },
+  {
+    id: 'fire-commercial-establishment',
+    label: 'Fire (Commercial/Establishment)',
+    category: 'fire',
+    priority: 'critical',
+    recommendedAgencies: ['BFP', 'RESCUE_1111', 'TCPGH', 'PNP'],
+    suggestedResourceTypes: ['BFP', 'MDRRMO', 'AMBULANCE', 'PNP'],
+    requiresExternalAgency: false,
+  },
+  {
+    id: 'fire-vehicular',
+    label: 'Fire (Vehicular)',
+    category: 'fire',
+    priority: 'critical',
+    recommendedAgencies: ['BFP', 'RESCUE_1111', 'TCPGH', 'PNP'],
+    suggestedResourceTypes: ['BFP', 'MDRRMO', 'AMBULANCE', 'PNP'],
+    requiresExternalAgency: false,
+    requiresVehicularReason: true,
+  },
+  {
+    id: 'fire-post-fire',
+    label: 'Fire (Post Fire)',
+    category: 'fire',
+    priority: 'medium',
+    recommendedAgencies: ['BFP', 'PNP'],
+    suggestedResourceTypes: ['BFP', 'PNP'],
+    requiresExternalAgency: false,
+  },
+  {
+    id: 'fire-rubbish',
+    label: 'Fire (Rubbish)',
+    category: 'fire',
+    priority: 'medium',
+    recommendedAgencies: ['BFP'],
+    suggestedResourceTypes: ['BFP'],
+    requiresExternalAgency: false,
+  },
+  {
+    id: 'alarm-and-scandal',
+    label: 'Alarm and Scandal',
+    category: 'peace_and_order',
+    priority: 'medium',
+    recommendedAgencies: ['PNP'],
+    suggestedResourceTypes: ['PNP'],
+    requiresExternalAgency: false,
+  },
+  {
+    id: 'ambulant-vendor',
+    label: 'Ambulant Vendor',
+    category: 'community',
+    priority: 'low',
+    recommendedAgencies: ['PSSO_TCTMG'],
+    suggestedResourceTypes: ['OTHER'],
+    requiresExternalAgency: true,
+  },
+  {
+    id: 'commotion',
+    label: 'Commotion',
+    category: 'peace_and_order',
+    priority: 'medium',
+    recommendedAgencies: ['PNP'],
+    suggestedResourceTypes: ['PNP'],
+    requiresExternalAgency: false,
+  },
+  {
+    id: 'homicide',
+    label: 'Homicide',
+    category: 'peace_and_order',
+    priority: 'critical',
+    recommendedAgencies: ['PNP', 'TCPGH'],
+    suggestedResourceTypes: ['PNP', 'AMBULANCE'],
+    requiresExternalAgency: false,
+  },
+  {
+    id: 'hostage',
+    label: 'Hostage',
+    category: 'peace_and_order',
+    priority: 'critical',
+    recommendedAgencies: ['PNP'],
+    suggestedResourceTypes: ['PNP'],
+    requiresExternalAgency: false,
+  },
+  {
+    id: 'kidnapping',
+    label: 'Kidnapping',
+    category: 'peace_and_order',
+    priority: 'critical',
+    recommendedAgencies: ['PNP'],
+    suggestedResourceTypes: ['PNP'],
+    requiresExternalAgency: false,
+  },
+  {
+    id: 'motor-vehicle-theft',
+    label: 'Motor Vehicle Theft',
+    category: 'peace_and_order',
+    priority: 'high',
+    recommendedAgencies: ['PNP'],
+    suggestedResourceTypes: ['PNP'],
+    requiresExternalAgency: false,
+  },
+  {
+    id: 'noise-complaint',
+    label: 'Noise Complaint',
+    category: 'community',
+    priority: 'low',
+    recommendedAgencies: ['PNP', 'BARANGAY_OFFICIALS'],
+    suggestedResourceTypes: ['PNP'],
+    requiresExternalAgency: true,
+  },
+  {
+    id: 'riot',
+    label: 'Riot',
+    category: 'peace_and_order',
+    priority: 'critical',
+    recommendedAgencies: ['PNP'],
+    suggestedResourceTypes: ['PNP'],
+    requiresExternalAgency: false,
+  },
+  {
+    id: 'robbery',
+    label: 'Robbery',
+    category: 'peace_and_order',
+    priority: 'critical',
+    recommendedAgencies: ['PNP'],
+    suggestedResourceTypes: ['PNP'],
+    requiresExternalAgency: false,
+  },
+  {
+    id: 'scam',
+    label: 'Scam',
+    category: 'peace_and_order',
+    priority: 'medium',
+    recommendedAgencies: ['PNP'],
+    suggestedResourceTypes: ['PNP'],
+    requiresExternalAgency: false,
+  },
+  {
+    id: 'sexual-assault',
+    label: 'Sexual Assault',
+    category: 'peace_and_order',
+    priority: 'critical',
+    recommendedAgencies: ['PNP', 'TCPGH'],
+    suggestedResourceTypes: ['PNP', 'AMBULANCE'],
+    requiresExternalAgency: false,
+  },
+  {
+    id: 'suspicious-person',
+    label: 'Suspicious Person',
+    category: 'peace_and_order',
+    priority: 'medium',
+    recommendedAgencies: ['PNP'],
+    suggestedResourceTypes: ['PNP'],
+    requiresExternalAgency: false,
+  },
+  {
+    id: 'vawc',
+    label: 'VAWC',
+    category: 'peace_and_order',
+    priority: 'high',
+    recommendedAgencies: ['PNP', 'BARANGAY_OFFICIALS'],
+    suggestedResourceTypes: ['PNP'],
+    requiresExternalAgency: true,
+  },
+  {
+    id: 'abandoned-vehicle',
+    label: 'Abandoned Vehicle',
+    category: 'community',
+    priority: 'low',
+    recommendedAgencies: ['PSSO_TCTMG', 'PNP'],
+    suggestedResourceTypes: ['OTHER', 'PNP'],
+    requiresExternalAgency: true,
+  },
+  {
+    id: 'larceny-theft',
+    label: 'Larceny - Theft',
+    category: 'peace_and_order',
+    priority: 'medium',
+    recommendedAgencies: ['PNP'],
+    suggestedResourceTypes: ['PNP'],
+    requiresExternalAgency: false,
+  },
+  {
+    id: 'traffic-obstruction',
+    label: 'Traffic Obstruction',
+    category: 'vehicular',
+    priority: 'medium',
+    recommendedAgencies: ['PSSO_TCTMG', 'PNP'],
+    suggestedResourceTypes: ['OTHER', 'PNP'],
+    requiresExternalAgency: true,
+  },
+  {
+    id: 'traffic-assistance',
+    label: 'Traffic Assistance',
+    category: 'vehicular',
+    priority: 'medium',
+    recommendedAgencies: ['PSSO_TCTMG'],
+    suggestedResourceTypes: ['OTHER'],
+    requiresExternalAgency: true,
+  },
+  {
+    id: 'traffic-sitrep',
+    label: 'Traffic SITREP',
+    category: 'vehicular',
+    priority: 'low',
+    recommendedAgencies: ['PSSO_TCTMG'],
+    suggestedResourceTypes: ['OTHER'],
+    requiresExternalAgency: true,
+  },
+  {
+    id: 'medical-assistance',
+    label: 'Medical Assistance',
+    category: 'medical',
+    priority: 'high',
+    recommendedAgencies: ['RESCUE_1111', 'TCPGH'],
+    suggestedResourceTypes: ['MDRRMO', 'AMBULANCE'],
+    requiresExternalAgency: false,
+  },
+  {
+    id: 'animal-control-assistance',
+    label: 'Animal Control Assistance',
+    category: 'community',
+    priority: 'medium',
+    recommendedAgencies: ['OTHER'],
+    suggestedResourceTypes: ['OTHER'],
+    requiresExternalAgency: true,
+  },
+  {
+    id: 'barangay-official-assistance',
+    label: 'Barangay Official Assistance',
+    category: 'community',
+    priority: 'low',
+    recommendedAgencies: ['BARANGAY_OFFICIALS'],
+    suggestedResourceTypes: [],
+    requiresExternalAgency: true,
+  },
+  {
+    id: 'police-assistance',
+    label: 'Police Assistance',
+    category: 'peace_and_order',
+    priority: 'high',
+    recommendedAgencies: ['PNP'],
+    suggestedResourceTypes: ['PNP'],
+    requiresExternalAgency: false,
+  },
+  {
+    id: 'found-dead-body',
+    label: 'Found Dead Body',
+    category: 'peace_and_order',
+    priority: 'critical',
+    recommendedAgencies: ['PNP', 'TCPGH'],
+    suggestedResourceTypes: ['PNP', 'AMBULANCE'],
+    requiresExternalAgency: false,
+  },
+  {
+    id: 'missing-person',
+    label: 'Missing Person',
+    category: 'peace_and_order',
+    priority: 'high',
+    recommendedAgencies: ['PNP', 'BARANGAY_OFFICIALS'],
+    suggestedResourceTypes: ['PNP'],
+    requiresExternalAgency: true,
+  },
+  {
+    id: 'electrical-powerline-problem',
+    label: 'Electrical/Powerline Problem',
+    category: 'utility',
+    priority: 'high',
+    recommendedAgencies: ['CAGELCO_1', 'BFP'],
+    suggestedResourceTypes: ['BFP'],
+    requiresExternalAgency: true,
+  },
+  {
+    id: 'request-for-info',
+    label: 'Request for Info',
+    category: 'other',
+    priority: 'low',
+    recommendedAgencies: ['COMMAND_CENTER'],
+    suggestedResourceTypes: [],
+    requiresExternalAgency: false,
+  },
+  {
+    id: 'water-level-monitoring',
+    label: 'Water Level Monitoring',
+    category: 'utility',
+    priority: 'medium',
+    recommendedAgencies: ['PCG', 'TFLC'],
+    suggestedResourceTypes: ['PCG', 'MDRRMO'],
+    requiresExternalAgency: true,
+  },
+  {
+    id: 'request-for-assistance',
+    label: 'Request for Assistance',
+    category: 'other',
+    priority: 'medium',
+    recommendedAgencies: ['COMMAND_CENTER'],
+    suggestedResourceTypes: [],
+    requiresExternalAgency: false,
+  },
+];
+
+const medicalRules = [
+  { id: 'med-abdominal-pain', label: 'Med - Abdominal Pain', priority: 'high' },
+  { id: 'med-asthma', label: 'Med - Asthma', priority: 'high' },
+  { id: 'med-bleeding', label: 'Med - Bleeding', priority: 'critical' },
+  { id: 'med-body-weakness', label: 'Med - Body Weakness', priority: 'medium' },
+  { id: 'med-chilling', label: 'Med - Chilling', priority: 'medium' },
+  { id: 'med-conduction', label: 'Med - Conduction', priority: 'critical' },
+  { id: 'med-difficulty-of-breathing', label: 'Med - Difficulty of Breathing', priority: 'critical' },
+  { id: 'med-dizziness', label: 'Med - Dizziness', priority: 'medium' },
+  { id: 'med-drowning', label: 'Med - Drowning', priority: 'critical' },
+  { id: 'med-fainting', label: 'Med - Fainting', priority: 'high' },
+  { id: 'med-gunshot', label: 'Med - Gunshot', priority: 'critical' },
+  { id: 'med-heart-attack', label: 'Med - Heart Attack', priority: 'critical' },
+  { id: 'med-hypertension', label: 'Med - Hypertension', priority: 'high' },
+  { id: 'med-labor-pain', label: 'Med - Labor Pain', priority: 'high' },
+  { id: 'med-seizure', label: 'Med - Seizure', priority: 'critical' },
+  { id: 'med-stroke', label: 'Med - Stroke', priority: 'critical' },
+  { id: 'med-suicide', label: 'Med - Suicide', priority: 'critical' },
+  { id: 'med-dislocation', label: 'Med - Dislocation', priority: 'medium' },
+  { id: 'med-trauma-fall', label: 'Med - Trauma Fall', priority: 'high' },
+  { id: 'med-mauling', label: 'Med - Mauling', priority: 'high' },
+  { id: 'med-stabbing', label: 'Med - Stabbing', priority: 'critical' },
+  { id: 'med-first-aid', label: 'Med - First Aid', priority: 'medium' },
+] as const;
+
+const vehicularRules = [
+  'Vehicular Accident - Multi Vehicle',
+  'Vehicular Accident - Self Accident',
+  'Vehicular Accident - Pedestrian Collision',
+  'Vehicular Accident - Roll Over',
+  'Vehicular Accident - Hit and Run',
+] as const;
+
+const normalizedRules: IncidentTypeRule[] = [
+  ...baseRules,
+  ...medicalRules.map<IncidentTypeRule>((rule) => ({
+    id: rule.id,
+    label: rule.label,
+    category: 'medical',
+    priority: rule.priority,
+    recommendedAgencies: ['RESCUE_1111', 'TCPGH', 'CHO'],
+    suggestedResourceTypes: ['MDRRMO', 'AMBULANCE'],
+    requiresExternalAgency: false,
+  })),
+  ...vehicularRules.map<IncidentTypeRule>((label) => ({
+    id: label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+    label,
+    category: 'vehicular',
+    priority: 'critical',
+    recommendedAgencies: ['PSSO_TCTMG', 'PNP', 'RESCUE_1111', 'TCPGH'],
+    suggestedResourceTypes: ['OTHER', 'PNP', 'MDRRMO', 'AMBULANCE'],
+    requiresExternalAgency: true,
+    requiresVehicularReason: true,
+  })),
+].sort((left, right) => left.label.localeCompare(right.label));
+
+const incidentRuleMap = new Map(normalizedRules.map((rule) => [rule.id, rule]));
+
+const ensureAuthenticated = () => {
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    throw new Error('User must be authenticated to manage incidents');
+  }
+  return currentUser;
+};
+
+const normalizeNullableString = (value?: string | null): string | null => {
+  const normalized = value?.trim();
+  return normalized ? normalized : null;
+};
+
+const normalizeNullableNumber = (value?: number | null): number | null => {
+  if (value == null || Number.isNaN(value)) {
+    return null;
+  }
+  return value;
+};
+
+const arraysMatch = (left: string[], right: string[]) => {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  const leftSorted = [...left].sort();
+  const rightSorted = [...right].sort();
+  return leftSorted.every((value, index) => value === rightSorted[index]);
+};
+
+const toIncidentRecord = (snapshot: DocumentData): IncidentRecord => {
+  const data = snapshot.data();
+  return {
+    id: snapshot.id,
+    referenceNumber: data.referenceNumber || '',
+    source: data.source || 'manual',
+    createdByUserId: data.createdByUserId || '',
+    commandCenterAdminId: data.commandCenterAdminId || '',
+    incidentCategory: data.incidentCategory || 'other',
+    incidentSubtypeId: data.incidentSubtypeId || '',
+    incidentSubtypeLabel: data.incidentSubtypeLabel || '',
+    priority: data.priority || 'medium',
+    locationText: data.locationText || '',
+    landmark: data.landmark || null,
+    latitude: data.latitude ?? null,
+    longitude: data.longitude ?? null,
+    callerName: data.callerName || null,
+    callerContact: data.callerContact || null,
+    description: data.description || null,
+    vehicularAccidentReason: data.vehicularAccidentReason || null,
+    notes: data.notes || null,
+    requiresExternalAgency: Boolean(data.requiresExternalAgency),
+    recommendedAgencies: Array.isArray(data.recommendedAgencies) ? data.recommendedAgencies : [],
+    assignedAgencies: Array.isArray(data.assignedAgencies) ? data.assignedAgencies : [],
+    assignedResourceIds: Array.isArray(data.assignedResourceIds) ? data.assignedResourceIds : [],
+    teamId: data.teamId || null,
+    teamName: data.teamName || null,
+    status: data.status || 'new',
+    resolutionStatus: data.resolutionStatus || 'open',
+    createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
+    updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : null,
+    resolvedAt: data.resolvedAt?.toDate ? data.resolvedAt.toDate() : null,
+  };
+};
+
+const toIncidentTypeRule = (snapshot: DocumentData): IncidentTypeRule => {
+  const data = snapshot.data();
+  const fallback = incidentRuleMap.get(snapshot.id);
+
+  return {
+    id: snapshot.id,
+    label: data.label || fallback?.label || snapshot.id,
+    category: data.category || fallback?.category || 'other',
+    priority: data.priority || fallback?.priority || 'medium',
+    recommendedAgencies: Array.isArray(data.recommendedAgencies)
+      ? data.recommendedAgencies
+      : fallback?.recommendedAgencies || [],
+    suggestedResourceTypes: Array.isArray(data.suggestedResourceTypes)
+      ? data.suggestedResourceTypes
+      : fallback?.suggestedResourceTypes || [],
+    requiresExternalAgency:
+      typeof data.requiresExternalAgency === 'boolean'
+        ? data.requiresExternalAgency
+        : fallback?.requiresExternalAgency || false,
+    requiresVehicularReason:
+      typeof data.requiresVehicularReason === 'boolean'
+        ? data.requiresVehicularReason
+        : fallback?.requiresVehicularReason || false,
+  };
+};
+
+const toDispatchRecord = (
+  incidentId: string,
+  referenceNumber: string,
+  resource: ResourceRecord,
+  teamId?: string | null,
+  teamName?: string | null
+): Omit<IncidentDispatchRecord, 'id'> => ({
+  incidentId,
+  incidentReferenceNumber: referenceNumber,
+  agency: inferAgencyCodeForResource(resource),
+  resourceId: resource.id || '',
+  resourceName: resource.name,
+  resourceType: resource.type,
+  resourceCode: resource.resourceCode || null,
+  teamId: teamId || null,
+  teamName: teamName || null,
+  status: 'assigned',
+  createdAt: new Date(),
+  updatedAt: new Date(),
+});
+
+const inferAgencyCodeForResource = (resource: Pick<ResourceRecord, 'agency' | 'type'>): AgencyCode => {
+  const haystack = `${resource.agency || ''} ${resource.type}`.toLowerCase();
+  if (haystack.includes('bfp')) return 'BFP';
+  if (haystack.includes('pnp')) return 'PNP';
+  if (haystack.includes('coast') || haystack.includes('pcg')) return 'PCG';
+  if (haystack.includes('hospital') || haystack.includes('tcpgh')) return 'TCPGH';
+  if (haystack.includes('health') || haystack.includes('cho')) return 'CHO';
+  if (haystack.includes('rescue') || haystack.includes('mdrrmo')) return 'RESCUE_1111';
+  if (haystack.includes('lingkod') || haystack.includes('tflc')) return 'TFLC';
+  if (haystack.includes('psso') || haystack.includes('tctmg') || haystack.includes('traffic')) return 'PSSO_TCTMG';
+  if (haystack.includes('cagelco')) return 'CAGELCO_1';
+  if (haystack.includes('water')) return 'WATER_DISTRICT';
+  return 'OTHER';
+};
+
+const isResourceAvailable = (status: ResourceStatus) => status === 'available';
+
+export const incidentTypeRules = normalizedRules;
+export const incidentAgencyCatalog = agencyCatalog;
+
+export function getIncidentTypeRules(): IncidentTypeRule[] {
+  return incidentTypeRules;
+}
+
+export function getIncidentTypeRuleById(ruleId: string): IncidentTypeRule | null {
+  return incidentRuleMap.get(ruleId) || null;
+}
+
+export async function resolveIncidentTypeRuleById(ruleId: string): Promise<IncidentTypeRule | null> {
+  const fallback = getIncidentTypeRuleById(ruleId);
+  try {
+    const snapshot = await getDoc(doc(firestore, 'incidentTypeRules', ruleId));
+    if (snapshot.exists()) {
+      return toIncidentTypeRule(snapshot);
+    }
+  } catch (error) {
+    console.error('Error resolving incident type rule from Firestore:', error);
+  }
+
+  return fallback;
+}
+
+export function getAgencyLabel(agency: AgencyCode): string {
+  return agencyCatalog[agency];
+}
+
+export function getExpectedResourceTypesForAgencies(agencies: AgencyCode[]): ResourceType[] {
+  return Array.from(
+    new Set(
+      agencies
+        .map((agency) => resourceTypeByAgency[agency])
+        .filter((value): value is ResourceType => Boolean(value))
+    )
+  );
+}
+
+export async function saveIncidentTypeRule(input: SaveIncidentTypeRuleInput): Promise<IncidentTypeRule> {
+  ensureAuthenticated();
+
+  if (!input.id.trim()) {
+    throw new Error('Incident rule ID is required.');
+  }
+
+  if (!input.label.trim()) {
+    throw new Error('Incident rule label is required.');
+  }
+
+  if (input.recommendedAgencies.length === 0) {
+    throw new Error('At least one agency must be assigned to the incident type.');
+  }
+
+  const payload: IncidentTypeRule = {
+    id: input.id.trim(),
+    label: input.label.trim(),
+    category: input.category,
+    priority: input.priority,
+    recommendedAgencies: Array.from(new Set(input.recommendedAgencies)),
+    suggestedResourceTypes: Array.from(new Set(input.suggestedResourceTypes)),
+    requiresExternalAgency: input.requiresExternalAgency,
+    requiresVehicularReason: Boolean(input.requiresVehicularReason),
+  };
+
+  await setDoc(doc(firestore, 'incidentTypeRules', payload.id), {
+    ...payload,
+    updatedAt: Timestamp.now(),
+  });
+
+  return payload;
+}
+
+export function subscribeToIncidentTypeRules(
+  callback: (rules: IncidentTypeRule[]) => void
+): () => void {
+  try {
+    const rulesRef = collection(firestore, 'incidentTypeRules');
+    const q = query(rulesRef, limit(500));
+
+    return onSnapshot(
+      q,
+      (snapshot: QuerySnapshot) => {
+        const overrides = new Map(snapshot.docs.map((item) => [item.id, toIncidentTypeRule(item)]));
+        const merged = incidentTypeRules
+          .map((rule) => overrides.get(rule.id) || rule)
+          .concat(
+            snapshot.docs
+              .filter((item) => !incidentRuleMap.has(item.id))
+              .map(toIncidentTypeRule)
+          )
+          .sort((left, right) => left.label.localeCompare(right.label));
+
+        callback(merged);
+      },
+      (error) => {
+        console.error('Error subscribing to incident type rules:', error);
+        callback(incidentTypeRules);
+      }
+    );
+  } catch (error) {
+    console.error('Error setting up incident type rule subscription:', error);
+    callback(incidentTypeRules);
+    return () => {};
+  }
+}
+
+export async function createIncident(input: CreateIncidentInput): Promise<IncidentRecord> {
+  const currentUser = ensureAuthenticated();
+  const rule = await resolveIncidentTypeRuleById(input.incidentSubtypeId);
+
+  if (!rule) {
+    throw new Error('Incident subtype is invalid.');
+  }
+
+  if (!input.locationText.trim()) {
+    throw new Error('Incident location is required.');
+  }
+
+  if (rule.requiresVehicularReason && !normalizeNullableString(input.vehicularAccidentReason)) {
+    throw new Error('Vehicular incidents require an accident reason.');
+  }
+
+  const incidentsRef = collection(firestore, 'incidents');
+  const createdAt = Timestamp.now();
+  const initialStatus: IncidentStatus = rule.requiresExternalAgency ? 'liaison_pending' : 'awaiting_resources';
+  const referenceNumber = `INC-${Date.now()}`;
+
+  const payload: Omit<IncidentRecord, 'id' | 'createdAt' | 'updatedAt'> & {
+    createdAt: Timestamp;
+    updatedAt: Timestamp;
+  } = {
+    referenceNumber,
+    source: input.source,
+    createdByUserId: currentUser.uid,
+    commandCenterAdminId: currentUser.uid,
+    incidentCategory: rule.category,
+    incidentSubtypeId: rule.id,
+    incidentSubtypeLabel: rule.label,
+    priority: rule.priority,
+    locationText: input.locationText.trim(),
+    landmark: normalizeNullableString(input.landmark),
+    latitude: normalizeNullableNumber(input.latitude),
+    longitude: normalizeNullableNumber(input.longitude),
+    callerName: normalizeNullableString(input.callerName),
+    callerContact: normalizeNullableString(input.callerContact),
+    description: normalizeNullableString(input.description),
+    vehicularAccidentReason: normalizeNullableString(input.vehicularAccidentReason),
+    notes: normalizeNullableString(input.notes),
+    requiresExternalAgency: rule.requiresExternalAgency,
+    recommendedAgencies: rule.recommendedAgencies,
+    assignedAgencies: rule.recommendedAgencies,
+    assignedResourceIds: [],
+    teamId: normalizeNullableString(input.teamId),
+    teamName: normalizeNullableString(input.teamName),
+    status: initialStatus,
+    resolutionStatus: 'open',
+    createdAt,
+    updatedAt: createdAt,
+    resolvedAt: null,
+  };
+
+  const created = await addDoc(incidentsRef, payload);
+  return {
+    ...payload,
+    id: created.id,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+}
+
+export async function dispatchIncidentResources(
+  incidentId: string,
+  resourceIds: string[]
+): Promise<void> {
+  const currentUser = ensureAuthenticated();
+  const normalizedIds = Array.from(new Set(resourceIds.map((id) => id.trim()).filter(Boolean)));
+
+  if (normalizedIds.length === 0) {
+    return;
+  }
+
+  const incidentRef = doc(firestore, 'incidents', incidentId);
+  const incidentSnapshot = await getDoc(incidentRef);
+
+  if (!incidentSnapshot.exists()) {
+    throw new Error('Incident not found.');
+  }
+
+  const incident = toIncidentRecord(incidentSnapshot);
+  if (incident.commandCenterAdminId !== currentUser.uid) {
+    throw new Error('Only the command center admin assigned to the incident can dispatch resources.');
+  }
+
+  const rule = await resolveIncidentTypeRuleById(incident.incidentSubtypeId);
+  if (!rule) {
+    throw new Error('Incident rule no longer exists.');
+  }
+
+  const resources = await Promise.all(
+    normalizedIds.map(async (resourceId) => {
+      const resourceSnapshot = await getDoc(doc(firestore, 'resources', resourceId));
+      if (!resourceSnapshot.exists()) {
+        throw new Error(`Resource ${resourceId} was not found.`);
+      }
+
+      const data = resourceSnapshot.data();
+      const resource: ResourceRecord = {
+        id: resourceSnapshot.id,
+        name: data.name || '',
+        resourceCode: data.resourceCode || null,
+        type: data.type || 'OTHER',
+        customType: data.customType || null,
+        agency: data.agency || null,
+        department: data.department || null,
+        teamId: data.teamId || null,
+        teamName: data.teamName || null,
+        status: data.status || 'available',
+        stationName: data.stationName || null,
+        quadrant: data.quadrant || null,
+        stationLatitude: data.stationLatitude ?? null,
+        stationLongitude: data.stationLongitude ?? null,
+        currentLatitude: data.currentLatitude ?? null,
+        currentLongitude: data.currentLongitude ?? null,
+        assignedResponderId: data.assignedResponderId || null,
+        assignedIncidentId: data.assignedIncidentId || null,
+        notes: data.notes || null,
+        isActive: data.isActive !== false,
+        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : null,
+        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : null,
+      };
+      return { ref: resourceSnapshot.ref, resource };
+    })
+  );
+
+  const resourceAgencyCodes = Array.from(new Set(resources.map(({ resource }) => inferAgencyCodeForResource(resource))));
+  const invalidAgency = resourceAgencyCodes.find((agency) => !incident.assignedAgencies.includes(agency));
+  if (invalidAgency) {
+    throw new Error(`Selected resource does not match the mandatory agency routing: ${getAgencyLabel(invalidAgency)}.`);
+  }
+
+  const missingAgencies = incident.assignedAgencies.filter((agency) => !resourceAgencyCodes.includes(agency));
+  const requiredResourceTypes = getExpectedResourceTypesForAgencies(incident.assignedAgencies);
+  const selectedTypes = Array.from(new Set(resources.map(({ resource }) => resource.type)));
+  const hasTypeCoverage =
+    requiredResourceTypes.length === 0 ||
+    requiredResourceTypes.every((type) => selectedTypes.includes(type));
+
+  if (missingAgencies.length > 0 && hasTypeCoverage === false) {
+    throw new Error('Selected resources do not fully cover the mandatory agency recommendation.');
+  }
+
+  const unavailable = resources.find(({ resource }) => !isResourceAvailable(resource.status));
+  if (unavailable) {
+    throw new Error(`Resource "${unavailable.resource.name}" is not available.`);
+  }
+
+  const existingIds = incident.assignedResourceIds || [];
+  const mergedResourceIds = Array.from(new Set([...existingIds, ...normalizedIds]));
+  const batch = writeBatch(firestore);
+  const dispatchesRef = collection(firestore, 'incidentDispatches');
+  const timestamp = Timestamp.now();
+
+  resources.forEach(({ ref, resource }) => {
+    const dispatchRef = doc(dispatchesRef);
+    const dispatchPayload = toDispatchRecord(
+      incidentId,
+      incident.referenceNumber,
+      resource,
+      resource.teamId || incident.teamId || null,
+      resource.teamName || incident.teamName || null
+    );
+
+    batch.set(dispatchRef, {
+      ...dispatchPayload,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    batch.update(ref, {
+      status: 'assigned',
+      assignedIncidentId: incidentId,
+      updatedAt: timestamp,
+    });
+  });
+
+  batch.update(incidentRef, {
+    assignedAgencies: rule.recommendedAgencies,
+    assignedResourceIds: mergedResourceIds,
+    status: 'dispatched',
+    updatedAt: timestamp,
+  });
+
+  await batch.commit();
+}
+
+export function subscribeToIncidents(
+  callback: (incidents: IncidentRecord[]) => void,
+  limitCount: number = 100
+): () => void {
+  try {
+    const incidentsRef = collection(firestore, 'incidents');
+    const q = query(incidentsRef, limit(limitCount * 3));
+
+    return onSnapshot(
+      q,
+      (snapshot: QuerySnapshot) => {
+        const incidents = snapshot.docs
+          .map(toIncidentRecord)
+          .sort((left, right) => {
+            const leftTime =
+              left.createdAt instanceof Date
+                ? left.createdAt.getTime()
+                : left.createdAt && typeof left.createdAt === 'object' && 'toDate' in left.createdAt
+                  ? left.createdAt.toDate().getTime()
+                  : 0;
+            const rightTime =
+              right.createdAt instanceof Date
+                ? right.createdAt.getTime()
+                : right.createdAt && typeof right.createdAt === 'object' && 'toDate' in right.createdAt
+                  ? right.createdAt.toDate().getTime()
+                  : 0;
+            return rightTime - leftTime;
+          })
+          .slice(0, limitCount);
+        callback(incidents);
+      },
+      (error) => {
+        console.error('Error subscribing to incidents:', error);
+        callback([]);
+      }
+    );
+  } catch (error) {
+    console.error('Error setting up incidents subscription:', error);
+    return () => {};
+  }
+}
+
+export function formatIncidentStatus(status: IncidentStatus): string {
+  return status.replace(/_/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+export function getIncidentPriorityTone(priority: IncidentPriority): string {
+  switch (priority) {
+    case 'critical':
+      return 'text-red-300';
+    case 'high':
+      return 'text-amber-300';
+    case 'medium':
+      return 'text-blue-300';
+    default:
+      return 'text-slate-300';
+  }
+}
+
+export function getIncidentResourceMatch(
+  resource: Pick<ResourceRecord, 'agency' | 'department' | 'type' | 'status'>,
+  rule: IncidentTypeRule
+): boolean {
+  if (!isResourceAvailable(resource.status)) {
+    return false;
+  }
+
+  const inferredAgency = inferAgencyCodeForResource(resource);
+  if (rule.recommendedAgencies.includes(inferredAgency)) {
+    return true;
+  }
+
+  return rule.suggestedResourceTypes.includes(resource.type);
+}
+
+export function validateIncidentAgencyRouting(
+  incidentSubtypeId: string,
+  agencies: AgencyCode[]
+): boolean {
+  const rule = getIncidentTypeRuleById(incidentSubtypeId);
+  if (!rule) {
+    return false;
+  }
+
+  return arraysMatch(rule.recommendedAgencies, agencies);
+}
