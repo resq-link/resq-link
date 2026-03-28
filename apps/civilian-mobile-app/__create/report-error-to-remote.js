@@ -6,10 +6,6 @@ export const reportErrorToRemote = async ({ error }) => {
     !process.env.EXPO_PUBLIC_PROJECT_GROUP_ID ||
     !process.env.EXPO_PUBLIC_CREATE_TEMP_API_KEY
   ) {
-    console.debug(
-      'reportErrorToRemote: Missing environment variables for logging endpoint, project group ID, or API key.',
-      error
-    );
     return { success: false };
   }
   try {

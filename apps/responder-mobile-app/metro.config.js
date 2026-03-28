@@ -22,6 +22,12 @@ config.resolver = {
   extraNodeModules: {
     ...config.resolver?.extraNodeModules,
     '@packages/firebase': packagesFirebase,
+    '@react-native-async-storage/async-storage': path.resolve(
+      __dirname,
+      'node_modules',
+      '@react-native-async-storage',
+      'async-storage',
+    ),
     expo: path.resolve(__dirname, 'node_modules', 'expo'),
     'react-native': path.resolve(__dirname, 'node_modules', 'react-native'),
     'expo/virtual/env': path.resolve(__dirname, 'node_modules', 'expo', 'virtual', 'env'),

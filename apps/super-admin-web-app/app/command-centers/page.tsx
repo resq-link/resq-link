@@ -58,12 +58,14 @@ export default function CommandCentersPage() {
         if (!res.ok) throw new Error('Server error. Check the console for details.');
       }
       if (!res.ok) throw new Error(data.error || 'Failed to create');
+      const newUid = data.uid;
+      if (!newUid) throw new Error('Server did not return user id');
       setMessage({ type: 'success', text: `Command center created: ${name}` });
       setEmail('');
       setPassword('');
       setName('');
       setLocation('');
-      setCenters((prev) => [...prev, { id: data.uid, email, name, location }]);
+      setCenters((prev) => [...prev, { id: newUid, email, name, location }]);
     } catch (err) {
       setMessage({ type: 'error', text: (err as Error).message });
     } finally {

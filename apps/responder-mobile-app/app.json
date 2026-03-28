@@ -1,6 +1,7 @@
 {
   "expo": {
     "name": "RESQ-Link Responder",
+    "scheme": "resqlink-responder",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",

@@ -186,6 +186,28 @@ function getApp(): FirebaseApp {
   }
 }
 
+function loadReactNativeAsyncStorage(): {
+  getItem: (key: string) => Promise<string | null>;
+  setItem: (key: string, value: string) => Promise<void>;
+  removeItem: (key: string) => Promise<void>;
+} | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mod = require('@react-native-async-storage/async-storage');
+    const AsyncStorage = mod?.default ?? mod;
+    if (
+      AsyncStorage &&
+      typeof AsyncStorage.getItem === 'function' &&
+      typeof AsyncStorage.setItem === 'function'
+    ) {
+      return AsyncStorage;
+    }
+  } catch {
+    // Not in a React Native bundle or package missing
+  }
+  return null;
+}
+
 function getAuthInstance(): Auth {
   if (_auth) {
     return _auth;
@@ -194,35 +216,41 @@ function getAuthInstance(): Auth {
   const app = getApp();
 
   try {
-    // Check if we're in React Native environment
-    const isReactNative = typeof navigator !== 'undefined' && navigator.product === 'ReactNative';
-    
+    const isReactNative =
+      typeof navigator !== 'undefined' && navigator.product === 'ReactNative';
+
     if (isReactNative) {
-      // React Native/Expo: Use initializeAuth with AsyncStorage
-      try {
-        // For React Native, we need to use getReactNativePersistence
-        // Use dynamic require to avoid Next.js bundling issues
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const { getReactNativePersistence } = require('firebase/auth');
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const AsyncStorage = require('@react-native-async-storage/async-storage').default;
-        _auth = initializeAuth(app, {
-          persistence: getReactNativePersistence(AsyncStorage)
-        });
-        console.log('✅ Firebase Auth initialized with AsyncStorage persistence');
-        return _auth;
-      } catch (asyncStorageError: any) {
-        // Fallback to getAuth if AsyncStorage is not available
-        console.warn('⚠️ AsyncStorage not available, using getAuth (auth state won\'t persist)');
-        _auth = getAuth(app);
-        return _auth;
+      const AsyncStorage = loadReactNativeAsyncStorage();
+      if (AsyncStorage) {
+        try {
+          // RN-only export; Node typings for firebase/auth omit it, so load at runtime.
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          const { getReactNativePersistence } = require('firebase/auth') as {
+            getReactNativePersistence: (storage: typeof AsyncStorage) => import('firebase/auth').Persistence;
+          };
+          _auth = initializeAuth(app, {
+            persistence: getReactNativePersistence(AsyncStorage),
+          });
+          console.log('✅ Firebase Auth initialized with AsyncStorage persistence');
+          return _auth;
+        } catch (e: any) {
+          if (e?.code === 'auth/already-initialized') {
+            _auth = getAuth(app);
+            return _auth;
+          }
+          console.warn('⚠️ initializeAuth failed, using getAuth:', e?.message);
+          _auth = getAuth(app);
+          return _auth;
+        }
       }
-    } else {
-      // Web/Next.js: Use getAuth (default web persistence)
+      console.warn('⚠️ AsyncStorage not available, using getAuth (auth state won\'t persist)');
       _auth = getAuth(app);
-      console.log('✅ Firebase Auth initialized (web)');
       return _auth;
     }
+
+    _auth = getAuth(app);
+    console.log('✅ Firebase Auth initialized (web)');
+    return _auth;
   } catch (error: any) {
     console.error('❌ Error initializing Auth:', error.message);
     console.error('Full error:', error);

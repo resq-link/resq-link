@@ -1,8 +1,15 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth, firestore, doc, getDoc, onAuthStateChanged, signOut as firebaseSignOut } from '@packages/firebase';
+import {
+  auth,
+  doc,
+  firestore,
+  getDoc,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut as firebaseSignOut,
+} from '@packages/firebase';
 import type { User } from '@packages/firebase';
 import { useRouter } from 'next/navigation';
 
