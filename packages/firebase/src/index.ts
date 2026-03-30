@@ -6,7 +6,11 @@ export { getDoc, doc, updateDoc, Timestamp, onSnapshot, collection, getDocs, que
 
 // Export Firebase Auth types and functions
 export type { User } from 'firebase/auth';
-export { onAuthStateChanged, signOut } from 'firebase/auth';
+export {
+  onAuthStateChanged,
+  signOut,
+  signInWithEmailAndPassword,
+} from 'firebase/auth';
 
 // Export authentication functions
 export {

@@ -71,13 +71,18 @@ export default function CiviliansPage() {
         if (!res.ok) throw new Error('Server error. Check the console for details.');
       }
       if (!res.ok) throw new Error(data.error || 'Failed to create');
+      const newUid = data.uid;
+      if (!newUid) throw new Error('Server did not return user id');
       setMessage({ type: 'success', text: `Civilian created: ${email}` });
       setEmail('');
       setPassword('');
       setFullName('');
       setPhone('');
       setAddress('');
-      setCivilians((prev) => [...prev, { id: data.uid, email, name: fullName, phone, role: 'civilian' }]);
+      setCivilians((prev) => [
+        ...prev,
+        { id: newUid, email, name: fullName, phone, role: 'civilian' },
+      ]);
     } catch (err) {
       setMessage({ type: 'error', text: (err as Error).message });
     } finally {

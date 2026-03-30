@@ -60,10 +60,12 @@ export default function RespondersPage() {
         if (!res.ok) throw new Error('Server error. Check the console for details.');
       }
       if (!res.ok) throw new Error(data.error || 'Failed to create');
+      const newUid = data.uid;
+      if (!newUid) throw new Error('Server did not return user id');
       setMessage({ type: 'success', text: `Responder created: ${email}` });
       setEmail('');
       setPassword('');
-      setDispatchers((prev) => [...prev, { id: data.uid, email, role, active: true }]);
+      setDispatchers((prev) => [...prev, { id: newUid, email, role, active: true }]);
     } catch (err) {
       setMessage({ type: 'error', text: (err as Error).message });
     } finally {

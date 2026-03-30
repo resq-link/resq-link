@@ -83,6 +83,13 @@ config.resolver = {
   extraNodeModules: {
     ...config.resolver?.extraNodeModules,
     "@packages/firebase": packagesFirebase,
+    // Hoist from app: monorepo packages/firebase cannot resolve this from its own tree
+    "@react-native-async-storage/async-storage": path.resolve(
+      __dirname,
+      "node_modules",
+      "@react-native-async-storage",
+      "async-storage",
+    ),
     expo: path.resolve(__dirname, "node_modules", "expo"),
     "react-native": path.resolve(__dirname, "node_modules", "react-native"),
     "expo/virtual/env": path.resolve(
@@ -150,6 +157,8 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
 };
 
 const cacheDir = path.join(__dirname, "caches");
+fs.mkdirSync(cacheDir, { recursive: true });
+fs.mkdirSync(path.join(cacheDir, ".metro-cache"), { recursive: true });
 
 config.cacheStores = () => [
   new FileStore({
