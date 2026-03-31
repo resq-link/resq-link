@@ -166,7 +166,6 @@ config.cacheStores = () => [
   }),
 ];
 config.resetCache = false;
-config.fileMapCacheDirectory = cacheDir;
 config.reporter = {
   ...config.reporter,
   update: (event) => {
