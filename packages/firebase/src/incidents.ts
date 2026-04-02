@@ -7,6 +7,7 @@ import {
   limit,
   onSnapshot,
   query,
+  where,
   setDoc,
   updateDoc,
   writeBatch,
@@ -51,6 +52,9 @@ export type AgencyCode =
   | 'COMMAND_CENTER'
   | 'OTHER';
 
+export type TeamOnDuty = 'Whiskey' | 'X-ray' | 'Yankee' | 'Zulu';
+export type ScheduleOfDuty = 'AM' | 'PM';
+
 export interface IncidentTypeRule {
   id: string;
   label: string;
@@ -87,6 +91,12 @@ export interface IncidentRecord {
   assignedResourceIds: string[];
   teamId?: string | null;
   teamName?: string | null;
+  // Duty fields (Phase 1: derived from dispatcher intake date/time)
+  incidentDate?: string | null; // YYYY-MM-DD (Asia/Manila)
+  incidentTime?: string | null; // hh:mm AM/PM (Asia/Manila)
+  dateOfDuty?: string | null; // YYYY-MM-DD (derived == incidentDate)
+  scheduleOfDuty?: ScheduleOfDuty | null; // derived from incidentTime AM/PM
+  teamOnDuty?: TeamOnDuty | null;
   status: IncidentStatus;
   resolutionStatus: ResolutionStatus;
   createdAt?: Date | Timestamp;
@@ -124,6 +134,10 @@ export interface CreateIncidentInput {
   notes?: string | null;
   teamId?: string | null;
   teamName?: string | null;
+  // Duty fields (Phase 1)
+  teamOnDuty: TeamOnDuty;
+  incidentDate: string; // YYYY-MM-DD
+  incidentTime: string; // hh:mm AM/PM
 }
 
 export interface SaveIncidentTypeRuleInput {
@@ -566,6 +580,53 @@ const normalizeNullableNumber = (value?: number | null): number | null => {
   return value;
 };
 
+const normalizeTeamOnDuty = (value: unknown): TeamOnDuty | null => {
+  if (value === 'Whiskey' || value === 'X-ray' || value === 'Yankee' || value === 'Zulu') {
+    return value;
+  }
+  return null;
+};
+
+const normalizeScheduleOfDuty = (value: unknown): ScheduleOfDuty | null => {
+  if (value === 'AM' || value === 'PM') return value;
+  return null;
+};
+
+const normalizeIncidentDate = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return null;
+  return trimmed;
+};
+
+const INCIDENT_TIME_REGEX = /^(0?[1-9]|1[0-2]):([0-5]\d)\s?(AM|PM)$/i;
+const normalizeIncidentTimeAndDeriveSchedule = (
+  value: unknown
+): { incidentTime: string; scheduleOfDuty: ScheduleOfDuty } => {
+  if (typeof value !== 'string') {
+    throw new Error('Incident time is invalid.');
+  }
+
+  const trimmed = value.trim();
+  const match = trimmed.match(INCIDENT_TIME_REGEX);
+  if (!match) {
+    throw new Error('Incident time must be in format hh:mm AM/PM.');
+  }
+
+  const hourRaw = match[1]
+  const minute = match[2]
+  const periodRaw = match[3]
+
+  const hour = Number(hourRaw)
+  const period = periodRaw.toUpperCase() as 'AM' | 'PM'
+  const scheduleOfDuty: ScheduleOfDuty = period === 'PM' ? 'PM' : 'AM'
+
+  const hh = String(hour).padStart(2, '0')
+  const incidentTime = `${hh}:${minute} ${period}`
+
+  return { incidentTime, scheduleOfDuty }
+}
+
 const arraysMatch = (left: string[], right: string[]) => {
   if (left.length !== right.length) {
     return false;
@@ -603,6 +664,11 @@ const toIncidentRecord = (snapshot: DocumentData): IncidentRecord => {
     assignedResourceIds: Array.isArray(data.assignedResourceIds) ? data.assignedResourceIds : [],
     teamId: data.teamId || null,
     teamName: data.teamName || null,
+    incidentDate: normalizeIncidentDate(data.incidentDate),
+    incidentTime: typeof data.incidentTime === 'string' ? data.incidentTime : null,
+    dateOfDuty: normalizeIncidentDate(data.dateOfDuty),
+    scheduleOfDuty: normalizeScheduleOfDuty(data.scheduleOfDuty),
+    teamOnDuty: normalizeTeamOnDuty(data.teamOnDuty),
     status: data.status || 'new',
     resolutionStatus: data.resolutionStatus || 'open',
     createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
@@ -748,10 +814,27 @@ export async function saveIncidentTypeRule(input: SaveIncidentTypeRuleInput): Pr
   return payload;
 }
 
+function isPermissionDenied(error: any): boolean {
+  const code = error?.code
+  const message = (error?.message ?? '').toLowerCase()
+  return (
+    code === 'permission-denied' ||
+    message.includes('missing or insufficient permissions') ||
+    message.includes('insufficient permissions') ||
+    message.includes('permission denied')
+  )
+}
+
 export function subscribeToIncidentTypeRules(
   callback: (rules: IncidentTypeRule[]) => void
 ): () => void {
   try {
+    // Avoid permission errors during auth initialization races.
+    if (!auth.currentUser) {
+      callback(incidentTypeRules);
+      return () => {};
+    }
+
     const rulesRef = collection(firestore, 'incidentTypeRules');
     const q = query(rulesRef, limit(500));
 
@@ -771,12 +854,19 @@ export function subscribeToIncidentTypeRules(
         callback(merged);
       },
       (error) => {
+        // Avoid console spam for expected auth/rules failures.
+        if (isPermissionDenied(error)) {
+          callback(incidentTypeRules);
+          return
+        }
         console.error('Error subscribing to incident type rules:', error);
         callback(incidentTypeRules);
       }
     );
   } catch (error) {
-    console.error('Error setting up incident type rule subscription:', error);
+    if (!isPermissionDenied(error)) {
+      console.error('Error setting up incident type rule subscription:', error);
+    }
     callback(incidentTypeRules);
     return () => {};
   }
@@ -797,6 +887,17 @@ export async function createIncident(input: CreateIncidentInput): Promise<Incide
   if (rule.requiresVehicularReason && !normalizeNullableString(input.vehicularAccidentReason)) {
     throw new Error('Vehicular incidents require an accident reason.');
   }
+
+  if (!input.teamOnDuty) {
+    throw new Error('Team on duty is required.');
+  }
+
+  const incidentDate = normalizeIncidentDate(input.incidentDate);
+  if (!incidentDate) {
+    throw new Error('Incident date is required.');
+  }
+
+  const { incidentTime, scheduleOfDuty } = normalizeIncidentTimeAndDeriveSchedule(input.incidentTime);
 
   const incidentsRef = collection(firestore, 'incidents');
   const createdAt = Timestamp.now();
@@ -829,7 +930,14 @@ export async function createIncident(input: CreateIncidentInput): Promise<Incide
     assignedAgencies: rule.recommendedAgencies,
     assignedResourceIds: [],
     teamId: normalizeNullableString(input.teamId),
-    teamName: normalizeNullableString(input.teamName),
+    // Team assignment is derived from the selected "teamOnDuty" only.
+    // Provision-style inputs (e.g. nullable teamName) are ignored for new incidents.
+    teamName: input.teamOnDuty,
+    teamOnDuty: input.teamOnDuty,
+    incidentDate,
+    incidentTime,
+    dateOfDuty: incidentDate,
+    scheduleOfDuty,
     status: initialStatus,
     resolutionStatus: 'open',
     createdAt,
@@ -975,8 +1083,21 @@ export function subscribeToIncidents(
   limitCount: number = 100
 ): () => void {
   try {
+    // Avoid permission errors during auth initialization races.
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      callback([]);
+      return () => {};
+    }
+
     const incidentsRef = collection(firestore, 'incidents');
-    const q = query(incidentsRef, limit(limitCount * 3));
+    // Scope to the signed-in command center.
+    // This matches authorization checks used in `dispatchIncidentResources`.
+    const q = query(
+      incidentsRef,
+      where('commandCenterAdminId', '==', currentUser.uid),
+      limit(limitCount * 3)
+    );
 
     return onSnapshot(
       q,
@@ -1002,12 +1123,19 @@ export function subscribeToIncidents(
         callback(incidents);
       },
       (error) => {
+        // Avoid console spam for expected auth/rules failures.
+        if (isPermissionDenied(error)) {
+          callback([]);
+          return
+        }
         console.error('Error subscribing to incidents:', error);
         callback([]);
       }
     );
   } catch (error) {
-    console.error('Error setting up incidents subscription:', error);
+    if (!isPermissionDenied(error)) {
+      console.error('Error setting up incidents subscription:', error);
+    }
     return () => {};
   }
 }

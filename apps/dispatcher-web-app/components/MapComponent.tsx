@@ -1,20 +1,10 @@
 'use client'
 
-import { useRef, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, useMap, Polygon } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { DispatcherLocation } from '@packages/firebase'
-
-// Fix for default marker icons in Next.js
-if (typeof window !== 'undefined') {
-  delete (L.Icon.Default.prototype as any)._getIconUrl
-  L.Icon.Default.mergeOptions({
-    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-  })
-}
 
 interface Incident {
   id: string
@@ -37,12 +27,91 @@ interface MapComponentProps {
   centerLocation?: [number, number] | null
 }
 
+const DEFAULT_CENTER: [number, number] = [17.6132, 121.7270]
+const DEFAULT_ZOOM = 12
+const TUGUEGARAO_BOUNDARY: [number, number][] = [
+  [17.572822, 121.682675],
+  [17.605113, 121.685138],
+  [17.667388, 121.711474],
+  [17.684329, 121.753949],
+  [17.684819, 121.783966],
+  [17.64311, 121.759095],
+  [17.531672, 121.821358],
+  [17.525943, 121.789454],
+  [17.560152, 121.775578],
+  [17.579299, 121.744189],
+  [17.603844, 121.724618],
+  [17.57079, 121.697535],
+]
+
+const TIME_ZONE = 'Asia/Manila'
+const TIME_FORMATTER = new Intl.DateTimeFormat('en-PH', {
+  timeZone: TIME_ZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: true,
+})
+
+const DATE_TIME_FORMATTER = new Intl.DateTimeFormat('en-PH', {
+  timeZone: TIME_ZONE,
+  year: 'numeric',
+  month: 'short',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: true,
+})
+
+function formatTime(value: Date | null): string {
+  if (!value) return '—'
+  return TIME_FORMATTER.format(value)
+}
+
+function formatDateTime(value: Date): string {
+  return DATE_TIME_FORMATTER.format(value)
+}
+
 // Component to handle map center updates
-function MapCenter({ center, zoom }: { center: [number, number]; zoom: number }) {
+function MapCenter({
+  center,
+  zoom,
+}: {
+  center: [number, number]
+  zoom: number
+}) {
   const map = useMap()
+  const [lat, lng] = center
+
   useEffect(() => {
-    map.setView(center, zoom)
-  }, [map, center, zoom])
+    map.setView([lat, lng], zoom)
+  }, [map, lat, lng, zoom])
+  return null
+}
+
+function EnsureMapInteractions() {
+  const map = useMap()
+
+  useEffect(() => {
+    // Keep interactions explicitly enabled after mount. This protects against
+    // layout lifecycle quirks that can leave handlers disabled.
+    map.dragging.enable()
+    map.touchZoom.enable()
+    map.doubleClickZoom.enable()
+    map.scrollWheelZoom.enable()
+    map.boxZoom.enable()
+    map.keyboard.enable()
+    // Ensure Leaflet recalculates viewport size once the layout settles.
+    const id = window.requestAnimationFrame(() => {
+      map.invalidateSize()
+    })
+
+    return () => {
+      window.cancelAnimationFrame(id)
+    }
+  }, [map])
+
   return null
 }
 
@@ -54,7 +123,23 @@ export default function MapComponent({
   userLocation,
   centerLocation,
 }: MapComponentProps) {
-  const mapRef = useRef<L.Map | null>(null)
+  const [mounted, setMounted] = useState(false)
+
+  // Fix default marker icons after client mount (avoids hydration attribute mismatches).
+  useEffect(() => {
+    delete (L.Icon.Default.prototype as any)._getIconUrl
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+      iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+    })
+  }, [])
+
+  // Leaflet should only mount after the first client paint to keep server/client
+  // markup deterministic and avoid Leaflet DOM initialization during SSR.
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const getLastUpdatedDate = (value: DispatcherLocation['lastUpdated']) => {
     if (!value) return null
@@ -64,29 +149,22 @@ export default function MapComponent({
     return new Date(value as unknown as string | number)
   }
 
-  // Default center (Tuguegarao City, Cagayan)
-  const defaultCenter: [number, number] = [17.6132, 121.7270]
-  const defaultZoom = 12
-
-  // Tuguegarao City Boundary Polygon
-  const TUGUEGARAO_BOUNDARY: [number, number][] = [
-    [17.572822, 121.682675],
-    [17.605113,121.685138],
-    [17.667388,121.711474],
-    [17.684329, 121.753949],
-    [17.684819, 121.783966],
-    [17.643110, 121.759095],
-    [17.531672,121.821358],
-    [17.525943, 121.789454],
-    [17.560152,121.775578],
-    [17.579299,121.744189],
-    [17.603844,121.724618],
-    [17.570790,121.697535]
-  ]
-  
   // Priority: centerLocation (selected incident) > userLocation > default
-  const mapCenter = centerLocation || userLocation || defaultCenter
-  const mapZoom = centerLocation ? 15 : (userLocation ? 14 : defaultZoom) // Zoom in more for selected incident
+  const mapCenter = useMemo<[number, number]>(() => {
+    if (centerLocation) return [centerLocation[0], centerLocation[1]]
+    if (userLocation) return [userLocation[0], userLocation[1]]
+    return DEFAULT_CENTER
+  }, [centerLocation, userLocation])
+  const mapZoom = useMemo(() => (centerLocation ? 15 : userLocation ? 14 : DEFAULT_ZOOM), [centerLocation, userLocation])
+  const stableBoundary = useMemo(() => TUGUEGARAO_BOUNDARY, [])
+  const visibleIncidents = useMemo(
+    () => incidents.filter((incident) => Number.isFinite(incident.lat) && Number.isFinite(incident.lng)),
+    [incidents]
+  )
+  const stableDispatcherLocations = useMemo(
+    () => dispatcherLocations.filter((dispatcher) => Number.isFinite(dispatcher.latitude) && Number.isFinite(dispatcher.longitude)),
+    [dispatcherLocations]
+  )
 
   const getMarkerColor = (priority: string, status: string) => {
     if (status === 'pending') return '#eab308' // yellow
@@ -206,6 +284,10 @@ export default function MapComponent({
     })
   }
 
+  if (!mounted) {
+    return <div className="h-full w-full" aria-hidden />
+  }
+
   // Get Mapbox access token from environment variable
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ''
   const mapboxStyle = process.env.NEXT_PUBLIC_MAPBOX_STYLE || 'mapbox/streets-v12'
@@ -264,176 +346,190 @@ export default function MapComponent({
   }
 
   return (
-    <MapContainer
-      center={mapCenter}
-      zoom={mapZoom}
+    <div
+      className="relative z-0 h-full w-full overflow-hidden pointer-events-auto"
       style={{ height: '100%', width: '100%' }}
-      ref={mapRef}
     >
-      <MapCenter center={mapCenter} zoom={mapZoom} />
-      <TileLayer
-        attribution='&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url={mapboxUrl!}
-        tileSize={512}
-        zoomOffset={-1}
-      />
-      {/* Geofence Polygon */}
-      <Polygon
-        positions={TUGUEGARAO_BOUNDARY}
-        pathOptions={{
-          color: '#ef4444',
-          dashArray: '10, 10',
-          fillColor: '#ef4444',
-          fillOpacity: 0.1,
-          weight: 3,
-        }}
+      <MapContainer
+        center={mapCenter}
+        zoom={mapZoom}
+        style={{ height: '100%', width: '100%', pointerEvents: 'auto', zIndex: 0 }}
+        dragging={true}
+        scrollWheelZoom={true}
+        doubleClickZoom={true}
+        touchZoom={true}
+        zoomControl={true}
       >
-        <Popup>
-          <div className="p-1">
-            <p className="font-bold text-red-400">Tuguegarao City Geofence</p>
-            <p className="text-xs text-slate-400 font-medium italic mt-1">Operational Area</p>
-          </div>
-        </Popup>
-      </Polygon>
-      {/* User Location Marker */}
-      {userLocation && (
-        <Marker position={userLocation} icon={createUserLocationIcon()}>
-          <Popup>
-            <div className="p-2">
-              <h3 className="font-bold text-slate-100 mb-1">Your Location</h3>
-              <p className="text-sm text-slate-400">
-                {userLocation[0].toFixed(6)}, {userLocation[1].toFixed(6)}
-              </p>
-            </div>
-          </Popup>
-        </Marker>
-      )}
-      {/* Dispatcher Location Markers */}
-      {dispatcherLocations.length > 0 && (
-        <>
-          {dispatcherLocations.map((dispatcher) => {
-            // Validate coordinates
-            if (
-              !dispatcher.latitude ||
-              !dispatcher.longitude ||
-              dispatcher.latitude === 0 ||
-              dispatcher.longitude === 0 ||
-              isNaN(dispatcher.latitude) ||
-              isNaN(dispatcher.longitude)
-            ) {
-              console.warn('Invalid dispatcher coordinates:', dispatcher)
-              return null
-            }
-            
-            return (
-              <Marker
-                key={dispatcher.dispatcherId}
-                position={[dispatcher.latitude, dispatcher.longitude]}
-                icon={createDispatcherIcon(dispatcher.role)}
-                zIndexOffset={1000}
-              >
-                <Popup>
-                  <div className="p-3 min-w-[200px]">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{
-                          backgroundColor:
-                            dispatcher.role === 'BFP'
-                              ? '#dc2626'
-                              : dispatcher.role === 'PNP'
-                              ? '#1e40af'
-                              : dispatcher.role === 'MDRRMO'
-                              ? '#059669'
-                              : dispatcher.role === 'AMBULANCE'
-                              ? '#ea580c'
-                              : dispatcher.role === 'PCG'
-                              ? '#0284c7'
-                              : '#6b7280',
-                        }}
-                      ></div>
-                      <h3 className="font-bold text-slate-100 text-base">
-                        {dispatcher.role} Dispatcher
-                      </h3>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-sm text-slate-300">
-                        <span className="font-medium">Email:</span> {dispatcher.email}
-                      </p>
-                      <p className="text-xs text-slate-400">
-                        <span className="font-medium">Status:</span>{' '}
-                        <span className="text-green-400">● Online</span>
-                      </p>
-                      <p className="text-xs text-slate-400">
-                        <span className="font-medium">Last updated:</span>{' '}
-                        {(getLastUpdatedDate(dispatcher.lastUpdated) || new Date()).toLocaleTimeString()}
-                      </p>
-                      <p className="text-xs text-slate-500 mt-2">
-                        {dispatcher.latitude.toFixed(6)}, {dispatcher.longitude.toFixed(6)}
-                      </p>
-                    </div>
-                  </div>
-                </Popup>
-              </Marker>
-            )
-          })}
-        </>
-      )}
-      {/* Incident Markers */}
-      {incidents.map((incident) => (
-        <Marker
-          key={incident.id}
-          position={[incident.lat, incident.lng]}
-          icon={createCustomIcon(incident.priority, incident.status)}
-          eventHandlers={{
-            click: () => onIncidentSelect(incident.id),
+        <EnsureMapInteractions />
+        <MapCenter
+          center={mapCenter}
+          zoom={mapZoom}
+        />
+        <TileLayer
+          attribution='&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          url={mapboxUrl!}
+          tileSize={512}
+          zoomOffset={-1}
+        />
+        {/* Geofence Polygon */}
+        <Polygon
+          positions={stableBoundary}
+          interactive={false}
+          pathOptions={{
+            color: '#ef4444',
+            dashArray: '10, 10',
+            fillColor: '#ef4444',
+            fillOpacity: 0.1,
+            weight: 3,
           }}
         >
           <Popup>
-            <div className="p-2">
-              <h3 className="font-bold text-slate-100 mb-1">
-                {incident.type}
-              </h3>
-              <p className="text-sm text-slate-400 mb-2">
-                {incident.location}
-              </p>
-              <div className="flex items-center gap-2 mb-2">
-                <span
-                  className={`px-2 py-1 text-xs font-medium rounded ${
-                    incident.priority === 'critical'
-                      ? 'bg-red-100 text-red-800'
-                      : incident.priority === 'high'
-                      ? 'bg-orange-100 text-orange-800'
-                      : 'bg-yellow-100 text-yellow-800'
-                  }`}
-                >
-                  {incident.priority}
-                </span>
-                <span
-                  className={`px-2 py-1 text-xs font-medium rounded ${
-                    incident.status === 'active'
-                      ? 'bg-red-100 text-red-800'
-                      : incident.status === 'pending'
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : 'bg-green-100 text-green-800'
-                  }`}
-                >
-                  {incident.status}
-                </span>
-              </div>
-              {incident.responder && (
-                <p className="text-xs text-slate-500">
-                  Responder: {incident.responder}
-                </p>
-              )}
-              <p className="text-xs text-slate-500 mt-1">
-                {incident.reportedAt.toLocaleString()}
-              </p>
+            <div className="p-1">
+              <p className="font-bold text-red-400">Tuguegarao City Geofence</p>
+              <p className="text-xs text-slate-400 font-medium italic mt-1">Operational Area</p>
             </div>
           </Popup>
-        </Marker>
-      ))}
-    </MapContainer>
+        </Polygon>
+        {/* User Location Marker */}
+        {userLocation && (
+          <Marker position={userLocation} icon={createUserLocationIcon()}>
+            <Popup>
+              <div className="p-2">
+                <h3 className="font-bold text-slate-100 mb-1">Your Location</h3>
+                <p className="text-sm text-slate-400">
+                  {userLocation[0].toFixed(6)}, {userLocation[1].toFixed(6)}
+                </p>
+              </div>
+            </Popup>
+          </Marker>
+        )}
+        {/* Dispatcher Location Markers */}
+        {stableDispatcherLocations.length > 0 && (
+          <>
+            {stableDispatcherLocations.map((dispatcher) => {
+              // Validate coordinates
+              if (
+                !dispatcher.latitude ||
+                !dispatcher.longitude ||
+                dispatcher.latitude === 0 ||
+                dispatcher.longitude === 0 ||
+                isNaN(dispatcher.latitude) ||
+                isNaN(dispatcher.longitude)
+              ) {
+                console.warn('Invalid dispatcher coordinates:', dispatcher)
+                return null
+              }
+              
+              return (
+                <Marker
+                  key={dispatcher.dispatcherId}
+                  position={[dispatcher.latitude, dispatcher.longitude]}
+                  icon={createDispatcherIcon(dispatcher.role)}
+                  zIndexOffset={1000}
+                >
+                  <Popup>
+                    <div className="p-3 min-w-[200px]">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{
+                            backgroundColor:
+                              dispatcher.role === 'BFP'
+                                ? '#dc2626'
+                                : dispatcher.role === 'PNP'
+                                ? '#1e40af'
+                                : dispatcher.role === 'MDRRMO'
+                                ? '#059669'
+                                : dispatcher.role === 'AMBULANCE'
+                                ? '#ea580c'
+                                : dispatcher.role === 'PCG'
+                                ? '#0284c7'
+                                : '#6b7280',
+                          }}
+                        ></div>
+                        <h3 className="font-bold text-slate-100 text-base">
+                          {dispatcher.role} Dispatcher
+                        </h3>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm text-slate-300">
+                          <span className="font-medium">Email:</span> {dispatcher.email}
+                        </p>
+                        <p className="text-xs text-slate-400">
+                          <span className="font-medium">Status:</span>{' '}
+                          <span className="text-green-400">● Online</span>
+                        </p>
+                        <p className="text-xs text-slate-400">
+                          <span className="font-medium">Last updated:</span>{' '}
+                          {formatTime(getLastUpdatedDate(dispatcher.lastUpdated))}
+                        </p>
+                        <p className="text-xs text-slate-500 mt-2">
+                          {dispatcher.latitude.toFixed(6)}, {dispatcher.longitude.toFixed(6)}
+                        </p>
+                      </div>
+                    </div>
+                  </Popup>
+                </Marker>
+              )
+            })}
+          </>
+        )}
+        {/* Incident Markers */}
+        {visibleIncidents.map((incident) => (
+          <Marker
+            key={incident.id}
+            position={[incident.lat, incident.lng]}
+            icon={createCustomIcon(incident.priority, incident.status)}
+            eventHandlers={{
+              click: () => onIncidentSelect(incident.id),
+            }}
+          >
+            <Popup>
+              <div className="p-2">
+                <h3 className="font-bold text-slate-100 mb-1">
+                  {incident.type}
+                </h3>
+                <p className="text-sm text-slate-400 mb-2">
+                  {incident.location}
+                </p>
+                <div className="flex items-center gap-2 mb-2">
+                  <span
+                    className={`px-2 py-1 text-xs font-medium rounded ${
+                      incident.priority === 'critical'
+                        ? 'bg-red-100 text-red-800'
+                        : incident.priority === 'high'
+                        ? 'bg-orange-100 text-orange-800'
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}
+                  >
+                    {incident.priority}
+                  </span>
+                  <span
+                    className={`px-2 py-1 text-xs font-medium rounded ${
+                      incident.status === 'active'
+                        ? 'bg-red-100 text-red-800'
+                        : incident.status === 'pending'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : 'bg-green-100 text-green-800'
+                    }`}
+                  >
+                    {incident.status}
+                  </span>
+                </div>
+                {incident.responder && (
+                  <p className="text-xs text-slate-500">
+                    Responder: {incident.responder}
+                  </p>
+                )}
+                <p className="text-xs text-slate-500 mt-1">
+                  {formatDateTime(incident.reportedAt)}
+                </p>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
+    </div>
   )
 }
 

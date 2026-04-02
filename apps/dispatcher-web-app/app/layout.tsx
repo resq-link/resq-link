@@ -21,7 +21,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${spaceGrotesk.className} antialiased`}>
+      {/* 
+        Added to keep server/client hydration deterministic.
+        (A shortcut/keyboard helper injects this attribute on the client, which otherwise triggers a hydration warning.)
+      */}
+      <body
+        className={`${spaceGrotesk.className} antialiased`}
+        cz-shortcut-listen="true"
+      >
         <AuthProvider>
           <div className="min-h-screen text-slate-100">
             <Navigation />

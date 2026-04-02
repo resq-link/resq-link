@@ -8,55 +8,28 @@ interface AlarmControlProps {
 export default function AlarmControl({ isMuted, onToggle }: AlarmControlProps) {
   return (
     <button
+      type="button"
       onClick={onToggle}
-      className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors border ${
+      className={`inline-flex h-10 items-center gap-3 rounded-lg border px-3 text-sm font-medium transition-colors ${
         isMuted
-          ? 'bg-slate-900 text-slate-300 hover:bg-slate-800 border-slate-800'
-          : 'bg-red-500/10 text-red-200 hover:bg-red-500/20 border-red-500/30'
+          ? 'border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800'
+          : 'border-red-500/30 bg-red-500/10 text-red-200 hover:bg-red-500/20'
       }`}
-      title={isMuted ? 'Unmute alarm' : 'Mute alarm'}
+      title={isMuted ? 'Turn alarm on' : 'Turn alarm off'}
+      aria-pressed={!isMuted}
     >
-      {isMuted ? (
-        <>
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
-            />
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"
-            />
-          </svg>
-          <span>Alarm Muted</span>
-        </>
-      ) : (
-        <>
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 14.142M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
-            />
-          </svg>
-          <span>Alarm On</span>
-        </>
-      )}
+      <span>{isMuted ? 'Alarm Off' : 'Alarm On'}</span>
+      <span
+        className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${
+          isMuted ? 'bg-slate-700' : 'bg-red-500/70'
+        }`}
+      >
+        <span
+          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+            isMuted ? 'translate-x-1' : 'translate-x-5'
+          }`}
+        />
+      </span>
     </button>
   )
 }

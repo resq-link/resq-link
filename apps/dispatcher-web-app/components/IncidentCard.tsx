@@ -4,6 +4,7 @@ import { useState } from 'react'
 import StatusBadge from './StatusBadge'
 import AssignDispatcherModal from './AssignDispatcherModal'
 import IncidentDetailsModal from './IncidentDetailsModal'
+import { Clock3, MapPin } from 'lucide-react'
 
 interface Incident {
   id: string
@@ -53,97 +54,109 @@ export default function IncidentCard({ incident, onUpdate }: IncidentCardProps) 
     return `${days} day${days > 1 ? 's' : ''} ago`
   }
 
+  const formatReportedTime = (date: Date) =>
+    new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    })
+      .format(date)
+      .replace(', ', ' • ')
+
+  const getStatusShort = (status: Incident['status']) => {
+    if (status === 'enroute') return 'En Route'
+    if (status === 'on_scene') return 'On Scene'
+    if (status === 'done' || status === 'resolved') return 'Done'
+    return 'Pending'
+  }
+
+  const urgencyClass =
+    incident.priority === 'critical' || incident.priority === 'high'
+      ? 'border-red-500/40 shadow-[0_0_0_1px_rgba(239,68,68,0.15)]'
+      : 'border-slate-800'
+
   return (
-    <div className="border border-slate-800 rounded-lg p-6 hover:shadow-lg transition-shadow bg-slate-900/70 shadow-black/20">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-2">
-            <h3 className="text-xl font-semibold text-slate-100">
-              {incident.type}
-            </h3>
+    <article
+      className={`rounded-xl border bg-slate-900/70 p-4 shadow-black/20 transition-all hover:-translate-y-0.5 hover:shadow-lg ${urgencyClass}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <h3 className="truncate text-lg font-semibold text-slate-100">{incident.type}</h3>
             <StatusBadge status={incident.status} />
             <span
-              className={`px-3 py-1 text-xs font-semibold rounded-full border ${getPriorityColor(
-                incident.priority
-              )}`}
+              className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${getPriorityColor(incident.priority)}`}
             >
               {incident.priority.toUpperCase()}
             </span>
+            {!incident.dispatcherId && (
+              <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-[11px] font-semibold text-rose-200">
+                Needs Assignment
+              </span>
+            )}
           </div>
-          <p className="text-slate-300 mb-3">{incident.description}</p>
-          <div className="flex items-center gap-4 text-sm text-slate-400">
-            <span className="flex items-center gap-1">
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-              </svg>
-              {incident.location}
-            </span>
-            <span className="flex items-center gap-1">
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              {getTimeAgo(incident.reportedAt)}
-            </span>
+
+          <p className="line-clamp-2 text-sm text-slate-300">{incident.description}</p>
+          <div className="mt-2 space-y-1 text-sm text-slate-400">
+            <p className="flex items-center gap-1.5">
+              <MapPin size={14} className="shrink-0" />
+              <span className="truncate">{incident.location}</span>
+            </p>
+            <p className="flex items-center gap-1.5">
+              <Clock3 size={14} className="shrink-0" />
+              <span>
+                {formatReportedTime(incident.reportedAt)} <span className="text-slate-500">({getTimeAgo(incident.reportedAt)})</span>
+              </span>
+            </p>
           </div>
-        </div>
-        <div className="ml-6 text-right">
-          {incident.dispatcherId ? (
-            <>
-              <p className="text-sm text-slate-500 mb-1">Dispatcher</p>
-              <p className="font-semibold text-slate-100">
-                Assigned
-              </p>
-              {incident.status === 'pending' || incident.status === 'active' ? (
-                <p className="text-xs text-yellow-300 mt-1">Awaiting Acceptance</p>
-              ) : incident.status === 'enroute' ? (
-                <p className="text-xs text-blue-300 mt-1">En Route</p>
-              ) : incident.status === 'on_scene' ? (
-                <p className="text-xs text-purple-300 mt-1">On Scene</p>
-              ) : null}
-            </>
-          ) : (
-            <span className="px-3 py-1 bg-yellow-500/10 text-yellow-200 text-sm font-medium rounded-full border border-yellow-500/30">
-              Unassigned
-            </span>
-          )}
         </div>
       </div>
-      <div className="flex gap-2 pt-4 border-t border-slate-800">
-        <button 
+
+      <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-950/40 px-3 py-2">
+        <p className="text-sm text-slate-300">
+          {incident.dispatcherId ? (
+            <>
+              <span className="text-slate-400">Dispatcher:</span> Assigned <span className="text-slate-500">({getStatusShort(incident.status)})</span>
+            </>
+          ) : (
+            <>
+              <span className="text-rose-300">Unassigned</span> <span className="text-slate-500">- needs dispatcher</span>
+            </>
+          )}
+        </p>
+        <div className="hidden items-center gap-1 sm:flex">
+          {['Pending', 'En Route', 'On Scene', 'Done'].map((step, index) => (
+            <span
+              key={step}
+              className={`rounded-full px-2 py-0.5 text-[10px] ${
+                (incident.status === 'pending' || incident.status === 'active') && index === 0
+                  ? 'bg-amber-500/20 text-amber-200'
+                  : incident.status === 'enroute' && index === 1
+                    ? 'bg-blue-500/20 text-blue-200'
+                    : incident.status === 'on_scene' && index === 2
+                      ? 'bg-violet-500/20 text-violet-200'
+                      : (incident.status === 'done' || incident.status === 'resolved') && index === 3
+                        ? 'bg-emerald-500/20 text-emerald-200'
+                        : 'bg-slate-800 text-slate-500'
+              }`}
+            >
+              {step}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-3 flex gap-2 border-t border-slate-800 pt-3">
+        <button
           onClick={() => setIsDetailsModalOpen(true)}
-          className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium"
+          className="h-9 rounded-lg bg-primary-600 px-3 text-sm font-medium text-white transition-colors hover:bg-primary-700"
         >
           View Details
         </button>
         <button
           onClick={() => setIsAssignModalOpen(true)}
-          className="px-4 py-2 bg-slate-800 text-slate-200 rounded-lg hover:bg-slate-700 transition-colors font-medium"
+          className="h-9 rounded-lg bg-slate-800 px-3 text-sm font-medium text-slate-200 transition-colors hover:bg-slate-700"
         >
           {incident.dispatcherId ? 'Change Dispatcher' : 'Assign Dispatcher'}
         </button>
@@ -165,7 +178,7 @@ export default function IncidentCard({ incident, onUpdate }: IncidentCardProps) 
           onUpdate?.()
         }}
       />
-    </div>
+    </article>
   )
 }
 

@@ -1,14 +1,14 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import IncidentCard from '@/components/IncidentCard'
-import StatusBadge from '@/components/StatusBadge'
 import AlarmControl from '@/components/AlarmControl'
 import { subscribeToEmergencyReports, type EmergencyReport } from '@packages/firebase'
 import { useAuth } from '@/contexts/AuthContext'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { playAlarmSound, initAudioContext } from '@/utils/alarmSound'
+import { Search, Siren } from 'lucide-react'
 
 // Map incident type to display name
 const getIncidentTypeName = (incidentType: string): string => {
@@ -64,6 +64,9 @@ export default function Home() {
   const [doneCount, setDoneCount] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [isAlarmMuted, setIsAlarmMuted] = useState(false)
+  const [quickFilter, setQuickFilter] = useState<'all' | 'pending' | 'active' | 'enroute' | 'on_scene' | 'done'>('all')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [priorityFilter, setPriorityFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all')
   const { user } = useAuth()
   const router = useRouter()
   
@@ -199,225 +202,172 @@ export default function Home() {
     )
   }, [incidents])
 
+  const filteredIncidents = useMemo(() => {
+    const needle = searchTerm.trim().toLowerCase()
+    return incidents
+      .filter((incident) => {
+        const normalizedStatus =
+          incident.status === 'resolved' ? 'done' : incident.status === 'active' ? 'active' : incident.status
+        const matchesQuickFilter =
+          quickFilter === 'all' ||
+          (quickFilter === 'done'
+            ? normalizedStatus === 'done'
+            : quickFilter === 'active'
+              ? ['pending', 'enroute', 'on_scene', 'active'].includes(normalizedStatus)
+              : normalizedStatus === quickFilter)
+        const matchesPriority =
+          priorityFilter === 'all' ||
+          (priorityFilter === 'high'
+            ? incident.priority === 'high' || incident.priority === 'critical'
+            : incident.priority === priorityFilter)
+        const matchesSearch =
+          !needle ||
+          incident.type.toLowerCase().includes(needle) ||
+          incident.location.toLowerCase().includes(needle)
+        return matchesQuickFilter && matchesPriority && matchesSearch
+      })
+      .sort((left, right) => {
+        const priorityWeight = { critical: 4, high: 3, medium: 2, low: 1 }
+        const leftUnassigned = left.dispatcherId ? 0 : 1
+        const rightUnassigned = right.dispatcherId ? 0 : 1
+        if (rightUnassigned !== leftUnassigned) return rightUnassigned - leftUnassigned
+        if (priorityWeight[right.priority] !== priorityWeight[left.priority]) {
+          return priorityWeight[right.priority] - priorityWeight[left.priority]
+        }
+        return right.reportedAt.getTime() - left.reportedAt.getTime()
+      })
+  }, [incidents, priorityFilter, quickFilter, searchTerm])
+
   return (
     <ProtectedRoute>
-      <div className="space-y-6">
-      {/* Header Section */}
-      <div>
-        <h1 className="text-3xl font-bold text-slate-100 mb-2">
-          Live Incident Dashboard
-        </h1>
-        <p className="text-slate-400">
-          Real-time monitoring of emergency incidents
-        </p>
-      </div>
-
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-6">
-        <div className="relative overflow-hidden bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
-          <div className="absolute -right-8 bottom-2 rotate-[22deg]">
-            <svg
-              className="h-[110px] w-[110px] text-white/10"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              />
-            </svg>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-slate-400">Total Incidents</p>
-            <p className="text-3xl font-bold text-slate-100 mt-2">
-              {incidents.length}
-            </p>
-          </div>
-        </div>
-
-        <div className="relative overflow-hidden bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
-          <div className="absolute -right-8 bottom-2 rotate-[22deg]">
-            <svg
-              className="h-[110px] w-[110px] text-white/10"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-slate-400">Active Incidents</p>
-            <p className="text-3xl font-bold text-red-300 mt-2">
-              {activeCount}
-            </p>
-          </div>
-        </div>
-
-        <div className="relative overflow-hidden bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
-          <div className="absolute -right-8 bottom-2 rotate-[22deg]">
-            <svg
-              className="h-[110px] w-[110px] text-white/10"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-slate-400">Pending</p>
-            <p className="text-3xl font-bold text-yellow-300 mt-2">
-              {pendingCount}
-            </p>
-          </div>
-        </div>
-
-        <div className="relative overflow-hidden bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
-          <div className="absolute -right-8 bottom-2 rotate-[22deg]">
-            <svg
-              className="h-[110px] w-[110px] text-white/10"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M13 10V3L4 14h7v7l9-11h-7z"
-              />
-            </svg>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-slate-400">En Route</p>
-            <p className="text-3xl font-bold text-blue-300 mt-2">
-              {enrouteCount}
-            </p>
-          </div>
-        </div>
-
-        <div className="relative overflow-hidden bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
-          <div className="absolute -right-8 bottom-2 rotate-[22deg]">
-            <svg
-              className="h-[110px] w-[110px] text-white/10"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-              />
-            </svg>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-slate-400">On Scene</p>
-            <p className="text-3xl font-bold text-purple-300 mt-2">
-              {onSceneCount}
-            </p>
-          </div>
-        </div>
-
-        <div className="relative overflow-hidden bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
-          <div className="absolute -right-8 bottom-2 rotate-[22deg]">
-            <svg
-              className="h-[110px] w-[110px] text-white/10"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-slate-400">Done</p>
-            <p className="text-3xl font-bold text-emerald-300 mt-2">
-              {doneCount}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Live Incidents List */}
-      <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-slate-100">
-            Live Incidents
-          </h2>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-secondary-400 rounded-full animate-pulse"></div>
-              <span className="text-sm text-slate-400">Live</span>
+      <div className="space-y-4">
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-md shadow-black/20 md:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-slate-100 md:text-3xl">Live Incident Dashboard</h1>
+              <p className="mt-1 text-sm text-slate-400">Real-time monitoring of emergency incidents</p>
             </div>
-            <AlarmControl
-              isMuted={isAlarmMuted}
-              onToggle={() => setIsAlarmMuted(!isAlarmMuted)}
-            />
+            <AlarmControl isMuted={isAlarmMuted} onToggle={() => setIsAlarmMuted(!isAlarmMuted)} />
           </div>
-        </div>
+        </section>
 
-        {isLoading ? (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-            <p className="text-slate-400 text-lg mt-4">Loading incidents...</p>
+        <section className="space-y-2">
+          <div className="grid gap-2 md:grid-cols-2">
+            <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3">
+              <p className="text-xs uppercase tracking-wide text-slate-400">Total Incidents</p>
+              <p className="mt-1 text-2xl font-semibold text-slate-100">{incidents.length}</p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3">
+              <p className="text-xs uppercase tracking-wide text-slate-400">Active Incidents</p>
+              <p className="mt-1 text-2xl font-semibold text-red-300">{activeCount}</p>
+            </div>
           </div>
-        ) : (
-          <>
-            <div className="space-y-4">
-              {incidents.map((incident) => (
-                <IncidentCard 
-                  key={incident.id} 
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+              <p className="text-xs uppercase tracking-wide text-amber-200/90">Pending</p>
+              <p className="mt-1 text-2xl font-semibold text-amber-200">{pendingCount}</p>
+            </div>
+            <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-3">
+              <p className="text-xs uppercase tracking-wide text-blue-200/90">En Route</p>
+              <p className="mt-1 text-2xl font-semibold text-blue-200">{enrouteCount}</p>
+            </div>
+            <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 px-4 py-3">
+              <p className="text-xs uppercase tracking-wide text-violet-200/90">On Scene</p>
+              <p className="mt-1 text-2xl font-semibold text-violet-200">{onSceneCount}</p>
+            </div>
+            <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
+              <p className="text-xs uppercase tracking-wide text-emerald-200/90">Done</p>
+              <p className="mt-1 text-2xl font-semibold text-emerald-200">{doneCount}</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 md:p-5">
+          <div className="flex flex-wrap gap-2">
+            {[
+              { key: 'all', label: 'All' },
+              { key: 'pending', label: 'Pending' },
+              { key: 'active', label: 'Active' },
+              { key: 'enroute', label: 'En Route' },
+              { key: 'on_scene', label: 'On Scene' },
+              { key: 'done', label: 'Done' },
+            ].map((filter) => (
+              <button
+                key={filter.key}
+                type="button"
+                onClick={() => setQuickFilter(filter.key as typeof quickFilter)}
+                className={`h-9 rounded-lg px-3 text-sm font-medium transition-colors ${
+                  quickFilter === filter.key
+                    ? 'bg-primary-600 text-white'
+                    : 'border border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500 hover:bg-slate-800'
+                }`}
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-2 grid gap-2 md:grid-cols-[1fr_180px]">
+            <div className="relative">
+              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Search by incident type or location"
+                className="h-10 w-full rounded-lg border border-slate-800 bg-slate-950 pl-9 pr-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
+            <select
+              value={priorityFilter}
+              onChange={(event) => setPriorityFilter(event.target.value as typeof priorityFilter)}
+              className="h-10 rounded-lg border border-slate-800 bg-slate-950 px-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="all">All priorities</option>
+              <option value="high">High / Critical</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 md:p-5">
+          <div className="mb-4 flex items-center justify-between border-b border-slate-800 pb-3">
+            <h2 className="text-xl font-semibold text-slate-100">Live Incidents ({filteredIncidents.length})</h2>
+            <div className="flex items-center gap-2 text-sm text-slate-400">
+              <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-secondary-400" />
+              Live
+            </div>
+          </div>
+
+          {isLoading ? (
+            <div className="py-12 text-center">
+              <div className="inline-block h-8 w-8 animate-spin rounded-full border-b-2 border-primary-600"></div>
+              <p className="mt-4 text-slate-400">Loading incidents...</p>
+            </div>
+          ) : filteredIncidents.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-950/40 px-6 py-14 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-slate-300">
+                <Siren size={20} />
+              </div>
+              <p className="text-lg font-medium text-slate-200">No active incidents</p>
+              <p className="mt-2 text-sm text-slate-500">New emergency reports will appear here in real-time.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {filteredIncidents.map((incident) => (
+                <IncidentCard
+                  key={incident.id}
                   incident={incident}
                   onUpdate={() => {
-                    // The subscription will automatically update, but we can force a refresh if needed
                     console.log('Incident updated, subscription will refresh automatically')
                   }}
                 />
               ))}
             </div>
-
-            {incidents.length === 0 && !isLoading && (
-              <div className="text-center py-12">
-                <p className="text-slate-400 text-lg">No active incidents</p>
-                <p className="text-slate-500 text-sm mt-2">
-                  All clear - no emergencies reported
-                </p>
-                <p className="text-yellow-300 text-sm mt-4">
-                  Tip: Check browser console for debugging information
-                </p>
-              </div>
-            )}
-          </>
-        )}
+          )}
+        </section>
       </div>
-    </div>
     </ProtectedRoute>
   )
 }

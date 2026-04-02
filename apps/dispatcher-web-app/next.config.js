@@ -4,7 +4,10 @@ const path = require("path");
 const nextConfig = {
   // Monorepo: avoid inferring wrong workspace root when multiple lockfiles exist
   outputFileTracingRoot: path.join(__dirname, "../.."),
-  reactStrictMode: true,
+  // React Strict Mode double-invokes mount/layout effects in development.
+  // With react-leaflet v4 + Next 15 (React 18), this can trigger duplicate
+  // Leaflet initialization on the same container ("Map container is already initialized").
+  reactStrictMode: false,
   eslint: {
     ignoreDuringBuilds: true,
   },

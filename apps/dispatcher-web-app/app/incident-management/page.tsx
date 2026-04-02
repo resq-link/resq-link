@@ -12,6 +12,7 @@ import {
   type ResourceType,
   type SaveIncidentTypeRuleInput,
 } from '@packages/firebase'
+import { Plus, Search } from 'lucide-react'
 
 type RuleFormState = {
   priority: IncidentPriority
@@ -48,10 +49,48 @@ const emptyForm: RuleFormState = {
   requiresVehicularReason: false,
 }
 
+type CategoryTab = 'all' | 'medical' | 'fire' | 'vehicular' | 'peace_order' | 'community' | 'utility' | 'other'
+
+const categoryTabs: Array<{ id: CategoryTab; label: string }> = [
+  { id: 'all', label: 'All' },
+  { id: 'medical', label: 'Medical' },
+  { id: 'fire', label: 'Fire' },
+  { id: 'vehicular', label: 'Vehicular' },
+  { id: 'peace_order', label: 'Peace & Order' },
+  { id: 'community', label: 'Community' },
+  { id: 'utility', label: 'Utility' },
+  { id: 'other', label: 'Other' },
+]
+
+const normalizeCategory = (value: string) => value.toLowerCase().replace(/[\s/_-]+/g, '')
+
+const getCategoryTab = (category: string): CategoryTab => {
+  const normalized = normalizeCategory(category)
+  if (normalized.includes('medical') || normalized.includes('health')) return 'medical'
+  if (normalized.includes('fire')) return 'fire'
+  if (normalized.includes('vehicular') || normalized.includes('traffic') || normalized.includes('accident')) {
+    return 'vehicular'
+  }
+  if (normalized.includes('peace') || normalized.includes('order') || normalized.includes('crime')) return 'peace_order'
+  if (
+    normalized.includes('community') ||
+    normalized.includes('social') ||
+    normalized.includes('barangay') ||
+    normalized.includes('public')
+  ) {
+    return 'community'
+  }
+  if (normalized.includes('utility') || normalized.includes('water') || normalized.includes('power') || normalized.includes('electric')) {
+    return 'utility'
+  }
+  return 'other'
+}
+
 export default function IncidentManagementPage() {
   const [rules, setRules] = useState<IncidentTypeRule[]>([])
   const [selectedRuleId, setSelectedRuleId] = useState('')
   const [search, setSearch] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState<CategoryTab>('all')
   const [formState, setFormState] = useState<RuleFormState>(emptyForm)
   const [isSaving, setIsSaving] = useState(false)
   const [pageError, setPageError] = useState<string | null>(null)
@@ -76,13 +115,15 @@ export default function IncidentManagementPage() {
 
     return rules.filter((rule) => {
       const agencyText = rule.recommendedAgencies.map((agency) => getAgencyLabel(agency)).join(' ').toLowerCase()
+      const matchesCategory = selectedCategory === 'all' || getCategoryTab(rule.category) === selectedCategory
       return (
-        rule.label.toLowerCase().includes(needle) ||
-        rule.category.toLowerCase().includes(needle) ||
-        agencyText.includes(needle)
+        matchesCategory &&
+        (rule.label.toLowerCase().includes(needle) ||
+          rule.category.toLowerCase().includes(needle) ||
+          agencyText.includes(needle))
       )
     })
-  }, [rules, search])
+  }, [rules, search, selectedCategory])
 
   const selectedRule = useMemo(
     () => rules.find((rule) => rule.id === selectedRuleId) || null,
@@ -160,65 +201,140 @@ export default function IncidentManagementPage() {
 
   return (
     <ProtectedRoute>
-      <div className="space-y-6">
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl shadow-black/30">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="space-y-4">
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-xl shadow-black/30 md:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.3em] text-secondary-300">Command Center Admin</p>
-              <h1 className="mt-2 text-3xl font-semibold text-slate-100">Incident Management</h1>
-              <p className="mt-2 max-w-3xl text-sm text-slate-400">
-                Manage which agency or department handles each incident type. Intake and dispatch follow the rules configured here.
+              <h1 className="mt-1 text-2xl font-semibold text-slate-100 md:text-3xl">Incident Management</h1>
+              <p className="mt-1 max-w-3xl text-sm text-slate-400">
+                Manage which agency handles each incident type.
               </p>
             </div>
-            <div className="rounded-2xl border border-slate-800 bg-slate-950/50 px-4 py-3 text-sm text-slate-300">
-              Example: set Homicide to PNP, or vehicular cases to PSSO/TCTMG + PNP + rescue support.
+            <div className="flex items-center gap-2">
+              <span className="rounded-lg border border-slate-800 bg-slate-950/50 px-3 py-2 text-sm text-slate-300">
+                {rules.length} Incident Types
+              </span>
+              <button
+                type="button"
+                className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm font-medium text-slate-200 transition-colors hover:border-slate-500 hover:bg-slate-800"
+                title="Add incident type is not yet available"
+              >
+                <Plus size={16} />
+                Add Incident Type
+              </button>
             </div>
           </div>
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-[0.95fr_1.35fr]">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-100">Incident Types</h2>
-                <p className="mt-1 text-sm text-slate-400">{rules.length} configured types</p>
-              </div>
+        <section className="grid gap-4 xl:grid-cols-[1.05fr_1.2fr]">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 md:p-5">
+            <div className="relative">
+              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search type, category, or agency"
+                className="h-10 w-full rounded-lg border border-slate-800 bg-slate-950 pl-9 pr-20 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                disabled={!search.trim()}
+                className="absolute right-2 top-1/2 h-8 -translate-y-1/2 rounded-md border border-slate-700 px-2 text-xs text-slate-300 hover:border-slate-500 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Clear
+              </button>
             </div>
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search type, category, or agency"
-              className="mt-4 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              {categoryTabs.map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setSelectedCategory(tab.id)}
+                  className={`h-8 rounded-lg px-3 text-xs font-semibold transition-colors ${
+                    selectedCategory === tab.id
+                      ? 'bg-primary-600 text-white'
+                      : 'border border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-500 hover:bg-slate-800'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
 
             <div className="mt-4 max-h-[640px] space-y-3 overflow-y-auto pr-1">
-              {filteredRules.map((rule) => {
-                const selected = rule.id === selectedRuleId
-                return (
-                  <button
-                    key={rule.id}
-                    type="button"
-                    onClick={() => setSelectedRuleId(rule.id)}
-                    className={`w-full rounded-xl border p-4 text-left transition ${
-                      selected
-                        ? 'border-primary-500 bg-primary-500/10'
-                        : 'border-slate-800 bg-slate-950/50 hover:border-slate-700'
-                    }`}
-                  >
-                    <p className="text-sm font-semibold text-slate-100">{rule.label}</p>
-                    <p className="mt-1 text-xs uppercase tracking-[0.2em] text-slate-500">{rule.category}</p>
-                    <p className="mt-2 text-xs text-slate-400">
-                      {rule.recommendedAgencies.map((agency) => getAgencyLabel(agency)).join(', ') || 'No agencies assigned'}
-                    </p>
-                  </button>
-                )
-              })}
+              {filteredRules.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-slate-800 bg-slate-950/40 px-4 py-10 text-center">
+                  <p className="text-base text-slate-300">No incident types found</p>
+                  <p className="mt-1 text-sm text-slate-500">Try adjusting your search or category.</p>
+                </div>
+              ) : (
+                filteredRules.map((rule) => {
+                  const selected = rule.id === selectedRuleId
+                  return (
+                    <article
+                      key={rule.id}
+                      className={`rounded-xl border p-4 transition ${
+                        selected
+                          ? 'border-primary-500 bg-primary-500/10'
+                          : 'border-slate-800 bg-slate-950/50 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-slate-100">{rule.label}</p>
+                          <span className="mt-1 inline-flex rounded-full border border-slate-700 bg-slate-900 px-2 py-0.5 text-[11px] uppercase tracking-wide text-slate-400">
+                            {rule.category}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="mt-3">
+                        <p className="text-[11px] uppercase tracking-wide text-slate-500">Agencies</p>
+                        <div className="mt-1 flex flex-wrap gap-1.5">
+                          {rule.recommendedAgencies.length > 0 ? (
+                            rule.recommendedAgencies.map((agency) => (
+                              <span
+                                key={agency}
+                                className="rounded-full border border-slate-700 bg-slate-900 px-2 py-1 text-[11px] text-slate-300"
+                              >
+                                {getAgencyLabel(agency)}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-xs text-slate-500">No agencies assigned</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex items-center gap-2 border-t border-slate-800 pt-3">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedRuleId(rule.id)}
+                          className="h-8 rounded-md border border-slate-700 px-2.5 text-xs font-medium text-slate-200 hover:border-slate-500"
+                        >
+                          View
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedRuleId(rule.id)}
+                          className="h-8 rounded-md bg-primary-600 px-2.5 text-xs font-medium text-white hover:bg-primary-500"
+                        >
+                          Edit
+                        </button>
+                      </div>
+                    </article>
+                  )
+                })
+              )}
             </div>
           </div>
 
           <form
             onSubmit={handleSubmit}
-            className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl shadow-black/20"
+            className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-xl shadow-black/20 md:p-5"
           >
             {!selectedRule ? (
               <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-950/40 px-6 py-16 text-center">
@@ -226,106 +342,113 @@ export default function IncidentManagementPage() {
               </div>
             ) : (
               <>
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-800 pb-3">
                   <div>
-                    <h2 className="text-2xl font-semibold text-slate-100">{selectedRule.label}</h2>
+                    <h2 className="text-xl font-semibold text-slate-100">{selectedRule.label}</h2>
                     <p className="mt-1 text-sm text-slate-400">Category: {selectedRule.category}</p>
                   </div>
-                  <div className="rounded-xl border border-slate-800 bg-slate-950/50 px-4 py-3 text-sm text-slate-300">
+                  <span className="rounded-lg border border-slate-800 bg-slate-950/50 px-3 py-2 text-xs text-slate-300">
                     Rule ID: {selectedRule.id}
-                  </div>
+                  </span>
                 </div>
 
-                <div className="mt-6 grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Priority</label>
-                    <select
-                      value={formState.priority}
-                      onChange={(event) => setFormState((current) => ({ ...current, priority: event.target.value as IncidentPriority }))}
-                      className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    >
-                      {priorityOptions.map((priority) => (
-                        <option key={priority} value={priority}>
-                          {priority.toUpperCase()}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex flex-col justify-end gap-3 rounded-xl border border-slate-800 bg-slate-950/50 px-4 py-4">
-                    <label className="inline-flex items-center gap-3 text-sm text-slate-200">
-                      <input
-                        type="checkbox"
-                        checked={formState.requiresExternalAgency}
-                        onChange={(event) =>
-                          setFormState((current) => ({ ...current, requiresExternalAgency: event.target.checked }))
-                        }
-                        className="h-4 w-4 rounded border-slate-700 bg-slate-950 text-primary-500 focus:ring-primary-500"
-                      />
-                      Requires external agency workflow
-                    </label>
-                    <label className="inline-flex items-center gap-3 text-sm text-slate-200">
-                      <input
-                        type="checkbox"
-                        checked={formState.requiresVehicularReason}
-                        onChange={(event) =>
-                          setFormState((current) => ({ ...current, requiresVehicularReason: event.target.checked }))
-                        }
-                        className="h-4 w-4 rounded border-slate-700 bg-slate-950 text-primary-500 focus:ring-primary-500"
-                      />
-                      Require vehicular accident reason in intake
-                    </label>
-                  </div>
-                </div>
-
-                <div className="mt-6">
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Assigned Agencies</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {agencyOptions.map((agency) => {
-                      const selected = formState.recommendedAgencies.includes(agency)
-                      return (
-                        <button
-                          key={agency}
-                          type="button"
-                          onClick={() => handleAgencyToggle(agency)}
-                          className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] transition ${
-                            selected
-                              ? 'border-primary-500 bg-primary-500/20 text-primary-200'
-                              : 'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600'
-                          }`}
+                <div className="mt-4 space-y-4">
+                  <section className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Settings</p>
+                    <div className="mt-3 grid gap-3 md:grid-cols-2">
+                      <div>
+                        <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Priority</label>
+                        <select
+                          value={formState.priority}
+                          onChange={(event) =>
+                            setFormState((current) => ({ ...current, priority: event.target.value as IncidentPriority }))
+                          }
+                          className="mt-2 h-10 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
                         >
-                          {getAgencyLabel(agency)}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
+                          {priorityOptions.map((priority) => (
+                            <option key={priority} value={priority}>
+                              {priority.toUpperCase()}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-3 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2.5">
+                        <label className="inline-flex items-center gap-3 text-sm text-slate-200">
+                          <input
+                            type="checkbox"
+                            checked={formState.requiresExternalAgency}
+                            onChange={(event) =>
+                              setFormState((current) => ({ ...current, requiresExternalAgency: event.target.checked }))
+                            }
+                            className="h-4 w-4 rounded border-slate-700 bg-slate-950 text-primary-500 focus:ring-primary-500"
+                          />
+                          Requires external workflow
+                        </label>
+                        <label className="inline-flex items-center gap-3 text-sm text-slate-200">
+                          <input
+                            type="checkbox"
+                            checked={formState.requiresVehicularReason}
+                            onChange={(event) =>
+                              setFormState((current) => ({ ...current, requiresVehicularReason: event.target.checked }))
+                            }
+                            className="h-4 w-4 rounded border-slate-700 bg-slate-950 text-primary-500 focus:ring-primary-500"
+                          />
+                          Require vehicular reason
+                        </label>
+                      </div>
+                    </div>
+                  </section>
 
-                <div className="mt-6">
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Suggested Resource Types</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {resourceTypeOptions.map((resourceType) => {
-                      const selected = formState.suggestedResourceTypes.includes(resourceType)
-                      return (
-                        <button
-                          key={resourceType}
-                          type="button"
-                          onClick={() => handleResourceTypeToggle(resourceType)}
-                          className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] transition ${
-                            selected
-                              ? 'border-secondary-500/50 bg-secondary-500/15 text-secondary-200'
-                              : 'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600'
-                          }`}
-                        >
-                          {resourceType}
-                        </button>
-                      )
-                    })}
-                  </div>
+                  <section className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Assigned Agencies</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {agencyOptions.map((agency) => {
+                        const selected = formState.recommendedAgencies.includes(agency)
+                        return (
+                          <button
+                            key={agency}
+                            type="button"
+                            onClick={() => handleAgencyToggle(agency)}
+                            className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition ${
+                              selected
+                                ? 'border-primary-500 bg-primary-500/20 text-primary-200'
+                                : 'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600'
+                            }`}
+                          >
+                            {getAgencyLabel(agency)}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </section>
+
+                  <section className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
+                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Suggested Resources</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {resourceTypeOptions.map((resourceType) => {
+                        const selected = formState.suggestedResourceTypes.includes(resourceType)
+                        return (
+                          <button
+                            key={resourceType}
+                            type="button"
+                            onClick={() => handleResourceTypeToggle(resourceType)}
+                            className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition ${
+                              selected
+                                ? 'border-secondary-500/50 bg-secondary-500/15 text-secondary-200'
+                                : 'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600'
+                            }`}
+                          >
+                            {resourceType}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </section>
                 </div>
 
                 {(pageError || pageSuccess) && (
                   <div
-                    className={`mt-6 rounded-lg px-4 py-3 text-sm ${
+                    className={`mt-4 rounded-lg px-4 py-3 text-sm ${
                       pageError
                         ? 'border border-red-900/60 bg-red-950/40 text-red-200'
                         : 'border border-emerald-900/60 bg-emerald-950/40 text-emerald-200'
@@ -335,11 +458,11 @@ export default function IncidentManagementPage() {
                   </div>
                 )}
 
-                <div className="mt-6 flex items-center justify-end gap-3 border-t border-slate-800 pt-4">
+                <div className="mt-4 flex items-center justify-end gap-3 border-t border-slate-800 pt-4">
                   <button
                     type="submit"
                     disabled={isSaving}
-                    className="rounded-lg bg-primary-600 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-500 disabled:cursor-not-allowed disabled:opacity-60"
+                    className="h-10 rounded-lg bg-primary-600 px-5 text-sm font-semibold text-white transition-colors hover:bg-primary-500 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {isSaving ? 'Saving...' : 'Save Rule'}
                   </button>

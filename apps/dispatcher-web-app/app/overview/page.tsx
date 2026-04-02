@@ -2,8 +2,43 @@
 
 import { useMemo, useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
+import { useRouter } from 'next/navigation'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { subscribeToEmergencyReports, type EmergencyReport } from '@packages/firebase'
+
+const TIME_ZONE = 'Asia/Manila'
+const TIME_FORMATTER = new Intl.DateTimeFormat('en-PH', {
+  timeZone: TIME_ZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  hour12: true,
+})
+
+function formatTime(value: Date | null): string {
+  if (!value) return '—'
+  return TIME_FORMATTER.format(value)
+}
+
+const STATUS_BADGE_STYLES: Record<'active' | 'pending' | 'resolved', string> = {
+  active: 'border-blue-500/30 bg-blue-500/10 text-blue-200',
+  pending: 'border-amber-500/30 bg-amber-500/10 text-amber-200',
+  resolved: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200',
+}
+
+const PRIORITY_BADGE_STYLES: Record<'low' | 'medium' | 'high' | 'critical', string> = {
+  low: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-200',
+  medium: 'border-yellow-500/30 bg-yellow-500/10 text-yellow-200',
+  high: 'border-orange-500/30 bg-orange-500/10 text-orange-200',
+  critical: 'border-red-500/30 bg-red-500/10 text-red-200',
+}
+
+const SUMMARY_CARD_STYLES = {
+  total: 'text-slate-100',
+  active: 'text-blue-300',
+  pending: 'text-yellow-200',
+  resolved: 'text-emerald-300',
+}
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), { ssr: false })
 
@@ -44,7 +79,7 @@ const convertToMapIncident = (report: EmergencyReport): MapIncident => {
       ? report.createdAt
       : (report.createdAt && typeof report.createdAt === 'object' && 'toDate' in report.createdAt)
       ? (report.createdAt as any).toDate()
-      : new Date(report.createdAt || Date.now()),
+      : new Date(0),
     responder: report.responder || null,
   }
 }
@@ -56,6 +91,7 @@ const getLocationLabel = (locationText: string) => {
 }
 
 export default function OverviewPage() {
+  const router = useRouter()
   const [reports, setReports] = useState<EmergencyReport[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const chartWidth = 640
@@ -80,6 +116,11 @@ export default function OverviewPage() {
     () => mapIncidents.filter((incident) => incident.lat && incident.lng && incident.lat !== 0 && incident.lng !== 0),
     [mapIncidents]
   )
+  const activeAndPendingIncidents = useMemo(
+    () => incidentsWithCoords.filter((incident) => incident.status !== 'resolved'),
+    [incidentsWithCoords]
+  )
+  const handleMapIncidentSelect = useMemo(() => () => undefined, [])
 
   const totals = useMemo(() => {
     const total = reports.length
@@ -114,6 +155,11 @@ export default function OverviewPage() {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
   }, [reports])
+
+  const topIncidentTypeMax = useMemo(
+    () => Math.max(1, ...incidentTypeMix.map(([, count]) => count)),
+    [incidentTypeMix]
+  )
 
   const recentIncidents = useMemo(() => {
     return [...mapIncidents]
@@ -189,152 +235,172 @@ export default function OverviewPage() {
 
   return (
     <ProtectedRoute>
-      <div className="space-y-6">
-        <section className="flex flex-col gap-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl shadow-black/30 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-xs uppercase tracking-[0.3em] text-secondary-300">Overview</p>
-            <h1 className="mt-2 text-3xl font-semibold text-slate-100">RESQ-Link Command Overview</h1>
-            <p className="mt-2 text-sm text-slate-400">
-              Live operational picture with real-time incident intelligence.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200">
-              System Online
-            </span>
-            <span className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 text-xs text-slate-400">
-              Live Data
-            </span>
-            <span className="rounded-full border border-slate-700 bg-slate-900/80 px-4 py-2 text-xs text-slate-400">
-              Total Feed: {totals.total}
-            </span>
+      <div className="space-y-4">
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-md shadow-black/20 md:p-5">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.3em] text-secondary-300">Overview</p>
+              <h1 className="mt-1 text-2xl font-semibold text-slate-100 md:text-3xl">RESQ-Link Command Overview</h1>
+              <p className="mt-1 text-sm text-slate-400">Live operational picture with real-time incident intelligence.</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-200">
+                🟢 System Online
+              </span>
+              <span className="rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs text-slate-300">
+                Live Data
+              </span>
+              <span className="rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-xs text-slate-300">
+                Total Feed: {totals.total}
+              </span>
+            </div>
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg shadow-black/20">
-            <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Total Incidents</p>
-            <div className="mt-3 flex items-baseline justify-between">
-              <span className="text-3xl font-semibold text-slate-100">{totals.total}</span>
-              <span className="text-xs text-secondary-300">All reports</span>
+        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3 shadow-md shadow-black/20">
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Total Incidents</p>
+            <div className="mt-1 flex items-end justify-between">
+              <span className={`text-2xl font-semibold ${SUMMARY_CARD_STYLES.total}`}>{totals.total}</span>
+              <span className="text-xs text-slate-400">All reports</span>
             </div>
           </div>
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg shadow-black/20">
-            <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Active Incidents</p>
-            <div className="mt-3 flex items-baseline justify-between">
-              <span className="text-3xl font-semibold text-emerald-200">{totals.active}</span>
-              <span className="text-xs text-emerald-200">In response</span>
+          <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3 shadow-md shadow-black/20">
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Active Incidents</p>
+            <div className="mt-1 flex items-end justify-between">
+              <span className={`text-2xl font-semibold ${SUMMARY_CARD_STYLES.active}`}>{totals.active}</span>
+              <span className="text-xs text-blue-300">In response</span>
             </div>
           </div>
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg shadow-black/20">
-            <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Pending</p>
-            <div className="mt-3 flex items-baseline justify-between">
-              <span className="text-3xl font-semibold text-yellow-200">{totals.pending}</span>
+          <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3 shadow-md shadow-black/20">
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Pending</p>
+            <div className="mt-1 flex items-end justify-between">
+              <span className={`text-2xl font-semibold ${SUMMARY_CARD_STYLES.pending}`}>{totals.pending}</span>
               <span className="text-xs text-yellow-200">Awaiting dispatch</span>
             </div>
           </div>
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-lg shadow-black/20">
-            <p className="text-xs uppercase tracking-[0.25em] text-slate-500">Resolved</p>
-            <div className="mt-3 flex items-baseline justify-between">
-              <span className="text-3xl font-semibold text-secondary-300">{totals.resolved}</span>
-              <span className="text-xs text-secondary-300">Closed cases</span>
+          <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3 shadow-md shadow-black/20">
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Resolved</p>
+            <div className="mt-1 flex items-end justify-between">
+              <span className={`text-2xl font-semibold ${SUMMARY_CARD_STYLES.resolved}`}>{totals.resolved}</span>
+              <span className="text-xs text-emerald-300">Closed cases</span>
             </div>
           </div>
         </section>
 
-        <section className="grid gap-4 xl:grid-cols-[1.1fr_2fr_1.1fr]">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-100">Priority Mix</h2>
-              <span className="text-xs text-slate-400">Live distribution</span>
-            </div>
-            <div className="mt-6 space-y-4">
-              {priorityMix.map((item) => (
-                <div key={item.label}>
-                  <div className="flex items-center justify-between text-sm text-slate-400">
-                    <span>{item.label}</span>
-                    <span className="text-slate-200">{item.value}%</span>
+        <section className="grid gap-4 xl:grid-cols-[1fr_2.3fr_1fr]">
+          <aside className="order-3 space-y-4 xl:order-1">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 md:p-5">
+              <h2 className="text-base font-semibold text-slate-100">Priority Mix</h2>
+              <div className="mt-4 space-y-3">
+                {priorityMix.map((item) => (
+                  <div key={item.label}>
+                    <div className="flex items-center justify-between text-xs text-slate-400">
+                      <span>{item.label}</span>
+                      <span className="text-slate-200">{item.value}%</span>
+                    </div>
+                    <div className="mt-1.5 h-2 rounded-full bg-slate-800">
+                      <div className={`h-2 rounded-full ${item.color} transition-all duration-300`} style={{ width: `${item.value}%` }} />
+                    </div>
                   </div>
-                  <div className="mt-2 h-2 rounded-full bg-slate-800">
-                    <div className={`h-2 rounded-full ${item.color}`} style={{ width: `${item.value}%` }} />
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-            <div className="mt-6 rounded-xl border border-slate-800 bg-slate-950/60 p-4 text-sm text-slate-300">
-              {incidentTypeMix.length === 0 ? (
-                <p>No incidents recorded yet.</p>
-              ) : (
-                <div>
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Top Incident Types</p>
-                  <div className="mt-3 space-y-2">
-                    {incidentTypeMix.map(([label, count]) => (
-                      <div key={label} className="flex items-center justify-between">
-                        <span>{label}</span>
-                        <span className="text-slate-100">{count}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-100">Live Incident Map</h2>
-              <span className="text-xs text-slate-400">Active + pending</span>
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 md:p-5">
+              <h2 className="text-base font-semibold text-slate-100">Top Incident Types</h2>
+              <div className="mt-4 space-y-3">
+                {incidentTypeMix.length === 0 ? (
+                  <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 text-sm text-slate-400">
+                    No incidents recorded yet.
+                  </div>
+                ) : (
+                  incidentTypeMix.map(([label, count]) => {
+                    const width = Math.max(12, Math.round((count / topIncidentTypeMax) * 100))
+                    return (
+                      <div key={label} className="rounded-lg border border-slate-800 bg-slate-950/60 px-3 py-2.5">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-slate-200">{label}</span>
+                          <span className="font-medium text-slate-100">{count}</span>
+                        </div>
+                        <div className="mt-2 h-1.5 rounded-full bg-slate-800">
+                          <div className="h-1.5 rounded-full bg-blue-400/80" style={{ width: `${width}%` }} />
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
             </div>
-            <div className="mt-6 h-[410px] overflow-hidden rounded-2xl border border-slate-800">
+          </aside>
+
+          <div className="order-1 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg shadow-black/20 md:p-5 xl:order-2">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-slate-100 md:text-lg">Live Incident Map</h2>
+              <span className="rounded-full border border-slate-700 bg-slate-900 px-3 py-1 text-[11px] text-slate-300">
+                Active + Pending
+              </span>
+            </div>
+            <div className="mt-4 h-[420px] overflow-hidden rounded-xl border border-slate-800 md:h-[500px] xl:h-[560px]">
               {isLoading ? (
                 <div className="flex h-full items-center justify-center bg-slate-950 text-slate-400">
                   Loading map data...
                 </div>
               ) : (
                 <MapComponent
-                  incidents={incidentsWithCoords.filter((incident) => incident.status !== 'resolved')}
+                  incidents={activeAndPendingIncidents}
                   selectedIncident={null}
-                  onIncidentSelect={() => undefined}
+                  onIncidentSelect={handleMapIncidentSelect}
                 />
               )}
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 flex flex-col">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-semibold text-slate-100">Latest Reports</h2>
-              <span className="text-xs text-slate-400">Newest first</span>
+          <aside className="order-2 flex flex-col rounded-2xl border border-slate-800 bg-slate-900/70 p-4 md:p-5 xl:order-3">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-base font-semibold text-slate-100 md:text-lg">Latest Reports</h2>
+              <span className="text-xs text-slate-500">{recentIncidents.length} items</span>
             </div>
-            <div className="flex-1 space-y-2 overflow-y-auto pr-2 max-h-[410px]">
+            <div className="max-h-[320px] flex-1 space-y-2 overflow-y-auto pr-1 md:max-h-[360px] xl:max-h-[560px]">
               {recentIncidents.length === 0 ? (
                 <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 text-sm text-slate-400">
                   No reports yet.
                 </div>
               ) : (
                 recentIncidents.map((incident) => (
-                  <div key={incident.id} className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-                    <div className="flex items-center justify-between">
+                  <button
+                    key={incident.id}
+                    type="button"
+                    onClick={() => router.push('/')}
+                    className="w-full rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-left transition-all hover:border-slate-600 hover:bg-slate-900/80"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
                       <p className="text-sm font-semibold text-slate-100">{incident.type}</p>
-                      <span className="text-xs text-slate-400">{incident.reportedAt.toLocaleTimeString()}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${STATUS_BADGE_STYLES[incident.status]}`}>
+                          {incident.status}
+                        </span>
+                        <span className={`rounded-md border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${PRIORITY_BADGE_STYLES[incident.priority]}`}>
+                          {incident.priority}
+                        </span>
+                      </div>
                     </div>
-                    <p className="mt-2 text-xs text-slate-400">{incident.location}</p>
-                    <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
-                      <span className="uppercase tracking-[0.2em] text-secondary-300">{incident.status}</span>
-                      <span>{incident.priority}</span>
+                    <div className="mt-2 text-xs text-slate-400">
+                      {formatTime(incident.reportedAt)} • {incident.location || 'Unknown location'}
                     </div>
-                  </div>
+                  </button>
                 ))
               )}
             </div>
-          </div>
+          </aside>
         </section>
 
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 md:p-5">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-100">Incidents Over Time by Location</h2>
-            <span className="text-xs text-slate-400">Last 12 hours</span>
+            <h2 className="text-base font-semibold text-slate-100 md:text-lg">Incident Trends (Last 12 Hours)</h2>
+            <span className="text-xs text-slate-400">By location</span>
           </div>
-          <div className="mt-6">
+          <div className="mt-4">
             {incidentTimeline.series.length === 0 ? (
               <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-6 text-sm text-slate-400">
                 No incident data available for the timeline yet.
@@ -343,7 +409,7 @@ export default function OverviewPage() {
               <div className="space-y-6">
                 <svg
                   viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-                  className="h-56 w-full"
+                  className="h-52 w-full md:h-56"
                   preserveAspectRatio="none"
                 >
                   <rect width={chartWidth} height={chartHeight} rx="18" fill="transparent" />
