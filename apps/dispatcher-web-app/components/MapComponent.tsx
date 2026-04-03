@@ -1,7 +1,7 @@
 'use client'
 
-import { useRef, useEffect } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, useMap, Polygon } from 'react-leaflet'
+import { useRef, useEffect, useState } from 'react'
+import { MapContainer, TileLayer, Marker, Popup, useMap, Polygon, GeoJSON } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { DispatcherLocation } from '@packages/firebase'
@@ -37,6 +37,73 @@ interface MapComponentProps {
   centerLocation?: [number, number] | null
 }
 
+// Quadrant Configuration
+const QUADRANT_COLORS = {
+  'CENTRO/POBLACION': { color: '#6366f1', fill: '#6366f1' }, // Indigo
+  'WESTERN': { color: '#14b8a6', fill: '#14b8a6' },          // Teal
+  'EASTERN': { color: '#f59e0b', fill: '#f59e0b' },          // Amber
+  'NORTHERN': { color: '#f43f5e', fill: '#f43f5e' },         // Rose
+  'UNKNOWN': { color: '#94a3b8', fill: '#94a3b8' }           // Slate
+}
+
+const QUADRANT_MAPPING: Record<string, keyof typeof QUADRANT_COLORS> = {
+  // CENTRO/POBLACION
+  'Centro 1 (Pob.)': 'CENTRO/POBLACION',
+  'Centro 2 (Pob.)': 'CENTRO/POBLACION',
+  'Centro 3 (Pob.)': 'CENTRO/POBLACION',
+  'Centro 4 (Pob.)': 'CENTRO/POBLACION',
+  'Centro 5 (Pob.)': 'CENTRO/POBLACION',
+  'Centro 6 (Pob.)': 'CENTRO/POBLACION',
+  'Centro 7 (Pob.)': 'CENTRO/POBLACION',
+  'Centro 8 (Pob.)': 'CENTRO/POBLACION',
+  'Centro 9 (Pob.)': 'CENTRO/POBLACION',
+  'Centro 10 (Pob.)': 'CENTRO/POBLACION',
+  'Centro 11 (Pob.)': 'CENTRO/POBLACION',
+  'Centro 12 (Pob.)': 'CENTRO/POBLACION',
+  
+  // WESTERN
+  'Buntun': 'WESTERN',
+  'Pallua Norte': 'WESTERN',
+  'Pallua Sur': 'WESTERN',
+  'Bagay': 'WESTERN',
+  'Cataggaman Nuevo': 'WESTERN',
+  'Cataggaman Pardo': 'WESTERN',
+  'Cataggaman Viejo': 'WESTERN',
+  'San Gabriel': 'WESTERN',
+  'Ugac Norte': 'WESTERN',
+  'Ugac Sur': 'WESTERN',
+
+  // EASTERN
+  'Tanza': 'EASTERN',
+  'Caggay': 'EASTERN',
+  'Larion Alto': 'EASTERN',
+  'Larion Bajo': 'EASTERN',
+  'Capatan': 'EASTERN',
+  'Libag Norte': 'EASTERN',
+  'Libag Sur': 'EASTERN',
+  'Gosi Norte': 'EASTERN',
+  'Gosi Sur': 'EASTERN',
+  'Tagga': 'EASTERN',
+  'Dadda': 'EASTERN',
+  'Nambbalan Norte': 'EASTERN',
+  'Nambbalan Sur': 'EASTERN',
+
+  // NORTHERN
+  'Annafunan East': 'NORTHERN',
+  'Annafunan West': 'NORTHERN',
+  'Atulayan Norte': 'NORTHERN',
+  'Atulayan Sur': 'NORTHERN',
+  'Carig': 'NORTHERN', // Combined Norte/Sur in GeoJSON
+  'Caritan Centro': 'NORTHERN',
+  'Caritan Norte': 'NORTHERN',
+  'Caritan Sur': 'NORTHERN',
+  'Leonarda': 'NORTHERN',
+  'Linao East': 'NORTHERN',
+  'Linao West': 'NORTHERN',
+  'Linao Norte': 'NORTHERN',
+  'Pengue (Pengue-Ruyu)': 'NORTHERN'
+}
+
 // Component to handle map center updates
 function MapCenter({ center, zoom }: { center: [number, number]; zoom: number }) {
   const map = useMap()
@@ -55,6 +122,15 @@ export default function MapComponent({
   centerLocation,
 }: MapComponentProps) {
   const mapRef = useRef<L.Map | null>(null)
+  const [geojsonData, setGeojsonData] = useState<any>(null)
+
+  useEffect(() => {
+    // Fetch the Tuguegarao barangays GeoJSON
+    fetch('/tuguegarao-barangays.json')
+      .then(res => res.json())
+      .then(data => setGeojsonData(data))
+      .catch(err => console.error('Error loading GeoJSON:', err))
+  }, [])
 
   const getLastUpdatedDate = (value: DispatcherLocation['lastUpdated']) => {
     if (!value) return null
@@ -68,7 +144,7 @@ export default function MapComponent({
   const defaultCenter: [number, number] = [17.6132, 121.7270]
   const defaultZoom = 12
 
-  // Tuguegarao City Boundary Polygon
+  // Tuguegarao City Boundary Polygon (Keep as reference or remove)
   const TUGUEGARAO_BOUNDARY: [number, number][] = [
     [17.572822, 121.682675],
     [17.605113,121.685138],
@@ -206,6 +282,54 @@ export default function MapComponent({
     })
   }
 
+  // Style function for GeoJSON
+  const quadrantStyle = (feature: any) => {
+    const barangayName = feature.properties.ADM4_EN
+    const quadrant = QUADRANT_MAPPING[barangayName] || 'UNKNOWN'
+    const settings = QUADRANT_COLORS[quadrant]
+    
+    return {
+      color: settings.color,
+      weight: 2,
+      opacity: 0.8,
+      fillColor: settings.fill,
+      fillOpacity: 0.2,
+      dashArray: '3',
+    }
+  }
+
+  const onEachBarangay = (feature: any, layer: L.Layer) => {
+    const barangayName = feature.properties.ADM4_EN
+    const quadrant = QUADRANT_MAPPING[barangayName] || 'UNKNOWN'
+    
+    layer.bindPopup(`
+      <div class="p-2 min-w-[150px]">
+        <p class="font-bold text-slate-100 text-lg mb-0.5">${barangayName}</p>
+        <p class="text-xs font-semibold py-1 px-2 rounded inline-block mb-2" style="background-color: ${QUADRANT_COLORS[quadrant].fill}22; color: ${QUADRANT_COLORS[quadrant].color};">
+          ${quadrant}
+        </p>
+        <p class="text-xs text-slate-400 italic">Tuguegarao City</p>
+      </div>
+    `)
+
+    layer.on({
+      mouseover: (e) => {
+        const layer = e.target
+        layer.setStyle({
+          fillOpacity: 0.5,
+          weight: 3,
+        })
+      },
+      mouseout: (e) => {
+        const layer = e.target
+        layer.setStyle({
+          fillOpacity: 0.2,
+          weight: 2,
+        })
+      },
+    })
+  }
+
   // Get Mapbox access token from environment variable
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN || ''
   const mapboxStyle = process.env.NEXT_PUBLIC_MAPBOX_STYLE || 'mapbox/streets-v12'
@@ -264,176 +388,196 @@ export default function MapComponent({
   }
 
   return (
-    <MapContainer
-      center={mapCenter}
-      zoom={mapZoom}
-      style={{ height: '100%', width: '100%' }}
-      ref={mapRef}
-    >
-      <MapCenter center={mapCenter} zoom={mapZoom} />
-      <TileLayer
-        attribution='&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        url={mapboxUrl!}
-        tileSize={512}
-        zoomOffset={-1}
-      />
-      {/* Geofence Polygon */}
-      <Polygon
-        positions={TUGUEGARAO_BOUNDARY}
-        pathOptions={{
-          color: '#ef4444',
-          dashArray: '10, 10',
-          fillColor: '#ef4444',
-          fillOpacity: 0.1,
-          weight: 3,
-        }}
+    <div className="relative h-full w-full">
+      {/* Legend */}
+      <div className="absolute top-4 right-4 z-[1000] bg-slate-950/80 backdrop-blur-md p-3 rounded-lg border border-slate-800 shadow-xl pointer-events-auto">
+        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Map Quadrants</h4>
+        <div className="space-y-1.5">
+          {Object.entries(QUADRANT_COLORS).filter(([k]) => k !== 'UNKNOWN').map(([name, style]) => (
+            <div key={name} className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: style.fill, border: `1px solid ${style.color}` }}></div>
+              <span className="text-[10px] font-medium text-slate-200 capitalize">{name.toLowerCase()}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <MapContainer
+        center={mapCenter}
+        zoom={mapZoom}
+        style={{ height: '100%', width: '100%' }}
+        ref={mapRef}
       >
-        <Popup>
-          <div className="p-1">
-            <p className="font-bold text-red-400">Tuguegarao City Geofence</p>
-            <p className="text-xs text-slate-400 font-medium italic mt-1">Operational Area</p>
-          </div>
-        </Popup>
-      </Polygon>
-      {/* User Location Marker */}
-      {userLocation && (
-        <Marker position={userLocation} icon={createUserLocationIcon()}>
-          <Popup>
-            <div className="p-2">
-              <h3 className="font-bold text-slate-100 mb-1">Your Location</h3>
-              <p className="text-sm text-slate-400">
-                {userLocation[0].toFixed(6)}, {userLocation[1].toFixed(6)}
-              </p>
-            </div>
-          </Popup>
-        </Marker>
-      )}
-      {/* Dispatcher Location Markers */}
-      {dispatcherLocations.length > 0 && (
-        <>
-          {dispatcherLocations.map((dispatcher) => {
-            // Validate coordinates
-            if (
-              !dispatcher.latitude ||
-              !dispatcher.longitude ||
-              dispatcher.latitude === 0 ||
-              dispatcher.longitude === 0 ||
-              isNaN(dispatcher.latitude) ||
-              isNaN(dispatcher.longitude)
-            ) {
-              console.warn('Invalid dispatcher coordinates:', dispatcher)
-              return null
-            }
-            
-            return (
-              <Marker
-                key={dispatcher.dispatcherId}
-                position={[dispatcher.latitude, dispatcher.longitude]}
-                icon={createDispatcherIcon(dispatcher.role)}
-                zIndexOffset={1000}
-              >
-                <Popup>
-                  <div className="p-3 min-w-[200px]">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{
-                          backgroundColor:
-                            dispatcher.role === 'BFP'
-                              ? '#dc2626'
-                              : dispatcher.role === 'PNP'
-                              ? '#1e40af'
-                              : dispatcher.role === 'MDRRMO'
-                              ? '#059669'
-                              : dispatcher.role === 'AMBULANCE'
-                              ? '#ea580c'
-                              : dispatcher.role === 'PCG'
-                              ? '#0284c7'
-                              : '#6b7280',
-                        }}
-                      ></div>
-                      <h3 className="font-bold text-slate-100 text-base">
-                        {dispatcher.role} Dispatcher
-                      </h3>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-sm text-slate-300">
-                        <span className="font-medium">Email:</span> {dispatcher.email}
-                      </p>
-                      <p className="text-xs text-slate-400">
-                        <span className="font-medium">Status:</span>{' '}
-                        <span className="text-green-400">● Online</span>
-                      </p>
-                      <p className="text-xs text-slate-400">
-                        <span className="font-medium">Last updated:</span>{' '}
-                        {(getLastUpdatedDate(dispatcher.lastUpdated) || new Date()).toLocaleTimeString()}
-                      </p>
-                      <p className="text-xs text-slate-500 mt-2">
-                        {dispatcher.latitude.toFixed(6)}, {dispatcher.longitude.toFixed(6)}
-                      </p>
-                    </div>
-                  </div>
-                </Popup>
-              </Marker>
-            )
-          })}
-        </>
-      )}
-      {/* Incident Markers */}
-      {incidents.map((incident) => (
-        <Marker
-          key={incident.id}
-          position={[incident.lat, incident.lng]}
-          icon={createCustomIcon(incident.priority, incident.status)}
-          eventHandlers={{
-            click: () => onIncidentSelect(incident.id),
+        <MapCenter center={mapCenter} zoom={mapZoom} />
+        <TileLayer
+          attribution='&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          url={mapboxUrl!}
+          tileSize={512}
+          zoomOffset={-1}
+        />
+        
+        {/* Barangay Quadrants Geofence */}
+        {geojsonData && (
+          <GeoJSON 
+            data={geojsonData} 
+            style={quadrantStyle}
+            onEachFeature={onEachBarangay}
+          />
+        )}
+
+        {/* Original City Boundary (Optional dashed white line) */}
+        <Polygon
+          positions={TUGUEGARAO_BOUNDARY}
+          pathOptions={{
+            color: 'white',
+            dashArray: '10, 10',
+            fillOpacity: 0,
+            weight: 1,
+            opacity: 0.3,
           }}
-        >
-          <Popup>
-            <div className="p-2">
-              <h3 className="font-bold text-slate-100 mb-1">
-                {incident.type}
-              </h3>
-              <p className="text-sm text-slate-400 mb-2">
-                {incident.location}
-              </p>
-              <div className="flex items-center gap-2 mb-2">
-                <span
-                  className={`px-2 py-1 text-xs font-medium rounded ${
-                    incident.priority === 'critical'
-                      ? 'bg-red-100 text-red-800'
-                      : incident.priority === 'high'
-                      ? 'bg-orange-100 text-orange-800'
-                      : 'bg-yellow-100 text-yellow-800'
-                  }`}
-                >
-                  {incident.priority}
-                </span>
-                <span
-                  className={`px-2 py-1 text-xs font-medium rounded ${
-                    incident.status === 'active'
-                      ? 'bg-red-100 text-red-800'
-                      : incident.status === 'pending'
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : 'bg-green-100 text-green-800'
-                  }`}
-                >
-                  {incident.status}
-                </span>
-              </div>
-              {incident.responder && (
-                <p className="text-xs text-slate-500">
-                  Responder: {incident.responder}
+          interactive={false}
+        />
+
+        {/* User Location Marker */}
+        {userLocation && (
+          <Marker position={userLocation} icon={createUserLocationIcon()}>
+            <Popup>
+              <div className="p-2">
+                <h3 className="font-bold text-slate-100 mb-1">Your Location</h3>
+                <p className="text-sm text-slate-400">
+                  {userLocation[0].toFixed(6)}, {userLocation[1].toFixed(6)}
                 </p>
-              )}
-              <p className="text-xs text-slate-500 mt-1">
-                {incident.reportedAt.toLocaleString()}
-              </p>
-            </div>
-          </Popup>
-        </Marker>
-      ))}
-    </MapContainer>
+              </div>
+            </Popup>
+          </Marker>
+        )}
+        {/* Dispatcher Location Markers */}
+        {dispatcherLocations.length > 0 && (
+          <>
+            {dispatcherLocations.map((dispatcher) => {
+              // Validate coordinates
+              if (
+                !dispatcher.latitude ||
+                !dispatcher.longitude ||
+                dispatcher.latitude === 0 ||
+                dispatcher.longitude === 0 ||
+                isNaN(dispatcher.latitude) ||
+                isNaN(dispatcher.longitude)
+              ) {
+                console.warn('Invalid dispatcher coordinates:', dispatcher)
+                return null
+              }
+              
+              return (
+                <Marker
+                  key={dispatcher.dispatcherId}
+                  position={[dispatcher.latitude, dispatcher.longitude]}
+                  icon={createDispatcherIcon(dispatcher.role)}
+                  zIndexOffset={1000}
+                >
+                  <Popup>
+                    <div className="p-3 min-w-[200px]">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{
+                            backgroundColor:
+                              dispatcher.role === 'BFP'
+                                ? '#dc2626'
+                                : dispatcher.role === 'PNP'
+                                ? '#1e40af'
+                                : dispatcher.role === 'MDRRMO'
+                                ? '#059669'
+                                : dispatcher.role === 'AMBULANCE'
+                                ? '#ea580c'
+                                : dispatcher.role === 'PCG'
+                                ? '#0284c7'
+                                : '#6b7280',
+                          }}
+                        ></div>
+                        <h3 className="font-bold text-slate-100 text-base">
+                          {dispatcher.role} Dispatcher
+                        </h3>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm text-slate-300">
+                          <span className="font-medium">Email:</span> {dispatcher.email}
+                        </p>
+                        <p className="text-xs text-slate-400">
+                          <span className="font-medium">Status:</span>{' '}
+                          <span className="text-green-400">● Online</span>
+                        </p>
+                        <p className="text-xs text-slate-400">
+                          <span className="font-medium">Last updated:</span>{' '}
+                          {(getLastUpdatedDate(dispatcher.lastUpdated) || new Date()).toLocaleTimeString()}
+                        </p>
+                        <p className="text-xs text-slate-500 mt-2">
+                          {dispatcher.latitude.toFixed(6)}, {dispatcher.longitude.toFixed(6)}
+                        </p>
+                      </div>
+                    </div>
+                  </Popup>
+                </Marker>
+              )
+            })}
+          </>
+        )}
+        {/* Incident Markers */}
+        {incidents.map((incident) => (
+          <Marker
+            key={incident.id}
+            position={[incident.lat, incident.lng]}
+            icon={createCustomIcon(incident.priority, incident.status)}
+            eventHandlers={{
+              click: () => onIncidentSelect(incident.id),
+            }}
+          >
+            <Popup>
+              <div className="p-2">
+                <h3 className="font-bold text-slate-100 mb-1">
+                  {incident.type}
+                </h3>
+                <p className="text-sm text-slate-400 mb-2">
+                  {incident.location}
+                </p>
+                <div className="flex items-center gap-2 mb-2">
+                  <span
+                    className={`px-2 py-1 text-xs font-medium rounded ${
+                      incident.priority === 'critical'
+                        ? 'bg-red-100 text-red-800'
+                        : incident.priority === 'high'
+                        ? 'bg-orange-100 text-orange-800'
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}
+                  >
+                    {incident.priority}
+                  </span>
+                  <span
+                    className={`px-2 py-1 text-xs font-medium rounded ${
+                      incident.status === 'active'
+                        ? 'bg-red-100 text-red-800'
+                        : incident.status === 'pending'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : 'bg-green-100 text-green-800'
+                    }`}
+                  >
+                    {incident.status}
+                  </span>
+                </div>
+                {incident.responder && (
+                  <p className="text-xs text-slate-500">
+                    Responder: {incident.responder}
+                  </p>
+                )}
+                <p className="text-xs text-slate-500 mt-1">
+                  {incident.reportedAt.toLocaleString()}
+                </p>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+      </MapContainer>
+    </div>
   )
 }
 
