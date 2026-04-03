@@ -1,10 +1,20 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, useMap, Polygon } from 'react-leaflet'
+import { useRef, useEffect, useState } from 'react'
+import { MapContainer, TileLayer, Marker, Popup, useMap, Polygon, GeoJSON } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { DispatcherLocation } from '@packages/firebase'
+
+// Fix for default marker icons in Next.js
+if (typeof window !== 'undefined') {
+  delete (L.Icon.Default.prototype as any)._getIconUrl
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+  })
+}
 
 interface Incident {
   id: string
@@ -27,91 +37,79 @@ interface MapComponentProps {
   centerLocation?: [number, number] | null
 }
 
-const DEFAULT_CENTER: [number, number] = [17.6132, 121.7270]
-const DEFAULT_ZOOM = 12
-const TUGUEGARAO_BOUNDARY: [number, number][] = [
-  [17.572822, 121.682675],
-  [17.605113, 121.685138],
-  [17.667388, 121.711474],
-  [17.684329, 121.753949],
-  [17.684819, 121.783966],
-  [17.64311, 121.759095],
-  [17.531672, 121.821358],
-  [17.525943, 121.789454],
-  [17.560152, 121.775578],
-  [17.579299, 121.744189],
-  [17.603844, 121.724618],
-  [17.57079, 121.697535],
-]
-
-const TIME_ZONE = 'Asia/Manila'
-const TIME_FORMATTER = new Intl.DateTimeFormat('en-PH', {
-  timeZone: TIME_ZONE,
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-  hour12: true,
-})
-
-const DATE_TIME_FORMATTER = new Intl.DateTimeFormat('en-PH', {
-  timeZone: TIME_ZONE,
-  year: 'numeric',
-  month: 'short',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-  second: '2-digit',
-  hour12: true,
-})
-
-function formatTime(value: Date | null): string {
-  if (!value) return '—'
-  return TIME_FORMATTER.format(value)
+// Quadrant Configuration
+const QUADRANT_COLORS = {
+  'CENTRO/POBLACION': { color: '#6366f1', fill: '#6366f1' }, // Indigo
+  'WESTERN': { color: '#14b8a6', fill: '#14b8a6' },          // Teal
+  'EASTERN': { color: '#f59e0b', fill: '#f59e0b' },          // Amber
+  'NORTHERN': { color: '#f43f5e', fill: '#f43f5e' },         // Rose
+  'UNKNOWN': { color: '#94a3b8', fill: '#94a3b8' }           // Slate
 }
 
-function formatDateTime(value: Date): string {
-  return DATE_TIME_FORMATTER.format(value)
+const QUADRANT_MAPPING: Record<string, keyof typeof QUADRANT_COLORS> = {
+  // CENTRO/POBLACION
+  'Centro 1 (Pob.)': 'CENTRO/POBLACION',
+  'Centro 2 (Pob.)': 'CENTRO/POBLACION',
+  'Centro 3 (Pob.)': 'CENTRO/POBLACION',
+  'Centro 4 (Pob.)': 'CENTRO/POBLACION',
+  'Centro 5 (Pob.)': 'CENTRO/POBLACION',
+  'Centro 6 (Pob.)': 'CENTRO/POBLACION',
+  'Centro 7 (Pob.)': 'CENTRO/POBLACION',
+  'Centro 8 (Pob.)': 'CENTRO/POBLACION',
+  'Centro 9 (Pob.)': 'CENTRO/POBLACION',
+  'Centro 10 (Pob.)': 'CENTRO/POBLACION',
+  'Centro 11 (Pob.)': 'CENTRO/POBLACION',
+  'Centro 12 (Pob.)': 'CENTRO/POBLACION',
+  
+  // WESTERN
+  'Buntun': 'WESTERN',
+  'Pallua Norte': 'WESTERN',
+  'Pallua Sur': 'WESTERN',
+  'Bagay': 'WESTERN',
+  'Cataggaman Nuevo': 'WESTERN',
+  'Cataggaman Pardo': 'WESTERN',
+  'Cataggaman Viejo': 'WESTERN',
+  'San Gabriel': 'WESTERN',
+  'Ugac Norte': 'WESTERN',
+  'Ugac Sur': 'WESTERN',
+
+  // EASTERN
+  'Tanza': 'EASTERN',
+  'Caggay': 'EASTERN',
+  'Larion Alto': 'EASTERN',
+  'Larion Bajo': 'EASTERN',
+  'Capatan': 'EASTERN',
+  'Libag Norte': 'EASTERN',
+  'Libag Sur': 'EASTERN',
+  'Gosi Norte': 'EASTERN',
+  'Gosi Sur': 'EASTERN',
+  'Tagga': 'EASTERN',
+  'Dadda': 'EASTERN',
+  'Nambbalan Norte': 'EASTERN',
+  'Nambbalan Sur': 'EASTERN',
+
+  // NORTHERN
+  'Annafunan East': 'NORTHERN',
+  'Annafunan West': 'NORTHERN',
+  'Atulayan Norte': 'NORTHERN',
+  'Atulayan Sur': 'NORTHERN',
+  'Carig': 'NORTHERN', // Combined Norte/Sur in GeoJSON
+  'Caritan Centro': 'NORTHERN',
+  'Caritan Norte': 'NORTHERN',
+  'Caritan Sur': 'NORTHERN',
+  'Leonarda': 'NORTHERN',
+  'Linao East': 'NORTHERN',
+  'Linao West': 'NORTHERN',
+  'Linao Norte': 'NORTHERN',
+  'Pengue (Pengue-Ruyu)': 'NORTHERN'
 }
 
 // Component to handle map center updates
-function MapCenter({
-  center,
-  zoom,
-}: {
-  center: [number, number]
-  zoom: number
-}) {
+function MapCenter({ center, zoom }: { center: [number, number]; zoom: number }) {
   const map = useMap()
-  const [lat, lng] = center
-
   useEffect(() => {
-    map.setView([lat, lng], zoom)
-  }, [map, lat, lng, zoom])
-  return null
-}
-
-function EnsureMapInteractions() {
-  const map = useMap()
-
-  useEffect(() => {
-    // Keep interactions explicitly enabled after mount. This protects against
-    // layout lifecycle quirks that can leave handlers disabled.
-    map.dragging.enable()
-    map.touchZoom.enable()
-    map.doubleClickZoom.enable()
-    map.scrollWheelZoom.enable()
-    map.boxZoom.enable()
-    map.keyboard.enable()
-    // Ensure Leaflet recalculates viewport size once the layout settles.
-    const id = window.requestAnimationFrame(() => {
-      map.invalidateSize()
-    })
-
-    return () => {
-      window.cancelAnimationFrame(id)
-    }
-  }, [map])
-
+    map.setView(center, zoom)
+  }, [map, center, zoom])
   return null
 }
 
@@ -123,22 +121,15 @@ export default function MapComponent({
   userLocation,
   centerLocation,
 }: MapComponentProps) {
-  const [mounted, setMounted] = useState(false)
+  const mapRef = useRef<L.Map | null>(null)
+  const [geojsonData, setGeojsonData] = useState<any>(null)
 
-  // Fix default marker icons after client mount (avoids hydration attribute mismatches).
   useEffect(() => {
-    delete (L.Icon.Default.prototype as any)._getIconUrl
-    L.Icon.Default.mergeOptions({
-      iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
-      iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
-      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
-    })
-  }, [])
-
-  // Leaflet should only mount after the first client paint to keep server/client
-  // markup deterministic and avoid Leaflet DOM initialization during SSR.
-  useEffect(() => {
-    setMounted(true)
+    // Fetch the Tuguegarao barangays GeoJSON
+    fetch('/tuguegarao-barangays.json')
+      .then(res => res.json())
+      .then(data => setGeojsonData(data))
+      .catch(err => console.error('Error loading GeoJSON:', err))
   }, [])
 
   const getLastUpdatedDate = (value: DispatcherLocation['lastUpdated']) => {
@@ -149,22 +140,29 @@ export default function MapComponent({
     return new Date(value as unknown as string | number)
   }
 
+  // Default center (Tuguegarao City, Cagayan)
+  const defaultCenter: [number, number] = [17.6132, 121.7270]
+  const defaultZoom = 12
+
+  // Tuguegarao City Boundary Polygon (Keep as reference or remove)
+  const TUGUEGARAO_BOUNDARY: [number, number][] = [
+    [17.572822, 121.682675],
+    [17.605113,121.685138],
+    [17.667388,121.711474],
+    [17.684329, 121.753949],
+    [17.684819, 121.783966],
+    [17.643110, 121.759095],
+    [17.531672,121.821358],
+    [17.525943, 121.789454],
+    [17.560152,121.775578],
+    [17.579299,121.744189],
+    [17.603844,121.724618],
+    [17.570790,121.697535]
+  ]
+  
   // Priority: centerLocation (selected incident) > userLocation > default
-  const mapCenter = useMemo<[number, number]>(() => {
-    if (centerLocation) return [centerLocation[0], centerLocation[1]]
-    if (userLocation) return [userLocation[0], userLocation[1]]
-    return DEFAULT_CENTER
-  }, [centerLocation, userLocation])
-  const mapZoom = useMemo(() => (centerLocation ? 15 : userLocation ? 14 : DEFAULT_ZOOM), [centerLocation, userLocation])
-  const stableBoundary = useMemo(() => TUGUEGARAO_BOUNDARY, [])
-  const visibleIncidents = useMemo(
-    () => incidents.filter((incident) => Number.isFinite(incident.lat) && Number.isFinite(incident.lng)),
-    [incidents]
-  )
-  const stableDispatcherLocations = useMemo(
-    () => dispatcherLocations.filter((dispatcher) => Number.isFinite(dispatcher.latitude) && Number.isFinite(dispatcher.longitude)),
-    [dispatcherLocations]
-  )
+  const mapCenter = centerLocation || userLocation || defaultCenter
+  const mapZoom = centerLocation ? 15 : (userLocation ? 14 : defaultZoom) // Zoom in more for selected incident
 
   const getMarkerColor = (priority: string, status: string) => {
     if (status === 'pending') return '#eab308' // yellow
@@ -284,8 +282,52 @@ export default function MapComponent({
     })
   }
 
-  if (!mounted) {
-    return <div className="h-full w-full" aria-hidden />
+  // Style function for GeoJSON
+  const quadrantStyle = (feature: any) => {
+    const barangayName = feature.properties.ADM4_EN
+    const quadrant = QUADRANT_MAPPING[barangayName] || 'UNKNOWN'
+    const settings = QUADRANT_COLORS[quadrant]
+    
+    return {
+      color: settings.color,
+      weight: 2,
+      opacity: 0.8,
+      fillColor: settings.fill,
+      fillOpacity: 0.2,
+      dashArray: '3',
+    }
+  }
+
+  const onEachBarangay = (feature: any, layer: L.Layer) => {
+    const barangayName = feature.properties.ADM4_EN
+    const quadrant = QUADRANT_MAPPING[barangayName] || 'UNKNOWN'
+    
+    layer.bindPopup(`
+      <div class="p-2 min-w-[150px]">
+        <p class="font-bold text-slate-100 text-lg mb-0.5">${barangayName}</p>
+        <p class="text-xs font-semibold py-1 px-2 rounded inline-block mb-2" style="background-color: ${QUADRANT_COLORS[quadrant].fill}22; color: ${QUADRANT_COLORS[quadrant].color};">
+          ${quadrant}
+        </p>
+        <p class="text-xs text-slate-400 italic">Tuguegarao City</p>
+      </div>
+    `)
+
+    layer.on({
+      mouseover: (e) => {
+        const layer = e.target
+        layer.setStyle({
+          fillOpacity: 0.5,
+          weight: 3,
+        })
+      },
+      mouseout: (e) => {
+        const layer = e.target
+        layer.setStyle({
+          fillOpacity: 0.2,
+          weight: 2,
+        })
+      },
+    })
   }
 
   // Get Mapbox access token from environment variable
@@ -346,50 +388,56 @@ export default function MapComponent({
   }
 
   return (
-    <div
-      className="relative z-0 h-full w-full overflow-hidden pointer-events-auto"
-      style={{ height: '100%', width: '100%' }}
-    >
+    <div className="relative h-full w-full">
+      {/* Legend */}
+      <div className="absolute top-4 right-4 z-[1000] bg-slate-950/80 backdrop-blur-md p-3 rounded-lg border border-slate-800 shadow-xl pointer-events-auto">
+        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Map Quadrants</h4>
+        <div className="space-y-1.5">
+          {Object.entries(QUADRANT_COLORS).filter(([k]) => k !== 'UNKNOWN').map(([name, style]) => (
+            <div key={name} className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: style.fill, border: `1px solid ${style.color}` }}></div>
+              <span className="text-[10px] font-medium text-slate-200 capitalize">{name.toLowerCase()}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <MapContainer
         center={mapCenter}
         zoom={mapZoom}
-        style={{ height: '100%', width: '100%', pointerEvents: 'auto', zIndex: 0 }}
-        dragging={true}
-        scrollWheelZoom={true}
-        doubleClickZoom={true}
-        touchZoom={true}
-        zoomControl={true}
+        style={{ height: '100%', width: '100%' }}
+        ref={mapRef}
       >
-        <EnsureMapInteractions />
-        <MapCenter
-          center={mapCenter}
-          zoom={mapZoom}
-        />
+        <MapCenter center={mapCenter} zoom={mapZoom} />
         <TileLayer
           attribution='&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url={mapboxUrl!}
           tileSize={512}
           zoomOffset={-1}
         />
-        {/* Geofence Polygon */}
+        
+        {/* Barangay Quadrants Geofence */}
+        {geojsonData && (
+          <GeoJSON 
+            data={geojsonData} 
+            style={quadrantStyle}
+            onEachFeature={onEachBarangay}
+          />
+        )}
+
+        {/* Original City Boundary (Optional dashed white line) */}
         <Polygon
-          positions={stableBoundary}
-          interactive={false}
+          positions={TUGUEGARAO_BOUNDARY}
           pathOptions={{
-            color: '#ef4444',
+            color: 'white',
             dashArray: '10, 10',
-            fillColor: '#ef4444',
-            fillOpacity: 0.1,
-            weight: 3,
+            fillOpacity: 0,
+            weight: 1,
+            opacity: 0.3,
           }}
-        >
-          <Popup>
-            <div className="p-1">
-              <p className="font-bold text-red-400">Tuguegarao City Geofence</p>
-              <p className="text-xs text-slate-400 font-medium italic mt-1">Operational Area</p>
-            </div>
-          </Popup>
-        </Polygon>
+          interactive={false}
+        />
+
         {/* User Location Marker */}
         {userLocation && (
           <Marker position={userLocation} icon={createUserLocationIcon()}>
@@ -404,9 +452,9 @@ export default function MapComponent({
           </Marker>
         )}
         {/* Dispatcher Location Markers */}
-        {stableDispatcherLocations.length > 0 && (
+        {dispatcherLocations.length > 0 && (
           <>
-            {stableDispatcherLocations.map((dispatcher) => {
+            {dispatcherLocations.map((dispatcher) => {
               // Validate coordinates
               if (
                 !dispatcher.latitude ||
@@ -461,7 +509,7 @@ export default function MapComponent({
                         </p>
                         <p className="text-xs text-slate-400">
                           <span className="font-medium">Last updated:</span>{' '}
-                          {formatTime(getLastUpdatedDate(dispatcher.lastUpdated))}
+                          {(getLastUpdatedDate(dispatcher.lastUpdated) || new Date()).toLocaleTimeString()}
                         </p>
                         <p className="text-xs text-slate-500 mt-2">
                           {dispatcher.latitude.toFixed(6)}, {dispatcher.longitude.toFixed(6)}
@@ -475,7 +523,7 @@ export default function MapComponent({
           </>
         )}
         {/* Incident Markers */}
-        {visibleIncidents.map((incident) => (
+        {incidents.map((incident) => (
           <Marker
             key={incident.id}
             position={[incident.lat, incident.lng]}
@@ -522,7 +570,7 @@ export default function MapComponent({
                   </p>
                 )}
                 <p className="text-xs text-slate-500 mt-1">
-                  {formatDateTime(incident.reportedAt)}
+                  {incident.reportedAt.toLocaleString()}
                 </p>
               </div>
             </Popup>

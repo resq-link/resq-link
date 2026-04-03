@@ -1,14 +1,18 @@
 'use client'
 
-import { useMemo, useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import { subscribeToEmergencyReports, subscribeToDispatcherLocations, type EmergencyReport, type DispatcherLocation } from '@packages/firebase'
 import { useAuth } from '@/contexts/AuthContext'
 import ProtectedRoute from '@/components/ProtectedRoute'
 
-const MapComponent = dynamic(() => import('@/components/MapComponent'), { ssr: false })
+// Dynamically import the map component to avoid SSR issues with Leaflet
+const MapComponent = dynamic(() => import('@/components/MapComponent'), {
+  ssr: false,
+})
 
+// Map incident type to display name
 const getIncidentTypeName = (incidentType: string): string => {
   const typeMap: Record<string, string> = {
     fire: 'Fire',
@@ -21,33 +25,31 @@ const getIncidentTypeName = (incidentType: string): string => {
   return typeMap[incidentType] || 'Emergency'
 }
 
-const convertToMapIncident = (report: EmergencyReport) => ({
-  id: report.id || '',
-  type: getIncidentTypeName(report.incidentType),
-  location: report.locationText,
-  priority: (report.priority || 'medium') as 'low' | 'medium' | 'high' | 'critical',
-  status: (report.status === 'resolved' ? 'resolved' : report.status === 'active' ? 'active' : 'pending') as 'active' | 'pending' | 'resolved',
-  lat: report.latitude || 0,
-  lng: report.longitude || 0,
-  reportedAt:
-    report.createdAt instanceof Date
-      ? report.createdAt
-      : report.createdAt && typeof report.createdAt === 'object' && 'toDate' in report.createdAt
-        ? (report.createdAt as any).toDate()
-        : new Date(report.createdAt || Date.now()),
-  responder: report.responder || null,
-})
-
-type StatusFilter = 'all' | 'active' | 'pending'
-type TypeFilter = 'all' | 'fire' | 'police' | 'mdrrmo' | 'medical' | 'coast_guard'
+// Convert EmergencyReport to Incident format for map
+const convertToMapIncident = (report: EmergencyReport) => {
+  return {
+    id: report.id || '',
+    type: getIncidentTypeName(report.incidentType),
+    location: report.locationText,
+    priority: (report.priority || 'medium') as 'low' | 'medium' | 'high' | 'critical',
+    status: (report.status === 'resolved' ? 'resolved' : (report.status === 'active' ? 'active' : 'pending')) as 'active' | 'pending' | 'resolved',
+    lat: report.latitude || 0,
+    lng: report.longitude || 0,
+    reportedAt: report.createdAt instanceof Date 
+      ? report.createdAt 
+      : (report.createdAt && typeof report.createdAt === 'object' && 'toDate' in report.createdAt)
+      ? (report.createdAt as any).toDate()
+      : new Date(report.createdAt || Date.now()),
+    responder: report.responder || null,
+  }
+}
 
 export default function MapPage() {
   const [incidents, setIncidents] = useState<ReturnType<typeof convertToMapIncident>[]>([])
   const [dispatcherLocations, setDispatcherLocations] = useState<DispatcherLocation[]>([])
   const [selectedIncident, setSelectedIncident] = useState<string | null>(null)
   const [centerLocation, setCenterLocation] = useState<[number, number] | null>(null)
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
-  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
+  const [filter, setFilter] = useState<string>('all')
   const [userLocation, setUserLocation] = useState<[number, number] | null>(null)
   const [locationError, setLocationError] = useState<string | null>(null)
   const [isLocating, setIsLocating] = useState(false)
@@ -55,68 +57,102 @@ export default function MapPage() {
   const { user } = useAuth()
   const router = useRouter()
 
-  const matchesTypeFilter = (incident: ReturnType<typeof convertToMapIncident>) => {
-    if (typeFilter === 'all') return true
-    if (typeFilter === 'fire') return incident.type === 'Fire'
-    if (typeFilter === 'police') return incident.type === 'Crime'
-    if (typeFilter === 'mdrrmo') return incident.type === 'Flood'
-    if (typeFilter === 'medical') return incident.type === 'Medical Emergency'
-    return incident.type === 'Other Emergency'
-  }
-
-  const filteredIncidents = useMemo(
-    () =>
-      incidents.filter((incident) => {
-        if (!incident.lat || !incident.lng || incident.lat === 0 || incident.lng === 0) return false
-        if (statusFilter !== 'all' && incident.status !== statusFilter) return false
-        return matchesTypeFilter(incident)
-      }),
-    [incidents, statusFilter, typeFilter]
-  )
-
+  // Handle incident selection - center map on selected incident
   const handleIncidentClick = (incidentId: string) => {
     setSelectedIncident(incidentId)
-    const incident = filteredIncidents.find((inc) => inc.id === incidentId) || incidents.find((inc) => inc.id === incidentId)
+    // Find incident in filtered list first, then fallback to full list
+    const incident = filteredIncidents.find((inc) => inc.id === incidentId) || 
+                     incidents.find((inc) => inc.id === incidentId)
     if (incident && incident.lat && incident.lng && incident.lat !== 0 && incident.lng !== 0) {
       setCenterLocation([incident.lat, incident.lng])
     }
   }
 
+  // Filter incidents based on status and ensure they have valid coordinates
+  const filteredIncidents = incidents.filter((incident) => {
+    // Only show incidents with valid coordinates
+    if (!incident.lat || !incident.lng || incident.lat === 0 || incident.lng === 0) {
+      return false
+    }
+    // Apply status filter
+    if (filter === 'all') return true
+    return incident.status === filter
+  })
+
+  // Subscribe to real-time emergency reports from Firestore
   useEffect(() => {
+    // Redirect to login if not authenticated
     if (!user) {
       router.push('/login')
       return
     }
 
+    console.log('Setting up emergency reports subscription for map...')
+    console.log('✅ User authenticated:', user.uid)
+    
+    // Subscribe to real-time emergency reports from Firestore
     const unsubscribe = subscribeToEmergencyReports(
       (reports: EmergencyReport[]) => {
-        setIncidents(reports.map(convertToMapIncident))
+        console.log('Received emergency reports for map:', reports.length)
+        
+        // Convert to map incident format
+        const convertedIncidents = reports.map(convertToMapIncident)
+        
+        // Filter out incidents without valid coordinates
+        const incidentsWithCoords = convertedIncidents.filter(
+          (incident) => incident.lat !== 0 && incident.lng !== 0 && incident.lat !== null && incident.lng !== null
+        )
+        
+        console.log('Incidents with valid coordinates:', incidentsWithCoords.length)
+        setIncidents(convertedIncidents)
         setIsLoading(false)
       },
-      { statusFilter: 'all', limitCount: 100 }
+      {
+        statusFilter: 'all', // Get all, we'll filter in the component
+        limitCount: 100,
+      }
     )
 
-    return () => unsubscribe()
+    return () => {
+      console.log('Unsubscribing from emergency reports')
+      unsubscribe()
+    }
   }, [user, router])
 
+  // Subscribe to real-time dispatcher locations
   useEffect(() => {
     if (!user) return
-    const unsubscribe = subscribeToDispatcherLocations((locations: DispatcherLocation[]) => {
-      const validLocations = locations.filter(
-        (loc) =>
-          loc.latitude != null &&
-          loc.longitude != null &&
-          loc.latitude !== 0 &&
-          loc.longitude !== 0 &&
-          !isNaN(loc.latitude) &&
-          !isNaN(loc.longitude)
-      )
-      setDispatcherLocations(validLocations)
-    })
 
-    return () => unsubscribe()
+    console.log('📍 Setting up dispatcher locations subscription...')
+    
+    const unsubscribe = subscribeToDispatcherLocations(
+      (locations: DispatcherLocation[]) => {
+        console.log('📍 Received dispatcher locations:', locations.length)
+        console.log('📍 Dispatcher data:', locations)
+        
+        // Filter out invalid locations
+        const validLocations = locations.filter(
+          (loc) =>
+            loc.latitude != null &&
+            loc.longitude != null &&
+            loc.latitude !== 0 &&
+            loc.longitude !== 0 &&
+            !isNaN(loc.latitude) &&
+            !isNaN(loc.longitude)
+        )
+        
+        console.log('📍 Valid dispatcher locations:', validLocations.length)
+        setDispatcherLocations(validLocations)
+      }
+    )
+
+    return () => {
+      console.log('📍 Unsubscribing from dispatcher locations')
+      unsubscribe()
+    }
   }, [user])
 
+  // Get user's current location on component mount
   useEffect(() => {
     getCurrentLocation()
   }, [])
@@ -134,106 +170,120 @@ export default function MapPage() {
       (position) => {
         const { latitude, longitude } = position.coords
         setUserLocation([latitude, longitude])
-        setCenterLocation(null)
+        setCenterLocation(null) // Clear incident center to show user location
         setIsLocating(false)
       },
       (error) => {
         setIsLocating(false)
-        if (error.code === error.PERMISSION_DENIED) setLocationError('Location access denied by user')
-        else if (error.code === error.POSITION_UNAVAILABLE) setLocationError('Location information unavailable')
-        else if (error.code === error.TIMEOUT) setLocationError('Location request timed out')
-        else setLocationError('An unknown error occurred')
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            setLocationError('Location access denied by user')
+            break
+          case error.POSITION_UNAVAILABLE:
+            setLocationError('Location information unavailable')
+            break
+          case error.TIMEOUT:
+            setLocationError('Location request timed out')
+            break
+          default:
+            setLocationError('An unknown error occurred')
+            break
+        }
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
     )
   }
 
   return (
     <ProtectedRoute>
-      <div className="space-y-4">
-        <section className="rounded-lg border border-slate-800 bg-slate-900/70 p-4 shadow-md shadow-black/20">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="space-y-3">
-              <div>
-                <h1 className="text-2xl font-semibold text-slate-100 md:text-3xl">Command Center Map</h1>
-                <p className="mt-1 text-sm text-slate-400">Real-time view of incidents and dispatcher locations</p>
-              </div>
-              <div className="flex items-center gap-4 overflow-x-auto pb-1 text-xs text-slate-300">
-                <span className="inline-flex shrink-0 items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 font-semibold text-emerald-200">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                  {dispatcherLocations.length} dispatcher{dispatcherLocations.length !== 1 ? 's' : ''} online
-                </span>
-                <span className="inline-flex shrink-0 items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-red-400" />
-                  Fire
-                </span>
-                <span className="inline-flex shrink-0 items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-blue-400" />
-                  Police
-                </span>
-                <span className="inline-flex shrink-0 items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-cyan-400" />
-                  MDRRMO
-                </span>
-                <span className="inline-flex shrink-0 items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                  Medical
-                </span>
-                <span className="inline-flex shrink-0 items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-amber-300" />
-                  Coast Guard
-                </span>
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-              <p className="mr-1 text-xs font-medium uppercase tracking-wide text-slate-400">Status</p>
-              {[
-                { key: 'all', label: 'All' },
-                { key: 'active', label: 'Active' },
-                { key: 'pending', label: 'Pending' },
-              ].map((chip) => (
-                <button
-                  key={chip.key}
-                  type="button"
-                  onClick={() => setStatusFilter(chip.key as StatusFilter)}
-                  className={`h-8 rounded-full border px-3.5 text-sm font-medium transition-all duration-200 ${
-                    statusFilter === chip.key
-                      ? 'border-primary-400/60 bg-primary-600 text-white shadow-sm shadow-primary-900/30'
-                      : 'border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-600 hover:bg-slate-700 hover:text-slate-200'
-                  }`}
-                >
-                  {chip.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="overflow-hidden rounded-lg border border-slate-800 bg-slate-900/70 shadow-md shadow-black/20">
-          <div className="flex flex-col gap-2 border-b border-slate-800 px-4 py-3 md:flex-row md:items-center md:justify-between">
+      <div className="space-y-6">
+        {/* Header Section */}
+        <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
+          <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-base font-semibold text-slate-100">Live Map</h2>
-              <p className="text-xs text-slate-400">Incidents and dispatcher positions</p>
+              <h1 className="text-3xl font-bold text-slate-100 mb-2">
+                Command Center Map
+              </h1>
+              <p className="text-slate-400">
+                Real-time view of incidents and dispatcher locations
+              </p>
+              <div className="flex items-center gap-4 mt-2">
+                <p className="text-sm text-slate-500">
+                  {dispatcherLocations.length} dispatcher{dispatcherLocations.length !== 1 ? 's' : ''} online
+                </p>
+                {dispatcherLocations.length > 0 && (
+                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                    <span className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                      Fire
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-blue-600"></div>
+                      Police
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-green-600"></div>
+                      MDRRMO
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-orange-500"></div>
+                      Medical
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-cyan-500"></div>
+                      Coast Guard
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="rounded-full border border-slate-700 bg-slate-900/80 px-2.5 py-1 text-[11px] text-slate-300">
-                {statusFilter.toUpperCase()} {typeFilter !== 'all' ? `• ${typeFilter.replace('_', ' ').toUpperCase()}` : ''}
-              </span>
+            <div className="flex gap-2">
               <button
-                onClick={getCurrentLocation}
-                disabled={isLocating}
-                className="h-9 rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs font-semibold text-slate-200 transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => setFilter('all')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  filter === 'all'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+                }`}
               >
-                {isLocating ? 'Locating...' : 'My Location'}
+                All
+              </button>
+              <button
+                onClick={() => setFilter('active')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  filter === 'active'
+                    ? 'bg-red-500/80 text-white'
+                    : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+                }`}
+              >
+                Active
+              </button>
+              <button
+                onClick={() => setFilter('pending')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  filter === 'pending'
+                    ? 'bg-yellow-500/80 text-white'
+                    : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+                }`}
+              >
+                Pending
               </button>
             </div>
           </div>
-          <div className="relative h-[600px] w-full md:h-[680px] xl:h-[720px]">
+        </div>
+
+        {/* Map Container */}
+        <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 overflow-hidden">
+          <div className="h-[600px] w-full relative">
             {isLoading ? (
-              <div className="flex h-full w-full items-center justify-center bg-slate-950">
+              <div className="h-full w-full flex items-center justify-center bg-slate-950">
                 <div className="text-center">
-                  <div className="inline-block h-8 w-8 animate-spin rounded-full border-b-2 border-primary-600"></div>
-                  <p className="mt-4 text-slate-400">Loading incidents...</p>
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                  <p className="text-slate-400 text-lg mt-4">Loading incidents...</p>
                 </div>
               </div>
             ) : (
@@ -246,72 +296,150 @@ export default function MapPage() {
                 centerLocation={centerLocation}
               />
             )}
+            {/* Location Button */}
+            <div className="absolute top-4 right-4 z-[1000] flex flex-col gap-2">
+            <button
+              onClick={getCurrentLocation}
+              disabled={isLocating}
+              className="bg-slate-900/90 hover:bg-slate-800 text-slate-200 px-4 py-2 rounded-lg shadow-lg border border-slate-800 flex items-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Get current location"
+            >
+              {isLocating ? (
+                <>
+                  <svg
+                    className="animate-spin h-5 w-5"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                  <span>Locating...</span>
+                </>
+              ) : (
+                <>
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                  </svg>
+                  <span>My Location</span>
+                </>
+              )}
+            </button>
             {locationError && (
-              <div className="absolute bottom-3 right-3 z-[1000] max-w-xs rounded-lg border border-red-900/60 bg-red-950/40 px-3 py-2 text-xs text-red-200">
+              <div className="bg-red-950/40 border border-red-900/60 text-red-200 px-3 py-2 rounded-lg text-sm max-w-xs">
                 {locationError}
               </div>
             )}
           </div>
-        </section>
+        </div>
+      </div>
 
-        <section className="rounded-lg border border-slate-800 bg-slate-900/70 p-4 shadow-md shadow-black/20">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-slate-100">Incidents on Map</h2>
-            <span className="text-xs text-slate-400">({filteredIncidents.length})</span>
-          </div>
+      {/* Incident List Sidebar */}
+      <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
+          <h2 className="text-2xl font-bold text-slate-100 mb-4">
+            Incidents on Map ({filteredIncidents.length})
+          </h2>
           {isLoading ? (
-            <div className="py-12 text-center">
-              <div className="inline-block h-8 w-8 animate-spin rounded-full border-b-2 border-primary-600"></div>
-              <p className="mt-4 text-sm text-slate-400">Loading incidents...</p>
+            <div className="text-center py-12">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+              <p className="text-slate-400 text-lg mt-4">Loading incidents...</p>
             </div>
           ) : filteredIncidents.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-slate-800 bg-slate-950/40 px-4 py-10 text-center">
-              <p className="text-sm font-semibold text-slate-200">No incidents on the map</p>
-              <p className="mt-1 text-xs text-slate-500">Try changing the selected filters.</p>
+            <div className="text-center py-12">
+              <p className="text-slate-400 text-lg">No incidents with location data</p>
+              <p className="text-slate-500 text-sm mt-2">
+                {incidents.length === 0 
+                  ? 'No incidents found' 
+                  : `${incidents.length - filteredIncidents.length} incident(s) without coordinates`}
+              </p>
             </div>
           ) : (
-            <div className="max-h-[620px] space-y-2 overflow-y-auto pr-1">
+            <div className="space-y-3">
               {filteredIncidents.map((incident) => (
-                <button
+                <div
                   key={incident.id}
-                  type="button"
                   onClick={() => handleIncidentClick(incident.id)}
-                  className={`w-full rounded-lg border p-3 text-left transition-all ${
+                  className={`border rounded-lg p-4 cursor-pointer transition-all ${
                     selectedIncident === incident.id
                       ? 'border-primary-500 bg-primary-500/10 shadow-md shadow-black/30'
-                      : 'border-slate-800 bg-slate-950/50 hover:border-slate-700'
+                      : 'border-slate-800 hover:border-slate-700 hover:shadow-sm'
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm font-semibold text-slate-100">{incident.type}</p>
-                    <span
-                      className={`rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase ${
-                        incident.priority === 'critical'
-                          ? 'border border-red-500/30 bg-red-500/15 text-red-300'
-                          : incident.priority === 'high'
-                            ? 'border border-orange-500/30 bg-orange-500/15 text-orange-300'
-                            : incident.priority === 'medium'
-                              ? 'border border-blue-500/30 bg-blue-500/15 text-blue-300'
-                              : 'border border-slate-600 bg-slate-800/80 text-slate-300'
-                      }`}
-                    >
-                      {incident.priority}
-                    </span>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-semibold text-slate-100">
+                          {incident.type}
+                        </h3>
+                        <span
+                          className={`px-2 py-1 text-xs font-medium rounded ${
+                            incident.priority === 'critical'
+                              ? 'bg-red-500/10 text-red-200'
+                              : incident.priority === 'high'
+                              ? 'bg-orange-500/10 text-orange-200'
+                              : 'bg-yellow-500/10 text-yellow-200'
+                          }`}
+                        >
+                          {incident.priority}
+                        </span>
+                      </div>
+                      <p className="text-sm text-slate-400 mb-2">
+                        {incident.location}
+                      </p>
+                      <div className="flex items-center gap-4 text-xs text-slate-500">
+                        <span>
+                          {incident.reportedAt.toLocaleTimeString()}
+                        </span>
+                        {incident.responder && (
+                          <span>Responder: {incident.responder}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="ml-4">
+                      <div
+                        className={`w-4 h-4 rounded-full ${
+                          incident.status === 'active'
+                            ? 'bg-red-500 animate-pulse'
+                            : incident.status === 'pending'
+                            ? 'bg-yellow-500'
+                            : 'bg-green-500'
+                        }`}
+                      ></div>
+                    </div>
                   </div>
-                  <p className="mt-1 text-xs text-slate-400">{incident.location}</p>
-                  <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
-                    <span>{incident.reportedAt.toLocaleTimeString()}</span>
-                    <span
-                      className={`inline-flex h-2.5 w-2.5 rounded-full ${
-                        incident.status === 'active' ? 'bg-red-500' : incident.status === 'pending' ? 'bg-yellow-500' : 'bg-emerald-500'
-                      }`}
-                    />
-                  </div>
-                </button>
+                </div>
               ))}
             </div>
           )}
-        </section>
+        </div>
       </div>
     </ProtectedRoute>
   )
