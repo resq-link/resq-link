@@ -114,12 +114,38 @@ export default function ResponderMapScreen() {
         return { backgroundColor: "#EEEEF2", textColor: "#616168" };
     }
   };
+  const toNumber = (value) => {
+    if (typeof value === "number") {
+      return Number.isFinite(value) ? value : null;
+    }
+    const parsed = parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+
+  const normalizedResponders = responders.map((responder) => ({
+    ...responder,
+    latitudeValue: toNumber(responder.latitude),
+    longitudeValue: toNumber(responder.longitude),
+  }));
+
+  const respondersWithCoords = normalizedResponders.filter(
+    (responder) =>
+      responder.latitudeValue !== null &&
+      responder.longitudeValue !== null &&
+      responder.latitudeValue !== 0 &&
+      responder.longitudeValue !== 0
+  );
+  const missingCoordsCount = normalizedResponders.length - respondersWithCoords.length;
 
   const initialRegion = {
     latitude:
-      responders.length > 0 ? parseFloat(responders[0].latitude) : 17.6132,
+      respondersWithCoords.length > 0
+        ? respondersWithCoords[0].latitudeValue
+        : 17.6132,
     longitude:
-      responders.length > 0 ? parseFloat(responders[0].longitude) : 121.7270,
+      respondersWithCoords.length > 0
+        ? respondersWithCoords[0].longitudeValue
+        : 121.7270,
     latitudeDelta: 0.05,
     longitudeDelta: 0.05,
   };
@@ -169,9 +195,22 @@ export default function ResponderMapScreen() {
             marginTop: 4,
           }}
         >
-          {responders.length} responder{responders.length !== 1 ? "s" : ""}{" "}
-          nearby
+          {respondersWithCoords.length} responder
+          {respondersWithCoords.length !== 1 ? "s" : ""} nearby
         </Text>
+        {missingCoordsCount > 0 && (
+          <Text
+            style={{
+              fontFamily: "Inter_400Regular",
+              fontSize: 12,
+              color: "#6C6C6C",
+              marginTop: 4,
+            }}
+          >
+            {missingCoordsCount} responder
+            {missingCoordsCount !== 1 ? "s" : ""} missing coordinates
+          </Text>
+        )}
       </View>
 
       {/* Map */}
@@ -183,12 +222,12 @@ export default function ResponderMapScreen() {
           showsUserLocation
           showsMyLocationButton
         >
-          {responders.map((responder) => (
+          {respondersWithCoords.map((responder) => (
             <Marker
               key={responder.id}
               coordinate={{
-                latitude: parseFloat(responder.latitude),
-                longitude: parseFloat(responder.longitude),
+                latitude: responder.latitudeValue,
+                longitude: responder.longitudeValue,
               }}
               pinColor={getMarkerColor(responder.unit_type)}
               title={responder.name}
@@ -255,90 +294,71 @@ export default function ResponderMapScreen() {
           }}
           showsVerticalScrollIndicator={false}
         >
-          {responders.map((responder) => {
+          {normalizedResponders.map((responder) => {
             const badgeStyle = getStatusBadgeStyle(responder.status);
             return (
-            <View
-              key={responder.id}
-              style={{
-                backgroundColor: colors.card,
-                borderWidth: 1,
-                borderColor: colors.border,
-                borderRadius: 12,
-                padding: 16,
-                marginBottom: 12,
-              }}
-            >
               <View
+                key={responder.id}
                 style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  marginBottom: 8,
+                  backgroundColor: colors.card,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  borderRadius: 12,
+                  padding: 16,
+                  marginBottom: 12,
                 }}
               >
-                <Text
-                  style={{
-                    fontFamily: "Inter_600SemiBold",
-                    fontSize: 16,
-                    color: colors.text,
-                    flex: 1,
-                  }}
-                >
-                  {responder.name}
-                </Text>
                 <View
                   style={{
-                    backgroundColor: badgeStyle.backgroundColor,
-                    paddingHorizontal: 10,
-                    paddingVertical: 4,
-                    borderRadius: 6,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: 8,
                   }}
                 >
                   <Text
                     style={{
                       fontFamily: "Inter_600SemiBold",
-                      fontSize: 11,
-                      color: badgeStyle.textColor,
-                      textTransform: "capitalize",
+                      fontSize: 16,
+                      color: colors.text,
+                      flex: 1,
                     }}
                   >
-                    {responder.status?.replace("_", " ") || "Unknown"}
+                    {responder.name}
                   </Text>
+                  <View
+                    style={{
+                      backgroundColor: badgeStyle.backgroundColor,
+                      paddingHorizontal: 10,
+                      paddingVertical: 4,
+                      borderRadius: 6,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontFamily: "Inter_600SemiBold",
+                        fontSize: 11,
+                        color: badgeStyle.textColor,
+                        textTransform: "capitalize",
+                      }}
+                    >
+                      {responder.status?.replace("_", " ") || "Unknown"}
+                    </Text>
+                  </View>
                 </View>
-              </View>
 
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  marginBottom: 4,
-                }}
-              >
-                <Navigation
-                  size={14}
-                  color={colors.textSecondary}
-                  style={{ marginRight: 8 }}
-                />
-                <Text
-                  style={{
-                    fontFamily: "Inter_400Regular",
-                    fontSize: 14,
-                    color: colors.textSecondary,
-                  }}
-                >
-                  {responder.unit_type}
-                </Text>
-              </View>
-
-              {responder.phone_number && (
                 <View
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
+                    marginBottom: 4,
                   }}
                 >
-                  <Phone size={14} color={colors.textSecondary} style={{ marginRight: 8 }} />
+                  <Navigation
+                    size={14}
+                    color={colors.textSecondary}
+                    style={{ marginRight: 8 }}
+                  />
                   <Text
                     style={{
                       fontFamily: "Inter_400Regular",
@@ -346,11 +366,44 @@ export default function ResponderMapScreen() {
                       color: colors.textSecondary,
                     }}
                   >
-                    {responder.phone_number}
+                    {responder.unit_type}
                   </Text>
                 </View>
-              )}
-            </View>
+
+                {responder.latitudeValue === null ||
+                responder.longitudeValue === null ? (
+                  <Text
+                    style={{
+                      fontFamily: "Inter_400Regular",
+                      fontSize: 12,
+                      color: "#6C6C6C",
+                      marginBottom: responder.phone_number ? 8 : 0,
+                    }}
+                  >
+                    Location unavailable
+                  </Text>
+                ) : null}
+
+                {responder.phone_number && (
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Phone size={14} color={colors.textSecondary} style={{ marginRight: 8 }} />
+                    <Text
+                      style={{
+                        fontFamily: "Inter_400Regular",
+                        fontSize: 14,
+                        color: colors.textSecondary,
+                      }}
+                    >
+                      {responder.phone_number}
+                    </Text>
+                  </View>
+                )}
+              </View>
             );
           })}
         </ScrollView>

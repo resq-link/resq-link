@@ -6,7 +6,11 @@ export { getDoc, doc, updateDoc, Timestamp, onSnapshot, collection, getDocs, que
 
 // Export Firebase Auth types and functions
 export type { User } from 'firebase/auth';
-export { onAuthStateChanged, signOut } from 'firebase/auth';
+export {
+  onAuthStateChanged,
+  signOut,
+  signInWithEmailAndPassword,
+} from 'firebase/auth';
 
 // Export authentication functions
 export {
@@ -54,4 +58,47 @@ export {
   getActiveDispatcherLocations,
   type DispatcherLocation,
 } from './dispatchers';
+
+// Export resource management functions
+export {
+  createResource,
+  updateResource,
+  deleteResource,
+  getAllResources,
+  subscribeToResources,
+  type ResourceRecord,
+  type ResourceStatus,
+  type ResourceType,
+} from './resources';
+
+// Export incident management functions
+export {
+  createIncident,
+  dispatchIncidentResources,
+  saveIncidentTypeRule,
+  subscribeToIncidents,
+  subscribeToIncidentTypeRules,
+  getIncidentTypeRules,
+  getIncidentTypeRuleById,
+  resolveIncidentTypeRuleById,
+  getAgencyLabel,
+  getExpectedResourceTypesForAgencies,
+  formatIncidentStatus,
+  getIncidentPriorityTone,
+  getIncidentResourceMatch,
+  validateIncidentAgencyRouting,
+  incidentAgencyCatalog,
+  incidentTypeRules,
+  type AgencyCode,
+  type CreateIncidentInput,
+  type IncidentCategory,
+  type IncidentDispatchRecord,
+  type IncidentPriority,
+  type IncidentRecord,
+  type IncidentSource,
+  type IncidentStatus,
+  type IncidentTypeRule,
+  type ResolutionStatus,
+  type SaveIncidentTypeRuleInput,
+} from './incidents';
 

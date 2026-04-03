@@ -1,0 +1,16 @@
+diff --git a/node_modules/@expo/cli/build/src/start/server/AsyncNgrok.js b/node_modules/@expo/cli/build/src/start/server/AsyncNgrok.js
+index 4c42029..ea682aa 100644
+--- a/node_modules/@expo/cli/build/src/start/server/AsyncNgrok.js
++++ b/node_modules/@expo/cli/build/src/start/server/AsyncNgrok.js
+@@ -96,7 +96,10 @@ const NGROK_CONFIG = {
+     authToken: '5W1bR67GNbWcXqmxZzBG1_56GezNeaX6sSRvn8npeQ8',
+     domain: 'exp.direct'
+ };
+-const TUNNEL_TIMEOUT = 10 * 1000;
++const TUNNEL_TIMEOUT = (()=>{
++    const n = parseInt(process.env.EXPO_TUNNEL_TIMEOUT_MS || "", 10);
++    return Number.isFinite(n) && n >= 15e3 ? n : 120 * 1e3;
++})();
+ class AsyncNgrok {
+     constructor(projectRoot, port){
+         this.projectRoot = projectRoot;

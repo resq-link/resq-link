@@ -1,5 +1,9 @@
+const path = require("path");
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Monorepo: avoid inferring wrong workspace root when multiple lockfiles exist
+  outputFileTracingRoot: path.join(__dirname, "../.."),
   reactStrictMode: true,
   eslint: {
     ignoreDuringBuilds: true,

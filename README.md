@@ -1,17 +1,58 @@
 # RESQ-Link - Project Setup Guide 
 
-Welcome to the RESCUE Mobile App project! This monorepo contains multiple applications and a shared Firebase package. This guide will help you set up each component of the project.
+Welcome to the rescue dispatch monorepo: multiple client apps and one shared Firebase library. **There is no root `package.json`** — each app under `apps/` and `packages/firebase` is installed with **its own** `npm install` (see the **Setup order summary** section below).
 
-## 📁 Project Structure
+## 📁 Repository structure
+
+High-level layout of this repository (`Tuguegarao_RescueSystem`):
 
 ```
-RESCUE_MOBILE APP/
+Tuguegarao_RescueSystem/
 ├── apps/
-│   ├── civilian-mobile-app/     # Mobile app for citizens (Expo/React Native)
-│   ├── dispatcher-web-app/      # Web dashboard for command centers (Next.js)
-│   └── responder-mobile-app/    # Mobile app for responders (Expo/React Native)
-└── packages/
-    └── firebase/            # Shared Firebase package
+│   ├── civilian-mobile-app/       # Citizens — Expo (React Native), Expo Router (`src/app/`)
+│   ├── dispatcher-web-app/        # Command center / dispatch — Next.js (default :3000)
+│   ├── responder-mobile-app/      # Field responders — Expo (React Native)
+│   └── super-admin-web-app/       # Super admin — Next.js (dev :3001)
+├── packages/
+│   └── firebase/                  # Shared `@packages/firebase` — TypeScript → `dist/` (must `npm run build`)
+├── .github/                       # CI / GitHub configuration
+├── vercel.json                    # Deployment hints (if used)
+├── package-lock.json              # Minimal lockfile at repo root (apps keep their own deps)
+└── README.md                      # This file
+```
+
+### What lives where
+
+| Path | Role |
+|------|------|
+| `apps/civilian-mobile-app/` | Public mobile app: emergencies, auth, maps polyfills, Metro config, `app.json` / `.env` |
+| `apps/dispatcher-web-app/` | Dispatcher / command-center web UI (Next.js) |
+| `apps/super-admin-web-app/` | Administrative web UI (Next.js, dev server on port **3001**) |
+| `apps/responder-mobile-app/` | Responder mobile app (Expo) |
+| `packages/firebase/` | Shared Firebase init, Firestore helpers, and scripts; consumed via `"@packages/firebase": "file:../../packages/firebase"` in apps |
+
+### Inside `packages/firebase/` (after `npm run build`)
+
+```
+packages/firebase/
+├── src/           # TypeScript sources
+├── dist/          # Compiled JS (imported by apps) — run `npm run build`
+├── scripts/       # Node scripts (users, admin bootstrap) — see package README
+└── README.md
+```
+
+### Inside `apps/civilian-mobile-app/` (representative)
+
+```
+apps/civilian-mobile-app/
+├── src/app/           # Expo Router screens and layouts
+├── src/components/    # Shared UI
+├── polyfills/         # Web / native polyfills used by Metro
+├── assets/            # Images, fonts
+├── app.json           # Expo config (name, scheme `resqlink`, plugins, `extra.firebase`)
+├── metro.config.js    # Monorepo + `@packages/firebase` resolution
+├── .env               # `EXPO_PUBLIC_*` secrets (not committed)
+└── package.json
 ```
 
 ## 🔑 Getting API Keys
@@ -178,9 +219,31 @@ npm run dev
 
 ---
 
-### 4. Setup `apps/responder-mobile-app/` (Responder Mobile App)
+### 4. Setup `apps/super-admin-web-app/` (Super Admin Web)
 
-This is the mobile app for dispatchers to receive and manage emergency reports.
+Next.js app for super-administration (runs on **port 3001** in development).
+
+```bash
+cd apps/super-admin-web-app
+npm install
+```
+
+**Environment setup:** create `.env.local` in `apps/super-admin-web-app/` with the same `NEXT_PUBLIC_FIREBASE_*` variables as the dispatcher app (see section 3). Adjust any app-specific keys your team documents.
+
+**Run:**
+
+```bash
+npm run dev
+# http://localhost:3001
+```
+
+See `apps/super-admin-web-app/README.md` if present for app-specific notes.
+
+---
+
+### 5. Setup `apps/responder-mobile-app/` (Responder Mobile App)
+
+This is the mobile app for responders to receive and manage emergency reports.
 
 ```bash
 # Navigate to the responder app directory
@@ -227,11 +290,12 @@ npm start
 
 For a fresh clone, follow this order:
 
-1. ✅ **First**: Setup `packages/firebase/` (required by all other projects)
-2. ✅ **Then**: Setup any of the three apps in any order:
-   - `apps/civilian-mobile-app/`
-   - `apps/dispatcher-web-app/`
-   - `apps/responder-mobile-app/`
+1. ✅ **First**: Setup `packages/firebase/` (`npm install` + `npm run build`) — required by all apps that depend on `@packages/firebase`
+2. ✅ **Then**: Setup each app you need — order does not matter, but each folder needs its own `npm install`:
+   - `apps/civilian-mobile-app/` (Expo)
+   - `apps/dispatcher-web-app/` (Next.js, :3000)
+   - `apps/super-admin-web-app/` (Next.js, :3001)
+   - `apps/responder-mobile-app/` (Expo)
 
 ## 🛠️ Common Commands
 
@@ -252,7 +316,7 @@ npm install
 npx expo start          # Start Expo development server
 ```
 
-### Command Center Web
+### Command Center Web (`dispatcher-web-app`)
 
 ```bash
 cd apps/dispatcher-web-app
@@ -261,6 +325,16 @@ npm run dev             # Start development server (http://localhost:3000)
 npm run build           # Build for production
 npm run start           # Start production server
 npm run lint            # Run ESLint
+```
+
+### Super Admin Web (`super-admin-web-app`)
+
+```bash
+cd apps/super-admin-web-app
+npm install
+npm run dev             # http://localhost:3001
+npm run build
+npm run start           # production: port 3001
 ```
 
 ## ⚠️ Important Notes

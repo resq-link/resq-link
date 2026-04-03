@@ -8,9 +8,11 @@ import { useAuth } from '@/contexts/AuthContext'
 import {
   LayoutDashboard,
   FileText,
+  ClipboardList,
   Radio,
   Map,
   History,
+  Ambulance,
   Menu,
   X,
   ChevronDown,
@@ -21,8 +23,10 @@ import {
 const navItems = [
   { href: '/overview', label: 'Overview', icon: LayoutDashboard },
   { href: '/intake', label: 'Intake', icon: FileText },
+  { href: '/incident-management', label: 'Incident Management', icon: ClipboardList },
   { href: '/', label: 'Live Incidents', icon: Radio },
   { href: '/map', label: 'Map', icon: Map },
+  { href: '/resources', label: 'Resources', icon: Ambulance },
   { href: '/history', label: 'History', icon: History },
 ]
 
@@ -157,7 +161,7 @@ export default function Navigation() {
                     <p className="truncate text-sm font-medium text-slate-200">
                       {user.email?.split('@')[0] || 'User'}
                     </p>
-                    <p className="truncate text-[11px] text-slate-500">Dispatcher</p>
+                    <p className="truncate text-[11px] text-slate-500">Command Center Admin</p>
                   </div>
                   <ChevronDown
                     size={16}
@@ -175,7 +179,7 @@ export default function Navigation() {
                       <p className="truncate text-sm font-medium text-slate-200">
                         {user.email}
                       </p>
-                      <p className="text-xs text-slate-500 mt-0.5">Signed in as dispatcher</p>
+                      <p className="text-xs text-slate-500 mt-0.5">Signed in as command center admin</p>
                     </div>
                     <button
                       onClick={handleSignOut}
