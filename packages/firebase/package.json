@@ -6,11 +6,13 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": "./dist/index.js",
-    "./admin": "./dist/admin.js"
+    "./admin": "./dist/admin.js",
+    "./civilian-auth": "./dist/civilian-auth.js"
   },
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "prepare": "npm run build"
   },
   "dependencies": {
     "firebase": "^12.11.0",

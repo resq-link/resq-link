@@ -1,5 +1,10 @@
-// Export Firebase instances
-export { auth, firestore, storage } from './config';
+// Lazy accessors — no Firebase SDK init until first call (use these instead of legacy `auth` / `firestore` exports).
+export {
+  getFirebaseApp,
+  getFirebaseAuth,
+  getFirebaseFirestore,
+  getFirebaseStorage,
+} from './config';
 
 // Export Firestore functions
 export { getDoc, doc, updateDoc, Timestamp, onSnapshot, collection, getDocs, query, where } from 'firebase/firestore';

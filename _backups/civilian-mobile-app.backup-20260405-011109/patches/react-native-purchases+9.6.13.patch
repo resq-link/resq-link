@@ -1,0 +1,14 @@
+diff --git a/node_modules/react-native-purchases/dist/utils/environment.js b/node_modules/react-native-purchases/dist/utils/environment.js
+index 1111111..2222222 100644
+--- a/node_modules/react-native-purchases/dist/utils/environment.js
++++ b/node_modules/react-native-purchases/dist/utils/environment.js
+@@ -31,6 +31,9 @@ exports.shouldUseBrowserMode = shouldUseBrowserMode;
+  */
+ function isExpoGo() {
+     var _a, _b;
++    if (globalThis.expo && globalThis.expo.modules && globalThis.expo.modules.AnythingLauncherModule) {
++      return true;
++    }
+     if (!!react_native_1.NativeModules.RNPurchases) {
+         return false;
+     }

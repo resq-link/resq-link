@@ -15,7 +15,7 @@ import {
   doc,
   updateDoc
 } from 'firebase/firestore';
-import { firestore, auth } from './config';
+import { getFirebaseFirestore, getFirebaseAuth } from './config';
 
 // Emergency Report Types
 export interface EmergencyReport {
@@ -80,7 +80,7 @@ const getDefaultPriority = (incidentType: string): 'low' | 'medium' | 'high' | '
 export async function submitEmergencyReport(report: Omit<EmergencyReport, 'id' | 'createdAt' | 'updatedAt'>): Promise<EmergencyReport> {
   try {
     // Verify user is authenticated with Firebase Auth
-    const currentUser = auth.currentUser;
+    const currentUser = getFirebaseAuth().currentUser;
     if (!currentUser) {
       throw new Error('User must be authenticated with Firebase Auth to submit emergency reports');
     }
@@ -90,7 +90,7 @@ export async function submitEmergencyReport(report: Omit<EmergencyReport, 'id' |
       console.warn(`UserId mismatch: report.userId (${report.userId}) vs auth.uid (${currentUser.uid}). Using auth.uid.`);
     }
     
-    const reportsRef = collection(firestore, 'emergencies');
+    const reportsRef = collection(getFirebaseFirestore(), 'emergencies');
     
     const reportData = {
       userId: currentUser.uid, // Use authenticated user's UID
@@ -129,7 +129,7 @@ export async function submitEmergencyReport(report: Omit<EmergencyReport, 'id' |
 export async function getUserEmergencyReports(userId: string, limitCount: number = 50): Promise<EmergencyReport[]> {
   try {
     // Verify user is authenticated
-    const currentUser = auth.currentUser;
+    const currentUser = getFirebaseAuth().currentUser;
     if (!currentUser) {
       throw new Error('User must be authenticated with Firebase Auth to fetch emergency reports');
     }
@@ -137,7 +137,7 @@ export async function getUserEmergencyReports(userId: string, limitCount: number
     // Use userId from authenticated user if provided userId doesn't match
     const targetUserId = userId || currentUser.uid;
     
-    const reportsRef = collection(firestore, 'emergencies');
+    const reportsRef = collection(getFirebaseFirestore(), 'emergencies');
     
     // Try query with orderBy first, if it fails due to missing index, fall back to simpler query
     try {
@@ -189,7 +189,7 @@ export async function getUserEmergencyReports(userId: string, limitCount: number
  */
 export async function getAllEmergencyReports(limitCount: number = 100): Promise<EmergencyReport[]> {
   try {
-    const reportsRef = collection(firestore, 'emergencies');
+    const reportsRef = collection(getFirebaseFirestore(), 'emergencies');
     const q = query(
       reportsRef,
       orderBy('createdAt', 'desc'),
@@ -209,7 +209,7 @@ export async function getAllEmergencyReports(limitCount: number = 100): Promise<
  */
 export async function getActiveEmergencyReports(limitCount: number = 100): Promise<EmergencyReport[]> {
   try {
-    const reportsRef = collection(firestore, 'emergencies');
+    const reportsRef = collection(getFirebaseFirestore(), 'emergencies');
     const q = query(
       reportsRef,
       where('status', 'in', ['pending', 'active']),
@@ -236,7 +236,7 @@ export function subscribeToEmergencyReports(
   }
 ): () => void {
   try {
-    const reportsRef = collection(firestore, 'emergencies');
+    const reportsRef = collection(getFirebaseFirestore(), 'emergencies');
     
     // Build query constraints - avoid composite indexes by NOT using orderBy in query
     // We'll sort in memory instead to avoid index requirements
@@ -344,12 +344,12 @@ export async function assignDispatcherToEmergency(
 ): Promise<EmergencyReport> {
   try {
     // Verify user is authenticated
-    const currentUser = auth.currentUser;
+    const currentUser = getFirebaseAuth().currentUser;
     if (!currentUser) {
       throw new Error('User must be authenticated to assign dispatchers');
     }
 
-    const reportRef = doc(firestore, 'emergencies', reportId);
+    const reportRef = doc(getFirebaseFirestore(), 'emergencies', reportId);
     
     // Get the current document to preserve existing data
     const reportDocSnap = await getDoc(reportRef);
@@ -394,12 +394,12 @@ export async function assignDispatcherToEmergency(
 export async function acceptCase(reportId: string): Promise<EmergencyReport> {
   try {
     // Verify user is authenticated
-    const currentUser = auth.currentUser;
+    const currentUser = getFirebaseAuth().currentUser;
     if (!currentUser) {
       throw new Error('User must be authenticated to accept cases');
     }
 
-    const reportRef = doc(firestore, 'emergencies', reportId);
+    const reportRef = doc(getFirebaseFirestore(), 'emergencies', reportId);
     
     // Get the current document to verify assignment
     const reportDocSnap = await getDoc(reportRef);
@@ -453,7 +453,7 @@ export async function updateCaseStatus(
 ): Promise<EmergencyReport> {
   try {
     // Verify user is authenticated
-    const currentUser = auth.currentUser;
+    const currentUser = getFirebaseAuth().currentUser;
     if (!currentUser) {
       throw new Error('User must be authenticated to update case status');
     }
@@ -463,7 +463,7 @@ export async function updateCaseStatus(
       throw new Error('Invalid status. Must be enroute, on_scene, or done');
     }
 
-    const reportRef = doc(firestore, 'emergencies', reportId);
+    const reportRef = doc(getFirebaseFirestore(), 'emergencies', reportId);
     
     // Get the current document to verify assignment
     const reportDocSnap = await getDoc(reportRef);
@@ -520,7 +520,7 @@ export function subscribeToDispatcherAssignedEmergencies(
   }
 ): () => void {
   try {
-    const reportsRef = collection(firestore, 'emergencies');
+    const reportsRef = collection(getFirebaseFirestore(), 'emergencies');
     
     // Build query to get emergencies assigned to this dispatcher
     const constraints: QueryConstraint[] = [

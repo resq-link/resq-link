@@ -1,13 +1,8 @@
-import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getAuth, initializeAuth, Auth } from 'firebase/auth';
+import { initializeApp, getApps, FirebaseApp, type FirebaseOptions } from 'firebase/app';
+import { getAuth, initializeAuth, type Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 
-// Firebase configuration - these should be set via environment variables or app.json
-// Supports both NEXT_PUBLIC_/EXPO_PUBLIC_ prefixes (for apps) and FIREBASE_ prefix (for scripts)
-// Also supports Expo app.json extra.firebase config
-
-// Helper function to check if a value is a placeholder
 const isPlaceholder = (value: string | undefined | null): boolean => {
   if (!value) return true;
   const placeholders = [
@@ -27,16 +22,13 @@ const isPlaceholder = (value: string | undefined | null): boolean => {
   return placeholders.some(placeholder => value.includes(placeholder));
 };
 
-// Helper function to get config value, skipping placeholders
 const getConfigValue = (
   expoValue: string | undefined | null,
   ...envValues: (string | undefined)[]
 ): string => {
-  // If expo value exists and is not a placeholder, use it
   if (expoValue && !isPlaceholder(expoValue)) {
     return expoValue;
   }
-  // Otherwise, use first available env value
   for (const envValue of envValues) {
     if (envValue && !isPlaceholder(envValue)) {
       return envValue;
@@ -45,135 +37,153 @@ const getConfigValue = (
   return '';
 };
 
-// Try to get Firebase config from Expo Constants (app.json extra.firebase)
-// Skip in Next.js/web environments to avoid bundling React Native modules
-let expoFirebaseConfig = null;
+type ExpoFirebaseExtra = {
+  apiKey?: string;
+  authDomain?: string;
+  projectId?: string;
+  storageBucket?: string;
+  messagingSenderId?: string;
+  appId?: string;
+} | null;
 
-// Check if we're in a Next.js environment (has process.env.NEXT_RUNTIME or is server-side rendering)
-const isNextJs = typeof process !== 'undefined' && (process.env.NEXT_RUNTIME || process.env.NODE_ENV === 'production');
-const isBrowser = typeof window !== 'undefined';
-const isReactNative = typeof navigator !== 'undefined' && navigator.product === 'ReactNative';
+/** `undefined` = not loaded yet; `null` = no usable Expo extra */
+let expoFirebaseConfigMemo: ExpoFirebaseExtra | undefined = undefined;
 
-// Only try to load Expo Constants in React Native environments, not in Next.js
-if (!isNextJs && (isReactNative || (!isBrowser && !isNextJs))) {
-  try {
-    // Use dynamic require - webpack may still try to resolve this, but it should fail gracefully
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const Constants = require('expo-constants');
-    if (Constants) {
-      // Try multiple paths to get the config
-      expoFirebaseConfig = Constants.default?.expoConfig?.extra?.firebase || 
-                           Constants.expoConfig?.extra?.firebase ||
-                           Constants.default?.manifest?.extra?.firebase ||
-                           Constants.manifest?.extra?.firebase ||
-                           Constants.default?.manifest2?.extra?.firebase ||
-                           Constants.manifest2?.extra?.firebase;
+/**
+ * Reads Expo `extra.firebase` only when called (e.g. first Firebase use).
+ * Avoids requiring `expo-constants` during unrelated module evaluation.
+ */
+function loadExpoFirebaseConfig(): ExpoFirebaseExtra {
+  if (expoFirebaseConfigMemo !== undefined) {
+    return expoFirebaseConfigMemo;
+  }
+
+  expoFirebaseConfigMemo = null;
+
+  const isNextJs =
+    typeof process !== 'undefined' && Boolean(process.env.NEXT_RUNTIME);
+  const isBrowser = typeof window !== 'undefined';
+  const isReactNative =
+    typeof navigator !== 'undefined' && navigator.product === 'ReactNative';
+
+  if (!isNextJs && (isReactNative || (!isBrowser && !isNextJs))) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const Constants = require('expo-constants');
+      if (Constants) {
+        const cfg =
+          Constants.default?.expoConfig?.extra?.firebase ||
+          Constants.expoConfig?.extra?.firebase ||
+          Constants.default?.manifest?.extra?.firebase ||
+          Constants.manifest?.extra?.firebase ||
+          Constants.default?.manifest2?.extra?.firebase ||
+          Constants.manifest2?.extra?.firebase;
+        if (cfg && typeof cfg === 'object') {
+          expoFirebaseConfigMemo = cfg as NonNullable<ExpoFirebaseExtra>;
+        }
+      }
+    } catch {
+      /* not an Expo bundle */
     }
-  } catch (e) {
-    // Constants not available (not in Expo environment) - this is fine
-    // Will fall back to environment variables
   }
+
+  if (expoFirebaseConfigMemo && isPlaceholder(expoFirebaseConfigMemo.apiKey)) {
+    expoFirebaseConfigMemo = null;
+  }
+
+  return expoFirebaseConfigMemo;
 }
 
-if (expoFirebaseConfig) {
-  // Check if API key is a placeholder
-  if (isPlaceholder(expoFirebaseConfig.apiKey)) {
-    console.log('⚠️ Firebase config in app.json contains placeholder values, falling back to environment variables');
-    expoFirebaseConfig = null;
-  } else {
-    console.log('✅ Firebase config loaded from app.json');
+let cachedFirebaseOptions: FirebaseOptions | null = null;
+
+function getFirebaseOptions(): FirebaseOptions {
+  if (cachedFirebaseOptions) {
+    return cachedFirebaseOptions;
   }
+
+  const expoFirebaseConfig = loadExpoFirebaseConfig();
+
+  cachedFirebaseOptions = {
+    apiKey: getConfigValue(
+      expoFirebaseConfig?.apiKey,
+      process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+      process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
+      process.env.FIREBASE_API_KEY
+    ),
+    authDomain: getConfigValue(
+      expoFirebaseConfig?.authDomain,
+      process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+      process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
+      process.env.FIREBASE_AUTH_DOMAIN
+    ),
+    projectId: getConfigValue(
+      expoFirebaseConfig?.projectId,
+      process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+      process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
+      process.env.FIREBASE_PROJECT_ID
+    ),
+    storageBucket: getConfigValue(
+      expoFirebaseConfig?.storageBucket,
+      process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+      process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
+      process.env.FIREBASE_STORAGE_BUCKET
+    ),
+    messagingSenderId: getConfigValue(
+      expoFirebaseConfig?.messagingSenderId,
+      process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+      process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+      process.env.FIREBASE_MESSAGING_SENDER_ID
+    ),
+    appId: getConfigValue(
+      expoFirebaseConfig?.appId,
+      process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+      process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+      process.env.FIREBASE_APP_ID
+    ),
+  };
+
+  return cachedFirebaseOptions;
 }
 
-const firebaseConfig = {
-  apiKey: getConfigValue(
-    expoFirebaseConfig?.apiKey,
-    process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-    process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-    process.env.FIREBASE_API_KEY
-  ),
-  authDomain: getConfigValue(
-    expoFirebaseConfig?.authDomain,
-    process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-    process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-    process.env.FIREBASE_AUTH_DOMAIN
-  ),
-  projectId: getConfigValue(
-    expoFirebaseConfig?.projectId,
-    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-    process.env.FIREBASE_PROJECT_ID
-  ),
-  storageBucket: getConfigValue(
-    expoFirebaseConfig?.storageBucket,
-    process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-    process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
-    process.env.FIREBASE_STORAGE_BUCKET
-  ),
-  messagingSenderId: getConfigValue(
-    expoFirebaseConfig?.messagingSenderId,
-    process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-    process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-    process.env.FIREBASE_MESSAGING_SENDER_ID
-  ),
-  appId: getConfigValue(
-    expoFirebaseConfig?.appId,
-    process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-    process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
-    process.env.FIREBASE_APP_ID
-  ),
-};
-
-// Validate Firebase config before initialization
-const isConfigValid = () => {
+function isConfigValid(cfg: FirebaseOptions): boolean {
   return !!(
-    firebaseConfig.apiKey &&
-    firebaseConfig.authDomain &&
-    firebaseConfig.projectId &&
-    firebaseConfig.appId
+    cfg.apiKey &&
+    cfg.authDomain &&
+    cfg.projectId &&
+    cfg.appId
   );
-};
+}
 
-// Lazy initialization - only initialize when accessed
 let _app: FirebaseApp | null = null;
 let _auth: Auth | null = null;
 let _firestore: Firestore | null = null;
 let _storage: FirebaseStorage | null = null;
 
-function getApp(): FirebaseApp {
+function ensureFirebaseApp(): FirebaseApp {
   if (_app) {
     return _app;
   }
 
   const existingApps = getApps();
-  
+
   if (existingApps.length > 0) {
     _app = existingApps[0];
-    console.log('✅ Using existing Firebase app instance');
     return _app;
   }
 
-  // Log config for debugging (without sensitive data)
+  const firebaseConfig = getFirebaseOptions();
+
   console.log('🔧 Firebase Config Check:');
   console.log('  - API Key:', firebaseConfig.apiKey ? `${firebaseConfig.apiKey.substring(0, 10)}...` : 'MISSING');
   console.log('  - Auth Domain:', firebaseConfig.authDomain || 'MISSING');
   console.log('  - Project ID:', firebaseConfig.projectId || 'MISSING');
   console.log('  - App ID:', firebaseConfig.appId ? `${firebaseConfig.appId.substring(0, 10)}...` : 'MISSING');
-  
-  if (!isConfigValid()) {
+
+  if (!isConfigValid(firebaseConfig)) {
     console.error('❌ Firebase config is missing or incomplete!');
-    console.error('Config values:', {
-      apiKey: firebaseConfig.apiKey ? 'SET' : 'MISSING',
-      authDomain: firebaseConfig.authDomain ? 'SET' : 'MISSING',
-      projectId: firebaseConfig.projectId ? 'SET' : 'MISSING',
-      appId: firebaseConfig.appId ? 'SET' : 'MISSING',
-    });
-    console.error('Please check:');
-    console.error('  1. app.json has firebase config in extra.firebase');
-    console.error('  2. Or .env file has EXPO_PUBLIC_FIREBASE_* variables');
     throw new Error('Firebase configuration is missing or incomplete. Please check app.json or .env file.');
   }
-  
+
   try {
     console.log('🚀 Initializing Firebase...');
     _app = initializeApp(firebaseConfig);
@@ -181,7 +191,6 @@ function getApp(): FirebaseApp {
     return _app;
   } catch (error: any) {
     console.error('❌ Firebase initialization error:', error.message);
-    console.error('Full error:', error);
     throw new Error(`Firebase initialization failed: ${error.message}. Please check your Firebase configuration.`);
   }
 }
@@ -208,30 +217,30 @@ function loadReactNativeAsyncStorage(): {
   return null;
 }
 
-function getAuthInstance(): Auth {
+function ensureFirebaseAuth(): Auth {
   if (_auth) {
     return _auth;
   }
 
-  const app = getApp();
+  const app = ensureFirebaseApp();
 
   try {
-    const isReactNative =
+    const isRN =
       typeof navigator !== 'undefined' && navigator.product === 'ReactNative';
 
-    if (isReactNative) {
+    if (isRN) {
       const AsyncStorage = loadReactNativeAsyncStorage();
       if (AsyncStorage) {
         try {
-          // RN-only export; Node typings for firebase/auth omit it, so load at runtime.
-          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
           const { getReactNativePersistence } = require('firebase/auth') as {
-            getReactNativePersistence: (storage: typeof AsyncStorage) => import('firebase/auth').Persistence;
+            getReactNativePersistence: (
+              storage: typeof AsyncStorage,
+            ) => import('firebase/auth').Persistence;
           };
           _auth = initializeAuth(app, {
             persistence: getReactNativePersistence(AsyncStorage),
           });
-          console.log('✅ Firebase Auth initialized with AsyncStorage persistence');
           return _auth;
         } catch (e: any) {
           if (e?.code === 'auth/already-initialized') {
@@ -243,31 +252,27 @@ function getAuthInstance(): Auth {
           return _auth;
         }
       }
-      console.warn('⚠️ AsyncStorage not available, using getAuth (auth state won\'t persist)');
       _auth = getAuth(app);
       return _auth;
     }
 
     _auth = getAuth(app);
-    console.log('✅ Firebase Auth initialized (web)');
     return _auth;
   } catch (error: any) {
     console.error('❌ Error initializing Auth:', error.message);
-    console.error('Full error:', error);
     throw new Error(`Failed to initialize Firebase Auth: ${error.message}`);
   }
 }
 
-function getFirestoreInstance(): Firestore {
+function ensureFirebaseFirestore(): Firestore {
   if (_firestore) {
     return _firestore;
   }
 
-  const app = getApp();
-  
+  const app = ensureFirebaseApp();
+
   try {
     _firestore = getFirestore(app);
-    console.log('✅ Firebase Firestore initialized');
     return _firestore;
   } catch (error: any) {
     console.error('❌ Error initializing Firestore:', error.message);
@@ -275,16 +280,15 @@ function getFirestoreInstance(): Firestore {
   }
 }
 
-function getStorageInstance(): FirebaseStorage {
+function ensureFirebaseStorage(): FirebaseStorage {
   if (_storage) {
     return _storage;
   }
 
-  const app = getApp();
-  
+  const app = ensureFirebaseApp();
+
   try {
     _storage = getStorage(app);
-    console.log('✅ Firebase Storage initialized');
     return _storage;
   } catch (error: any) {
     console.error('❌ Error initializing Storage:', error.message);
@@ -292,9 +296,19 @@ function getStorageInstance(): FirebaseStorage {
   }
 }
 
-// Export getters that initialize lazily
-export const app = getApp();
-export const auth = getAuthInstance();
-export const firestore = getFirestoreInstance();
-export const storage = getStorageInstance();
-
+/**
+ * Lazy, real Firebase instances only — no Proxy (Firebase APIs expect genuine Auth/Firestore objects).
+ * Importing this module does not initialize Firebase; first getter call does.
+ */
+export function getFirebaseApp(): FirebaseApp {
+  return ensureFirebaseApp();
+}
+export function getFirebaseAuth(): Auth {
+  return ensureFirebaseAuth();
+}
+export function getFirebaseFirestore(): Firestore {
+  return ensureFirebaseFirestore();
+}
+export function getFirebaseStorage(): FirebaseStorage {
+  return ensureFirebaseStorage();
+}

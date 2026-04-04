@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { auth } from '@packages/firebase';
-import { firestore, collection, getDocs, query, where } from '@packages/firebase';
+import { getFirebaseAuth, getFirebaseFirestore, collection, getDocs, query, where } from '@packages/firebase';
 import { Users, Plus, Loader2 } from 'lucide-react';
 
 export default function CiviliansPage() {
@@ -20,7 +19,7 @@ export default function CiviliansPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const usersRef = collection(firestore, 'users');
+        const usersRef = collection(getFirebaseFirestore(), 'users');
         const q = query(usersRef, where('role', '==', 'civilian'));
         const snap = await getDocs(q);
         const list = snap.docs.map((d) => {
@@ -36,7 +35,7 @@ export default function CiviliansPage() {
         setCivilians(list);
       } catch (e) {
         try {
-          const snap = await getDocs(collection(firestore, 'users'));
+          const snap = await getDocs(collection(getFirebaseFirestore(), 'users'));
           const list = snap.docs.map((d) => {
             const data = d.data();
             return { id: d.id, email: data.email, name: data.name, phone: data.phone, role: data.role };
@@ -57,7 +56,7 @@ export default function CiviliansPage() {
     setMessage(null);
     setLoading(true);
     try {
-      const token = await auth.currentUser?.getIdToken();
+      const token = await getFirebaseAuth().currentUser?.getIdToken();
       if (!token) throw new Error('Not signed in');
       const res = await fetch('/api/create-civilian', {
         method: 'POST',

@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@packages/firebase": "file:../../packages/firebase",
+    "firebase-admin": "^10.3.0",
+    "jest-expo": "47.0.1",
     "lucide-react": "^0.562.0",
     "next": "^15.5.14",
     "react": "^18.3.0",

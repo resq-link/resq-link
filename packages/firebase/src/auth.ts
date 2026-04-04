@@ -9,7 +9,7 @@ import {
   ConfirmationResult,
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
-import { auth, firestore } from './config';
+import { getFirebaseAuth, getFirebaseFirestore } from './config';
 
 // Dispatcher roles
 export type DispatcherRole = 'BFP' | 'PNP' | 'MDRRMO' | 'AMBULANCE' | 'PCG';
@@ -52,7 +52,7 @@ export async function createDispatcherAccount(
 ): Promise<{ user: User; accountData: DispatcherAccount }> {
   try {
     // Create user with email and password
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const userCredential = await createUserWithEmailAndPassword(getFirebaseAuth(), email, password);
     const user = userCredential.user;
 
     // Create profile in Firestore
@@ -63,7 +63,7 @@ export async function createDispatcherAccount(
       active: true,
     };
 
-    await setDoc(doc(firestore, 'dispatchers', user.uid), accountData);
+    await setDoc(doc(getFirebaseFirestore(), 'dispatchers', user.uid), accountData);
 
     return { user, accountData };
   } catch (error: any) {
@@ -94,7 +94,7 @@ export async function signInUserWithPhone(
         throw new Error(`reCAPTCHA container with id "${recaptchaContainerId}" not found. Add a div with this id to your HTML.`);
       }
 
-      recaptchaVerifier = new RecaptchaVerifier(auth, recaptchaContainerId, {
+      recaptchaVerifier = new RecaptchaVerifier(getFirebaseAuth(), recaptchaContainerId, {
         size: 'invisible',
         callback: () => {
           // reCAPTCHA solved, allow signInWithPhoneNumber
@@ -104,7 +104,7 @@ export async function signInUserWithPhone(
 
     // Send verification code
     const confirmationResult = await signInWithPhoneNumber(
-      auth,
+      getFirebaseAuth(),
       phoneNumber,
       recaptchaVerifier as any
     );
@@ -147,7 +147,7 @@ export async function createOrUpdateUserProfile(
 ): Promise<UserAccount> {
   try {
     // Check if profile already exists
-    const userDocRef = doc(firestore, 'users', user.uid);
+    const userDocRef = doc(getFirebaseFirestore(), 'users', user.uid);
     const userDoc = await getDoc(userDocRef);
 
     const accountData: UserAccount = {
@@ -205,7 +205,7 @@ export async function createCommandCenterAccount(
 ): Promise<{ user: User; accountData: CommandCenterAccount }> {
   try {
     // Create user with email and password
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const userCredential = await createUserWithEmailAndPassword(getFirebaseAuth(), email, password);
     const user = userCredential.user;
 
     // Create profile in Firestore
@@ -216,7 +216,7 @@ export async function createCommandCenterAccount(
       createdAt: serverTimestamp(),
     };
 
-    await setDoc(doc(firestore, 'commandCenters', user.uid), accountData);
+    await setDoc(doc(getFirebaseFirestore(), 'commandCenters', user.uid), accountData);
 
     return { user, accountData };
   } catch (error: any) {
@@ -235,7 +235,7 @@ export async function signInDispatcher(
   password: string
 ): Promise<User> {
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const userCredential = await signInWithEmailAndPassword(getFirebaseAuth(), email, password);
     return userCredential.user;
   } catch (error: any) {
     throw new Error(`Failed to sign in dispatcher: ${error.message}`);
@@ -253,7 +253,7 @@ export async function signInCommandCenter(
   password: string
 ): Promise<User> {
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const userCredential = await signInWithEmailAndPassword(getFirebaseAuth(), email, password);
     return userCredential.user;
   } catch (error: any) {
     throw new Error(`Failed to sign in command center: ${error.message}`);
@@ -285,11 +285,11 @@ export async function signInCivilian(
 ): Promise<{ user: User; profile: CivilianUserProfile }> {
   try {
     // Sign in with email and password
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const userCredential = await signInWithEmailAndPassword(getFirebaseAuth(), email, password);
     const user = userCredential.user;
 
     // Fetch user profile from Firestore
-    const userDocRef = doc(firestore, 'users', user.uid);
+    const userDocRef = doc(getFirebaseFirestore(), 'users', user.uid);
     const userDoc = await getDoc(userDocRef);
 
     if (!userDoc.exists()) {
@@ -319,12 +319,12 @@ export async function signInCivilian(
  */
 export async function verifyCommandCenterUser(): Promise<boolean> {
   try {
-    const currentUser = auth.currentUser;
+    const currentUser = getFirebaseAuth().currentUser;
     if (!currentUser) {
       return false;
     }
     
-    const commandCenterDoc = await getDoc(doc(firestore, 'commandCenters', currentUser.uid));
+    const commandCenterDoc = await getDoc(doc(getFirebaseFirestore(), 'commandCenters', currentUser.uid));
     return commandCenterDoc.exists();
   } catch (error: any) {
     console.error('Error verifying command center user:', error);
@@ -339,7 +339,7 @@ export async function verifyCommandCenterUser(): Promise<boolean> {
 export async function getAllDispatchers(): Promise<Array<{ uid: string; account: DispatcherAccount }>> {
   try {
     console.log('[getAllDispatchers] Starting to fetch dispatchers...');
-    const dispatchersRef = collection(firestore, 'dispatchers');
+    const dispatchersRef = collection(getFirebaseFirestore(), 'dispatchers');
     
     // Try to query with active filter first, but fall back to getting all if it fails
     let querySnapshot;

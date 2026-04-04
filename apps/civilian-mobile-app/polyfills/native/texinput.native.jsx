@@ -1,5 +1,5 @@
 import React from 'react';
-import { TextInput as RNTextInput } from 'react-native';
+import RNTextInput from '@resqlink-internal/text-input-impl';
 
 const TextInput = React.forwardRef((props, ref) => {
   return (

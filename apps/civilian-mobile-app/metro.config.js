@@ -11,6 +11,14 @@ const {
 
 const packagesFirebase = path.resolve(__dirname, "..", "..", "packages", "firebase");
 
+const reactNativeRoot = path.dirname(
+  require.resolve("react-native/package.json", { paths: [__dirname] }),
+);
+const RN_TEXT_INPUT_IMPL = path.join(
+  reactNativeRoot,
+  "Libraries/Components/TextInput/TextInput.js",
+);
+
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
 
@@ -83,13 +91,6 @@ config.resolver = {
   extraNodeModules: {
     ...config.resolver?.extraNodeModules,
     "@packages/firebase": packagesFirebase,
-    // Hoist from app: monorepo packages/firebase cannot resolve this from its own tree
-    "@react-native-async-storage/async-storage": path.resolve(
-      __dirname,
-      "node_modules",
-      "@react-native-async-storage",
-      "async-storage",
-    ),
     expo: path.resolve(__dirname, "node_modules", "expo"),
     "react-native": path.resolve(__dirname, "node_modules", "react-native"),
     "expo/virtual/env": path.resolve(
@@ -105,6 +106,10 @@ config.resolver = {
 // Add web-specific alias configuration through resolveRequest
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   try {
+    if (moduleName === "@resqlink-internal/text-input-impl") {
+      return { type: "sourceFile", filePath: RN_TEXT_INPUT_IMPL };
+    }
+
     // Polyfills are not resolved by Metro
     if (
       context.originModulePath.startsWith(`${__dirname}/polyfills/native`) ||
@@ -157,8 +162,6 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
 };
 
 const cacheDir = path.join(__dirname, "caches");
-fs.mkdirSync(cacheDir, { recursive: true });
-fs.mkdirSync(path.join(cacheDir, ".metro-cache"), { recursive: true });
 
 config.cacheStores = () => [
   new FileStore({
