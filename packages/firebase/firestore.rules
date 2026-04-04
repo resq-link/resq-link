@@ -82,6 +82,33 @@ service cloud.firestore {
       allow delete: if isCommandCenter();
     }
 
+    // Incident type rules (managed configuration)
+    match /incidentTypeRules/{ruleId} {
+      // Command centers (and super admins) can read the catalog used for routing.
+      allow read: if isCommandCenter() || isSuperAdmin();
+
+      // Only super admins can change the rule catalog.
+      allow create, update, delete: if isSuperAdmin();
+    }
+
+    // Incidents created by command centers
+    match /incidents/{incidentId} {
+      // Only command centers can create incidents, and only inside their own namespace.
+      allow create: if isAuthenticated()
+        && isCommandCenter()
+        && request.resource.data.commandCenterAdminId == request.auth.uid;
+
+      // Command centers can read and update only their own incidents.
+      allow read: if isSuperAdmin()
+        || (isCommandCenter() && resource.data.commandCenterAdminId == request.auth.uid);
+
+      allow update: if isSuperAdmin()
+        || (isCommandCenter() && resource.data.commandCenterAdminId == request.auth.uid);
+
+      // Deletes are restricted; keep default deny for now.
+      allow delete: if false;
+    }
+
     // Resources collection
     match /resources/{resourceId} {
       allow read: if isAuthenticated();

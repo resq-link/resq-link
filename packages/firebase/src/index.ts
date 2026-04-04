@@ -98,7 +98,9 @@ export {
   type IncidentSource,
   type IncidentStatus,
   type IncidentTypeRule,
+  type TeamOnDuty,
   type ResolutionStatus,
+  type ScheduleOfDuty,
   type SaveIncidentTypeRuleInput,
 } from './incidents';
 

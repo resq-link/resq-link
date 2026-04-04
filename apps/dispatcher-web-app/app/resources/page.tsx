@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import dynamic from 'next/dynamic'
+import { createPortal } from 'react-dom'
 import {
   createResource,
   deleteResource,
@@ -13,7 +14,7 @@ import {
 } from '@packages/firebase'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { useAuth } from '@/contexts/AuthContext'
-import { MapPin, Pencil, Plus, Trash2, X } from 'lucide-react'
+import { MapPin, Pencil, Plus, Radio, Search, Trash2, X } from 'lucide-react'
 
 const ResourceLocationMap = dynamic(() => import('@/components/ResourceLocationMap'), {
   ssr: false,
@@ -128,6 +129,11 @@ export default function ResourcesPage() {
   const [mapResource, setMapResource] = useState<ResourceRecord | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [pageError, setPageError] = useState<string | null>(null)
+  const [isClient, setIsClient] = useState(false)
+
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   useEffect(() => {
     if (!user) {
@@ -141,6 +147,36 @@ export default function ResourcesPage() {
 
     return unsubscribe
   }, [user])
+
+  const isAnyModalOpen = isModalOpen || Boolean(mapResource)
+
+  useEffect(() => {
+    if (!isAnyModalOpen) {
+      return
+    }
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+
+      if (isModalOpen) {
+        closeModal()
+        return
+      }
+
+      if (mapResource) {
+        setMapResource(null)
+      }
+    }
+
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [isAnyModalOpen, isModalOpen, mapResource, isSaving])
 
   const filteredResources = useMemo(() => {
     const needle = search.trim().toLowerCase()
@@ -173,6 +209,7 @@ export default function ResourcesPage() {
     }),
     [resources]
   )
+  const hasActiveFilters = search.trim().length > 0 || statusFilter !== 'all' || typeFilter !== 'all'
 
   const openCreateModal = () => {
     setEditingResource(null)
@@ -297,20 +334,20 @@ export default function ResourcesPage() {
 
   return (
     <ProtectedRoute>
-      <div className="space-y-6">
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl shadow-black/30">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="space-y-4">
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-xl shadow-black/30 md:p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.3em] text-secondary-300">Command Center</p>
-              <h1 className="mt-2 text-3xl font-semibold text-slate-100">Resources</h1>
-              <p className="mt-2 max-w-3xl text-sm text-slate-400">
-                Track deployable assets live from Firestore, manage availability, and keep base or current map positions for each resource.
+              <h1 className="mt-1 text-2xl font-semibold text-slate-100 md:text-3xl">Resources</h1>
+              <p className="mt-1 max-w-3xl text-sm text-slate-400">
+                Track deployable assets live from Firestore, manage availability, and map positions.
               </p>
             </div>
             <button
               type="button"
               onClick={openCreateModal}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-500"
+              className="inline-flex h-10 items-center justify-center gap-2 self-start rounded-lg bg-primary-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-500"
             >
               <Plus size={18} />
               Add Resource
@@ -318,41 +355,44 @@ export default function ResourcesPage() {
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-            <p className="text-sm text-slate-400">Total Resources</p>
-            <p className="mt-2 text-3xl font-semibold text-slate-100">{stats.total}</p>
+        <section className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3">
+            <p className="text-xs uppercase tracking-wide text-slate-400">Total Resources</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-100">{stats.total}</p>
           </div>
-          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5">
-            <p className="text-sm text-emerald-200/80">Available</p>
-            <p className="mt-2 text-3xl font-semibold text-emerald-200">{stats.available}</p>
+          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
+            <p className="text-xs uppercase tracking-wide text-emerald-200/80">Available</p>
+            <p className="mt-1 text-2xl font-semibold text-emerald-200">{stats.available}</p>
           </div>
-          <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-5">
-            <p className="text-sm text-blue-200/80">Assigned</p>
-            <p className="mt-2 text-3xl font-semibold text-blue-200">{stats.assigned}</p>
+          <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-3">
+            <p className="text-xs uppercase tracking-wide text-blue-200/80">Assigned</p>
+            <p className="mt-1 text-2xl font-semibold text-blue-200">{stats.assigned}</p>
           </div>
-          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
-            <p className="text-sm text-amber-200/80">Maintenance</p>
-            <p className="mt-2 text-3xl font-semibold text-amber-200">{stats.maintenance}</p>
+          <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+            <p className="text-xs uppercase tracking-wide text-amber-200/80">Maintenance</p>
+            <p className="mt-1 text-2xl font-semibold text-amber-200">{stats.maintenance}</p>
           </div>
-          <div className="rounded-2xl border border-slate-700 bg-slate-950/40 p-5">
-            <p className="text-sm text-slate-400">Offline</p>
-            <p className="mt-2 text-3xl font-semibold text-slate-200">{stats.offline}</p>
+          <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 px-4 py-3">
+            <p className="text-xs uppercase tracking-wide text-rose-200/80">Offline</p>
+            <p className="mt-1 text-2xl font-semibold text-rose-200">{stats.offline}</p>
           </div>
         </section>
 
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
-          <div className="grid gap-4 lg:grid-cols-[1.5fr_0.7fr_0.7fr]">
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search name, code, agency, station, quadrant"
-              className="w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 md:p-5">
+          <div className="grid gap-2 lg:grid-cols-[1.6fr_0.85fr_0.85fr_auto]">
+            <div className="relative">
+              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search name, code, agency, station, quadrant"
+                className="h-10 w-full rounded-lg border border-slate-800 bg-slate-950 pl-9 pr-3 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              />
+            </div>
             <select
               value={typeFilter}
               onChange={(event) => setTypeFilter(event.target.value as 'all' | ResourceType)}
-              className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="h-10 rounded-lg border border-slate-800 bg-slate-950 px-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="all">All types</option>
               {resourceTypes.map((type) => (
@@ -364,7 +404,7 @@ export default function ResourcesPage() {
             <select
               value={statusFilter}
               onChange={(event) => setStatusFilter(event.target.value as 'all' | ResourceStatus)}
-              className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="h-10 rounded-lg border border-slate-800 bg-slate-950 px-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="all">All statuses</option>
               {resourceStatuses.map((status) => (
@@ -373,17 +413,29 @@ export default function ResourcesPage() {
                 </option>
               ))}
             </select>
+            <button
+              type="button"
+              onClick={() => {
+                setSearch('')
+                setTypeFilter('all')
+                setStatusFilter('all')
+              }}
+              disabled={!hasActiveFilters}
+              className="h-10 rounded-lg border border-slate-700 px-3 text-sm font-medium text-slate-300 transition-colors hover:border-slate-500 hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Clear
+            </button>
           </div>
           {pageError && (
-            <div className="mt-4 rounded-lg border border-red-900/60 bg-red-950/40 px-4 py-3 text-sm text-red-200">
+            <div className="mt-3 rounded-lg border border-red-900/60 bg-red-950/40 px-4 py-3 text-sm text-red-200">
               {pageError}
             </div>
           )}
         </section>
 
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
-          <div className="mb-5 flex items-center justify-between">
-            <h2 className="text-2xl font-semibold text-slate-100">Resource Inventory</h2>
+        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 md:p-5">
+          <div className="mb-4 flex items-center justify-between border-b border-slate-800 pb-3">
+            <h2 className="text-xl font-semibold text-slate-100">Resource Inventory ({filteredResources.length})</h2>
             <p className="text-sm text-slate-400">{filteredResources.length} shown</p>
           </div>
 
@@ -393,9 +445,37 @@ export default function ResourcesPage() {
               <p className="mt-4 text-slate-400">Loading resources...</p>
             </div>
           ) : filteredResources.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-950/40 px-6 py-16 text-center">
-              <p className="text-lg text-slate-300">No resources found.</p>
-              <p className="mt-2 text-sm text-slate-500">Add your first resource or widen the current filters.</p>
+            <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-950/40 px-6 py-14 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-slate-300">
+                <Radio size={20} />
+              </div>
+              <p className="text-lg font-medium text-slate-200">No resources available</p>
+              <p className="mt-2 text-sm text-slate-500">
+                Start by adding your first resource or adjust your filters.
+              </p>
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={openCreateModal}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-500"
+                >
+                  <Plus size={16} />
+                  Add Resource
+                </button>
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearch('')
+                      setTypeFilter('all')
+                      setStatusFilter('all')
+                    }}
+                    className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-700 px-4 text-sm font-medium text-slate-300 transition-colors hover:border-slate-500 hover:bg-slate-900"
+                  >
+                    Clear Filters
+                  </button>
+                )}
+              </div>
             </div>
           ) : (
             <div className="grid gap-4 xl:grid-cols-2">
@@ -473,9 +553,18 @@ export default function ResourcesPage() {
             </div>
           )}
         </section>
-        {isModalOpen && (
-          <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
-            <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl shadow-black/40">
+        {isClient &&
+          isModalOpen &&
+          createPortal(
+            <div
+              className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-modal-overlay-in"
+              onClick={(event) => {
+                if (event.target === event.currentTarget) {
+                  closeModal()
+                }
+              }}
+            >
+              <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl shadow-black/50 animate-modal-panel-in">
               <div className="flex items-center justify-between border-b border-slate-800 px-6 py-4">
                 <div>
                   <h2 className="text-xl font-semibold text-slate-100">
@@ -671,12 +760,22 @@ export default function ResourcesPage() {
                 </div>
               </form>
             </div>
-          </div>
-        )}
+            </div>,
+            document.body
+          )}
 
-        {mapResource && (
-          <div className="fixed inset-0 z-[65] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
-            <div className="w-full max-w-5xl overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl shadow-black/40">
+        {isClient &&
+          mapResource &&
+          createPortal(
+            <div
+              className="fixed inset-0 z-[75] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-modal-overlay-in"
+              onClick={(event) => {
+                if (event.target === event.currentTarget) {
+                  setMapResource(null)
+                }
+              }}
+            >
+              <div className="w-full max-w-5xl overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl shadow-black/50 animate-modal-panel-in">
               <div className="flex items-center justify-between border-b border-slate-800 px-6 py-4">
                 <div>
                   <h2 className="text-xl font-semibold text-slate-100">{mapResource.name}</h2>
@@ -724,8 +823,9 @@ export default function ResourcesPage() {
                 </div>
               </div>
             </div>
-          </div>
-        )}
+            </div>,
+            document.body
+          )}
       </div>
     </ProtectedRoute>
   )

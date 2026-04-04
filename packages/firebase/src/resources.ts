@@ -237,11 +237,30 @@ export async function getAllResources(limitCount: number = 300): Promise<Resourc
   }
 }
 
+function isPermissionDenied(error: any): boolean {
+  const code = error?.code
+  const message = (error?.message ?? '').toLowerCase()
+  return (
+    code === 'permission-denied' ||
+    message.includes('missing or insufficient permissions') ||
+    message.includes('insufficient permissions') ||
+    message.includes('permission denied')
+  )
+}
+
 export function subscribeToResources(
   callback: (resources: ResourceRecord[]) => void,
   limitCount: number = 300
 ): () => void {
   try {
+    // Avoid permission errors during auth initialization races.
+    // If the user isn't authenticated yet, don't start the listener.
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      callback([]);
+      return () => {};
+    }
+
     const resourcesRef = collection(firestore, 'resources');
     const q = query(resourcesRef, orderBy('updatedAt', 'desc'), limit(limitCount));
 
@@ -254,6 +273,11 @@ export function subscribeToResources(
         callback(resources);
       },
       (error) => {
+        // Avoid console spam for expected auth/rules failures.
+        if (isPermissionDenied(error)) {
+          callback([]);
+          return
+        }
         console.error('Error subscribing to resources:', error);
         callback([]);
       }

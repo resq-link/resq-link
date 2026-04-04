@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import IncidentCard from '@/components/IncidentCard'
 import StatusBadge from '@/components/StatusBadge'
 import { subscribeToEmergencyReports, type EmergencyReport } from '@packages/firebase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -74,6 +73,41 @@ const convertToHistoryIncident = (report: EmergencyReport): HistoryIncident => {
     responder: report.responder || null,
     duration,
   }
+}
+
+const formatDateTime = (date: Date) =>
+  new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+    .format(date)
+    .replace(', ', ' • ')
+
+const formatDurationFromDates = (start: Date, end: Date): string => {
+  const totalMinutes = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000))
+  const days = Math.floor(totalMinutes / 1440)
+  const hours = Math.floor((totalMinutes % 1440) / 60)
+  const minutes = totalMinutes % 60
+
+  if (days > 0) {
+    if (hours > 0) return `${days} day${days > 1 ? 's' : ''} ${hours} hour${hours > 1 ? 's' : ''}`
+    return `${days} day${days > 1 ? 's' : ''}`
+  }
+  if (hours > 0) {
+    if (minutes > 0) return `${hours}h ${minutes}m`
+    return `${hours} hour${hours > 1 ? 's' : ''}`
+  }
+  return `${minutes} min`
+}
+
+const getPriorityBadgeClass = (priority: string) => {
+  const normalized = priority.toLowerCase()
+  if (normalized === 'high' || normalized === 'critical') return 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
+  if (normalized === 'medium') return 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+  return 'bg-sky-500/15 text-sky-300 border border-sky-500/30'
 }
 
 export default function HistoryPage() {
@@ -166,194 +200,214 @@ export default function HistoryPage() {
 
   return (
     <ProtectedRoute>
-      <div className="space-y-6">
-      {/* Header Section */}
-      <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
-        <h1 className="text-3xl font-bold text-slate-100 mb-2">
-          Incident History
-        </h1>
-        <p className="text-slate-400">
-          View past incidents and response records
-        </p>
-      </div>
+      <div className="space-y-4">
+        {/* Header Section */}
+        <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 px-5 py-4">
+          <h1 className="text-3xl font-bold text-slate-100 mb-1">Incident History</h1>
+          <p className="text-slate-400">View past incidents and response records</p>
+        </div>
 
-      {/* Filters and Search */}
-      <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
-        <div className="flex flex-col md:flex-row gap-4">
-          {/* Search Bar */}
-          <div className="flex-1">
-            <input
-              type="text"
-              placeholder="Search by type or location..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-4 py-2 border border-slate-800 bg-slate-950 text-slate-100 placeholder-slate-500 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-            />
-          </div>
-
-          {/* Filter Buttons */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => setSelectedFilter('all')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                selectedFilter === 'all'
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
-              }`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setSelectedFilter('resolved')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                selectedFilter === 'resolved'
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
-              }`}
-            >
-              Resolved
-            </button>
+        {/* Filters and Search */}
+        <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-4">
+          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+            <div className="flex-1">
+              <input
+                type="text"
+                placeholder="Search by type or location..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-10 w-full px-3 border border-slate-800 bg-slate-950 text-sm text-slate-100 placeholder-slate-500 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              />
+            </div>
+            <div className="flex gap-2 shrink-0">
+              <button
+                onClick={() => setSelectedFilter('all')}
+                className={`h-10 px-4 rounded-lg text-sm font-medium transition-colors ${
+                  selectedFilter === 'all'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+                }`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setSelectedFilter('resolved')}
+                className={`h-10 px-4 rounded-lg text-sm font-medium transition-colors ${
+                  selectedFilter === 'resolved'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+                }`}
+              >
+                Resolved
+              </button>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
-          <p className="text-sm font-medium text-slate-400">Total Incidents</p>
-          <p className="text-3xl font-bold text-slate-100 mt-2">
-            {isLoading ? '...' : totalIncidents}
-          </p>
-        </div>
-        <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
-          <p className="text-sm font-medium text-slate-400">Resolved Today</p>
-          <p className="text-3xl font-bold text-emerald-300 mt-2">
-            {isLoading ? '...' : resolvedToday}
-          </p>
-        </div>
-        <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
-          <p className="text-sm font-medium text-slate-400">Avg Response Time</p>
-          <p className="text-3xl font-bold text-blue-300 mt-2">
-            {isLoading ? '...' : avgResponseTime}
-          </p>
-        </div>
-      </div>
-
-      {/* History List */}
-      <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
-        <h2 className="text-2xl font-bold text-slate-100 mb-6">
-          Past Incidents ({filteredHistory.length})
-        </h2>
-
-        {isLoading ? (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-            <p className="text-slate-400 text-lg mt-4">Loading history...</p>
+        {/* Statistics */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 px-4 py-3 min-h-[98px]">
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Total Incidents</p>
+            <p className="text-3xl font-bold text-slate-100 mt-1">{isLoading ? '...' : totalIncidents}</p>
           </div>
-        ) : (
-          <div className="space-y-4">
-            {filteredHistory.map((incident) => (
-            <div
-              key={incident.id}
-              className="border border-slate-800 rounded-lg p-6 hover:shadow-md hover:shadow-black/30 transition-shadow bg-slate-950/60"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-xl font-semibold text-slate-100">
-                      {incident.type}
-                    </h3>
-                    <StatusBadge status={incident.status} />
+          <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 px-4 py-3 min-h-[98px]">
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Resolved Today</p>
+            <p className="text-3xl font-bold text-emerald-300 mt-1">{isLoading ? '...' : resolvedToday}</p>
+          </div>
+          <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 px-4 py-3 min-h-[98px]">
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Avg Response Time</p>
+            <p className="text-3xl font-bold text-blue-300 mt-1">{isLoading ? '...' : avgResponseTime}</p>
+          </div>
+        </div>
+
+        {/* History List */}
+        <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-4">
+          <h2 className="text-xl font-bold text-slate-100 mb-4">Past Incidents ({filteredHistory.length})</h2>
+
+          {isLoading ? (
+            <div className="space-y-3 py-1">
+              {[1, 2, 3].map((item) => (
+                <div
+                  key={item}
+                  className="rounded-lg border border-slate-800 bg-slate-950/60 p-4 animate-pulse"
+                >
+                  <div className="h-5 w-2/5 rounded bg-slate-800 mb-3" />
+                  <div className="h-4 w-full rounded bg-slate-800/80 mb-2" />
+                  <div className="h-4 w-4/5 rounded bg-slate-800/80 mb-4" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div className="h-3 w-3/4 rounded bg-slate-800/70" />
+                    <div className="h-3 w-2/3 rounded bg-slate-800/70" />
+                    <div className="h-3 w-1/2 rounded bg-slate-800/70" />
+                    <div className="h-3 w-1/3 rounded bg-slate-800/70" />
                   </div>
-                  <p className="text-slate-400 mb-2">{incident.description}</p>
-                  <div className="flex items-center gap-4 text-sm text-slate-500">
-                    <span className="flex items-center gap-1">
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                        />
-                      </svg>
-                      {incident.location}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                      {incident.reportedAt.toLocaleString()}
-                    </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredHistory.map((incident) => (
+                <div
+                  key={incident.id}
+                  className="border border-slate-800 rounded-lg p-4 bg-slate-950/60 shadow-sm shadow-black/20 transition-all duration-200 hover:border-slate-700 hover:shadow-md hover:shadow-black/30"
+                >
+                  {/* Top Section */}
+                  <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-lg font-semibold text-slate-100">{incident.type}</h3>
+                        <StatusBadge status={incident.status} />
+                        {incident.priority && (
+                          <span
+                            className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${getPriorityBadgeClass(
+                              incident.priority
+                            )}`}
+                          >
+                            {incident.priority}
+                          </span>
+                        )}
+                      </div>
+                    </div>
                     {incident.resolvedAt && (
-                      <span className="flex items-center gap-1">
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
+                      <span className="text-xs text-slate-400 bg-slate-900/80 border border-slate-800 rounded-md px-2 py-1">
+                        Duration: {formatDurationFromDates(incident.reportedAt, incident.resolvedAt)}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="border-t border-slate-800 my-3" />
+
+                  {/* Middle Section */}
+                  <div className="space-y-3">
+                    <p className="text-sm text-slate-300 leading-relaxed">{incident.description}</p>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 text-sm text-slate-400">
+                      <span className="flex items-center gap-2 min-w-0">
+                        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             strokeWidth={2}
-                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
                           />
                         </svg>
-                        Resolved: {incident.resolvedAt.toLocaleString()}
+                        <span className="truncate">{incident.location}</span>
                       </span>
+                      <span className="flex items-center gap-2">
+                        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                          />
+                        </svg>
+                        <span>Reported: {formatDateTime(incident.reportedAt)}</span>
+                      </span>
+                      {incident.resolvedAt && (
+                        <span className="flex items-center gap-2 lg:col-span-2">
+                          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                          <span>Resolved: {formatDateTime(incident.resolvedAt)}</span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="border-t border-slate-800 my-3" />
+
+                  {/* Bottom Section */}
+                  <div className="flex items-center justify-between gap-3 text-sm">
+                    <div>
+                      <p className="text-slate-500">Responder</p>
+                      <p className="font-medium text-slate-100">{incident.responder || 'Unassigned'}</p>
+                    </div>
+                    {incident.resolvedAt && (
+                      <p className="text-slate-300">
+                        <span className="text-slate-500 mr-1">Duration</span>
+                        <span className="font-semibold text-blue-300">
+                          {formatDurationFromDates(incident.reportedAt, incident.resolvedAt)}
+                        </span>
+                      </p>
                     )}
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm text-slate-500">Responder</p>
-                  <p className="font-medium text-slate-100">
-                    {incident.responder}
-                  </p>
-                  {incident.duration && (
-                    <p className="text-sm text-slate-500 mt-1">
-                      Duration: {incident.duration}
-                    </p>
-                  )}
-                </div>
-              </div>
+              ))}
             </div>
-            ))}
-          </div>
-        )}
+          )}
 
-        {!isLoading && filteredHistory.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-slate-400 text-lg">No incidents found</p>
-            <p className="text-slate-500 text-sm mt-2">
-              {history.length === 0 
-                ? 'No resolved incidents in history yet'
-                : 'Try adjusting your search or filter criteria'}
-            </p>
-          </div>
-        )}
+          {!isLoading && filteredHistory.length === 0 && (
+            <div className="text-center py-10 px-4 border border-dashed border-slate-800 rounded-lg bg-slate-950/40">
+              <div className="mx-auto mb-3 w-10 h-10 rounded-full border border-slate-700 bg-slate-900/80 flex items-center justify-center text-slate-400">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+              </div>
+              <p className="text-slate-300 text-lg font-semibold">No incident history available</p>
+              <p className="text-slate-500 text-sm mt-2">
+                {history.length === 0
+                  ? 'Resolved incidents will appear here once available.'
+                  : 'Try adjusting your search or filter criteria.'}
+              </p>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
     </ProtectedRoute>
   )
 }

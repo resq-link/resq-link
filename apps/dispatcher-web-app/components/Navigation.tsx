@@ -23,6 +23,7 @@ import {
 const navItems = [
   { href: '/overview', label: 'Overview', icon: LayoutDashboard },
   { href: '/intake', label: 'Intake', icon: FileText },
+  { href: '/report', label: 'Report', icon: FileText },
   { href: '/incident-management', label: 'Incident Management', icon: ClipboardList },
   { href: '/', label: 'Live Incidents', icon: Radio },
   { href: '/map', label: 'Map', icon: Map },
