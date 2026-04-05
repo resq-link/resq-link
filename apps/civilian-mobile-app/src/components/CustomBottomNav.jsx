@@ -1,9 +1,9 @@
-﻿import React from "react";
+import React from "react";
 import { View, TouchableOpacity, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, usePathname } from "expo-router";
 import { BlurView } from "expo-blur";
-import { House, Clock3, CircleUserRound, AlertCircle } from "lucide-react-native";
+import { House, Clock3, CircleUserRound, AlertCircle, Video } from "lucide-react-native";
 import { useSOS } from "../utils/useSOS";
 import { useAppTheme } from "@/utils/useAppTheme";
 
@@ -18,6 +18,7 @@ export default function CustomBottomNav() {
     pathname === "/dashboard" || pathname?.endsWith("/dashboard");
   const isHistoryActive = pathname?.includes("/history");
   const isProfileActive = pathname?.includes("/profile");
+  const isFootageActive = pathname?.includes("footage-request");
 
   const hideNavScreens = [
     "/login",
@@ -97,6 +98,18 @@ export default function CustomBottomNav() {
           >
             <CircleUserRound size={20} color={isProfileActive ? colors.text : colors.textSecondary} />
           </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => router.push("/footage-request")}
+            style={[
+              styles.iconButton,
+              isFootageActive && { backgroundColor: isLight ? "#F0F1F5" : "#2A2A2A" },
+            ]}
+            activeOpacity={0.8}
+            accessibilityLabel="Footage request"
+          >
+            <Video size={20} color={isFootageActive ? colors.text : colors.textSecondary} />
+          </TouchableOpacity>
         </View>
       </BlurView>
 
@@ -134,7 +147,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   navBar: {
-    width: 220,
+    width: 292,
     minHeight: 68,
     borderRadius: 34,
     overflow: "hidden",

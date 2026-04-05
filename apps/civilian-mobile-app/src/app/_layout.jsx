@@ -1,4 +1,4 @@
-﻿import { useAuth } from "@/utils/auth/useAuth";
+import { useAuth } from "@/utils/auth/useAuth";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
@@ -63,6 +63,7 @@ export default function RootLayout() {
             <Stack.Screen name="dashboard" />
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="emergency-form" />
+            <Stack.Screen name="footage-request" />
             <Stack.Screen name="emergency-confirmation" />
             <Stack.Screen name="responder-map" />
             <Stack.Screen name="appearance" />

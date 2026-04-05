@@ -131,4 +131,34 @@ export const mockData = {
       },
     ],
   },
+  /** Sample footage request history for UI_MODE */
+  footageRequestHistory: [
+    {
+      id: "mock-fr-1",
+      purpose: "robbery",
+      purposeOtherText: null,
+      locationText: "Rizal Ave, near City Hall",
+      incidentDate: "2026-04-01",
+      status: "pending",
+      createdAt: new Date(Date.now() - 86400000 * 2),
+    },
+    {
+      id: "mock-fr-2",
+      purpose: "vehicular_accident",
+      purposeOtherText: null,
+      locationText: "Highway 54 intersection",
+      incidentDate: "2026-03-28",
+      status: "footage_found",
+      createdAt: new Date(Date.now() - 86400000 * 5),
+    },
+    {
+      id: "mock-fr-3",
+      purpose: "other",
+      purposeOtherText: "Property damage",
+      locationText: "Mall parking area B",
+      incidentDate: "2026-03-20",
+      status: "footage_not_found",
+      createdAt: new Date(Date.now() - 86400000 * 10),
+    },
+  ],
 };

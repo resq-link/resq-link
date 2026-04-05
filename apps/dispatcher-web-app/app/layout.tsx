@@ -23,12 +23,11 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${spaceGrotesk.className} antialiased`}>
         <AuthProvider>
-          <div className="min-h-screen text-slate-100">
-            <Navigation />
-            <main className="container mx-auto px-4 py-8 page-enter">
+          <Navigation>
+            <main className="container mx-auto px-4 py-6 sm:py-8 page-enter min-h-0">
               {children}
             </main>
-          </div>
+          </Navigation>
         </AuthProvider>
       </body>
     </html>

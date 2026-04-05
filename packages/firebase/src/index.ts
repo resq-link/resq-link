@@ -52,6 +52,21 @@ export {
   type EmergencyReport,
 } from './emergencies';
 
+// Footage requests (CCTV / evidence)
+export {
+  submitFootageRequest,
+  getUserFootageRequests,
+  subscribeToUserFootageRequests,
+  subscribeToFootageRequests,
+  updateFootageRequestStatus,
+  FOOTAGE_PURPOSE_KEYS,
+  FOOTAGE_PURPOSE_LABELS,
+  type FootageRequest,
+  type FootageRequestPurpose,
+  type FootageRequestStatus,
+  type SubmitFootageRequestInput,
+} from './footageRequests';
+
 // Export storage functions
 export { uploadImageToStorage } from './storage';
 
