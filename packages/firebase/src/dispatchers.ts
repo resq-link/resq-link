@@ -12,7 +12,7 @@ import {
   DocumentData,
   QuerySnapshot,
 } from 'firebase/firestore';
-import { firestore, auth } from './config';
+import { getFirebaseFirestore, getFirebaseAuth } from './config';
 
 // Dispatcher location interface
 export interface DispatcherLocation {
@@ -50,12 +50,12 @@ export async function updateDispatcherLocation(
   longitude: number
 ): Promise<void> {
   try {
-    const currentUser = auth.currentUser;
+    const currentUser = getFirebaseAuth().currentUser;
     if (!currentUser) {
       throw new Error('User must be authenticated to update location');
     }
 
-    const dispatcherRef = doc(firestore, 'dispatchers', currentUser.uid);
+    const dispatcherRef = doc(getFirebaseFirestore(), 'dispatchers', currentUser.uid);
     
     // Get current dispatcher data to preserve email and role
     const dispatcherDoc = await getDoc(dispatcherRef);
@@ -83,12 +83,12 @@ export async function updateDispatcherLocation(
  */
 export async function setDispatcherOnlineStatus(isOnline: boolean): Promise<void> {
   try {
-    const currentUser = auth.currentUser;
+    const currentUser = getFirebaseAuth().currentUser;
     if (!currentUser) {
       throw new Error('User must be authenticated to update online status');
     }
 
-    const dispatcherRef = doc(firestore, 'dispatchers', currentUser.uid);
+    const dispatcherRef = doc(getFirebaseFirestore(), 'dispatchers', currentUser.uid);
     await updateDoc(dispatcherRef, {
       isOnline,
       lastUpdated: Timestamp.now(),
@@ -110,7 +110,7 @@ export function subscribeToDispatcherLocations(
   callback: (locations: DispatcherLocation[]) => void
 ): () => void {
   try {
-    const dispatchersRef = collection(firestore, 'dispatchers');
+    const dispatchersRef = collection(getFirebaseFirestore(), 'dispatchers');
     
     // Query for online dispatchers with location data
     const q = query(
@@ -158,7 +158,7 @@ export function subscribeToDispatcherLocations(
  */
 export async function getActiveDispatcherLocations(): Promise<DispatcherLocation[]> {
   try {
-    const dispatchersRef = collection(firestore, 'dispatchers');
+    const dispatchersRef = collection(getFirebaseFirestore(), 'dispatchers');
     const q = query(
       dispatchersRef,
       where('isOnline', '==', true)

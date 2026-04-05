@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@packages/firebase": "file:../../packages/firebase",
+    "firebase-admin": "^13.0.0",
     "lucide-react": "^0.562.0",
     "next": "^15.5.14",
     "react": "^18.3.0",

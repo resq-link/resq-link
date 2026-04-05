@@ -18,7 +18,7 @@ import { useFonts } from "expo-font";
 import useUserStore from "@/utils/userStore";
 import {
   subscribeToDispatcherAssignedEmergencies,
-  auth,
+  getFirebaseAuth,
   updateDispatcherLocation,
   setDispatcherOnlineStatus,
 } from "@packages/firebase";
@@ -48,7 +48,7 @@ export default function DashboardScreen() {
       router.replace("/login");
       return;
     }
-    const firebaseUser = auth.currentUser;
+    const firebaseUser = getFirebaseAuth().currentUser;
     if (!firebaseUser) {
       router.replace("/login");
       return;
@@ -82,7 +82,7 @@ export default function DashboardScreen() {
   useEffect(() => {
     if (!user) return;
     if (locationPaused) return;
-    const firebaseUser = auth.currentUser;
+    const firebaseUser = getFirebaseAuth().currentUser;
     if (!firebaseUser) return;
 
     let locationSubscription = null;

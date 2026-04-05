@@ -14,7 +14,7 @@ import {
   type DocumentData,
   type QuerySnapshot,
 } from 'firebase/firestore';
-import { auth, firestore } from './config';
+import { getFirebaseAuth, getFirebaseFirestore } from './config';
 import type { ResourceRecord, ResourceStatus, ResourceType } from './resources';
 
 export type IncidentSource = 'civilian_app' | 'call' | 'sms' | 'walk_in' | 'radio' | 'manual';
@@ -561,7 +561,7 @@ const normalizedRules: IncidentTypeRule[] = [
 const incidentRuleMap = new Map(normalizedRules.map((rule) => [rule.id, rule]));
 
 const ensureAuthenticated = () => {
-  const currentUser = auth.currentUser;
+  const currentUser = getFirebaseAuth().currentUser;
   if (!currentUser) {
     throw new Error('User must be authenticated to manage incidents');
   }
@@ -755,7 +755,7 @@ export function getIncidentTypeRuleById(ruleId: string): IncidentTypeRule | null
 export async function resolveIncidentTypeRuleById(ruleId: string): Promise<IncidentTypeRule | null> {
   const fallback = getIncidentTypeRuleById(ruleId);
   try {
-    const snapshot = await getDoc(doc(firestore, 'incidentTypeRules', ruleId));
+    const snapshot = await getDoc(doc(getFirebaseFirestore(), 'incidentTypeRules', ruleId));
     if (snapshot.exists()) {
       return toIncidentTypeRule(snapshot);
     }
@@ -806,7 +806,7 @@ export async function saveIncidentTypeRule(input: SaveIncidentTypeRuleInput): Pr
     requiresVehicularReason: Boolean(input.requiresVehicularReason),
   };
 
-  await setDoc(doc(firestore, 'incidentTypeRules', payload.id), {
+  await setDoc(doc(getFirebaseFirestore(), 'incidentTypeRules', payload.id), {
     ...payload,
     updatedAt: Timestamp.now(),
   });
@@ -830,12 +830,12 @@ export function subscribeToIncidentTypeRules(
 ): () => void {
   try {
     // Avoid permission errors during auth initialization races.
-    if (!auth.currentUser) {
+    if (!getFirebaseAuth().currentUser) {
       callback(incidentTypeRules);
       return () => {};
     }
 
-    const rulesRef = collection(firestore, 'incidentTypeRules');
+    const rulesRef = collection(getFirebaseFirestore(), 'incidentTypeRules');
     const q = query(rulesRef, limit(500));
 
     return onSnapshot(
@@ -899,7 +899,7 @@ export async function createIncident(input: CreateIncidentInput): Promise<Incide
 
   const { incidentTime, scheduleOfDuty } = normalizeIncidentTimeAndDeriveSchedule(input.incidentTime);
 
-  const incidentsRef = collection(firestore, 'incidents');
+  const incidentsRef = collection(getFirebaseFirestore(), 'incidents');
   const createdAt = Timestamp.now();
   const initialStatus: IncidentStatus = rule.requiresExternalAgency ? 'liaison_pending' : 'awaiting_resources';
   const referenceNumber = `INC-${Date.now()}`;
@@ -965,7 +965,7 @@ export async function dispatchIncidentResources(
     return;
   }
 
-  const incidentRef = doc(firestore, 'incidents', incidentId);
+  const incidentRef = doc(getFirebaseFirestore(), 'incidents', incidentId);
   const incidentSnapshot = await getDoc(incidentRef);
 
   if (!incidentSnapshot.exists()) {
@@ -984,7 +984,7 @@ export async function dispatchIncidentResources(
 
   const resources = await Promise.all(
     normalizedIds.map(async (resourceId) => {
-      const resourceSnapshot = await getDoc(doc(firestore, 'resources', resourceId));
+      const resourceSnapshot = await getDoc(doc(getFirebaseFirestore(), 'resources', resourceId));
       if (!resourceSnapshot.exists()) {
         throw new Error(`Resource ${resourceId} was not found.`);
       }
@@ -1042,8 +1042,8 @@ export async function dispatchIncidentResources(
 
   const existingIds = incident.assignedResourceIds || [];
   const mergedResourceIds = Array.from(new Set([...existingIds, ...normalizedIds]));
-  const batch = writeBatch(firestore);
-  const dispatchesRef = collection(firestore, 'incidentDispatches');
+  const batch = writeBatch(getFirebaseFirestore());
+  const dispatchesRef = collection(getFirebaseFirestore(), 'incidentDispatches');
   const timestamp = Timestamp.now();
 
   resources.forEach(({ ref, resource }) => {
@@ -1084,13 +1084,13 @@ export function subscribeToIncidents(
 ): () => void {
   try {
     // Avoid permission errors during auth initialization races.
-    const currentUser = auth.currentUser;
+    const currentUser = getFirebaseAuth().currentUser;
     if (!currentUser) {
       callback([]);
       return () => {};
     }
 
-    const incidentsRef = collection(firestore, 'incidents');
+    const incidentsRef = collection(getFirebaseFirestore(), 'incidents');
     // Scope to the signed-in command center.
     // This matches authorization checks used in `dispatchIncidentResources`.
     const q = query(

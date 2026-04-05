@@ -4,8 +4,8 @@ export {
 	SafeAreaFrameContext,
 	useSafeAreaFrame,
 	initialWindowMetrics,
-} from 'react-native-safe-area-context/lib/commonjs';
-import { useSafeAreaInsets as useNativeSafeAreaInsets } from 'react-native-safe-area-context/lib/commonjs';
+} from 'react-native-safe-area-context';
+import { useSafeAreaInsets as useNativeSafeAreaInsets } from 'react-native-safe-area-context';
 
 export { SafeAreaView } from './SafeAreaView.web';
 

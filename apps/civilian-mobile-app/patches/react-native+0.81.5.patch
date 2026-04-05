@@ -1,8 +1,30 @@
 diff --git a/node_modules/react-native/index.js b/node_modules/react-native/index.js
-index c737c93..f3edd25 100644
+index c737c93..0000000 100644
 --- a/node_modules/react-native/index.js
 +++ b/node_modules/react-native/index.js
-@@ -336,6 +336,9 @@ module.exports = {
+@@ -84,18 +84,10 @@ module.exports = {
+       .default;
+   },
+   /**
+-   * @deprecated SafeAreaView has been deprecated and will be removed in a future release.
+-   * Please use 'react-native-safe-area-context' instead.
+-   * See https://github.com/th3rdwave/react-native-safe-area-context
++   * Re-export from react-native-safe-area-context (RN core SafeAreaView is deprecated).
+    */
+   get SafeAreaView() {
+-    warnOnce(
+-      'safe-area-view-deprecated',
+-      'SafeAreaView has been deprecated and will be removed in a future release. ' +
+-        "Please use 'react-native-safe-area-context' instead. " +
+-        'See https://github.com/th3rdwave/react-native-safe-area-context',
+-    );
+-    return require('./Libraries/Components/SafeAreaView/SafeAreaView').default;
++    return require('react-native-safe-area-context').SafeAreaView;
+   },
+   get ScrollView() {
+     return require('./Libraries/Components/ScrollView/ScrollView').default;
+@@ -327,7 +330,10 @@
+   get VirtualViewMode() {
      return require('./src/private/components/virtualview/VirtualView')
        .VirtualViewMode;
    },
@@ -12,10 +34,22 @@ index c737c93..f3edd25 100644
    // #endregion
  } as ReactNativePublicAPI;
  
-@@ -405,15 +408,4 @@ if (__DEV__) {
-    * attempting to access Slider. */
-   /* $FlowFixMe[invalid-export] This is intentional: Flow will error when
-    * attempting to access Slider. */
+@@ -388,27 +388,12 @@
+   Object.defineProperty(module.exports, 'DatePickerIOS', {
+     configurable: true,
+     get() {
+       invariant(
+         false,
+         'DatePickerIOS has been removed from react-native core. ' +
+           "It can now be installed and imported from '@react-native-community/datetimepicker' instead of 'react-native'. " +
+           'See https://github.com/react-native-datetimepicker/datetimepicker',
+       );
+     },
+   });
+-  /* $FlowFixMe[prop-missing] This is intentional: Flow will error when
+-   * attempting to access Slider. */
+-  /* $FlowFixMe[invalid-export] This is intentional: Flow will error when
+-   * attempting to access Slider. */
 -  Object.defineProperty(module.exports, 'Slider', {
 -    configurable: true,
 -    get() {

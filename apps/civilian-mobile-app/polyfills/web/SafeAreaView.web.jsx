@@ -1,13 +1,13 @@
 import React, { forwardRef } from 'react';
 import { View } from 'react-native';
-import { SafeAreaView as NativeSafeAreaView } from 'react-native-safe-area-context/lib/commonjs';
+import { SafeAreaView as NativeSafeAreaView } from 'react-native-safe-area-context';
 export {
   initialWindowMetrics,
   SafeAreaFrameContext,
   SafeAreaInsetsContext,
   SafeAreaProvider,
   useSafeAreaFrame,
-} from 'react-native-safe-area-context/lib/commonjs';
+} from 'react-native-safe-area-context';
 
 export const SafeAreaView = forwardRef(
   ({ children, edges = ['top', 'right', 'bottom', 'left'], ...rest }, forwardedRef) => {

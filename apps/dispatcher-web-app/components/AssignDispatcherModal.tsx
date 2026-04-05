@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { getAllDispatchers, assignDispatcherToEmergency, type DispatcherAccount, auth, verifyCommandCenterUser } from '@packages/firebase'
+import { getAllDispatchers, assignDispatcherToEmergency, type DispatcherAccount, getFirebaseAuth, verifyCommandCenterUser } from '@packages/firebase'
 
 interface AssignDispatcherModalProps {
   isOpen: boolean
@@ -37,7 +37,7 @@ export default function AssignDispatcherModal({
     setError(null)
     try {
       // Verify user is authenticated
-      if (!auth.currentUser) {
+      if (!getFirebaseAuth().currentUser) {
         throw new Error('You must be logged in to assign dispatchers')
       }
       

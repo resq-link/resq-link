@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import { auth, type User, onAuthStateChanged, signOut as firebaseSignOut } from '@packages/firebase'
+import { getFirebaseAuth, type User, onAuthStateChanged, signOut as firebaseSignOut } from '@packages/firebase'
 import { useRouter } from 'next/navigation'
 
 interface AuthContextType {
@@ -18,7 +18,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(getFirebaseAuth(), (user) => {
       setUser(user)
       setLoading(false)
       console.log('Auth state changed:', user ? `User: ${user.uid}` : 'No user')
@@ -29,7 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     try {
-      await firebaseSignOut(auth)
+      await firebaseSignOut(getFirebaseAuth())
       router.push('/login')
     } catch (error) {
       console.error('Error signing out:', error)

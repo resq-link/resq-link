@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { auth } from '@packages/firebase';
-import { firestore, collection, getDocs } from '@packages/firebase';
+import { getFirebaseAuth, getFirebaseFirestore, collection, getDocs } from '@packages/firebase';
 import { Building2, Plus, Loader2 } from 'lucide-react';
 
 export default function CommandCentersPage() {
@@ -19,7 +18,7 @@ export default function CommandCentersPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const snap = await getDocs(collection(firestore, 'commandCenters'));
+        const snap = await getDocs(collection(getFirebaseFirestore(), 'commandCenters'));
         const list = snap.docs.map((d) => {
           const data = d.data();
           return {
@@ -44,7 +43,7 @@ export default function CommandCentersPage() {
     setMessage(null);
     setLoading(true);
     try {
-      const token = await auth.currentUser?.getIdToken();
+      const token = await getFirebaseAuth().currentUser?.getIdToken();
       if (!token) throw new Error('Not signed in');
       const res = await fetch('/api/create-command-center', {
         method: 'POST',

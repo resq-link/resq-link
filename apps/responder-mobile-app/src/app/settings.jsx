@@ -16,7 +16,7 @@ import {
   SpaceGrotesk_700Bold,
 } from "@expo-google-fonts/space-grotesk";
 import { useFonts } from "expo-font";
-import { signOut, auth, setDispatcherOnlineStatus } from "@packages/firebase";
+import { signOut, getFirebaseAuth, setDispatcherOnlineStatus } from "@packages/firebase";
 import useUserStore from "@/utils/userStore";
 import { colors, spacing, radii } from "@/theme";
 
@@ -50,7 +50,7 @@ export default function SettingsScreen() {
     try {
       setIsLoggingOut(true);
       await setDispatcherOnlineStatus(false);
-      await signOut(auth);
+      await signOut(getFirebaseAuth());
       await logout();
       router.replace("/login");
     } catch (e) {

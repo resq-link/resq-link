@@ -2,9 +2,9 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import {
-  auth,
+  getFirebaseAuth,
+  getFirebaseFirestore,
   doc,
-  firestore,
   getDoc,
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -30,10 +30,10 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
+    const unsubscribe = onAuthStateChanged(getFirebaseAuth(), async (authUser) => {
       setUser(authUser);
       if (authUser) {
-        const adminDoc = await getDoc(doc(firestore, 'admins', authUser.uid));
+        const adminDoc = await getDoc(doc(getFirebaseFirestore(), 'admins', authUser.uid));
         setIsAdmin(adminDoc.exists());
       } else {
         setIsAdmin(null);
@@ -45,10 +45,10 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const adminDoc = await getDoc(doc(firestore, 'admins', userCredential.user.uid));
+    const userCredential = await signInWithEmailAndPassword(getFirebaseAuth(), email, password);
+    const adminDoc = await getDoc(doc(getFirebaseFirestore(), 'admins', userCredential.user.uid));
     if (!adminDoc.exists()) {
-      await firebaseSignOut(auth);
+      await firebaseSignOut(getFirebaseAuth());
       throw new Error('Access denied. You are not a super admin.');
     }
     router.push('/dashboard');
@@ -56,7 +56,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     try {
-      await firebaseSignOut(auth);
+      await firebaseSignOut(getFirebaseAuth());
       setIsAdmin(null);
       router.push('/login');
     } catch (error) {

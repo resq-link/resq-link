@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { signInCommandCenter, auth } from '@packages/firebase'
+import { signInCommandCenter } from '@packages/firebase'
 import { useAuth } from '@/contexts/AuthContext'
 
 export default function LoginPage() {

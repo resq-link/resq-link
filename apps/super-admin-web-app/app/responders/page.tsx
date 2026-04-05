@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import ProtectedRoute from '@/components/ProtectedRoute';
-import { auth, firestore, collection, getDocs } from '@packages/firebase';
+import { getFirebaseAuth, getFirebaseFirestore, collection, getDocs } from '@packages/firebase';
 import type { DispatcherRole } from '@packages/firebase';
 import { Radio, Plus, Loader2 } from 'lucide-react';
 
@@ -26,7 +26,7 @@ export default function RespondersPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const snap = await getDocs(collection(firestore, 'dispatchers'));
+        const snap = await getDocs(collection(getFirebaseFirestore(), 'dispatchers'));
         const list = snap.docs.map((d) => {
           const data = d.data();
           return { id: d.id, email: data.email || '', role: data.role || '', active: data.active !== false };
@@ -46,7 +46,7 @@ export default function RespondersPage() {
     setMessage(null);
     setLoading(true);
     try {
-      const token = await auth.currentUser?.getIdToken();
+      const token = await getFirebaseAuth().currentUser?.getIdToken();
       if (!token) throw new Error('Not signed in');
       const res = await fetch('/api/create-responder', {
         method: 'POST',

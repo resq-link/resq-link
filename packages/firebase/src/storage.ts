@@ -1,5 +1,5 @@
 import { ref, uploadBytes, getDownloadURL, UploadResult } from 'firebase/storage';
-import { storage } from './config';
+import { getFirebaseStorage } from './config';
 
 /**
  * Convert a file URI to a Blob (works in React Native and Web)
@@ -54,7 +54,7 @@ export async function uploadImageToStorage(
     const storagePath = `${path}${finalFileName}`;
     
     // Create a reference to the file location in Storage
-    const storageRef = ref(storage, storagePath);
+    const storageRef = ref(getFirebaseStorage(), storagePath);
     
     // Convert file URI to blob (handles React Native file:// URIs properly)
     console.log('Converting file URI to blob:', fileUri);

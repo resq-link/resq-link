@@ -15,7 +15,7 @@ import {
   SpaceGrotesk_700Bold,
 } from "@expo-google-fonts/space-grotesk";
 import { useFonts } from "expo-font";
-import { getDoc, doc, firestore, onSnapshot } from "@packages/firebase";
+import { getDoc, doc, getFirebaseFirestore, onSnapshot } from "@packages/firebase";
 import CaseInfoCard from "@/components/CaseInfoCard";
 import LoadingScreen from "@/components/LoadingScreen";
 import ErrorAlert from "@/components/ErrorAlert";
@@ -43,7 +43,7 @@ export default function CaseDetailScreen() {
       return;
     }
 
-    const caseDocRef = doc(firestore, "emergencies", caseId);
+    const caseDocRef = doc(getFirebaseFirestore(), "emergencies", caseId);
     const unsubscribe = onSnapshot(
       caseDocRef,
       async (docSnap) => {
@@ -82,7 +82,7 @@ export default function CaseDetailScreen() {
 
           if (caseInfo.userId) {
             try {
-              const userDocRef = doc(firestore, "users", caseInfo.userId);
+              const userDocRef = doc(getFirebaseFirestore(), "users", caseInfo.userId);
               const userDoc = await getDoc(userDocRef);
               if (userDoc.exists()) {
                 const userData = userDoc.data();

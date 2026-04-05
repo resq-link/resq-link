@@ -14,7 +14,7 @@ import {
   type DocumentData,
   type QuerySnapshot,
 } from 'firebase/firestore';
-import { auth, firestore } from './config';
+import { getFirebaseAuth, getFirebaseFirestore } from './config';
 
 export type ResourceType =
   | 'AMBULANCE'
@@ -86,7 +86,7 @@ const convertFirestoreDoc = (snapshot: DocumentData): ResourceRecord => {
 };
 
 const ensureAuthenticated = () => {
-  const currentUser = auth.currentUser;
+  const currentUser = getFirebaseAuth().currentUser;
   if (!currentUser) {
     throw new Error('User must be authenticated to manage resources');
   }
@@ -138,7 +138,7 @@ export async function createResource(
       throw new Error('Resource name is required');
     }
 
-    const resourcesRef = collection(firestore, 'resources');
+    const resourcesRef = collection(getFirebaseFirestore(), 'resources');
     const payload = {
       ...normalizeResourceInput(resource),
       createdAt: Timestamp.now(),
@@ -164,7 +164,7 @@ export async function updateResource(
 ): Promise<ResourceRecord> {
   try {
     ensureAuthenticated();
-    const resourceRef = doc(firestore, 'resources', resourceId);
+    const resourceRef = doc(getFirebaseFirestore(), 'resources', resourceId);
     const existing = await getDoc(resourceRef);
 
     if (!existing.exists()) {
@@ -217,7 +217,7 @@ export async function updateResource(
 export async function deleteResource(resourceId: string): Promise<void> {
   try {
     ensureAuthenticated();
-    await deleteDoc(doc(firestore, 'resources', resourceId));
+    await deleteDoc(doc(getFirebaseFirestore(), 'resources', resourceId));
   } catch (error: any) {
     console.error('Error deleting resource:', error);
     throw new Error(`Failed to delete resource: ${error.message}`);
@@ -227,7 +227,7 @@ export async function deleteResource(resourceId: string): Promise<void> {
 export async function getAllResources(limitCount: number = 300): Promise<ResourceRecord[]> {
   try {
     ensureAuthenticated();
-    const resourcesRef = collection(firestore, 'resources');
+    const resourcesRef = collection(getFirebaseFirestore(), 'resources');
     const q = query(resourcesRef, orderBy('updatedAt', 'desc'), limit(limitCount));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(convertFirestoreDoc).filter((resource) => resource.isActive !== false);
@@ -255,13 +255,13 @@ export function subscribeToResources(
   try {
     // Avoid permission errors during auth initialization races.
     // If the user isn't authenticated yet, don't start the listener.
-    const currentUser = auth.currentUser;
+    const currentUser = getFirebaseAuth().currentUser;
     if (!currentUser) {
       callback([]);
       return () => {};
     }
 
-    const resourcesRef = collection(firestore, 'resources');
+    const resourcesRef = collection(getFirebaseFirestore(), 'resources');
     const q = query(resourcesRef, orderBy('updatedAt', 'desc'), limit(limitCount));
 
     const unsubscribe = onSnapshot(

@@ -1,12 +1,12 @@
 {
   "expo": {
     "name": "RESQ-Link",
-    "scheme": "resqlink",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "scheme": "resqlink",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.tuguegarao.resqlink",

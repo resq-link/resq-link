@@ -1,4 +1,11 @@
-import { signInDispatcher, getDoc, doc, firestore, signOut, auth } from "@packages/firebase";
+import {
+  signInDispatcher,
+  getDoc,
+  doc,
+  getFirebaseFirestore,
+  signOut,
+  getFirebaseAuth,
+} from "@packages/firebase";
 
 /**
  * Sign in dispatcher and verify role
@@ -12,12 +19,12 @@ export async function signInDispatcherWithVerification(email, password) {
     const user = await signInDispatcher(email, password);
     
     // Verify user exists in dispatchers collection
-    const dispatcherDocRef = doc(firestore, 'dispatchers', user.uid);
+    const dispatcherDocRef = doc(getFirebaseFirestore(), 'dispatchers', user.uid);
     const dispatcherDoc = await getDoc(dispatcherDocRef);
     
     if (!dispatcherDoc.exists()) {
       // Sign out if not a dispatcher
-      await signOut(auth);
+      await signOut(getFirebaseAuth());
       throw new Error('Access denied. Responder account required.');
     }
     
@@ -25,7 +32,7 @@ export async function signInDispatcherWithVerification(email, password) {
     
     // Check if dispatcher is active
     if (dispatcherData.active === false) {
-      await signOut(auth);
+      await signOut(getFirebaseAuth());
       throw new Error('Your dispatcher account has been deactivated. Please contact support.');
     }
     
