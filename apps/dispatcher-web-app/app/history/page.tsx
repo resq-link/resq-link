@@ -7,6 +7,19 @@ import { subscribeToEmergencyReports, type EmergencyReport } from '@packages/fir
 import { useAuth } from '@/contexts/AuthContext'
 import ProtectedRoute from '@/components/ProtectedRoute'
 
+type HistoryIncident = {
+  id: string
+  type: string
+  location: string
+  priority: string
+  status: EmergencyReport['status']
+  reportedAt: Date
+  resolvedAt: Date | null
+  description: string
+  responder: string | null
+  duration: string | null
+}
+
 // Map incident type to display name
 const getIncidentTypeName = (incidentType: string): string => {
   const typeMap: Record<string, string> = {
@@ -21,7 +34,7 @@ const getIncidentTypeName = (incidentType: string): string => {
 }
 
 // Convert EmergencyReport to History Incident format
-const convertToHistoryIncident = (report: EmergencyReport) => {
+const convertToHistoryIncident = (report: EmergencyReport): HistoryIncident => {
   const reportedAt = report.createdAt instanceof Date 
     ? report.createdAt 
     : (report.createdAt && typeof report.createdAt === 'object' && 'toDate' in report.createdAt)
@@ -100,7 +113,7 @@ const getPriorityBadgeClass = (priority: string) => {
 export default function HistoryPage() {
   const [selectedFilter, setSelectedFilter] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
-  const [history, setHistory] = useState<ReturnType<typeof convertToHistoryIncident>[]>([])
+  const [history, setHistory] = useState<HistoryIncident[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const { user } = useAuth()
   const router = useRouter()

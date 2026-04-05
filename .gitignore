@@ -38,3 +38,9 @@ e2b.*.local.toml
 
 **/.react-router
 apps/civilian-mobile-app/caches/*
+
+# local reference media
+/flow.png
+/resources.gif
+/RESQ ARCHITECTURE.docx
+/SPUP-SYSTEM.docx
