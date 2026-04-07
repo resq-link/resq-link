@@ -17,10 +17,23 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # dotenv environment variable files
 .env
+.env.*
 .env.development.local
 .env.test.local
 .env.production.local
 .env.local
+!.env.example
+!.env.*.example
+
+# local Firebase credentials
+service account*.json
+service-account*.json
+*service account*.json
+*service-account*.json
+
+# local Expo app config overrides
+apps/civilian-mobile-app/app.json
+apps/responder-mobile-app/app.json
 
 # caches
 .eslintcache

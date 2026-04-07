@@ -16,8 +16,12 @@ export type DispatcherRole = 'BFP' | 'PNP' | 'MDRRMO' | 'AMBULANCE' | 'PCG';
 
 // Dispatcher account interface
 export interface DispatcherAccount {
+  fullName?: string;
   email: string;
   role: DispatcherRole;
+  designation?: string | null;
+  teamCode?: string | null;
+  teamLabel?: string | null;
   createdAt: any;
   active: boolean;
 }
@@ -57,8 +61,12 @@ export async function createDispatcherAccount(
 
     // Create profile in Firestore
     const accountData: DispatcherAccount = {
+      fullName: '',
       email,
       role,
+      designation: 'dispatcher',
+      teamCode: null,
+      teamLabel: null,
       createdAt: serverTimestamp(),
       active: true,
     };
@@ -364,8 +372,12 @@ export async function getAllDispatchers(): Promise<Array<{ uid: string; account:
         dispatchers.push({
           uid: doc.id,
           account: {
+            fullName: data.fullName || '',
             email: data.email || '',
             role: data.role || 'BFP',
+            designation: data.designation || null,
+            teamCode: data.teamCode || null,
+            teamLabel: data.teamLabel || null,
             createdAt: data.createdAt,
             active: true,
           },

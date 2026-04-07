@@ -57,8 +57,15 @@ export default function CaseDetailScreen() {
           const caseInfo = {
             id: docSnap.id,
             userId: data.userId || data.user_id || "",
-            incidentType: data.incidentType || data.incident_type || "other",
+            incidentType: data.incidentType || data.incident_type || "other_emergency",
             locationText: data.locationText || data.location_text || "",
+            landmark: data.landmark || null,
+            peopleInvolved:
+              typeof data.peopleInvolved === "number"
+                ? data.peopleInvolved
+                : typeof data.people_involved === "number"
+                  ? data.people_involved
+                  : null,
             latitude: data.latitude ?? null,
             longitude: data.longitude ?? null,
             description: data.description || null,

@@ -45,7 +45,12 @@ export {
   getActiveEmergencyReports,
   subscribeToEmergencyReports,
   subscribeToActiveEmergencyReports,
+  subscribeToEmergencyReport,
   assignDispatcherToEmergency,
+  assignResponderToEmergency,
+  requestEmergencyAdditionalDetails,
+  markEmergencyReportViewed,
+  submitEmergencyAdditionalDetails,
   subscribeToDispatcherAssignedEmergencies,
   acceptCase,
   updateCaseStatus,
@@ -91,11 +96,34 @@ export {
   type ResourceType,
 } from './resources';
 
+// Export shared quadrant definitions
+export {
+  OPERATIONAL_QUADRANTS,
+  MAP_QUADRANTS,
+  QUADRANT_LABELS,
+  QUADRANT_COLORS,
+  BARANGAY_QUADRANT_MAPPING,
+  normalizeQuadrant,
+  type OperationalQuadrant,
+  type MapQuadrant,
+} from './quadrants';
+
+// Export team management functions
+export {
+  createTeam,
+  updateTeam,
+  deleteTeam,
+  getAllTeams,
+  subscribeToTeams,
+  type TeamRecord,
+} from './teams';
+
 // Export incident management functions
 export {
   createIncident,
   dispatchIncidentResources,
   saveIncidentTypeRule,
+  fetchIncidentTypeRules,
   subscribeToIncidents,
   subscribeToIncidentTypeRules,
   getIncidentTypeRules,
@@ -108,7 +136,6 @@ export {
   getIncidentResourceMatch,
   validateIncidentAgencyRouting,
   incidentAgencyCatalog,
-  incidentTypeRules,
   type AgencyCode,
   type CreateIncidentInput,
   type IncidentCategory,

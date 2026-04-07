@@ -4,6 +4,7 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
   limit,
   onSnapshot,
   query,
@@ -15,6 +16,7 @@ import {
   type QuerySnapshot,
 } from 'firebase/firestore';
 import { getFirebaseAuth, getFirebaseFirestore } from './config';
+import { normalizeQuadrant, type OperationalQuadrant } from './quadrants';
 import type { ResourceRecord, ResourceStatus, ResourceType } from './resources';
 
 export type IncidentSource = 'civilian_app' | 'call' | 'sms' | 'walk_in' | 'radio' | 'manual';
@@ -78,6 +80,7 @@ export interface IncidentRecord {
   priority: IncidentPriority;
   locationText: string;
   landmark?: string | null;
+  quadrant?: OperationalQuadrant | null;
   latitude?: number | null;
   longitude?: number | null;
   callerName?: string | null;
@@ -125,6 +128,7 @@ export interface CreateIncidentInput {
   incidentSubtypeId: string;
   locationText: string;
   landmark?: string | null;
+  quadrant?: OperationalQuadrant | null;
   latitude?: number | null;
   longitude?: number | null;
   callerName?: string | null;
@@ -150,11 +154,6 @@ export interface SaveIncidentTypeRuleInput {
   requiresExternalAgency: boolean;
   requiresVehicularReason?: boolean;
 }
-
-type RuleSeed = Omit<IncidentTypeRule, 'id' | 'label'> & {
-  id: string;
-  label: string;
-};
 
 const resourceTypeByAgency: Partial<Record<AgencyCode, ResourceType>> = {
   PNP: 'PNP',
@@ -182,383 +181,8 @@ const agencyCatalog: Record<AgencyCode, string> = {
   COMMAND_CENTER: 'Command Center',
   OTHER: 'Others',
 };
-
-const baseRules: RuleSeed[] = [
-  {
-    id: 'fire-grass-forest',
-    label: 'Fire (Grass/Forest)',
-    category: 'fire',
-    priority: 'high',
-    recommendedAgencies: ['BFP', 'TFLC'],
-    suggestedResourceTypes: ['BFP', 'MDRRMO'],
-    requiresExternalAgency: false,
-  },
-  {
-    id: 'fire-residential',
-    label: 'Fire (Residential)',
-    category: 'fire',
-    priority: 'critical',
-    recommendedAgencies: ['BFP', 'RESCUE_1111', 'TCPGH'],
-    suggestedResourceTypes: ['BFP', 'MDRRMO', 'AMBULANCE'],
-    requiresExternalAgency: false,
-  },
-  {
-    id: 'fire-commercial-establishment',
-    label: 'Fire (Commercial/Establishment)',
-    category: 'fire',
-    priority: 'critical',
-    recommendedAgencies: ['BFP', 'RESCUE_1111', 'TCPGH', 'PNP'],
-    suggestedResourceTypes: ['BFP', 'MDRRMO', 'AMBULANCE', 'PNP'],
-    requiresExternalAgency: false,
-  },
-  {
-    id: 'fire-vehicular',
-    label: 'Fire (Vehicular)',
-    category: 'fire',
-    priority: 'critical',
-    recommendedAgencies: ['BFP', 'RESCUE_1111', 'TCPGH', 'PNP'],
-    suggestedResourceTypes: ['BFP', 'MDRRMO', 'AMBULANCE', 'PNP'],
-    requiresExternalAgency: false,
-    requiresVehicularReason: true,
-  },
-  {
-    id: 'fire-post-fire',
-    label: 'Fire (Post Fire)',
-    category: 'fire',
-    priority: 'medium',
-    recommendedAgencies: ['BFP', 'PNP'],
-    suggestedResourceTypes: ['BFP', 'PNP'],
-    requiresExternalAgency: false,
-  },
-  {
-    id: 'fire-rubbish',
-    label: 'Fire (Rubbish)',
-    category: 'fire',
-    priority: 'medium',
-    recommendedAgencies: ['BFP'],
-    suggestedResourceTypes: ['BFP'],
-    requiresExternalAgency: false,
-  },
-  {
-    id: 'alarm-and-scandal',
-    label: 'Alarm and Scandal',
-    category: 'peace_and_order',
-    priority: 'medium',
-    recommendedAgencies: ['PNP'],
-    suggestedResourceTypes: ['PNP'],
-    requiresExternalAgency: false,
-  },
-  {
-    id: 'ambulant-vendor',
-    label: 'Ambulant Vendor',
-    category: 'community',
-    priority: 'low',
-    recommendedAgencies: ['PSSO_TCTMG'],
-    suggestedResourceTypes: ['OTHER'],
-    requiresExternalAgency: true,
-  },
-  {
-    id: 'commotion',
-    label: 'Commotion',
-    category: 'peace_and_order',
-    priority: 'medium',
-    recommendedAgencies: ['PNP'],
-    suggestedResourceTypes: ['PNP'],
-    requiresExternalAgency: false,
-  },
-  {
-    id: 'homicide',
-    label: 'Homicide',
-    category: 'peace_and_order',
-    priority: 'critical',
-    recommendedAgencies: ['PNP', 'TCPGH'],
-    suggestedResourceTypes: ['PNP', 'AMBULANCE'],
-    requiresExternalAgency: false,
-  },
-  {
-    id: 'hostage',
-    label: 'Hostage',
-    category: 'peace_and_order',
-    priority: 'critical',
-    recommendedAgencies: ['PNP'],
-    suggestedResourceTypes: ['PNP'],
-    requiresExternalAgency: false,
-  },
-  {
-    id: 'kidnapping',
-    label: 'Kidnapping',
-    category: 'peace_and_order',
-    priority: 'critical',
-    recommendedAgencies: ['PNP'],
-    suggestedResourceTypes: ['PNP'],
-    requiresExternalAgency: false,
-  },
-  {
-    id: 'motor-vehicle-theft',
-    label: 'Motor Vehicle Theft',
-    category: 'peace_and_order',
-    priority: 'high',
-    recommendedAgencies: ['PNP'],
-    suggestedResourceTypes: ['PNP'],
-    requiresExternalAgency: false,
-  },
-  {
-    id: 'noise-complaint',
-    label: 'Noise Complaint',
-    category: 'community',
-    priority: 'low',
-    recommendedAgencies: ['PNP', 'BARANGAY_OFFICIALS'],
-    suggestedResourceTypes: ['PNP'],
-    requiresExternalAgency: true,
-  },
-  {
-    id: 'riot',
-    label: 'Riot',
-    category: 'peace_and_order',
-    priority: 'critical',
-    recommendedAgencies: ['PNP'],
-    suggestedResourceTypes: ['PNP'],
-    requiresExternalAgency: false,
-  },
-  {
-    id: 'robbery',
-    label: 'Robbery',
-    category: 'peace_and_order',
-    priority: 'critical',
-    recommendedAgencies: ['PNP'],
-    suggestedResourceTypes: ['PNP'],
-    requiresExternalAgency: false,
-  },
-  {
-    id: 'scam',
-    label: 'Scam',
-    category: 'peace_and_order',
-    priority: 'medium',
-    recommendedAgencies: ['PNP'],
-    suggestedResourceTypes: ['PNP'],
-    requiresExternalAgency: false,
-  },
-  {
-    id: 'sexual-assault',
-    label: 'Sexual Assault',
-    category: 'peace_and_order',
-    priority: 'critical',
-    recommendedAgencies: ['PNP', 'TCPGH'],
-    suggestedResourceTypes: ['PNP', 'AMBULANCE'],
-    requiresExternalAgency: false,
-  },
-  {
-    id: 'suspicious-person',
-    label: 'Suspicious Person',
-    category: 'peace_and_order',
-    priority: 'medium',
-    recommendedAgencies: ['PNP'],
-    suggestedResourceTypes: ['PNP'],
-    requiresExternalAgency: false,
-  },
-  {
-    id: 'vawc',
-    label: 'VAWC',
-    category: 'peace_and_order',
-    priority: 'high',
-    recommendedAgencies: ['PNP', 'BARANGAY_OFFICIALS'],
-    suggestedResourceTypes: ['PNP'],
-    requiresExternalAgency: true,
-  },
-  {
-    id: 'abandoned-vehicle',
-    label: 'Abandoned Vehicle',
-    category: 'community',
-    priority: 'low',
-    recommendedAgencies: ['PSSO_TCTMG', 'PNP'],
-    suggestedResourceTypes: ['OTHER', 'PNP'],
-    requiresExternalAgency: true,
-  },
-  {
-    id: 'larceny-theft',
-    label: 'Larceny - Theft',
-    category: 'peace_and_order',
-    priority: 'medium',
-    recommendedAgencies: ['PNP'],
-    suggestedResourceTypes: ['PNP'],
-    requiresExternalAgency: false,
-  },
-  {
-    id: 'traffic-obstruction',
-    label: 'Traffic Obstruction',
-    category: 'vehicular',
-    priority: 'medium',
-    recommendedAgencies: ['PSSO_TCTMG', 'PNP'],
-    suggestedResourceTypes: ['OTHER', 'PNP'],
-    requiresExternalAgency: true,
-  },
-  {
-    id: 'traffic-assistance',
-    label: 'Traffic Assistance',
-    category: 'vehicular',
-    priority: 'medium',
-    recommendedAgencies: ['PSSO_TCTMG'],
-    suggestedResourceTypes: ['OTHER'],
-    requiresExternalAgency: true,
-  },
-  {
-    id: 'traffic-sitrep',
-    label: 'Traffic SITREP',
-    category: 'vehicular',
-    priority: 'low',
-    recommendedAgencies: ['PSSO_TCTMG'],
-    suggestedResourceTypes: ['OTHER'],
-    requiresExternalAgency: true,
-  },
-  {
-    id: 'medical-assistance',
-    label: 'Medical Assistance',
-    category: 'medical',
-    priority: 'high',
-    recommendedAgencies: ['RESCUE_1111', 'TCPGH'],
-    suggestedResourceTypes: ['MDRRMO', 'AMBULANCE'],
-    requiresExternalAgency: false,
-  },
-  {
-    id: 'animal-control-assistance',
-    label: 'Animal Control Assistance',
-    category: 'community',
-    priority: 'medium',
-    recommendedAgencies: ['OTHER'],
-    suggestedResourceTypes: ['OTHER'],
-    requiresExternalAgency: true,
-  },
-  {
-    id: 'barangay-official-assistance',
-    label: 'Barangay Official Assistance',
-    category: 'community',
-    priority: 'low',
-    recommendedAgencies: ['BARANGAY_OFFICIALS'],
-    suggestedResourceTypes: [],
-    requiresExternalAgency: true,
-  },
-  {
-    id: 'police-assistance',
-    label: 'Police Assistance',
-    category: 'peace_and_order',
-    priority: 'high',
-    recommendedAgencies: ['PNP'],
-    suggestedResourceTypes: ['PNP'],
-    requiresExternalAgency: false,
-  },
-  {
-    id: 'found-dead-body',
-    label: 'Found Dead Body',
-    category: 'peace_and_order',
-    priority: 'critical',
-    recommendedAgencies: ['PNP', 'TCPGH'],
-    suggestedResourceTypes: ['PNP', 'AMBULANCE'],
-    requiresExternalAgency: false,
-  },
-  {
-    id: 'missing-person',
-    label: 'Missing Person',
-    category: 'peace_and_order',
-    priority: 'high',
-    recommendedAgencies: ['PNP', 'BARANGAY_OFFICIALS'],
-    suggestedResourceTypes: ['PNP'],
-    requiresExternalAgency: true,
-  },
-  {
-    id: 'electrical-powerline-problem',
-    label: 'Electrical/Powerline Problem',
-    category: 'utility',
-    priority: 'high',
-    recommendedAgencies: ['CAGELCO_1', 'BFP'],
-    suggestedResourceTypes: ['BFP'],
-    requiresExternalAgency: true,
-  },
-  {
-    id: 'request-for-info',
-    label: 'Request for Info',
-    category: 'other',
-    priority: 'low',
-    recommendedAgencies: ['COMMAND_CENTER'],
-    suggestedResourceTypes: [],
-    requiresExternalAgency: false,
-  },
-  {
-    id: 'water-level-monitoring',
-    label: 'Water Level Monitoring',
-    category: 'utility',
-    priority: 'medium',
-    recommendedAgencies: ['PCG', 'TFLC'],
-    suggestedResourceTypes: ['PCG', 'MDRRMO'],
-    requiresExternalAgency: true,
-  },
-  {
-    id: 'request-for-assistance',
-    label: 'Request for Assistance',
-    category: 'other',
-    priority: 'medium',
-    recommendedAgencies: ['COMMAND_CENTER'],
-    suggestedResourceTypes: [],
-    requiresExternalAgency: false,
-  },
-];
-
-const medicalRules = [
-  { id: 'med-abdominal-pain', label: 'Med - Abdominal Pain', priority: 'high' },
-  { id: 'med-asthma', label: 'Med - Asthma', priority: 'high' },
-  { id: 'med-bleeding', label: 'Med - Bleeding', priority: 'critical' },
-  { id: 'med-body-weakness', label: 'Med - Body Weakness', priority: 'medium' },
-  { id: 'med-chilling', label: 'Med - Chilling', priority: 'medium' },
-  { id: 'med-conduction', label: 'Med - Conduction', priority: 'critical' },
-  { id: 'med-difficulty-of-breathing', label: 'Med - Difficulty of Breathing', priority: 'critical' },
-  { id: 'med-dizziness', label: 'Med - Dizziness', priority: 'medium' },
-  { id: 'med-drowning', label: 'Med - Drowning', priority: 'critical' },
-  { id: 'med-fainting', label: 'Med - Fainting', priority: 'high' },
-  { id: 'med-gunshot', label: 'Med - Gunshot', priority: 'critical' },
-  { id: 'med-heart-attack', label: 'Med - Heart Attack', priority: 'critical' },
-  { id: 'med-hypertension', label: 'Med - Hypertension', priority: 'high' },
-  { id: 'med-labor-pain', label: 'Med - Labor Pain', priority: 'high' },
-  { id: 'med-seizure', label: 'Med - Seizure', priority: 'critical' },
-  { id: 'med-stroke', label: 'Med - Stroke', priority: 'critical' },
-  { id: 'med-suicide', label: 'Med - Suicide', priority: 'critical' },
-  { id: 'med-dislocation', label: 'Med - Dislocation', priority: 'medium' },
-  { id: 'med-trauma-fall', label: 'Med - Trauma Fall', priority: 'high' },
-  { id: 'med-mauling', label: 'Med - Mauling', priority: 'high' },
-  { id: 'med-stabbing', label: 'Med - Stabbing', priority: 'critical' },
-  { id: 'med-first-aid', label: 'Med - First Aid', priority: 'medium' },
-] as const;
-
-const vehicularRules = [
-  'Vehicular Accident - Multi Vehicle',
-  'Vehicular Accident - Self Accident',
-  'Vehicular Accident - Pedestrian Collision',
-  'Vehicular Accident - Roll Over',
-  'Vehicular Accident - Hit and Run',
-] as const;
-
-const normalizedRules: IncidentTypeRule[] = [
-  ...baseRules,
-  ...medicalRules.map<IncidentTypeRule>((rule) => ({
-    id: rule.id,
-    label: rule.label,
-    category: 'medical',
-    priority: rule.priority,
-    recommendedAgencies: ['RESCUE_1111', 'TCPGH', 'CHO'],
-    suggestedResourceTypes: ['MDRRMO', 'AMBULANCE'],
-    requiresExternalAgency: false,
-  })),
-  ...vehicularRules.map<IncidentTypeRule>((label) => ({
-    id: label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
-    label,
-    category: 'vehicular',
-    priority: 'critical',
-    recommendedAgencies: ['PSSO_TCTMG', 'PNP', 'RESCUE_1111', 'TCPGH'],
-    suggestedResourceTypes: ['OTHER', 'PNP', 'MDRRMO', 'AMBULANCE'],
-    requiresExternalAgency: true,
-    requiresVehicularReason: true,
-  })),
-].sort((left, right) => left.label.localeCompare(right.label));
-
-const incidentRuleMap = new Map(normalizedRules.map((rule) => [rule.id, rule]));
+let incidentTypeRulesCache: IncidentTypeRule[] = [];
+const incidentRuleMap = new Map<string, IncidentTypeRule>();
 
 const ensureAuthenticated = () => {
   const currentUser = getFirebaseAuth().currentUser;
@@ -651,6 +275,7 @@ const toIncidentRecord = (snapshot: DocumentData): IncidentRecord => {
     priority: data.priority || 'medium',
     locationText: data.locationText || '',
     landmark: data.landmark || null,
+    quadrant: normalizeQuadrant(data.quadrant),
     latitude: data.latitude ?? null,
     longitude: data.longitude ?? null,
     callerName: data.callerName || null,
@@ -679,28 +304,31 @@ const toIncidentRecord = (snapshot: DocumentData): IncidentRecord => {
 
 const toIncidentTypeRule = (snapshot: DocumentData): IncidentTypeRule => {
   const data = snapshot.data();
-  const fallback = incidentRuleMap.get(snapshot.id);
 
   return {
     id: snapshot.id,
-    label: data.label || fallback?.label || snapshot.id,
-    category: data.category || fallback?.category || 'other',
-    priority: data.priority || fallback?.priority || 'medium',
-    recommendedAgencies: Array.isArray(data.recommendedAgencies)
-      ? data.recommendedAgencies
-      : fallback?.recommendedAgencies || [],
-    suggestedResourceTypes: Array.isArray(data.suggestedResourceTypes)
-      ? data.suggestedResourceTypes
-      : fallback?.suggestedResourceTypes || [],
+    label: data.label || snapshot.id,
+    category: data.category || 'other',
+    priority: data.priority || 'medium',
+    recommendedAgencies: Array.isArray(data.recommendedAgencies) ? data.recommendedAgencies : [],
+    suggestedResourceTypes: Array.isArray(data.suggestedResourceTypes) ? data.suggestedResourceTypes : [],
     requiresExternalAgency:
       typeof data.requiresExternalAgency === 'boolean'
         ? data.requiresExternalAgency
-        : fallback?.requiresExternalAgency || false,
+        : false,
     requiresVehicularReason:
       typeof data.requiresVehicularReason === 'boolean'
         ? data.requiresVehicularReason
-        : fallback?.requiresVehicularReason || false,
+        : false,
   };
+};
+
+const setIncidentTypeRulesCache = (rules: IncidentTypeRule[]) => {
+  incidentTypeRulesCache = [...rules];
+  incidentRuleMap.clear();
+  rules.forEach((rule) => {
+    incidentRuleMap.set(rule.id, rule);
+  });
 };
 
 const toDispatchRecord = (
@@ -741,29 +369,43 @@ const inferAgencyCodeForResource = (resource: Pick<ResourceRecord, 'agency' | 't
 
 const isResourceAvailable = (status: ResourceStatus) => status === 'available';
 
-export const incidentTypeRules = normalizedRules;
 export const incidentAgencyCatalog = agencyCatalog;
 
 export function getIncidentTypeRules(): IncidentTypeRule[] {
-  return incidentTypeRules;
+  return incidentTypeRulesCache;
 }
 
 export function getIncidentTypeRuleById(ruleId: string): IncidentTypeRule | null {
   return incidentRuleMap.get(ruleId) || null;
 }
 
+export async function fetchIncidentTypeRules(): Promise<IncidentTypeRule[]> {
+  const rulesRef = collection(getFirebaseFirestore(), 'incidentTypeRules');
+  const snapshot = await getDocs(query(rulesRef, limit(500)));
+  const rules = snapshot.docs
+    .map(toIncidentTypeRule)
+    .sort((left, right) => left.label.localeCompare(right.label));
+  setIncidentTypeRulesCache(rules);
+  return rules;
+}
+
 export async function resolveIncidentTypeRuleById(ruleId: string): Promise<IncidentTypeRule | null> {
-  const fallback = getIncidentTypeRuleById(ruleId);
   try {
     const snapshot = await getDoc(doc(getFirebaseFirestore(), 'incidentTypeRules', ruleId));
     if (snapshot.exists()) {
-      return toIncidentTypeRule(snapshot);
+      const rule = toIncidentTypeRule(snapshot);
+      const nextRules = incidentTypeRulesCache
+        .filter((item) => item.id !== rule.id)
+        .concat(rule)
+        .sort((left, right) => left.label.localeCompare(right.label));
+      setIncidentTypeRulesCache(nextRules);
+      return rule;
     }
   } catch (error) {
     console.error('Error resolving incident type rule from Firestore:', error);
   }
 
-  return fallback;
+  return null;
 }
 
 export function getAgencyLabel(agency: AgencyCode): string {
@@ -811,6 +453,12 @@ export async function saveIncidentTypeRule(input: SaveIncidentTypeRuleInput): Pr
     updatedAt: Timestamp.now(),
   });
 
+  const nextRules = incidentTypeRulesCache
+    .filter((item) => item.id !== payload.id)
+    .concat(payload)
+    .sort((left, right) => left.label.localeCompare(right.label));
+  setIncidentTypeRulesCache(nextRules);
+
   return payload;
 }
 
@@ -829,9 +477,9 @@ export function subscribeToIncidentTypeRules(
   callback: (rules: IncidentTypeRule[]) => void
 ): () => void {
   try {
-    // Avoid permission errors during auth initialization races.
     if (!getFirebaseAuth().currentUser) {
-      callback(incidentTypeRules);
+      setIncidentTypeRulesCache([]);
+      callback([]);
       return () => {};
     }
 
@@ -841,33 +489,28 @@ export function subscribeToIncidentTypeRules(
     return onSnapshot(
       q,
       (snapshot: QuerySnapshot) => {
-        const overrides = new Map(snapshot.docs.map((item) => [item.id, toIncidentTypeRule(item)]));
-        const merged = incidentTypeRules
-          .map((rule) => overrides.get(rule.id) || rule)
-          .concat(
-            snapshot.docs
-              .filter((item) => !incidentRuleMap.has(item.id))
-              .map(toIncidentTypeRule)
-          )
+        const rules = snapshot.docs
+          .map(toIncidentTypeRule)
           .sort((left, right) => left.label.localeCompare(right.label));
-
-        callback(merged);
+        setIncidentTypeRulesCache(rules);
+        callback(rules);
       },
       (error) => {
-        // Avoid console spam for expected auth/rules failures.
+        setIncidentTypeRulesCache([]);
         if (isPermissionDenied(error)) {
-          callback(incidentTypeRules);
+          callback([]);
           return
         }
         console.error('Error subscribing to incident type rules:', error);
-        callback(incidentTypeRules);
+        callback([]);
       }
     );
   } catch (error) {
+    setIncidentTypeRulesCache([]);
     if (!isPermissionDenied(error)) {
       console.error('Error setting up incident type rule subscription:', error);
     }
-    callback(incidentTypeRules);
+    callback([]);
     return () => {};
   }
 }
@@ -918,6 +561,7 @@ export async function createIncident(input: CreateIncidentInput): Promise<Incide
     priority: rule.priority,
     locationText: input.locationText.trim(),
     landmark: normalizeNullableString(input.landmark),
+    quadrant: normalizeQuadrant(input.quadrant),
     latitude: normalizeNullableNumber(input.latitude),
     longitude: normalizeNullableNumber(input.longitude),
     callerName: normalizeNullableString(input.callerName),

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import ProtectedRoute from '@/components/ProtectedRoute'
+import { useAuth } from '@/contexts/AuthContext'
 import {
   getAgencyLabel,
   saveIncidentTypeRule,
@@ -87,6 +88,7 @@ const getCategoryTab = (category: string): CategoryTab => {
 }
 
 export default function IncidentManagementPage() {
+  const { user } = useAuth()
   const [rules, setRules] = useState<IncidentTypeRule[]>([])
   const [selectedRuleId, setSelectedRuleId] = useState('')
   const [search, setSearch] = useState('')
@@ -97,30 +99,41 @@ export default function IncidentManagementPage() {
   const [pageSuccess, setPageSuccess] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!user) {
+      setRules([])
+      setSelectedRuleId('')
+      return
+    }
+
     const unsubscribe = subscribeToIncidentTypeRules((nextRules) => {
       setRules(nextRules)
-      if (!selectedRuleId && nextRules[0]?.id) {
+      if (nextRules.length === 0) {
+        setSelectedRuleId('')
+        return
+      }
+      if (!nextRules.some((rule) => rule.id === selectedRuleId)) {
         setSelectedRuleId(nextRules[0].id)
       }
     })
 
     return unsubscribe
-  }, [selectedRuleId])
+  }, [selectedRuleId, user])
 
   const filteredRules = useMemo(() => {
     const needle = search.trim().toLowerCase()
-    if (!needle) {
-      return rules
-    }
-
     return rules.filter((rule) => {
       const agencyText = rule.recommendedAgencies.map((agency) => getAgencyLabel(agency)).join(' ').toLowerCase()
       const matchesCategory = selectedCategory === 'all' || getCategoryTab(rule.category) === selectedCategory
+      if (!matchesCategory) {
+        return false
+      }
+      if (!needle) {
+        return true
+      }
       return (
-        matchesCategory &&
-        (rule.label.toLowerCase().includes(needle) ||
-          rule.category.toLowerCase().includes(needle) ||
-          agencyText.includes(needle))
+        rule.label.toLowerCase().includes(needle) ||
+        rule.category.toLowerCase().includes(needle) ||
+        agencyText.includes(needle)
       )
     })
   }, [rules, search, selectedCategory])
@@ -208,7 +221,7 @@ export default function IncidentManagementPage() {
               <p className="text-xs uppercase tracking-[0.3em] text-secondary-300">Command Center Admin</p>
               <h1 className="mt-1 text-2xl font-semibold text-slate-100 md:text-3xl">Incident Management</h1>
               <p className="mt-1 max-w-3xl text-sm text-slate-400">
-                Manage which agency handles each incident type.
+                Manage the Firestore incident type catalog used across intake and dispatch modules.
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -267,8 +280,14 @@ export default function IncidentManagementPage() {
             <div className="mt-4 max-h-[640px] space-y-3 overflow-y-auto pr-1">
               {filteredRules.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-slate-800 bg-slate-950/40 px-4 py-10 text-center">
-                  <p className="text-base text-slate-300">No incident types found</p>
-                  <p className="mt-1 text-sm text-slate-500">Try adjusting your search or category.</p>
+                  <p className="text-base text-slate-300">
+                    {rules.length === 0 ? 'No incident types in Firestore' : 'No incident types found'}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {rules.length === 0
+                      ? 'Seed the incidentTypeRules collection before using Incident Management.'
+                      : 'Try adjusting your search or category.'}
+                  </p>
                 </div>
               ) : (
                 filteredRules.map((rule) => {
@@ -338,7 +357,14 @@ export default function IncidentManagementPage() {
           >
             {!selectedRule ? (
               <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-950/40 px-6 py-16 text-center">
-                <p className="text-lg text-slate-300">Select an incident type to manage.</p>
+                <p className="text-lg text-slate-300">
+                  {rules.length === 0 ? 'Firestore incident type catalog is empty.' : 'Select an incident type to manage.'}
+                </p>
+                {rules.length === 0 ? (
+                  <p className="mt-2 text-sm text-slate-500">
+                    Run the seed script or create `incidentTypeRules` documents before editing routing.
+                  </p>
+                ) : null}
               </div>
             ) : (
               <>

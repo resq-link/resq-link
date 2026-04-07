@@ -28,13 +28,13 @@ import useUserStore from "../utils/userStore";
 import { getApiUrl, UI_MODE, mockData } from "../utils/api";
 import { submitEmergencyReport, uploadImageToStorage } from "@packages/firebase";
 
-const INCIDENT_TYPES = [
-  { id: "fire", label: "🔥 Fire", emoji: "🔥" },
-  { id: "medical", label: "🚑 Medical", emoji: "🚑" },
-  { id: "crime", label: "🚓 Crime", emoji: "🚓" },
-  { id: "accident", label: "🚗 Accident", emoji: "🚗" },
-  { id: "flood", label: "🌊 Flood", emoji: "🌊" },
-  { id: "other", label: "⚡ Other", emoji: "⚡" },
+const CIVILIAN_INCIDENT_TYPES = [
+  { id: "fire", label: "Fire", emoji: "🔥" },
+  { id: "medical", label: "Medical", emoji: "🚑" },
+  { id: "vehicular_accident", label: "Vehicular Accident", emoji: "🚗" },
+  { id: "police_emergency", label: "Police Emergency", emoji: "🚓" },
+  { id: "electrical_powerline_hazard", label: "Electrical / Powerline Hazard", emoji: "⚡" },
+  { id: "other_emergency", label: "Other Emergency", emoji: "🆘" },
 ];
 
 export default function EmergencyFormScreen() {
@@ -44,6 +44,8 @@ export default function EmergencyFormScreen() {
 
   const [incidentType, setIncidentType] = useState("");
   const [locationText, setLocationText] = useState("");
+  const [landmark, setLandmark] = useState("");
+  const [peopleInvolved, setPeopleInvolved] = useState("");
   const [description, setDescription] = useState("");
   const [imageUri, setImageUri] = useState(null);
   const [latitude, setLatitude] = useState(null);
@@ -279,6 +281,8 @@ export default function EmergencyFormScreen() {
         userId,
         incidentType,
         locationText: locationText.trim(),
+        landmark: landmark.trim() || null,
+        peopleInvolved: peopleInvolved ? Number.parseInt(peopleInvolved, 10) : null,
         latitude,
         longitude,
         imageUrl,
@@ -388,7 +392,7 @@ export default function EmergencyFormScreen() {
             gap: 12,
           }}
         >
-          {INCIDENT_TYPES.map((type) => (
+          {CIVILIAN_INCIDENT_TYPES.map((type) => (
             <TouchableOpacity
               key={type.id}
               onPress={() => setIncidentType(type.id)}
@@ -415,7 +419,7 @@ export default function EmergencyFormScreen() {
                   textAlign: "center",
                 }}
               >
-                {type.label.split(" ")[1]}
+                {type.label}
               </Text>
             </TouchableOpacity>
           ))}
@@ -517,6 +521,34 @@ export default function EmergencyFormScreen() {
               setLocationStatus(null); // Reset status when user manually edits
             }}
           />
+          <Text
+            style={{
+              fontFamily: "Inter_600SemiBold",
+              fontSize: 14,
+              color: "#FFFFFF",
+              marginTop: 12,
+              marginBottom: 8,
+            }}
+          >
+            Nearest Landmark (Optional)
+          </Text>
+          <TextInput
+            style={{
+              height: 50,
+              borderWidth: 1,
+              borderColor: "#6C6C6C",
+              borderRadius: 12,
+              paddingHorizontal: 16,
+              fontFamily: "Inter_400Regular",
+              fontSize: 16,
+              color: "#FFFFFF",
+              backgroundColor: "transparent",
+            }}
+            placeholder="Nearest landmark"
+            placeholderTextColor="#C1C1C1"
+            value={landmark}
+            onChangeText={setLandmark}
+          />
           {latitude && longitude && (
             <Text
               style={{
@@ -531,6 +563,36 @@ export default function EmergencyFormScreen() {
             </Text>
           )}
         </View>
+
+        <Text
+          style={{
+            fontFamily: "Inter_600SemiBold",
+            fontSize: 14,
+            color: "#FFFFFF",
+            marginBottom: 8,
+          }}
+        >
+          Number of People Involved (Optional)
+        </Text>
+        <TextInput
+          style={{
+            height: 50,
+            borderWidth: 1,
+            borderColor: "#6C6C6C",
+            borderRadius: 12,
+            paddingHorizontal: 16,
+            fontFamily: "Inter_400Regular",
+            fontSize: 16,
+            color: "#FFFFFF",
+            backgroundColor: "transparent",
+            marginBottom: 24,
+          }}
+          placeholder="Enter a number if applicable"
+          placeholderTextColor="#C1C1C1"
+          value={peopleInvolved}
+          onChangeText={(text) => setPeopleInvolved(text.replace(/[^0-9]/g, ""))}
+          keyboardType="number-pad"
+        />
 
         {/* Description */}
         <Text

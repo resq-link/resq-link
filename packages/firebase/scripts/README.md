@@ -24,6 +24,22 @@ These scripts help you quickly create accounts for testing and development.
 
 ## Available Scripts
 
+### 0. Seed Incident Type Rules
+
+Populates the Firestore `incidentTypeRules` collection from the repo seed catalog.
+
+```bash
+npx ts-node scripts/seed-incident-type-rules.ts
+```
+
+Optional overwrite mode:
+
+```bash
+SEED_MODE=overwrite npx ts-node scripts/seed-incident-type-rules.ts
+```
+
+Use this before opening Incident Management or Intake if the catalog is empty.
+
 ### 1. Create Dispatcher Accounts
 
 Creates accounts for all dispatcher types (BFP, PNP, MDRRMO, AMBULANCE, PCG).

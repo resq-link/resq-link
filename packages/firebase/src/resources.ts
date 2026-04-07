@@ -15,6 +15,7 @@ import {
   type QuerySnapshot,
 } from 'firebase/firestore';
 import { getFirebaseAuth, getFirebaseFirestore } from './config';
+import { normalizeQuadrant, type OperationalQuadrant } from './quadrants';
 
 export type ResourceType =
   | 'AMBULANCE'
@@ -44,7 +45,7 @@ export interface ResourceRecord {
   teamName?: string | null;
   status: ResourceStatus;
   stationName?: string | null;
-  quadrant?: string | null;
+  quadrant?: OperationalQuadrant | null;
   stationLatitude?: number | null;
   stationLongitude?: number | null;
   currentLatitude?: number | null;
@@ -71,7 +72,7 @@ const convertFirestoreDoc = (snapshot: DocumentData): ResourceRecord => {
     teamName: data.teamName || null,
     status: data.status || 'available',
     stationName: data.stationName || null,
-    quadrant: data.quadrant || null,
+    quadrant: normalizeQuadrant(data.quadrant),
     stationLatitude: data.stationLatitude ?? null,
     stationLongitude: data.stationLongitude ?? null,
     currentLatitude: data.currentLatitude ?? null,
@@ -118,7 +119,7 @@ const normalizeResourceInput = (
   teamName: normalizeNullableString(resource.teamName),
   status: resource.status,
   stationName: normalizeNullableString(resource.stationName),
-  quadrant: normalizeNullableString(resource.quadrant),
+  quadrant: normalizeQuadrant(resource.quadrant),
   stationLatitude: normalizeNullableNumber(resource.stationLatitude),
   stationLongitude: normalizeNullableNumber(resource.stationLongitude),
   currentLatitude: normalizeNullableNumber(resource.currentLatitude),
@@ -182,7 +183,7 @@ export async function updateResource(
     if (updates.teamName !== undefined) normalizedUpdates.teamName = normalizeNullableString(updates.teamName);
     if (updates.status !== undefined) normalizedUpdates.status = updates.status;
     if (updates.stationName !== undefined) normalizedUpdates.stationName = normalizeNullableString(updates.stationName);
-    if (updates.quadrant !== undefined) normalizedUpdates.quadrant = normalizeNullableString(updates.quadrant);
+    if (updates.quadrant !== undefined) normalizedUpdates.quadrant = normalizeQuadrant(updates.quadrant);
     if (updates.stationLatitude !== undefined) normalizedUpdates.stationLatitude = normalizeNullableNumber(updates.stationLatitude);
     if (updates.stationLongitude !== undefined) normalizedUpdates.stationLongitude = normalizeNullableNumber(updates.stationLongitude);
     if (updates.currentLatitude !== undefined) normalizedUpdates.currentLatitude = normalizeNullableNumber(updates.currentLatitude);

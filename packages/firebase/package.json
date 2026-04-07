@@ -12,6 +12,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
+    "seed:incident-types": "ts-node scripts/seed-incident-type-rules.ts",
     "prepare": "npm run build"
   },
   "dependencies": {
