@@ -3,7 +3,7 @@
   "main": "index",
   "version": "1.0.0",
   "scripts": {
-    "postinstall": "patch-package",
+    "postinstall": "cd ../.. && patch-package --patch-dir apps/responder-mobile-app/patches",
     "android": "expo run:android",
     "ios": "expo run:ios"
   },

@@ -13,16 +13,26 @@ import {
   QuerySnapshot,
   QueryConstraint,
   doc,
-  updateDoc
+  updateDoc,
+  onSnapshot as onDocumentSnapshot,
 } from 'firebase/firestore';
 import { getFirebaseFirestore, getFirebaseAuth } from './config';
+import type { DispatcherRole } from './auth';
 
 // Emergency Report Types
 export interface EmergencyReport {
   id?: string;
   userId: string;
-  incidentType: 'fire' | 'medical' | 'crime' | 'accident' | 'flood' | 'other';
+  incidentType:
+    | 'fire'
+    | 'medical'
+    | 'vehicular_accident'
+    | 'police_emergency'
+    | 'electrical_powerline_hazard'
+    | 'other_emergency';
   locationText: string;
+  landmark?: string | null;
+  peopleInvolved?: number | null;
   latitude: number | null;
   longitude: number | null;
   description?: string | null;
@@ -32,7 +42,16 @@ export interface EmergencyReport {
   createdAt?: Date | Timestamp;
   updatedAt?: Date | Timestamp;
   responder?: string | null;
+  assignedResponderId?: string | null;
+  assignedAgency?: DispatcherRole | null;
+  suggestedAgency?: DispatcherRole | null;
   dispatcherId?: string | null;
+  viewedByDispatcherId?: string | null;
+  viewedByName?: string | null;
+  viewedAt?: Date | Timestamp | null;
+  additionalDetailsRequestedAt?: Date | Timestamp | null;
+  additionalDetails?: Record<string, string> | null;
+  additionalDetailsSubmittedAt?: Date | Timestamp | null;
 }
 
 // Convert Firestore document to EmergencyReport
@@ -41,8 +60,15 @@ const convertFirestoreDoc = (doc: DocumentData): EmergencyReport => {
   return {
     id: doc.id,
     userId: data.userId || data.user_id || '',
-    incidentType: data.incidentType || data.incident_type || 'other',
+    incidentType: data.incidentType || data.incident_type || 'other_emergency',
     locationText: data.locationText || data.location_text || '',
+    landmark: data.landmark || null,
+    peopleInvolved:
+      typeof data.peopleInvolved === 'number'
+        ? data.peopleInvolved
+        : typeof data.people_involved === 'number'
+        ? data.people_involved
+        : null,
     latitude: data.latitude ?? null,
     longitude: data.longitude ?? null,
     description: data.description || null,
@@ -52,7 +78,28 @@ const convertFirestoreDoc = (doc: DocumentData): EmergencyReport => {
     createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : (data.created_at?.toDate ? data.created_at.toDate() : new Date()),
     updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : (data.updated_at?.toDate ? data.updated_at.toDate() : null),
     responder: data.responder || null,
+    assignedResponderId: data.assignedResponderId || null,
+    assignedAgency: data.assignedAgency || null,
+    suggestedAgency: data.suggestedAgency || null,
     dispatcherId: data.dispatcherId || data.dispatcher_id || null,
+    viewedByDispatcherId: data.viewedByDispatcherId || data.viewed_by_dispatcher_id || null,
+    viewedByName: data.viewedByName || data.viewed_by_name || null,
+    viewedAt: data.viewedAt?.toDate ? data.viewedAt.toDate() : (data.viewed_at?.toDate ? data.viewed_at.toDate() : null),
+    additionalDetailsRequestedAt: data.additionalDetailsRequestedAt?.toDate
+      ? data.additionalDetailsRequestedAt.toDate()
+      : null,
+    additionalDetails:
+      data.additionalDetails && typeof data.additionalDetails === 'object'
+        ? Object.entries(data.additionalDetails).reduce<Record<string, string>>((acc, [key, value]) => {
+            if (typeof value === 'string') {
+              acc[key] = value;
+            }
+            return acc;
+          }, {})
+        : null,
+    additionalDetailsSubmittedAt: data.additionalDetailsSubmittedAt?.toDate
+      ? data.additionalDetailsSubmittedAt.toDate()
+      : null,
   };
 };
 
@@ -63,16 +110,38 @@ const getDefaultPriority = (incidentType: string): 'low' | 'medium' | 'high' | '
       return 'critical';
     case 'medical':
       return 'high';
-    case 'crime':
+    case 'police_emergency':
       return 'high';
-    case 'accident':
+    case 'vehicular_accident':
       return 'high';
-    case 'flood':
+    case 'electrical_powerline_hazard':
+      return 'high';
+    case 'other_emergency':
       return 'medium';
     default:
       return 'medium';
   }
 };
+
+export function getSuggestedAgenciesForEmergencyType(
+  incidentType: EmergencyReport['incidentType']
+): DispatcherRole[] {
+  switch (incidentType) {
+    case 'fire':
+      return ['BFP'];
+    case 'medical':
+      return ['AMBULANCE'];
+    case 'vehicular_accident':
+      return ['MDRRMO', 'PNP'];
+    case 'police_emergency':
+      return ['PNP'];
+    case 'electrical_powerline_hazard':
+      return ['MDRRMO'];
+    case 'other_emergency':
+    default:
+      return [];
+  }
+}
 
 /**
  * Submit an emergency report to Firestore
@@ -96,6 +165,8 @@ export async function submitEmergencyReport(report: Omit<EmergencyReport, 'id' |
       userId: currentUser.uid, // Use authenticated user's UID
       incidentType: report.incidentType,
       locationText: report.locationText,
+      landmark: report.landmark || null,
+      peopleInvolved: report.peopleInvolved ?? null,
       latitude: report.latitude,
       longitude: report.longitude,
       description: report.description || null,
@@ -105,7 +176,16 @@ export async function submitEmergencyReport(report: Omit<EmergencyReport, 'id' |
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
       responder: report.responder || null,
+      assignedResponderId: report.assignedResponderId || null,
+      assignedAgency: report.assignedAgency || null,
+      suggestedAgency: report.suggestedAgency || null,
       dispatcherId: report.dispatcherId || null,
+      viewedByDispatcherId: report.viewedByDispatcherId || null,
+      viewedByName: report.viewedByName || null,
+      viewedAt: report.viewedAt || null,
+      additionalDetailsRequestedAt: report.additionalDetailsRequestedAt || null,
+      additionalDetails: report.additionalDetails || null,
+      additionalDetailsSubmittedAt: report.additionalDetailsSubmittedAt || null,
     };
 
     const docRef = await addDoc(reportsRef, reportData);
@@ -382,6 +462,192 @@ export async function assignDispatcherToEmergency(
   } catch (error: any) {
     console.error('Error assigning dispatcher to emergency:', error);
     throw new Error(`Failed to assign dispatcher: ${error.message}`);
+  }
+}
+
+export function subscribeToEmergencyReport(
+  reportId: string,
+  callback: (report: EmergencyReport | null) => void
+): () => void {
+  try {
+    if (!reportId) {
+      callback(null);
+      return () => {};
+    }
+
+    const reportRef = doc(getFirebaseFirestore(), 'emergencies', reportId);
+    return onDocumentSnapshot(
+      reportRef,
+      (snapshot) => {
+        if (!snapshot.exists()) {
+          callback(null);
+          return;
+        }
+        callback(convertFirestoreDoc(snapshot));
+      },
+      (error) => {
+        console.error('Error subscribing to emergency report:', error);
+        callback(null);
+      }
+    );
+  } catch (error) {
+    console.error('Error setting up emergency report subscription:', error);
+    callback(null);
+    return () => {};
+  }
+}
+
+export async function assignResponderToEmergency(
+  reportId: string,
+  assignment: {
+    responder: string | null;
+    assignedResponderId?: string | null;
+    assignedAgency?: DispatcherRole | null;
+    suggestedAgency?: DispatcherRole | null;
+  }
+): Promise<EmergencyReport> {
+  try {
+    const currentUser = getFirebaseAuth().currentUser;
+    if (!currentUser) {
+      throw new Error('User must be authenticated to assign responders');
+    }
+
+    const reportRef = doc(getFirebaseFirestore(), 'emergencies', reportId);
+    const reportDocSnap = await getDoc(reportRef);
+    if (!reportDocSnap.exists()) {
+      throw new Error('Emergency report not found');
+    }
+
+    await updateDoc(reportRef, {
+      responder: assignment.responder?.trim() || null,
+      assignedResponderId: assignment.assignedResponderId || null,
+      assignedAgency: assignment.assignedAgency || null,
+      suggestedAgency: assignment.suggestedAgency || null,
+      updatedAt: Timestamp.now(),
+    });
+
+    const updatedDocSnap = await getDoc(reportRef);
+    if (!updatedDocSnap.exists()) {
+      throw new Error('Emergency report not found after update');
+    }
+
+    return convertFirestoreDoc(updatedDocSnap);
+  } catch (error: any) {
+    console.error('Error assigning responder to emergency:', error);
+    throw new Error(`Failed to assign responder: ${error.message}`);
+  }
+}
+
+export async function requestEmergencyAdditionalDetails(
+  reportId: string
+): Promise<EmergencyReport> {
+  try {
+    const currentUser = getFirebaseAuth().currentUser;
+    if (!currentUser) {
+      throw new Error('User must be authenticated to request additional details');
+    }
+
+    const reportRef = doc(getFirebaseFirestore(), 'emergencies', reportId);
+    const reportDocSnap = await getDoc(reportRef);
+    if (!reportDocSnap.exists()) {
+      throw new Error('Emergency report not found');
+    }
+
+    await updateDoc(reportRef, {
+      status: 'active',
+      additionalDetailsRequestedAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+
+    const updatedDocSnap = await getDoc(reportRef);
+    if (!updatedDocSnap.exists()) {
+      throw new Error('Emergency report not found after update');
+    }
+
+    return convertFirestoreDoc(updatedDocSnap);
+  } catch (error: any) {
+    console.error('Error requesting emergency additional details:', error);
+    throw new Error(`Failed to request additional details: ${error.message}`);
+  }
+}
+
+export async function markEmergencyReportViewed(
+  reportId: string,
+  dispatcherName: string
+): Promise<EmergencyReport> {
+  try {
+    const currentUser = getFirebaseAuth().currentUser;
+    if (!currentUser) {
+      throw new Error('User must be authenticated to view emergency reports');
+    }
+
+    const reportRef = doc(getFirebaseFirestore(), 'emergencies', reportId);
+    await updateDoc(reportRef, {
+      viewedByDispatcherId: currentUser.uid,
+      viewedByName: dispatcherName.trim() || currentUser.email || currentUser.uid,
+      viewedAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+
+    const updatedDocSnap = await getDoc(reportRef);
+    if (!updatedDocSnap.exists()) {
+      throw new Error('Emergency report not found after update');
+    }
+
+    return convertFirestoreDoc(updatedDocSnap);
+  } catch (error: any) {
+    console.error('Error marking emergency report as viewed:', error);
+    throw new Error(`Failed to mark report as viewed: ${error.message}`);
+  }
+}
+
+export async function submitEmergencyAdditionalDetails(
+  reportId: string,
+  details: Record<string, string>
+): Promise<EmergencyReport> {
+  try {
+    const currentUser = getFirebaseAuth().currentUser;
+    if (!currentUser) {
+      throw new Error('User must be authenticated to submit additional details');
+    }
+
+    const normalizedDetails = Object.entries(details).reduce<Record<string, string>>(
+      (acc, [key, value]) => {
+        const normalizedKey = key.trim();
+        const normalizedValue = value.trim();
+        if (normalizedKey && normalizedValue) {
+          acc[normalizedKey] = normalizedValue;
+        }
+        return acc;
+      },
+      {}
+    );
+
+    if (Object.keys(normalizedDetails).length === 0) {
+      throw new Error('Additional details cannot be empty');
+    }
+
+    const reportRef = doc(getFirebaseFirestore(), 'emergencies', reportId);
+    const reportDocSnap = await getDoc(reportRef);
+    if (!reportDocSnap.exists()) {
+      throw new Error('Emergency report not found');
+    }
+
+    await updateDoc(reportRef, {
+      additionalDetails: normalizedDetails,
+      additionalDetailsSubmittedAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+
+    const updatedDocSnap = await getDoc(reportRef);
+    if (!updatedDocSnap.exists()) {
+      throw new Error('Emergency report not found after update');
+    }
+
+    return convertFirestoreDoc(updatedDocSnap);
+  } catch (error: any) {
+    console.error('Error submitting emergency additional details:', error);
+    throw new Error(`Failed to submit additional details: ${error.message}`);
   }
 }
 

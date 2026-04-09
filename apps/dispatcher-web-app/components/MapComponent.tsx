@@ -4,7 +4,12 @@ import { useRef, useEffect, useState } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, useMap, Polygon, GeoJSON } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import type { DispatcherLocation } from '@packages/firebase'
+import {
+  BARANGAY_QUADRANT_MAPPING,
+  QUADRANT_COLORS,
+  QUADRANT_LABELS,
+  type DispatcherLocation,
+} from '@packages/firebase'
 
 // Fix for default marker icons in Next.js
 if (typeof window !== 'undefined') {
@@ -35,73 +40,6 @@ interface MapComponentProps {
   onIncidentSelect: (id: string) => void
   userLocation?: [number, number] | null
   centerLocation?: [number, number] | null
-}
-
-// Quadrant Configuration
-const QUADRANT_COLORS = {
-  'CENTRO/POBLACION': { color: '#6366f1', fill: '#6366f1' }, // Indigo
-  'WESTERN': { color: '#14b8a6', fill: '#14b8a6' },          // Teal
-  'EASTERN': { color: '#f59e0b', fill: '#f59e0b' },          // Amber
-  'NORTHERN': { color: '#f43f5e', fill: '#f43f5e' },         // Rose
-  'UNKNOWN': { color: '#94a3b8', fill: '#94a3b8' }           // Slate
-}
-
-const QUADRANT_MAPPING: Record<string, keyof typeof QUADRANT_COLORS> = {
-  // CENTRO/POBLACION
-  'Centro 1 (Pob.)': 'CENTRO/POBLACION',
-  'Centro 2 (Pob.)': 'CENTRO/POBLACION',
-  'Centro 3 (Pob.)': 'CENTRO/POBLACION',
-  'Centro 4 (Pob.)': 'CENTRO/POBLACION',
-  'Centro 5 (Pob.)': 'CENTRO/POBLACION',
-  'Centro 6 (Pob.)': 'CENTRO/POBLACION',
-  'Centro 7 (Pob.)': 'CENTRO/POBLACION',
-  'Centro 8 (Pob.)': 'CENTRO/POBLACION',
-  'Centro 9 (Pob.)': 'CENTRO/POBLACION',
-  'Centro 10 (Pob.)': 'CENTRO/POBLACION',
-  'Centro 11 (Pob.)': 'CENTRO/POBLACION',
-  'Centro 12 (Pob.)': 'CENTRO/POBLACION',
-  
-  // WESTERN
-  'Buntun': 'WESTERN',
-  'Pallua Norte': 'WESTERN',
-  'Pallua Sur': 'WESTERN',
-  'Bagay': 'WESTERN',
-  'Cataggaman Nuevo': 'WESTERN',
-  'Cataggaman Pardo': 'WESTERN',
-  'Cataggaman Viejo': 'WESTERN',
-  'San Gabriel': 'WESTERN',
-  'Ugac Norte': 'WESTERN',
-  'Ugac Sur': 'WESTERN',
-
-  // EASTERN
-  'Tanza': 'EASTERN',
-  'Caggay': 'EASTERN',
-  'Larion Alto': 'EASTERN',
-  'Larion Bajo': 'EASTERN',
-  'Capatan': 'EASTERN',
-  'Libag Norte': 'EASTERN',
-  'Libag Sur': 'EASTERN',
-  'Gosi Norte': 'EASTERN',
-  'Gosi Sur': 'EASTERN',
-  'Tagga': 'EASTERN',
-  'Dadda': 'EASTERN',
-  'Nambbalan Norte': 'EASTERN',
-  'Nambbalan Sur': 'EASTERN',
-
-  // NORTHERN
-  'Annafunan East': 'NORTHERN',
-  'Annafunan West': 'NORTHERN',
-  'Atulayan Norte': 'NORTHERN',
-  'Atulayan Sur': 'NORTHERN',
-  'Carig': 'NORTHERN', // Combined Norte/Sur in GeoJSON
-  'Caritan Centro': 'NORTHERN',
-  'Caritan Norte': 'NORTHERN',
-  'Caritan Sur': 'NORTHERN',
-  'Leonarda': 'NORTHERN',
-  'Linao East': 'NORTHERN',
-  'Linao West': 'NORTHERN',
-  'Linao Norte': 'NORTHERN',
-  'Pengue (Pengue-Ruyu)': 'NORTHERN'
 }
 
 // Component to handle map center updates
@@ -285,7 +223,7 @@ export default function MapComponent({
   // Style function for GeoJSON
   const quadrantStyle = (feature: any) => {
     const barangayName = feature.properties.ADM4_EN
-    const quadrant = QUADRANT_MAPPING[barangayName] || 'UNKNOWN'
+    const quadrant = BARANGAY_QUADRANT_MAPPING[barangayName] || 'UNKNOWN'
     const settings = QUADRANT_COLORS[quadrant]
     
     return {
@@ -300,7 +238,7 @@ export default function MapComponent({
 
   const onEachBarangay = (feature: any, layer: L.Layer) => {
     const barangayName = feature.properties.ADM4_EN
-    const quadrant = QUADRANT_MAPPING[barangayName] || 'UNKNOWN'
+    const quadrant = BARANGAY_QUADRANT_MAPPING[barangayName] || 'UNKNOWN'
     
     layer.bindPopup(`
       <div class="p-2 min-w-[150px]">
@@ -396,7 +334,7 @@ export default function MapComponent({
           {Object.entries(QUADRANT_COLORS).filter(([k]) => k !== 'UNKNOWN').map(([name, style]) => (
             <div key={name} className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: style.fill, border: `1px solid ${style.color}` }}></div>
-              <span className="text-[10px] font-medium text-slate-200 capitalize">{name.toLowerCase()}</span>
+              <span className="text-[10px] font-medium text-slate-200">{QUADRANT_LABELS[name as keyof typeof QUADRANT_LABELS]}</span>
             </div>
           ))}
         </div>

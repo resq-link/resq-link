@@ -22,6 +22,30 @@ import { UI_MODE, mockData } from "@/utils/api";
 import { getUserEmergencyReports } from "@packages/firebase";
 import { useAppTheme } from "@/utils/useAppTheme";
 
+const getIncidentEmoji = (type) => {
+  const map = {
+    fire: "🔥",
+    medical: "🚑",
+    vehicular_accident: "🚗",
+    police_emergency: "🚓",
+    electrical_powerline_hazard: "⚡",
+    other_emergency: "🆘",
+  };
+  return map[type] || "📍";
+};
+
+const getIncidentLabel = (type) => {
+  const map = {
+    fire: "Fire",
+    medical: "Medical Emergency",
+    vehicular_accident: "Vehicular Accident",
+    police_emergency: "Police Emergency",
+    electrical_powerline_hazard: "Electrical / Powerline Hazard",
+    other_emergency: "Other Emergency",
+  };
+  return map[type] || "Emergency";
+};
+
 export default function HistoryScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -96,18 +120,6 @@ export default function HistoryScreen() {
   if (!fontsLoaded) {
     return null;
   }
-
-  const getIncidentEmoji = (type) => {
-    const map = {
-      fire: "≡ƒöÑ",
-      medical: "≡ƒÜæ",
-      crime: "≡ƒÜô",
-      accident: "≡ƒÜù",
-      flood: "≡ƒîè",
-      other: "ΓÜí",
-    };
-    return map[type] || "≡ƒôì";
-  };
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -251,9 +263,7 @@ export default function HistoryScreen() {
                             marginBottom: 2,
                           }}
                         >
-                          {report.incident_type.charAt(0).toUpperCase() +
-                            report.incident_type.slice(1)}{" "}
-                          Emergency
+                          {getIncidentLabel(report.incident_type)}
                         </Text>
                         <Text
                           style={{

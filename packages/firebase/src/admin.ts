@@ -42,9 +42,13 @@ const adminAuth = adminApp.auth();
 const adminFirestore = adminApp.firestore();
 
 export interface CreateDispatcherInput {
+  fullName?: string;
   email: string;
   password: string;
   role: DispatcherRole;
+  designation?: string | null;
+  teamCode?: string | null;
+  teamLabel?: string | null;
 }
 
 export interface CreateCommandCenterInput {
@@ -66,11 +70,23 @@ export interface CreateCivilianInput {
  * Create a dispatcher account using Admin SDK (server-side only)
  */
 export async function createDispatcherAccountAdmin(input: CreateDispatcherInput): Promise<{ uid: string }> {
-  const { email, password, role } = input;
+  const {
+    email,
+    password,
+    role,
+    fullName = '',
+    designation = 'dispatcher',
+    teamCode = null,
+    teamLabel = null,
+  } = input;
   const userRecord = await adminAuth.createUser({ email, password });
   await adminFirestore.doc(`dispatchers/${userRecord.uid}`).set({
+    fullName,
     email,
     role,
+    designation,
+    teamCode,
+    teamLabel,
     active: true,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
@@ -116,6 +132,14 @@ export async function createCivilianAccountAdmin(input: CreateCivilianInput): Pr
  */
 export async function isAdmin(uid: string): Promise<boolean> {
   const doc = await adminFirestore.doc(`admins/${uid}`).get();
+  return doc.exists;
+}
+
+/**
+ * Check if a user UID exists in the commandCenters collection.
+ */
+export async function isCommandCenterAccount(uid: string): Promise<boolean> {
+  const doc = await adminFirestore.doc(`commandCenters/${uid}`).get();
   return doc.exists;
 }
 

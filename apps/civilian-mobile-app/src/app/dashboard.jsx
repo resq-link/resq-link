@@ -30,6 +30,37 @@ import { UI_MODE, mockData } from "../utils/api";
 import { getUserEmergencyReports, getAllEmergencyReports } from "@packages/firebase";
 import { useAppTheme } from "@/utils/useAppTheme";
 
+const getIncidentEmoji = (type) => {
+  switch (type) {
+    case "fire":
+      return "🔥";
+    case "medical":
+      return "🚑";
+    case "vehicular_accident":
+      return "🚗";
+    case "police_emergency":
+      return "🚓";
+    case "electrical_powerline_hazard":
+      return "⚡";
+    case "other_emergency":
+      return "🆘";
+    default:
+      return "📍";
+  }
+};
+
+const getIncidentLabel = (type) => {
+  const typeMap = {
+    fire: "Fire",
+    medical: "Medical Emergency",
+    vehicular_accident: "Vehicular Accident",
+    police_emergency: "Police Emergency",
+    electrical_powerline_hazard: "Electrical / Powerline Hazard",
+    other_emergency: "Other Emergency",
+  };
+  return typeMap[type] || "Emergency";
+};
+
 // Calculate distance between two coordinates (Haversine formula)
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
@@ -257,23 +288,6 @@ export default function DashboardScreen() {
         return { backgroundColor: "#E8F7ED", textColor: "#1E7A35" };
       default:
         return { backgroundColor: "#EEEEF2", textColor: "#616168" };
-    }
-  };
-
-  const getIncidentEmoji = (type) => {
-    switch (type) {
-      case "fire":
-        return "≡ƒöÑ";
-      case "medical":
-        return "≡ƒÜæ";
-      case "crime":
-        return "≡ƒÜô";
-      case "accident":
-        return "≡ƒÜù";
-      case "flood":
-        return "≡ƒîè";
-      default:
-        return "ΓÜí";
     }
   };
 
@@ -689,7 +703,7 @@ export default function DashboardScreen() {
                         textTransform: "capitalize",
                       }}
                     >
-                      {report.incidentType} Emergency
+                      {getIncidentLabel(report.incidentType)}
                     </Text>
                     <View
                       style={{
@@ -881,7 +895,7 @@ export default function DashboardScreen() {
                         textTransform: "capitalize",
                       }}
                     >
-                      {report.incidentType} Emergency
+                      {getIncidentLabel(report.incidentType)}
                     </Text>
                     <View
                       style={{

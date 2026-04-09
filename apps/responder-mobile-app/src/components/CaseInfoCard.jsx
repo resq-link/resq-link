@@ -124,10 +124,10 @@ export default function CaseInfoCard({
     const typeMap = {
       fire: "Fire",
       medical: "Medical Emergency",
-      crime: "Crime",
-      accident: "Traffic Accident",
-      flood: "Flood",
-      other: "Other Emergency",
+      vehicular_accident: "Vehicular Accident",
+      police_emergency: "Police Emergency",
+      electrical_powerline_hazard: "Electrical / Powerline Hazard",
+      other_emergency: "Other Emergency",
     };
     return typeMap[type] || "Emergency";
   };
@@ -207,6 +207,30 @@ export default function CaseInfoCard({
           >
             {caseData.locationText || "Location not available"}
           </Text>
+          {caseData.landmark && (
+            <Text
+              style={{
+                fontFamily: "SpaceGrotesk_400Regular",
+                fontSize: 14,
+                color: colors.textSecondary,
+                marginTop: 6,
+              }}
+            >
+              Nearest landmark: {caseData.landmark}
+            </Text>
+          )}
+          {caseData.peopleInvolved != null && (
+            <Text
+              style={{
+                fontFamily: "SpaceGrotesk_400Regular",
+                fontSize: 14,
+                color: colors.textSecondary,
+                marginTop: 6,
+              }}
+            >
+              People involved: {caseData.peopleInvolved}
+            </Text>
+          )}
           {caseData.latitude != null && caseData.longitude != null && (
             <Text
               style={{

@@ -81,12 +81,12 @@
       "apiUrl": "http://localhost:4000",
       "uiMode": false,
       "firebase": {
-        "apiKey": "AIzaSyCWLfP5vbHiFTiDQCG3YVxKu8iehstmo0g",
-        "authDomain": "city-rescue-dispatch.firebaseapp.com",
-        "projectId": "city-rescue-dispatch",
-        "storageBucket": "city-rescue-dispatch.firebasestorage.app",
-        "messagingSenderId": "665229808010",
-        "appId": "1:665229808010:web:4f51791af88672b027f873"
+        "apiKey": "AIzaSyCj-lCXFkSzi2ahhj60ZDOdnRvCxQ1BRfA",
+        "authDomain": "resqlink-eab64.firebaseapp.com",
+        "projectId": "resqlink-eab64",
+        "storageBucket": "resqlink-eab64.firebasestorage.app",
+        "messagingSenderId": "829563426660",
+        "appId": "1:829563426660:web:410a93234d941fc795cc71"
       }
     },
     "runtimeVersion": {

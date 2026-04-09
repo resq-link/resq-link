@@ -106,7 +106,7 @@ export function useSOS() {
         
         const mockReport = {
           ...mockData.emergencySubmit.report,
-          incident_type: "other",
+          incident_type: "other_emergency",
           location_text: locationText,
         };
         
@@ -121,7 +121,7 @@ export function useSOS() {
       // Submit emergency report to Firestore
       const report = await submitEmergencyReport({
         userId,
-        incidentType: "other", // Default to "other" for SOS
+        incidentType: "other_emergency", // Default to a generic emergency type for SOS
         locationText,
         latitude,
         longitude,

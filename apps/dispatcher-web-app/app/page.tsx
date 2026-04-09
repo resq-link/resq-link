@@ -15,10 +15,10 @@ const getIncidentTypeName = (incidentType: string): string => {
   const typeMap: Record<string, string> = {
     fire: 'Fire',
     medical: 'Medical Emergency',
-    crime: 'Crime',
-    accident: 'Traffic Accident',
-    flood: 'Flood',
-    other: 'Other Emergency',
+    vehicular_accident: 'Vehicular Accident',
+    police_emergency: 'Police Emergency',
+    electrical_powerline_hazard: 'Electrical / Powerline Hazard',
+    other_emergency: 'Other Emergency',
   }
   return typeMap[incidentType] || 'Emergency'
 }

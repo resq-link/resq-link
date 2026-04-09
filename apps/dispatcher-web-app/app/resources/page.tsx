@@ -6,10 +6,15 @@ import { createPortal } from 'react-dom'
 import {
   createResource,
   deleteResource,
+  OPERATIONAL_QUADRANTS,
+  QUADRANT_LABELS,
   subscribeToResources,
+  subscribeToTeams,
   updateResource,
+  type OperationalQuadrant,
   type ResourceRecord,
   type ResourceStatus,
+  type TeamRecord,
   type ResourceType,
 } from '@packages/firebase'
 import ProtectedRoute from '@/components/ProtectedRoute'
@@ -27,10 +32,10 @@ type ResourceFormState = {
   customType: string
   agency: string
   department: string
-  teamName: string
+  teamId: string
   status: ResourceStatus
   stationName: string
-  quadrant: string
+  quadrant: OperationalQuadrant | ''
   stationLatitude: string
   stationLongitude: string
   currentLatitude: string
@@ -55,7 +60,7 @@ const emptyForm: ResourceFormState = {
   customType: '',
   agency: '',
   department: '',
-  teamName: '',
+  teamId: '',
   status: 'available',
   stationName: '',
   quadrant: '',
@@ -124,6 +129,7 @@ export default function ResourcesPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | ResourceStatus>('all')
   const [typeFilter, setTypeFilter] = useState<'all' | ResourceType>('all')
   const [formState, setFormState] = useState<ResourceFormState>(emptyForm)
+  const [teams, setTeams] = useState<TeamRecord[]>([])
   const [editingResource, setEditingResource] = useState<ResourceRecord | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [mapResource, setMapResource] = useState<ResourceRecord | null>(null)
@@ -143,6 +149,18 @@ export default function ResourcesPage() {
     const unsubscribe = subscribeToResources((nextResources) => {
       setResources(nextResources)
       setIsLoading(false)
+    })
+
+    return unsubscribe
+  }, [user])
+
+  useEffect(() => {
+    if (!user) {
+      return
+    }
+
+    const unsubscribe = subscribeToTeams((nextTeams) => {
+      setTeams(nextTeams.filter((team) => team.isActive !== false))
     })
 
     return unsubscribe
@@ -227,7 +245,10 @@ export default function ResourcesPage() {
       customType: resource.customType || '',
       agency: resource.agency || '',
       department: resource.department || '',
-      teamName: resource.teamName || '',
+      teamId:
+        resource.teamId ||
+        teams.find((team) => team.label === resource.teamName || team.code === resource.teamName)?.id ||
+        '',
       status: resource.status,
       stationName: resource.stationName || '',
       quadrant: resource.quadrant || '',
@@ -266,6 +287,11 @@ export default function ResourcesPage() {
     setIsSaving(true)
     setPageError(null)
 
+    const selectedTeam =
+      teams.find((team) => team.id === formState.teamId) ||
+      teams.find((team) => team.code === formState.teamId) ||
+      null
+
     const payload = {
       name: formState.name,
       resourceCode: formState.resourceCode,
@@ -273,11 +299,11 @@ export default function ResourcesPage() {
       customType: formState.customType,
       agency: formState.agency,
       department: formState.department,
-      teamId: null,
-      teamName: formState.teamName,
+      teamId: selectedTeam?.id || null,
+      teamName: selectedTeam?.label || null,
       status: formState.status,
       stationName: formState.stationName,
-      quadrant: formState.quadrant,
+      quadrant: formState.quadrant || null,
       stationLatitude: toNumberOrNull(formState.stationLatitude),
       stationLongitude: toNumberOrNull(formState.stationLongitude),
       currentLatitude: toNumberOrNull(formState.currentLatitude),
@@ -571,7 +597,7 @@ export default function ResourcesPage() {
                     {editingResource ? 'Edit Resource' : 'Add Resource'}
                   </h2>
                   <p className="mt-1 text-sm text-slate-400">
-                    Teams are not wired yet, so the team field is optional and forward-compatible.
+                    Team assignments come from the shared Teams module.
                   </p>
                 </div>
                 <button
@@ -663,21 +689,32 @@ export default function ResourcesPage() {
                   <div>
                     <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Team</label>
                     <select
-                      value={formState.teamName}
-                      onChange={(event) => handleFieldChange('teamName', event.target.value)}
+                      value={formState.teamId}
+                      onChange={(event) => handleFieldChange('teamId', event.target.value)}
                       className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
                       <option value="">Unassigned</option>
+                      {teams.map((team) => (
+                        <option key={team.id} value={team.id}>
+                          {team.label}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div>
                     <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Quadrant</label>
-                    <input
+                    <select
                       value={formState.quadrant}
                       onChange={(event) => handleFieldChange('quadrant', event.target.value)}
                       className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      placeholder="North / Sector A"
-                    />
+                    >
+                      <option value="">Not set</option>
+                      {OPERATIONAL_QUADRANTS.map((quadrant) => (
+                        <option key={quadrant} value={quadrant}>
+                          {QUADRANT_LABELS[quadrant]}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div className="md:col-span-2">
                     <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Base / Station Name</label>

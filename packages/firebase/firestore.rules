@@ -84,6 +84,20 @@ service cloud.firestore {
 
     // Emergency Reports collection
     match /emergencies/{reportId} {
+      function isEmergencyOwner() {
+        return isAuthenticated() && resource.data.userId == request.auth.uid;
+      }
+
+      function isCivilianAdditionalDetailsUpdate() {
+        return isEmergencyOwner() &&
+          request.resource.data.userId == resource.data.userId &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'additionalDetails',
+            'additionalDetailsSubmittedAt',
+            'updatedAt'
+          ]);
+      }
+
       // Anyone authenticated can create an emergency report
       allow create: if isAuthenticated() && 
                        request.resource.data.userId == request.auth.uid &&
@@ -94,9 +108,10 @@ service cloud.firestore {
       // Dispatchers can query by dispatcherId to see only their assigned emergencies
       allow read: if isAuthenticated();
       
-      // Only command center and dispatchers can update reports (to change status, assign dispatcher, etc.)
+      // Command center and dispatchers can update reports freely.
+      // Civilians can only submit additional detail payloads for their own report.
       allow update: if isAuthenticated() && 
-                      (isCommandCenter() || isDispatcher());
+                      (isCommandCenter() || isDispatcher() || isCivilianAdditionalDetailsUpdate());
       
       // Only command center can delete reports
       allow delete: if isCommandCenter();
@@ -133,6 +148,12 @@ service cloud.firestore {
     match /resources/{resourceId} {
       allow read: if isAuthenticated();
       allow create, update, delete: if isAuthenticated() && (isCommandCenter() || isDispatcher());
+    }
+
+    // Teams collection - shared operational team definitions
+    match /teams/{teamId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAuthenticated() && (isCommandCenter() || isSuperAdmin());
     }
     
     // Default: deny all other access
