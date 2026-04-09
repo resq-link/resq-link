@@ -17,6 +17,7 @@ import {
   onSnapshot as onDocumentSnapshot,
 } from 'firebase/firestore';
 import { getFirebaseFirestore, getFirebaseAuth } from './config';
+import type { DispatcherRole } from './auth';
 
 // Emergency Report Types
 export interface EmergencyReport {
@@ -41,6 +42,9 @@ export interface EmergencyReport {
   createdAt?: Date | Timestamp;
   updatedAt?: Date | Timestamp;
   responder?: string | null;
+  assignedResponderId?: string | null;
+  assignedAgency?: DispatcherRole | null;
+  suggestedAgency?: DispatcherRole | null;
   dispatcherId?: string | null;
   viewedByDispatcherId?: string | null;
   viewedByName?: string | null;
@@ -74,6 +78,9 @@ const convertFirestoreDoc = (doc: DocumentData): EmergencyReport => {
     createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : (data.created_at?.toDate ? data.created_at.toDate() : new Date()),
     updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : (data.updated_at?.toDate ? data.updated_at.toDate() : null),
     responder: data.responder || null,
+    assignedResponderId: data.assignedResponderId || null,
+    assignedAgency: data.assignedAgency || null,
+    suggestedAgency: data.suggestedAgency || null,
     dispatcherId: data.dispatcherId || data.dispatcher_id || null,
     viewedByDispatcherId: data.viewedByDispatcherId || data.viewed_by_dispatcher_id || null,
     viewedByName: data.viewedByName || data.viewed_by_name || null,
@@ -116,6 +123,26 @@ const getDefaultPriority = (incidentType: string): 'low' | 'medium' | 'high' | '
   }
 };
 
+export function getSuggestedAgenciesForEmergencyType(
+  incidentType: EmergencyReport['incidentType']
+): DispatcherRole[] {
+  switch (incidentType) {
+    case 'fire':
+      return ['BFP'];
+    case 'medical':
+      return ['AMBULANCE'];
+    case 'vehicular_accident':
+      return ['MDRRMO', 'PNP'];
+    case 'police_emergency':
+      return ['PNP'];
+    case 'electrical_powerline_hazard':
+      return ['MDRRMO'];
+    case 'other_emergency':
+    default:
+      return [];
+  }
+}
+
 /**
  * Submit an emergency report to Firestore
  */
@@ -149,6 +176,9 @@ export async function submitEmergencyReport(report: Omit<EmergencyReport, 'id' |
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
       responder: report.responder || null,
+      assignedResponderId: report.assignedResponderId || null,
+      assignedAgency: report.assignedAgency || null,
+      suggestedAgency: report.suggestedAgency || null,
       dispatcherId: report.dispatcherId || null,
       viewedByDispatcherId: report.viewedByDispatcherId || null,
       viewedByName: report.viewedByName || null,
@@ -469,7 +499,12 @@ export function subscribeToEmergencyReport(
 
 export async function assignResponderToEmergency(
   reportId: string,
-  responder: string | null
+  assignment: {
+    responder: string | null;
+    assignedResponderId?: string | null;
+    assignedAgency?: DispatcherRole | null;
+    suggestedAgency?: DispatcherRole | null;
+  }
 ): Promise<EmergencyReport> {
   try {
     const currentUser = getFirebaseAuth().currentUser;
@@ -484,7 +519,10 @@ export async function assignResponderToEmergency(
     }
 
     await updateDoc(reportRef, {
-      responder: responder?.trim() || null,
+      responder: assignment.responder?.trim() || null,
+      assignedResponderId: assignment.assignedResponderId || null,
+      assignedAgency: assignment.assignedAgency || null,
+      suggestedAgency: assignment.suggestedAgency || null,
       updatedAt: Timestamp.now(),
     });
 

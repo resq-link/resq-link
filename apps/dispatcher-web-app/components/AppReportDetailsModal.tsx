@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   getAllDispatchers,
+  getSuggestedAgenciesForEmergencyType,
   type DispatcherAccount,
+  type DispatcherRole,
   type EmergencyReport,
 } from "@packages/firebase";
 
@@ -14,7 +16,12 @@ type AppReportDetailsModalProps = {
   onRespondStart: (report: EmergencyReport) => void | Promise<void>;
   onRespond: (
     report: EmergencyReport,
-    responder: { uid: string; label: string },
+    responder: {
+      uid: string;
+      label: string;
+      agency: DispatcherRole;
+      suggestedAgency: DispatcherRole | null;
+    },
   ) => void | Promise<void>;
   onReject: (report: EmergencyReport) => void | Promise<void>;
 };
@@ -108,6 +115,11 @@ export default function AppReportDetailsModal({
   const [isLoadingResponders, setIsLoadingResponders] = useState(false);
   const [responderError, setResponderError] = useState<string | null>(null);
   const [showingFallbackPool, setShowingFallbackPool] = useState(false);
+  const suggestedAgencies = useMemo(
+    () => (report ? getSuggestedAgenciesForEmergencyType(report.incidentType) : []),
+    [report],
+  );
+  const primarySuggestedAgency = suggestedAgencies[0] || null;
 
   const selectedResponder = useMemo(
     () => responders.find((responder) => responder.uid === selectedResponderId) || null,
@@ -145,21 +157,29 @@ export default function AppReportDetailsModal({
       const responderAccounts = accounts.filter((entry) =>
         (entry.account.designation || "").toLowerCase().includes("responder"),
       );
-      const fallbackAccounts = accounts.filter((entry) => entry.uid);
-
-      setResponders(
-        responderAccounts.length > 0 ? responderAccounts : fallbackAccounts,
-      );
-      setShowingFallbackPool(responderAccounts.length === 0);
-      if (selectedResponderId) {
-        const stillExists = (responderAccounts.length > 0
+      const responderPool =
+        responderAccounts.length > 0
           ? responderAccounts
-          : fallbackAccounts
-        ).some((entry) => entry.uid === selectedResponderId);
-        if (!stillExists) {
-          setSelectedResponderId("");
+          : accounts.filter((entry) => entry.uid);
+      const matchingResponders = primarySuggestedAgency
+        ? responderPool.filter(
+            (entry) => entry.account.role === primarySuggestedAgency,
+          )
+        : [];
+      const visibleResponders =
+        matchingResponders.length > 0 ? matchingResponders : responderPool;
+
+      setResponders(visibleResponders);
+      setShowingFallbackPool(
+        responderAccounts.length === 0 ||
+          Boolean(primarySuggestedAgency && matchingResponders.length === 0),
+      );
+      setSelectedResponderId((current) => {
+        if (current && visibleResponders.some((entry) => entry.uid === current)) {
+          return current;
         }
-      }
+        return visibleResponders[0]?.uid || "";
+      });
     } catch (error: any) {
       setResponderError(error.message || "Failed to load responders.");
       setResponders([]);
@@ -186,6 +206,8 @@ export default function AppReportDetailsModal({
     await onRespond(report, {
       uid: selectedResponder.uid,
       label: getResponderLabel(selectedResponder),
+      agency: selectedResponder.account.role,
+      suggestedAgency: primarySuggestedAgency,
     });
   };
 
@@ -260,7 +282,7 @@ export default function AppReportDetailsModal({
                       Choose Responder
                     </h3>
                     <p className="mt-1 text-sm text-slate-400">
-                      Select the responder account that should handle this report.
+                      The system suggests the first matching agency, then lets you confirm or override the responder.
                     </p>
                   </div>
                   <button
@@ -273,9 +295,38 @@ export default function AppReportDetailsModal({
                   </button>
                 </div>
 
+                <div className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                  <div className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2.5">
+                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                      Suggested Agency
+                    </p>
+                    <p className="mt-2 text-sm font-medium text-slate-100">
+                      {primarySuggestedAgency || "No automatic suggestion"}
+                    </p>
+                    {suggestedAgencies.length > 1 ? (
+                      <p className="mt-1 text-xs text-slate-400">
+                        Additional matches: {suggestedAgencies.slice(1).join(", ")}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <div className="rounded-lg border border-slate-800 bg-slate-950 px-3 py-2.5">
+                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                      Selection Rule
+                    </p>
+                    <p className="mt-2 text-sm text-slate-300">
+                      {primarySuggestedAgency
+                        ? "Responders are filtered to the suggested agency first. Use the dropdown if you need a different person."
+                        : "No direct agency match was found, so the dropdown is available immediately."}
+                    </p>
+                  </div>
+                </div>
+
                 {showingFallbackPool ? (
                   <p className="mt-3 rounded-lg border border-amber-800/60 bg-amber-950/30 px-3 py-2 text-xs text-amber-200">
-                    No responder-designated accounts were found. Showing all active dispatcher accounts instead.
+                    {primarySuggestedAgency
+                      ? "No responder account matched the suggested agency. Showing the broader active responder pool instead."
+                      : "No responder-designated accounts were found. Showing all active dispatcher accounts instead."}
                   </p>
                 ) : null}
 
@@ -320,6 +371,9 @@ export default function AppReportDetailsModal({
                             {getResponderLabel(selectedResponder)}
                           </p>
                           <p>Agency: {selectedResponder.account.role}</p>
+                          <p>
+                            Suggested agency: {primarySuggestedAgency || "None"}
+                          </p>
                           <p>
                             Designation: {selectedResponder.account.designation || "Not set"}
                           </p>
@@ -366,6 +420,20 @@ export default function AppReportDetailsModal({
                 <p>
                   <span className="text-slate-500">Assigned dispatcher:</span>{" "}
                   <span className="font-medium text-slate-100">{report.dispatcherId || "Unassigned"}</span>
+                </p>
+                <p>
+                  <span className="text-slate-500">Suggested agency:</span>{" "}
+                  <span className="font-medium text-slate-100">
+                    {report.suggestedAgency || primarySuggestedAgency || "Not determined"}
+                  </span>
+                </p>
+                <p>
+                  <span className="text-slate-500">Assigned agency:</span>{" "}
+                  <span className="font-medium text-slate-100">{report.assignedAgency || "Unassigned"}</span>
+                </p>
+                <p>
+                  <span className="text-slate-500">Assigned responder:</span>{" "}
+                  <span className="font-medium text-slate-100">{report.responder || "Unassigned"}</span>
                 </p>
                 <p>
                   <span className="text-slate-500">Reported at:</span>{" "}

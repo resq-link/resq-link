@@ -57,6 +57,8 @@ export {
   type EmergencyReport,
 } from './emergencies';
 
+export { getSuggestedAgenciesForEmergencyType } from './emergencies';
+
 // Footage requests (CCTV / evidence)
 export {
   submitFootageRequest,

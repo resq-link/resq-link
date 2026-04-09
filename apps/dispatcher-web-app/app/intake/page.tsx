@@ -12,6 +12,7 @@ import {
   dispatchIncidentResources,
   getAgencyLabel,
   getIncidentResourceMatch,
+  getSuggestedAgenciesForEmergencyType,
   markEmergencyReportViewed,
   OPERATIONAL_QUADRANTS,
   QUADRANT_LABELS,
@@ -21,6 +22,7 @@ import {
   subscribeToIncidentTypeRules,
   subscribeToResources,
   type CreateIncidentInput,
+  type DispatcherRole,
   type EmergencyReport,
   type IncidentRecord,
   type IncidentSource,
@@ -119,6 +121,7 @@ type IntakeQueueItem = {
   incidentTimeLabel: string | null;
   createdAt: IncidentRecord["createdAt"] | EmergencyReport["createdAt"];
   viewedByName: string | null;
+  suggestedAgencyLabel: string | null;
   rawEmergencyReport: EmergencyReport | null;
 };
 
@@ -162,6 +165,17 @@ function normalizeIncidentTimeForInput(value: string): string | null {
   const hh = String(hour).padStart(2, "0");
 
   return `${hh}:${minute} ${period}`;
+}
+
+function getResponderAgencyLabel(role: DispatcherRole): string {
+  switch (role) {
+    case "AMBULANCE":
+      return "Ambulance";
+    case "MDRRMO":
+      return "MDRRMO";
+    default:
+      return role;
+  }
 }
 
 const formatStatus = (status: IncidentRecord["status"]) =>
@@ -233,29 +247,40 @@ const toQueueItemFromIncident = (incident: IncidentRecord): IntakeQueueItem => (
   incidentTimeLabel: incident.incidentTime ?? null,
   createdAt: incident.createdAt,
   viewedByName: null,
+  suggestedAgencyLabel: null,
   rawEmergencyReport: null,
 });
 
-const toQueueItemFromEmergency = (report: EmergencyReport): IntakeQueueItem => ({
-  id: report.id || `app-${String(report.createdAt ?? Date.now())}`,
-  channel: "emergency_report",
-  referenceNumber: report.id ? `APP-${report.id.slice(-6).toUpperCase()}` : "APP-REPORT",
-  incidentSubtypeLabel: getEmergencyIncidentTypeName(report.incidentType),
-  locationText: report.locationText,
-  priority: report.priority || "medium",
-  statusLabel: formatStatus(
-    report.status === "done" ? "resolved" : (report.status as IncidentRecord["status"]),
-  ),
-  statusToneClass:
-    emergencyStatusTone[report.status] || "border-slate-600 bg-slate-800/80 text-slate-200",
-  quadrantLabel: null,
-  teamOnDutyLabel: null,
-  incidentDateLabel: null,
-  incidentTimeLabel: null,
-  createdAt: report.createdAt,
-  viewedByName: report.viewedByName || null,
-  rawEmergencyReport: report,
-});
+const toQueueItemFromEmergency = (report: EmergencyReport): IntakeQueueItem => {
+  const suggestedAgency =
+    report.suggestedAgency ||
+    getSuggestedAgenciesForEmergencyType(report.incidentType)[0] ||
+    null;
+
+  return {
+    id: report.id || `app-${String(report.createdAt ?? Date.now())}`,
+    channel: "emergency_report",
+    referenceNumber: report.id ? `APP-${report.id.slice(-6).toUpperCase()}` : "APP-REPORT",
+    incidentSubtypeLabel: getEmergencyIncidentTypeName(report.incidentType),
+    locationText: report.locationText,
+    priority: report.priority || "medium",
+    statusLabel: formatStatus(
+      report.status === "done" ? "resolved" : (report.status as IncidentRecord["status"]),
+    ),
+    statusToneClass:
+      emergencyStatusTone[report.status] || "border-slate-600 bg-slate-800/80 text-slate-200",
+    quadrantLabel: null,
+    teamOnDutyLabel: null,
+    incidentDateLabel: null,
+    incidentTimeLabel: null,
+    createdAt: report.createdAt,
+    viewedByName: report.viewedByName || null,
+    suggestedAgencyLabel: suggestedAgency
+      ? getResponderAgencyLabel(suggestedAgency)
+      : null,
+    rawEmergencyReport: report,
+  };
+};
 
 const sortResourcesByName = (resources: ResourceRecord[]) =>
   [...resources].sort((left, right) => left.name.localeCompare(right.name));
@@ -477,13 +502,23 @@ export default function IntakePage() {
 
   const handleRespondToAppReport = async (
     report: EmergencyReport,
-    responder: { uid: string; label: string },
+    responder: {
+      uid: string;
+      label: string;
+      agency: DispatcherRole;
+      suggestedAgency: DispatcherRole | null;
+    },
   ) => {
     if (!report.id) return;
 
     try {
       await assignDispatcherToEmergency(report.id, responder.uid);
-      const updated = await assignResponderToEmergency(report.id, responder.label);
+      const updated = await assignResponderToEmergency(report.id, {
+        responder: responder.label,
+        assignedResponderId: responder.uid,
+        assignedAgency: responder.agency,
+        suggestedAgency: responder.suggestedAgency || report.suggestedAgency || null,
+      });
       setSelectedAppReport(updated);
       setPageSuccess(
         `Report ${report.id.slice(-6).toUpperCase()} is now assigned to ${responder.label}.`,
@@ -763,6 +798,14 @@ export default function IntakePage() {
                         <p className="mt-2 text-xs text-slate-400">
                           {incident.locationText}
                         </p>
+                        {incident.suggestedAgencyLabel ? (
+                          <p className="mt-1 text-[11px] text-secondary-200">
+                            Suggested responder:{" "}
+                            <span className="font-semibold">
+                              {incident.suggestedAgencyLabel}
+                            </span>
+                          </p>
+                        ) : null}
                         {incident.viewedByName ? (
                           <p className="mt-1 text-[11px] text-emerald-300">
                             Viewed by: <span className="font-semibold">{incident.viewedByName}</span>
