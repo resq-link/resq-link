@@ -151,6 +151,16 @@ export default function DashboardScreen() {
   const handleCasePress = (caseData) => {
     router.push({ pathname: "/case-detail", params: { caseId: caseData.id } });
   };
+  const handleCaseStatusUpdate = (caseId, status) => {
+    if (!caseId || !status) return;
+    setCases((currentCases) =>
+      currentCases.map((caseData) =>
+        caseData.id === caseId
+          ? { ...caseData, status, updatedAt: new Date() }
+          : caseData
+      )
+    );
+  };
 
   if (!fontsLoaded) return null;
   if (loading) {
@@ -381,7 +391,7 @@ export default function DashboardScreen() {
               key={caseData.id}
               case={caseData}
               onPress={() => handleCasePress(caseData)}
-              onStatusUpdate={() => {}}
+              onStatusUpdate={handleCaseStatusUpdate}
             />
           ))
         )}

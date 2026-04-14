@@ -19,8 +19,8 @@ export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
     if (!caseData.id) return;
     try {
       setIsAccepting(true);
-      await acceptCase(caseData.id);
-      onStatusUpdate?.();
+      const updatedCase = await acceptCase(caseData.id);
+      onStatusUpdate?.(caseData.id, updatedCase.status || "enroute");
     } catch (err) {
       console.error("Error accepting case:", err);
     } finally {

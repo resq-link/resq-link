@@ -52,6 +52,27 @@ export interface EmergencyReport {
   additionalDetailsRequestedAt?: Date | Timestamp | null;
   additionalDetails?: Record<string, string> | null;
   additionalDetailsSubmittedAt?: Date | Timestamp | null;
+  declinedByDispatcherId?: string | null;
+  declinedByName?: string | null;
+  declineReason?: string | null;
+  declinedAt?: Date | Timestamp | null;
+  touchdownAt?: Date | Timestamp | null;
+  touchdownByDispatcherId?: string | null;
+  touchdownByName?: string | null;
+  touchdownSource?: 'gps' | 'manual' | null;
+  touchdownDistanceMeters?: number | null;
+  movedToHistoryAt?: Date | Timestamp | null;
+  movedToHistoryBy?: string | null;
+  postIncidentReport?: {
+    reasonForIncident?: string | null;
+    notes?: string | null;
+    peopleInvolved?: number | null;
+    peopleStatus?: string | null;
+    hospital?: string | null;
+    submittedAt?: Date | Timestamp | null;
+    submittedByDispatcherId?: string | null;
+    submittedByName?: string | null;
+  } | null;
 }
 
 // Convert Firestore document to EmergencyReport
@@ -100,6 +121,38 @@ const convertFirestoreDoc = (doc: DocumentData): EmergencyReport => {
     additionalDetailsSubmittedAt: data.additionalDetailsSubmittedAt?.toDate
       ? data.additionalDetailsSubmittedAt.toDate()
       : null,
+    declinedByDispatcherId: data.declinedByDispatcherId || null,
+    declinedByName: data.declinedByName || null,
+    declineReason: data.declineReason || null,
+    declinedAt: data.declinedAt?.toDate ? data.declinedAt.toDate() : null,
+    touchdownAt: data.touchdownAt?.toDate ? data.touchdownAt.toDate() : null,
+    touchdownByDispatcherId: data.touchdownByDispatcherId || null,
+    touchdownByName: data.touchdownByName || null,
+    touchdownSource: data.touchdownSource || null,
+    touchdownDistanceMeters:
+      typeof data.touchdownDistanceMeters === 'number'
+        ? data.touchdownDistanceMeters
+        : null,
+    movedToHistoryAt: data.movedToHistoryAt?.toDate ? data.movedToHistoryAt.toDate() : null,
+    movedToHistoryBy: data.movedToHistoryBy || null,
+    postIncidentReport:
+      data.postIncidentReport && typeof data.postIncidentReport === 'object'
+        ? {
+            reasonForIncident: data.postIncidentReport.reasonForIncident || null,
+            notes: data.postIncidentReport.notes || null,
+            peopleInvolved:
+              typeof data.postIncidentReport.peopleInvolved === 'number'
+                ? data.postIncidentReport.peopleInvolved
+                : null,
+            peopleStatus: data.postIncidentReport.peopleStatus || null,
+            hospital: data.postIncidentReport.hospital || null,
+            submittedAt: data.postIncidentReport.submittedAt?.toDate
+              ? data.postIncidentReport.submittedAt.toDate()
+              : null,
+            submittedByDispatcherId: data.postIncidentReport.submittedByDispatcherId || null,
+            submittedByName: data.postIncidentReport.submittedByName || null,
+          }
+        : null,
   };
 };
 
@@ -186,6 +239,18 @@ export async function submitEmergencyReport(report: Omit<EmergencyReport, 'id' |
       additionalDetailsRequestedAt: report.additionalDetailsRequestedAt || null,
       additionalDetails: report.additionalDetails || null,
       additionalDetailsSubmittedAt: report.additionalDetailsSubmittedAt || null,
+      declinedByDispatcherId: report.declinedByDispatcherId || null,
+      declinedByName: report.declinedByName || null,
+      declineReason: report.declineReason || null,
+      declinedAt: report.declinedAt || null,
+      touchdownAt: report.touchdownAt || null,
+      touchdownByDispatcherId: report.touchdownByDispatcherId || null,
+      touchdownByName: report.touchdownByName || null,
+      touchdownSource: report.touchdownSource || null,
+      touchdownDistanceMeters: report.touchdownDistanceMeters ?? null,
+      movedToHistoryAt: report.movedToHistoryAt || null,
+      movedToHistoryBy: report.movedToHistoryBy || null,
+      postIncidentReport: report.postIncidentReport || null,
     };
 
     const docRef = await addDoc(reportsRef, reportData);
@@ -523,6 +588,10 @@ export async function assignResponderToEmergency(
       assignedResponderId: assignment.assignedResponderId || null,
       assignedAgency: assignment.assignedAgency || null,
       suggestedAgency: assignment.suggestedAgency || null,
+      declinedByDispatcherId: null,
+      declinedByName: null,
+      declineReason: null,
+      declinedAt: null,
       updatedAt: Timestamp.now(),
     });
 
@@ -703,6 +772,217 @@ export async function acceptCase(reportId: string): Promise<EmergencyReport> {
   } catch (error: any) {
     console.error('Error accepting case:', error);
     throw new Error(`Failed to accept case: ${error.message}`);
+  }
+}
+
+export async function declineCase(
+  reportId: string,
+  reason: string
+): Promise<EmergencyReport> {
+  try {
+    const currentUser = getFirebaseAuth().currentUser;
+    if (!currentUser) {
+      throw new Error('User must be authenticated to decline cases');
+    }
+
+    const normalizedReason = reason.trim();
+    if (!normalizedReason) {
+      throw new Error('Decline reason is required');
+    }
+
+    const reportRef = doc(getFirebaseFirestore(), 'emergencies', reportId);
+    const reportDocSnap = await getDoc(reportRef);
+    if (!reportDocSnap.exists()) {
+      throw new Error('Emergency report not found');
+    }
+
+    const currentData = reportDocSnap.data();
+    const currentDispatcherId = currentData.dispatcherId || currentData.dispatcher_id;
+    if (currentDispatcherId !== currentUser.uid) {
+      throw new Error('Only the assigned dispatcher can decline this case');
+    }
+
+    const currentStatus = currentData.status || 'pending';
+    if (!['pending', 'active'].includes(currentStatus)) {
+      throw new Error('Case can only be declined before it is accepted');
+    }
+
+    await updateDoc(reportRef, {
+      status: 'active',
+      dispatcherId: null,
+      responder: null,
+      assignedResponderId: null,
+      assignedAgency: null,
+      declinedByDispatcherId: currentUser.uid,
+      declinedByName: currentUser.displayName || currentUser.email || currentUser.uid,
+      declineReason: normalizedReason,
+      declinedAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    });
+
+    const updatedDocSnap = await getDoc(reportRef);
+    if (!updatedDocSnap.exists()) {
+      throw new Error('Emergency report not found after update');
+    }
+
+    return convertFirestoreDoc(updatedDocSnap);
+  } catch (error: any) {
+    console.error('Error declining case:', error);
+    throw new Error(`Failed to decline case: ${error.message}`);
+  }
+}
+
+export async function markCaseTouchdown(
+  reportId: string,
+  options: {
+    source: 'gps' | 'manual';
+    distanceMeters?: number | null;
+  }
+): Promise<EmergencyReport> {
+  try {
+    const currentUser = getFirebaseAuth().currentUser;
+    if (!currentUser) {
+      throw new Error('User must be authenticated to mark touchdown');
+    }
+
+    const reportRef = doc(getFirebaseFirestore(), 'emergencies', reportId);
+    const reportDocSnap = await getDoc(reportRef);
+    if (!reportDocSnap.exists()) {
+      throw new Error('Emergency report not found');
+    }
+
+    const currentData = reportDocSnap.data();
+    const currentDispatcherId = currentData.dispatcherId || currentData.dispatcher_id;
+    if (currentDispatcherId !== currentUser.uid) {
+      throw new Error('Only the assigned dispatcher can mark touchdown for this case');
+    }
+
+    const currentStatus = currentData.status || 'pending';
+    if (currentStatus === 'done' || currentStatus === 'resolved') {
+      throw new Error('Cannot mark touchdown after the case is completed');
+    }
+
+    const updateData: Record<string, unknown> = {
+      touchdownAt: currentData.touchdownAt || Timestamp.now(),
+      touchdownByDispatcherId: currentUser.uid,
+      touchdownByName: currentUser.displayName || currentUser.email || currentUser.uid,
+      touchdownSource: options.source,
+      touchdownDistanceMeters:
+        typeof options.distanceMeters === 'number' ? options.distanceMeters : null,
+      updatedAt: Timestamp.now(),
+    };
+
+    if (currentStatus !== 'on_scene') {
+      updateData.status = 'on_scene';
+    }
+
+    await updateDoc(reportRef, updateData);
+
+    const updatedDocSnap = await getDoc(reportRef);
+    if (!updatedDocSnap.exists()) {
+      throw new Error('Emergency report not found after update');
+    }
+
+    return convertFirestoreDoc(updatedDocSnap);
+  } catch (error: any) {
+    console.error('Error marking case touchdown:', error);
+    throw new Error(`Failed to mark touchdown: ${error.message}`);
+  }
+}
+
+export async function submitPostIncidentReport(
+  reportId: string,
+  postReport: {
+    reasonForIncident?: string | null;
+    notes?: string | null;
+    peopleInvolved?: number | null;
+    peopleStatus?: string | null;
+    hospital?: string | null;
+  }
+): Promise<EmergencyReport> {
+  try {
+    const currentUser = getFirebaseAuth().currentUser;
+    if (!currentUser) {
+      throw new Error('User must be authenticated to submit a post report');
+    }
+
+    const reportRef = doc(getFirebaseFirestore(), 'emergencies', reportId);
+    const reportDocSnap = await getDoc(reportRef);
+    if (!reportDocSnap.exists()) {
+      throw new Error('Emergency report not found');
+    }
+
+    const currentData = reportDocSnap.data();
+    const currentDispatcherId = currentData.dispatcherId || currentData.dispatcher_id;
+    if (currentDispatcherId !== currentUser.uid) {
+      throw new Error('Only the assigned dispatcher can submit a post report');
+    }
+
+    await updateDoc(reportRef, {
+      postIncidentReport: {
+        reasonForIncident: postReport.reasonForIncident?.trim() || null,
+        notes: postReport.notes?.trim() || null,
+        peopleInvolved:
+          typeof postReport.peopleInvolved === 'number'
+            ? postReport.peopleInvolved
+            : null,
+        peopleStatus: postReport.peopleStatus?.trim() || null,
+        hospital: postReport.hospital?.trim() || null,
+        submittedAt: Timestamp.now(),
+        submittedByDispatcherId: currentUser.uid,
+        submittedByName: currentUser.displayName || currentUser.email || currentUser.uid,
+      },
+      updatedAt: Timestamp.now(),
+    });
+
+    const updatedDocSnap = await getDoc(reportRef);
+    if (!updatedDocSnap.exists()) {
+      throw new Error('Emergency report not found after update');
+    }
+
+    return convertFirestoreDoc(updatedDocSnap);
+  } catch (error: any) {
+    console.error('Error submitting post incident report:', error);
+    throw new Error(`Failed to submit post report: ${error.message}`);
+  }
+}
+
+export async function moveEmergencyReportToHistory(
+  reportId: string
+): Promise<EmergencyReport> {
+  try {
+    const currentUser = getFirebaseAuth().currentUser;
+    if (!currentUser) {
+      throw new Error('User must be authenticated to move reports to history');
+    }
+
+    const reportRef = doc(getFirebaseFirestore(), 'emergencies', reportId);
+    const reportDocSnap = await getDoc(reportRef);
+    if (!reportDocSnap.exists()) {
+      throw new Error('Emergency report not found');
+    }
+
+    const currentData = reportDocSnap.data();
+    if (!currentData.touchdownAt) {
+      throw new Error('Report can only be moved to history after touchdown');
+    }
+
+    await updateDoc(reportRef, {
+      status: 'resolved',
+      movedToHistoryAt: Timestamp.now(),
+      movedToHistoryBy: currentUser.uid,
+      updatedAt: Timestamp.now(),
+    });
+
+    const updatedDocSnap = await getDoc(reportRef);
+    if (!updatedDocSnap.exists()) {
+      throw new Error('Emergency report not found after update');
+    }
+
+    return convertFirestoreDoc(updatedDocSnap);
+  } catch (error: any) {
+    console.error('Error moving emergency report to history:', error);
+    throw new Error(`Failed to move report to history: ${error.message}`);
   }
 }
 

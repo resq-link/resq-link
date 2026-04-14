@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppReportDetailsModal from "@/components/AppReportDetailsModal";
+import IntakeIncidentDetailsModal from "@/components/IntakeIncidentDetailsModal";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   assignDispatcherToEmergency,
@@ -14,9 +16,12 @@ import {
   getIncidentResourceMatch,
   getSuggestedAgenciesForEmergencyType,
   markEmergencyReportViewed,
+  moveEmergencyReportToHistory,
+  BARANGAY_QUADRANT_MAPPING,
   OPERATIONAL_QUADRANTS,
   QUADRANT_LABELS,
   requestEmergencyAdditionalDetails,
+  subscribeToEmergencyReport,
   subscribeToEmergencyReports,
   subscribeToIncidents,
   subscribeToIncidentTypeRules,
@@ -32,6 +37,18 @@ import {
   type TeamOnDuty,
 } from "@packages/firebase";
 import { Calendar } from "lucide-react";
+
+const IncidentLocationPicker = dynamic(
+  () => import("@/components/IncidentLocationPicker"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-72 items-center justify-center rounded-lg border border-slate-800 bg-slate-950 text-sm text-slate-400">
+        Loading map...
+      </div>
+    ),
+  },
+);
 
 type IncidentFormState = {
   source: IncidentSource;
@@ -50,6 +67,22 @@ type IncidentFormState = {
   teamOnDuty: TeamOnDuty | "";
   incidentDate: string; // YYYY-MM-DD
   incidentTime: string; // hh:mm AM/PM
+};
+
+type BarangayFeature = {
+  type: "Feature";
+  geometry: {
+    type: "Polygon" | "MultiPolygon";
+    coordinates: number[][][] | number[][][][];
+  } | null;
+  properties?: {
+    ADM4_EN?: string;
+  };
+};
+
+type BarangayFeatureCollection = {
+  type: "FeatureCollection";
+  features: BarangayFeature[];
 };
 
 const emptyForm: IncidentFormState = {
@@ -123,6 +156,7 @@ type IntakeQueueItem = {
   viewedByName: string | null;
   suggestedAgencyLabel: string | null;
   rawEmergencyReport: EmergencyReport | null;
+  rawIncident: IncidentRecord | null;
 };
 
 const teamOnDutyOptions: TeamOnDuty[] = ["Whiskey", "X-ray", "Yankee", "Zulu"];
@@ -190,6 +224,80 @@ const toNumberOrNull = (value: string) => {
   return Number.isNaN(parsed) ? null : parsed;
 };
 
+const isPointInRing = (
+  latitude: number,
+  longitude: number,
+  ring: number[][],
+) => {
+  let isInside = false;
+
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [currentLongitude, currentLatitude] = ring[i];
+    const [previousLongitude, previousLatitude] = ring[j];
+    const intersects =
+      currentLatitude > latitude !== previousLatitude > latitude &&
+      longitude <
+        ((previousLongitude - currentLongitude) * (latitude - currentLatitude)) /
+          (previousLatitude - currentLatitude) +
+          currentLongitude;
+
+    if (intersects) {
+      isInside = !isInside;
+    }
+  }
+
+  return isInside;
+};
+
+const isPointInPolygon = (
+  latitude: number,
+  longitude: number,
+  polygon: number[][][],
+) => {
+  const [outerRing, ...holes] = polygon;
+  if (!outerRing || !isPointInRing(latitude, longitude, outerRing)) {
+    return false;
+  }
+
+  return !holes.some((hole) => isPointInRing(latitude, longitude, hole));
+};
+
+const detectQuadrantFromCoordinate = (
+  latitude: number,
+  longitude: number,
+  geojsonData: BarangayFeatureCollection | null,
+): OperationalQuadrant | "" => {
+  if (!geojsonData) {
+    return "";
+  }
+
+  for (const feature of geojsonData.features) {
+    const barangayName = feature.properties?.ADM4_EN;
+    const mappedQuadrant = barangayName
+      ? BARANGAY_QUADRANT_MAPPING[barangayName]
+      : null;
+
+    if (!mappedQuadrant || !feature.geometry) {
+      continue;
+    }
+
+    const polygons =
+      feature.geometry.type === "Polygon"
+        ? [feature.geometry.coordinates as number[][][]]
+        : (feature.geometry.coordinates as number[][][][]);
+
+    if (
+      polygons.some((polygon) =>
+        isPointInPolygon(latitude, longitude, polygon),
+      )
+    ) {
+      return mappedQuadrant;
+    }
+  }
+
+  return "";
+};
+
 const toDateLabel = (
   value: IncidentRecord["createdAt"] | EmergencyReport["createdAt"],
 ) => {
@@ -249,6 +357,7 @@ const toQueueItemFromIncident = (incident: IncidentRecord): IntakeQueueItem => (
   viewedByName: null,
   suggestedAgencyLabel: null,
   rawEmergencyReport: null,
+  rawIncident: incident,
 });
 
 const toQueueItemFromEmergency = (report: EmergencyReport): IntakeQueueItem => {
@@ -279,6 +388,7 @@ const toQueueItemFromEmergency = (report: EmergencyReport): IntakeQueueItem => {
       ? getResponderAgencyLabel(suggestedAgency)
       : null,
     rawEmergencyReport: report,
+    rawIncident: null,
   };
 };
 
@@ -337,8 +447,11 @@ export default function IntakePage() {
   const [resources, setResources] = useState<ResourceRecord[]>([]);
   const [recentIncidents, setRecentIncidents] = useState<IncidentRecord[]>([]);
   const [appEmergencyReports, setAppEmergencyReports] = useState<EmergencyReport[]>([]);
+  const [barangayGeojson, setBarangayGeojson] =
+    useState<BarangayFeatureCollection | null>(null);
   const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([]);
   const [selectedAppReport, setSelectedAppReport] = useState<EmergencyReport | null>(null);
+  const [selectedQueueIncident, setSelectedQueueIncident] = useState<IncidentRecord | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingResources, setIsLoadingResources] = useState(true);
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -352,6 +465,16 @@ export default function IntakePage() {
       null,
     [formState.incidentSubtypeId, incidentRules],
   );
+
+  useEffect(() => {
+    fetch("/tuguegarao-barangays.json")
+      .then((response) => response.json())
+      .then((data: BarangayFeatureCollection) => setBarangayGeojson(data))
+      .catch((error) => {
+        console.error("Error loading barangay polygons:", error);
+        setBarangayGeojson(null);
+      });
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -373,9 +496,13 @@ export default function IntakePage() {
 
     const unsubscribeEmergencyReports = subscribeToEmergencyReports(
       (reports) => {
-        setAppEmergencyReports(reports.slice(0, 8));
+        setAppEmergencyReports(
+          reports
+            .filter((report) => report.status !== "done" && report.status !== "resolved")
+            .slice(0, 8),
+        );
       },
-      { limitCount: 8 },
+      { limitCount: 100 },
     );
 
     return () => {
@@ -389,6 +516,23 @@ export default function IntakePage() {
   useEffect(() => {
     setSelectedResourceIds([]);
   }, [formState.incidentSubtypeId]);
+
+  useEffect(() => {
+    if (!selectedAppReport?.id) {
+      return;
+    }
+
+    const unsubscribe = subscribeToEmergencyReport(
+      selectedAppReport.id,
+      (latestReport) => {
+        if (latestReport) {
+          setSelectedAppReport(latestReport);
+        }
+      },
+    );
+
+    return unsubscribe;
+  }, [selectedAppReport?.id]);
 
   const matchingResources = useMemo(() => {
     if (!selectedRule) {
@@ -480,7 +624,39 @@ export default function IntakePage() {
     setFormState((current) => ({ ...current, [field]: value }));
   };
 
+  const handleLocationPinChange = (latitude: number, longitude: number) => {
+    const detectedQuadrant = detectQuadrantFromCoordinate(
+      latitude,
+      longitude,
+      barangayGeojson,
+    );
+
+    setFormState((current) => ({
+      ...current,
+      latitude: latitude.toFixed(6),
+      longitude: longitude.toFixed(6),
+      quadrant: detectedQuadrant,
+    }));
+  };
+
+  const handleLocationPinClear = () => {
+    setFormState((current) => ({
+      ...current,
+      latitude: "",
+      longitude: "",
+      quadrant: "",
+    }));
+  };
+
   const handleOpenQueueItem = async (item: IntakeQueueItem) => {
+    if (item.channel === "incident") {
+      if (!item.rawIncident || item.rawIncident.source === "sms") {
+        return;
+      }
+      setSelectedQueueIncident(item.rawIncident);
+      return;
+    }
+
     if (item.channel !== "emergency_report" || !item.rawEmergencyReport) {
       return;
     }
@@ -544,6 +720,23 @@ export default function IntakePage() {
 
   const handleRejectAppReport = async (report: EmergencyReport) => {
     setPageSuccess(`Reject action for ${report.id?.slice(-6).toUpperCase() || "report"} is not wired yet.`);
+  };
+
+  const handleMoveAppReportToHistory = async (report: EmergencyReport) => {
+    if (!report.id) return;
+
+    try {
+      const updated = await moveEmergencyReportToHistory(report.id);
+      setSelectedAppReport(null);
+      setAppEmergencyReports((current) =>
+        current.filter((entry) => entry.id !== updated.id),
+      );
+      setPageSuccess(
+        `Report ${report.id.slice(-6).toUpperCase()} was moved to history.`,
+      );
+    } catch (error: any) {
+      setPageError(error.message || "Failed to move report to history.");
+    }
   };
 
   const openIncidentDatePicker = () => {
@@ -768,7 +961,9 @@ export default function IntakePage() {
                         key={incident.id}
                         onClick={() => void handleOpenQueueItem(incident)}
                         className={`rounded-lg border border-slate-800 bg-slate-950/60 p-3 ${
-                          incident.channel === "emergency_report"
+                          incident.channel === "emergency_report" ||
+                          (incident.channel === "incident" &&
+                            incident.rawIncident?.source !== "sms")
                             ? "cursor-pointer transition hover:border-primary-500/60 hover:bg-slate-900/80"
                             : ""
                         }`}
@@ -1330,6 +1525,14 @@ export default function IntakePage() {
                           placeholder="Nearest landmark"
                         />
                       </div>
+                      <div className="md:col-span-6">
+                        <IncidentLocationPicker
+                          latitude={toNumberOrNull(formState.latitude)}
+                          longitude={toNumberOrNull(formState.longitude)}
+                          onChange={handleLocationPinChange}
+                          onClear={handleLocationPinClear}
+                        />
+                      </div>
                       <div className="md:col-span-2">
                         <label className="text-xs uppercase tracking-[0.2em] text-slate-500">
                           Quadrant
@@ -1348,6 +1551,13 @@ export default function IntakePage() {
                             </option>
                           ))}
                         </select>
+                        {formState.latitude && formState.longitude ? (
+                          <p className="mt-1 text-xs text-slate-500">
+                            {formState.quadrant
+                              ? "Auto-detected from pinned map location."
+                              : "No matching quadrant found for this pin."}
+                          </p>
+                        ) : null}
                       </div>
                       <div className="md:col-span-3">
                         <label className="text-xs uppercase tracking-[0.2em] text-slate-500">
@@ -1374,9 +1584,6 @@ export default function IntakePage() {
                           className="mt-1 h-10 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
                           placeholder="Optional"
                         />
-                      </div>
-                      <div className="md:col-span-6 rounded-lg border border-dashed border-slate-700 bg-slate-950/50 px-3 py-2.5 text-xs text-slate-500">
-                        Map preview coming soon.
                       </div>
                     </div>
                   </section>
@@ -1462,6 +1669,11 @@ export default function IntakePage() {
           onRespondStart={handleRespondStartForAppReport}
           onRespond={handleRespondToAppReport}
           onReject={handleRejectAppReport}
+          onMoveToHistory={handleMoveAppReportToHistory}
+        />
+        <IntakeIncidentDetailsModal
+          incident={selectedQueueIncident}
+          onClose={() => setSelectedQueueIncident(null)}
         />
       </div>
     </ProtectedRoute>

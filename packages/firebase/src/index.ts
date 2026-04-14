@@ -53,6 +53,10 @@ export {
   submitEmergencyAdditionalDetails,
   subscribeToDispatcherAssignedEmergencies,
   acceptCase,
+  declineCase,
+  markCaseTouchdown,
+  moveEmergencyReportToHistory,
+  submitPostIncidentReport,
   updateCaseStatus,
   type EmergencyReport,
 } from './emergencies';
