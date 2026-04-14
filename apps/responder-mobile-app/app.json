@@ -63,15 +63,7 @@
         "origin": false
       },
       "apiUrl": "http://localhost:4000",
-      "uiMode": false,
-      "firebase": {
-        "apiKey": "AIzaSyCWLfP5vbHiFTiDQCG3YVxKu8iehstmo0g",
-        "authDomain": "city-rescue-dispatch.firebaseapp.com",
-        "projectId": "city-rescue-dispatch",
-        "storageBucket": "city-rescue-dispatch.firebasestorage.app",
-        "messagingSenderId": "665229808010",
-        "appId": "1:665229808010:web:4f51791af88672b027f873"
-      }
+      "uiMode": false
     },
     "runtimeVersion": {
       "policy": "appVersion"

@@ -1,13 +1,34 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
 import {
   getAllDispatchers,
   getSuggestedAgenciesForEmergencyType,
+  subscribeToDispatcherLocations,
   type DispatcherAccount,
+  type DispatcherLocation,
   type DispatcherRole,
   type EmergencyReport,
 } from "@packages/firebase";
+
+const PinnedLocationMap = dynamic(() => import("./PinnedLocationMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="mt-3 flex h-44 items-center justify-center rounded-lg border border-slate-800 bg-slate-950 text-xs text-slate-400">
+      Loading pinned location...
+    </div>
+  ),
+});
+
+const AppReportResponseMap = dynamic(() => import("./AppReportResponseMap"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-36 rounded-lg border border-slate-800 bg-slate-950 text-xs text-slate-400 flex items-center justify-center">
+      Loading responder location...
+    </div>
+  ),
+});
 
 type AppReportDetailsModalProps = {
   isOpen: boolean;
@@ -24,6 +45,7 @@ type AppReportDetailsModalProps = {
     },
   ) => void | Promise<void>;
   onReject: (report: EmergencyReport) => void | Promise<void>;
+  onMoveToHistory: (report: EmergencyReport) => void | Promise<void>;
 };
 
 type ResponderOption = {
@@ -89,7 +111,12 @@ const getExpectedAdditionalFields = (
   return fieldMap[incidentType] || fieldMap.other_emergency;
 };
 
-const getDateLabel = (value: EmergencyReport["createdAt"] | EmergencyReport["viewedAt"]) => {
+const getDateLabel = (
+  value:
+    | EmergencyReport["createdAt"]
+    | EmergencyReport["viewedAt"]
+    | EmergencyReport["touchdownAt"],
+) => {
   if (!value) return "—";
   const date =
     value instanceof Date
@@ -108,6 +135,7 @@ export default function AppReportDetailsModal({
   onRespondStart,
   onRespond,
   onReject,
+  onMoveToHistory,
 }: AppReportDetailsModalProps) {
   const [isChoosingResponder, setIsChoosingResponder] = useState(false);
   const [responders, setResponders] = useState<ResponderOption[]>([]);
@@ -115,6 +143,8 @@ export default function AppReportDetailsModal({
   const [isLoadingResponders, setIsLoadingResponders] = useState(false);
   const [responderError, setResponderError] = useState<string | null>(null);
   const [showingFallbackPool, setShowingFallbackPool] = useState(false);
+  const [responderLocation, setResponderLocation] =
+    useState<DispatcherLocation | null>(null);
   const suggestedAgencies = useMemo(
     () => (report ? getSuggestedAgenciesForEmergencyType(report.incidentType) : []),
     [report],
@@ -129,6 +159,13 @@ export default function AppReportDetailsModal({
     () => getExpectedAdditionalFields(report?.incidentType || "other_emergency"),
     [report?.incidentType],
   );
+  const hasPinnedLocation =
+    report?.latitude != null &&
+    report.longitude != null &&
+    Number.isFinite(report.latitude) &&
+    Number.isFinite(report.longitude) &&
+    report.latitude !== 0 &&
+    report.longitude !== 0;
 
   useEffect(() => {
     if (!isOpen || !report) {
@@ -138,10 +175,42 @@ export default function AppReportDetailsModal({
       setIsLoadingResponders(false);
       setResponderError(null);
       setShowingFallbackPool(false);
+      setResponderLocation(null);
     }
   }, [isOpen, report]);
 
+  useEffect(() => {
+    if (!isOpen || !report?.assignedResponderId) {
+      setResponderLocation(null);
+      return;
+    }
+
+    const unsubscribe = subscribeToDispatcherLocations((locations) => {
+      setResponderLocation(
+        locations.find(
+          (location) => location.dispatcherId === report.assignedResponderId,
+        ) || null,
+      );
+    });
+
+    return unsubscribe;
+  }, [isOpen, report?.assignedResponderId]);
+
   if (!isOpen || !report) return null;
+
+  const isResponderAssigned = Boolean(report.assignedResponderId || report.responder);
+  const responderHasAccepted =
+    report.status === "enroute" ||
+    report.status === "on_scene" ||
+    report.status === "done" ||
+    report.status === "resolved";
+  const responderStatusLabel = !isResponderAssigned
+    ? "Unassigned"
+    : responderHasAccepted
+      ? report.status === "enroute"
+        ? "En route"
+        : report.status.replace("_", " ")
+      : "Awaiting responder acceptance";
 
   const getResponderLabel = (responder: ResponderOption) =>
     responder.account.fullName?.trim() ||
@@ -209,6 +278,8 @@ export default function AppReportDetailsModal({
       agency: selectedResponder.account.role,
       suggestedAgency: primarySuggestedAgency,
     });
+    setIsChoosingResponder(false);
+    setResponderError(null);
   };
 
   return (
@@ -232,8 +303,26 @@ export default function AppReportDetailsModal({
           </button>
         </div>
 
-        <div className="flex flex-wrap gap-3 border-b border-slate-800 px-6 py-4">
-          {!isChoosingResponder ? (
+        <div className="flex flex-wrap items-start gap-3 border-b border-slate-800 px-6 py-4">
+          {isResponderAssigned ? (
+            <div className="rounded-lg border border-emerald-800/60 bg-emerald-950/40 px-4 py-2">
+              <p className="text-sm font-semibold text-emerald-200">
+                Responder confirmed: {report.responder || "Assigned"}
+              </p>
+              <p
+                className={`mt-1 text-xs font-semibold uppercase tracking-[0.18em] ${
+                  responderHasAccepted ? "text-sky-200" : "text-amber-200"
+                }`}
+              >
+                {responderStatusLabel}
+              </p>
+              {report.touchdownAt ? (
+                <p className="mt-1 text-xs font-semibold text-emerald-100">
+                  GPS Touchdown: {getDateLabel(report.touchdownAt)}
+                </p>
+              ) : null}
+            </div>
+          ) : !isChoosingResponder ? (
             <button
               type="button"
               onClick={() => void handleStartRespond()}
@@ -270,10 +359,72 @@ export default function AppReportDetailsModal({
           >
             Reject
           </button>
+          {report.touchdownAt ? (
+            <button
+              type="button"
+              onClick={() => void onMoveToHistory(report)}
+              className="rounded-lg border border-emerald-800 bg-emerald-950/40 px-4 py-2 text-sm font-semibold text-emerald-200 transition-colors hover:border-emerald-700"
+            >
+              Move incident to history
+            </button>
+          ) : null}
         </div>
 
         <div className="max-h-[75vh] overflow-y-auto px-6 py-5">
           <div className="grid gap-4 md:grid-cols-2">
+            {isResponderAssigned && hasPinnedLocation ? (
+              <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 md:col-span-2">
+                <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-100">
+                      Pinned Location and Responder
+                    </h3>
+                    <p className="mt-1 text-xs text-slate-400">
+                      Live responder location updates after the mobile app shares location.
+                    </p>
+                  </div>
+                  <span
+                    className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${
+                      responderHasAccepted
+                        ? "border-sky-800/60 bg-sky-950/40 text-sky-200"
+                        : "border-amber-800/60 bg-amber-950/40 text-amber-200"
+                    }`}
+                  >
+                    {responderStatusLabel}
+                  </span>
+                </div>
+                {report.touchdownAt ? (
+                  <div className="mb-3 rounded-lg border border-emerald-800/60 bg-emerald-950/30 px-3 py-2 text-sm text-emerald-100">
+                    GPS Touchdown:{" "}
+                    <span className="font-semibold">
+                      {getDateLabel(report.touchdownAt)}
+                    </span>
+                    {report.touchdownSource ? (
+                      <span className="ml-2 text-xs uppercase tracking-[0.16em] text-emerald-300">
+                        {report.touchdownSource}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+                <AppReportResponseMap
+                  incident={{
+                    latitude: report.latitude!,
+                    longitude: report.longitude!,
+                    label: report.locationText || "Pinned incident location",
+                  }}
+                  responder={
+                    responderLocation
+                      ? {
+                          latitude: responderLocation.latitude,
+                          longitude: responderLocation.longitude,
+                          label: report.responder || responderLocation.email || "Responder",
+                        }
+                      : null
+                  }
+                />
+              </section>
+            ) : null}
+
             {isChoosingResponder ? (
               <section className="rounded-xl border border-emerald-800/60 bg-emerald-950/20 p-4 md:col-span-2">
                 <div className="flex items-start justify-between gap-3">
@@ -464,6 +615,14 @@ export default function AppReportDetailsModal({
                       : "—"}
                   </span>
                 </p>
+                {hasPinnedLocation ? (
+                  <PinnedLocationMap
+                    latitude={report.latitude!}
+                    longitude={report.longitude!}
+                    label={report.locationText || "Pinned incident location"}
+                    className="mt-3"
+                  />
+                ) : null}
               </div>
             </section>
 
@@ -474,7 +633,7 @@ export default function AppReportDetailsModal({
               </p>
             </section>
 
-            {isChoosingResponder ? (
+            {isChoosingResponder || isResponderAssigned ? (
               <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 md:col-span-2">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -504,6 +663,50 @@ export default function AppReportDetailsModal({
                       </p>
                     </div>
                   ))}
+                </div>
+              </section>
+            ) : null}
+
+            {report.postIncidentReport ? (
+              <section className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 md:col-span-2">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-100">
+                      Post Report
+                    </h3>
+                    <p className="mt-1 text-sm text-slate-400">
+                      Submitted by {report.postIncidentReport.submittedByName || "responder"}.
+                    </p>
+                  </div>
+                  {report.postIncidentReport.submittedAt ? (
+                    <span className="text-xs text-slate-400">
+                      {getDateLabel(report.postIncidentReport.submittedAt)}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="mt-3 grid gap-3 md:grid-cols-2">
+                  <div className="rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2.5">
+                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Reason for incident</p>
+                    <p className="mt-2 text-sm text-slate-200">{report.postIncidentReport.reasonForIncident || "Not provided"}</p>
+                  </div>
+                  <div className="rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2.5">
+                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">People involved</p>
+                    <p className="mt-2 text-sm text-slate-200">
+                      {report.postIncidentReport.peopleInvolved ?? "Not provided"}
+                    </p>
+                  </div>
+                  <div className="rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2.5">
+                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Status of people involved</p>
+                    <p className="mt-2 text-sm text-slate-200">{report.postIncidentReport.peopleStatus || "Not provided"}</p>
+                  </div>
+                  <div className="rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2.5">
+                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Hospital</p>
+                    <p className="mt-2 text-sm text-slate-200">{report.postIncidentReport.hospital || "Not provided"}</p>
+                  </div>
+                  <div className="rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2.5 md:col-span-2">
+                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Notes</p>
+                    <p className="mt-2 whitespace-pre-wrap text-sm text-slate-200">{report.postIncidentReport.notes || "Not provided"}</p>
+                  </div>
                 </div>
               </section>
             ) : null}

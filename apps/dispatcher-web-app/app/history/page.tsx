@@ -18,6 +18,8 @@ type HistoryIncident = {
   description: string
   responder: string | null
   duration: string | null
+  postIncidentReport: EmergencyReport['postIncidentReport']
+  touchdownAt: Date | null
 }
 
 // Map incident type to display name
@@ -72,6 +74,12 @@ const convertToHistoryIncident = (report: EmergencyReport): HistoryIncident => {
     description: report.description || 'No description provided',
     responder: report.responder || null,
     duration,
+    postIncidentReport: report.postIncidentReport || null,
+    touchdownAt: report.touchdownAt instanceof Date
+      ? report.touchdownAt
+      : (report.touchdownAt && typeof report.touchdownAt === 'object' && 'toDate' in report.touchdownAt)
+      ? (report.touchdownAt as any).toDate()
+      : null,
   }
 }
 
@@ -317,8 +325,20 @@ export default function HistoryPage() {
                   <div className="border-t border-slate-800 my-3" />
 
                   {/* Middle Section */}
-                  <div className="space-y-3">
-                    <p className="text-sm text-slate-300 leading-relaxed">{incident.description}</p>
+                    <div className="space-y-3">
+                      <p className="text-sm text-slate-300 leading-relaxed">{incident.description}</p>
+                    {incident.postIncidentReport && (
+                      <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-3">
+                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 mb-2">Post Report</p>
+                        <div className="grid gap-2 text-sm text-slate-300 md:grid-cols-2">
+                          <p><span className="text-slate-500">Reason:</span> {incident.postIncidentReport.reasonForIncident || 'Not provided'}</p>
+                          <p><span className="text-slate-500">People involved:</span> {incident.postIncidentReport.peopleInvolved ?? 'Not provided'}</p>
+                          <p><span className="text-slate-500">People status:</span> {incident.postIncidentReport.peopleStatus || 'Not provided'}</p>
+                          <p><span className="text-slate-500">Hospital:</span> {incident.postIncidentReport.hospital || 'Not provided'}</p>
+                          <p className="md:col-span-2"><span className="text-slate-500">Notes:</span> {incident.postIncidentReport.notes || 'Not provided'}</p>
+                        </div>
+                      </div>
+                    )}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 text-sm text-slate-400">
                       <span className="flex items-center gap-2 min-w-0">
                         <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -359,6 +379,19 @@ export default function HistoryPage() {
                             />
                           </svg>
                           <span>Resolved: {formatDateTime(incident.resolvedAt)}</span>
+                        </span>
+                      )}
+                      {incident.touchdownAt && (
+                        <span className="flex items-center gap-2 lg:col-span-2">
+                          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                          </svg>
+                          <span>GPS Touchdown: {formatDateTime(incident.touchdownAt)}</span>
                         </span>
                       )}
                     </div>

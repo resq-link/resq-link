@@ -21,6 +21,13 @@ import LoadingScreen from "@/components/LoadingScreen";
 import ErrorAlert from "@/components/ErrorAlert";
 import { colors, spacing } from "@/theme";
 
+const toDateValue = (value) => {
+  if (!value) return null;
+  if (value?.toDate) return value.toDate();
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
 export default function CaseDetailScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -72,17 +79,32 @@ export default function CaseDetailScreen() {
             imageUrl: data.imageUrl || data.image_url || null,
             status: data.status || "pending",
             priority: data.priority || "medium",
-            createdAt: data.createdAt?.toDate
-              ? data.createdAt.toDate()
-              : data.created_at?.toDate
-                ? data.created_at.toDate()
-                : new Date(data.createdAt || Date.now()),
-            updatedAt: data.updatedAt?.toDate
-              ? data.updatedAt.toDate()
-              : data.updated_at?.toDate
-                ? data.updated_at.toDate()
-                : null,
+            createdAt:
+              toDateValue(data.createdAt) ||
+              toDateValue(data.created_at) ||
+              new Date(),
+            updatedAt:
+              toDateValue(data.updatedAt) || toDateValue(data.updated_at),
             dispatcherId: data.dispatcherId || data.dispatcher_id || null,
+            additionalDetails:
+              data.additionalDetails && typeof data.additionalDetails === "object"
+                ? data.additionalDetails
+                : null,
+            additionalDetailsRequestedAt: toDateValue(data.additionalDetailsRequestedAt),
+            additionalDetailsSubmittedAt: toDateValue(data.additionalDetailsSubmittedAt),
+            touchdownAt: toDateValue(data.touchdownAt),
+            touchdownSource: data.touchdownSource || null,
+            touchdownDistanceMeters:
+              typeof data.touchdownDistanceMeters === "number"
+                ? data.touchdownDistanceMeters
+                : null,
+            postIncidentReport:
+              data.postIncidentReport && typeof data.postIncidentReport === "object"
+                ? {
+                    ...data.postIncidentReport,
+                    submittedAt: toDateValue(data.postIncidentReport.submittedAt),
+                  }
+                : null,
           };
 
           setCaseData(caseInfo);

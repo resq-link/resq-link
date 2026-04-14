@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
+import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import { Camera, MapPin, Upload } from "lucide-react-native";
 import {
   Inter_400Regular,
@@ -37,6 +38,15 @@ const CIVILIAN_INCIDENT_TYPES = [
   { id: "other_emergency", label: "Other Emergency", emoji: "🆘" },
 ];
 
+const DEFAULT_MAP_REGION = {
+  latitude: 17.6132,
+  longitude: 121.727,
+  latitudeDelta: 0.04,
+  longitudeDelta: 0.04,
+};
+
+const GPS_FALLBACK_TIMEOUT_MS = 10000;
+
 export default function EmergencyFormScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -54,7 +64,10 @@ export default function EmergencyFormScreen() {
   const [error, setError] = useState("");
   const [showHeaderBorder, setShowHeaderBorder] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
-  const [locationStatus, setLocationStatus] = useState(null); // 'success', 'error', null
+  const [locationStatus, setLocationStatus] = useState(null); // 'success', 'manual', 'error', null
+  const [showManualPinMap, setShowManualPinMap] = useState(false);
+  const gpsFallbackTimerRef = useRef(null);
+  const manualPinSelectedRef = useRef(false);
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -64,6 +77,12 @@ export default function EmergencyFormScreen() {
 
   useEffect(() => {
     requestLocationPermission();
+
+    return () => {
+      if (gpsFallbackTimerRef.current) {
+        clearTimeout(gpsFallbackTimerRef.current);
+      }
+    };
   }, []);
 
   // Debug: Log imageUri changes
@@ -78,17 +97,28 @@ export default function EmergencyFormScreen() {
         await getCurrentLocation();
       } else {
         setLocationStatus("error");
+        setShowManualPinMap(true);
       }
     } catch (err) {
       console.error("Location error:", err);
       setLocationStatus("error");
+      setShowManualPinMap(true);
     }
   };
 
   const getCurrentLocation = async () => {
+    if (gpsFallbackTimerRef.current) {
+      clearTimeout(gpsFallbackTimerRef.current);
+    }
+
     setIsGettingLocation(true);
     setLocationStatus(null);
+    setShowManualPinMap(false);
+    manualPinSelectedRef.current = false;
     setError("");
+    gpsFallbackTimerRef.current = setTimeout(() => {
+      setShowManualPinMap(true);
+    }, GPS_FALLBACK_TIMEOUT_MS);
 
     try {
       // Check and request permission
@@ -99,6 +129,7 @@ export default function EmergencyFormScreen() {
           "Please enable location permissions in your device settings to automatically get your current location."
         );
         setLocationStatus("error");
+        setShowManualPinMap(true);
         setIsGettingLocation(false);
         return;
       }
@@ -108,8 +139,7 @@ export default function EmergencyFormScreen() {
         accuracy: Location.Accuracy.Balanced,
       });
 
-      setLatitude(location.coords.latitude);
-      setLongitude(location.coords.longitude);
+      let resolvedLocationText = `${location.coords.latitude.toFixed(6)}, ${location.coords.longitude.toFixed(6)}`;
 
       // Reverse geocode to get address
       try {
@@ -135,27 +165,52 @@ export default function EmergencyFormScreen() {
             ? addressParts.join(", ")
             : address.formattedAddress || `${location.coords.latitude.toFixed(6)}, ${location.coords.longitude.toFixed(6)}`;
           
-          setLocationText(formattedAddress);
+          resolvedLocationText = formattedAddress;
         } else {
           // Fallback to coordinates if reverse geocoding fails
-          setLocationText(`${location.coords.latitude.toFixed(6)}, ${location.coords.longitude.toFixed(6)}`);
+          resolvedLocationText = `${location.coords.latitude.toFixed(6)}, ${location.coords.longitude.toFixed(6)}`;
         }
       } catch (geocodeError) {
         console.error("Reverse geocoding error:", geocodeError);
         // Fallback to coordinates
-        setLocationText(`${location.coords.latitude.toFixed(6)}, ${location.coords.longitude.toFixed(6)}`);
+        resolvedLocationText = `${location.coords.latitude.toFixed(6)}, ${location.coords.longitude.toFixed(6)}`;
       }
 
+      if (manualPinSelectedRef.current) {
+        return;
+      }
+
+      setLatitude(location.coords.latitude);
+      setLongitude(location.coords.longitude);
+      setLocationText(resolvedLocationText);
       setLocationStatus("success");
+      setShowManualPinMap(false);
     } catch (err) {
       console.error("Location error:", err);
       setLocationStatus("error");
+      setShowManualPinMap(true);
       Alert.alert(
         "Location Error",
         "Unable to get your current location. Please enter your location manually."
       );
     } finally {
+      if (gpsFallbackTimerRef.current) {
+        clearTimeout(gpsFallbackTimerRef.current);
+        gpsFallbackTimerRef.current = null;
+      }
       setIsGettingLocation(false);
+    }
+  };
+
+  const handleManualPin = (coordinate) => {
+    manualPinSelectedRef.current = true;
+    setLatitude(coordinate.latitude);
+    setLongitude(coordinate.longitude);
+    setLocationStatus("manual");
+
+    const coordinateText = `${coordinate.latitude.toFixed(6)}, ${coordinate.longitude.toFixed(6)}`;
+    if (!locationText.trim()) {
+      setLocationText(coordinateText);
     }
   };
 
@@ -450,9 +505,15 @@ export default function EmergencyFormScreen() {
               style={{
                 flexDirection: "row",
                 alignItems: "center",
-                backgroundColor: locationStatus === "success" ? "#9AFF5520" : "#252525",
+                backgroundColor:
+                  locationStatus === "success" || locationStatus === "manual"
+                    ? "#9AFF5520"
+                    : "#252525",
                 borderWidth: 1,
-                borderColor: locationStatus === "success" ? "#9AFF55" : "#404040",
+                borderColor:
+                  locationStatus === "success" || locationStatus === "manual"
+                    ? "#9AFF55"
+                    : "#404040",
                 borderRadius: 8,
                 paddingHorizontal: 12,
                 paddingVertical: 6,
@@ -472,7 +533,7 @@ export default function EmergencyFormScreen() {
                     Getting...
                   </Text>
                 </>
-              ) : locationStatus === "success" ? (
+              ) : locationStatus === "success" || locationStatus === "manual" ? (
                 <>
                   <MapPin size={14} color="#9AFF55" style={{ marginRight: 4 }} />
                   <Text
@@ -482,7 +543,7 @@ export default function EmergencyFormScreen() {
                       color: "#9AFF55",
                     }}
                   >
-                    Location Found
+                    {locationStatus === "manual" ? "Pin Set" : "Location Found"}
                   </Text>
                 </>
               ) : (
@@ -505,7 +566,10 @@ export default function EmergencyFormScreen() {
             style={{
               height: 50,
               borderWidth: 1,
-              borderColor: locationStatus === "success" ? "#9AFF55" : "#6C6C6C",
+              borderColor:
+                locationStatus === "success" || locationStatus === "manual"
+                  ? "#9AFF55"
+                  : "#6C6C6C",
               borderRadius: 12,
               paddingHorizontal: 16,
               fontFamily: "Inter_400Regular",
@@ -549,6 +613,79 @@ export default function EmergencyFormScreen() {
             value={landmark}
             onChangeText={setLandmark}
           />
+          {showManualPinMap && (
+            <View
+              style={{
+                marginTop: 12,
+                borderWidth: 1,
+                borderColor: "#404040",
+                borderRadius: 12,
+                overflow: "hidden",
+                backgroundColor: "#111111",
+              }}
+            >
+              <View style={{ padding: 12 }}>
+                <Text
+                  style={{
+                    fontFamily: "Inter_600SemiBold",
+                    fontSize: 14,
+                    color: "#FFFFFF",
+                  }}
+                >
+                  Set Location on Map
+                </Text>
+                <Text
+                  style={{
+                    fontFamily: "Inter_400Regular",
+                    fontSize: 12,
+                    color: "#C1C1C1",
+                    marginTop: 4,
+                    lineHeight: 18,
+                  }}
+                >
+                  GPS is taking longer than expected. Tap the map to place the incident pin.
+                </Text>
+              </View>
+              <MapView
+                provider={PROVIDER_GOOGLE}
+                style={{ height: 220, width: "100%" }}
+                initialRegion={
+                  latitude && longitude
+                    ? {
+                        latitude,
+                        longitude,
+                        latitudeDelta: 0.02,
+                        longitudeDelta: 0.02,
+                      }
+                    : DEFAULT_MAP_REGION
+                }
+                onPress={(event) => handleManualPin(event.nativeEvent.coordinate)}
+              >
+                {latitude && longitude ? (
+                  <Marker
+                    coordinate={{ latitude, longitude }}
+                    draggable
+                    onDragEnd={(event) => handleManualPin(event.nativeEvent.coordinate)}
+                    pinColor="#9AFF55"
+                    title="Incident location"
+                  />
+                ) : null}
+              </MapView>
+              <Text
+                style={{
+                  fontFamily: "Inter_400Regular",
+                  fontSize: 11,
+                  color: "#C1C1C1",
+                  paddingHorizontal: 12,
+                  paddingVertical: 10,
+                }}
+              >
+                {latitude && longitude
+                  ? `Pinned at ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
+                  : "No pin selected yet."}
+              </Text>
+            </View>
+          )}
           {latitude && longitude && (
             <Text
               style={{
