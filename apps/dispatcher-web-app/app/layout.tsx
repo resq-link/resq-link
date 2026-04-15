@@ -21,10 +21,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${spaceGrotesk.className} antialiased`}>
+      <body className={`${spaceGrotesk.className} antialiased`} suppressHydrationWarning>
         <AuthProvider>
           <Navigation>
-            <main className="container mx-auto px-4 py-6 sm:py-8 page-enter min-h-0">
+            <main className="page-enter min-h-0 flex flex-col h-full">
               {children}
             </main>
           </Navigation>

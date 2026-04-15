@@ -427,7 +427,7 @@ export default function Navigation({ children }: NavigationProps) {
     showClose?: boolean;
   }) => (
     <>
-      <div className="flex h-[72px] shrink-0 items-center justify-between gap-2 border-b border-slate-800/70 px-4">
+      <div className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-slate-800/70 px-4">
         <BrandBlock />
         {showClose && (
           <button
@@ -485,7 +485,7 @@ export default function Navigation({ children }: NavigationProps) {
       )}
 
       <div className="flex min-h-screen min-w-0 flex-col lg:pl-64 xl:pl-72">
-        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-between gap-3 border-b border-slate-800/80 bg-slate-950/95 px-4 backdrop-blur-xl lg:hidden">
+        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-slate-800/80 bg-slate-950/95 px-4 backdrop-blur-xl lg:hidden">
           <button
             type="button"
             onClick={() => setMobileMenuOpen(true)}

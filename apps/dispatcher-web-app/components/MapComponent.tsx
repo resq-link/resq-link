@@ -61,6 +61,7 @@ export default function MapComponent({
 }: MapComponentProps) {
   const mapRef = useRef<L.Map | null>(null)
   const [geojsonData, setGeojsonData] = useState<any>(null)
+  const [isLegendOpen, setIsLegendOpen] = useState(false)
 
   useEffect(() => {
     // Fetch the Tuguegarao barangays GeoJSON
@@ -326,18 +327,50 @@ export default function MapComponent({
   }
 
   return (
-    <div className="relative h-full w-full">
-      {/* Legend */}
-      <div className="absolute top-4 right-4 z-[1000] bg-slate-950/80 backdrop-blur-md p-3 rounded-lg border border-slate-800 shadow-xl pointer-events-auto">
-        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Map Quadrants</h4>
-        <div className="space-y-1.5">
-          {Object.entries(QUADRANT_COLORS).filter(([k]) => k !== 'UNKNOWN').map(([name, style]) => (
-            <div key={name} className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: style.fill, border: `1px solid ${style.color}` }}></div>
-              <span className="text-[10px] font-medium text-slate-200">{QUADRANT_LABELS[name as keyof typeof QUADRANT_LABELS]}</span>
+    <div className="relative h-full w-full group/map">
+      {/* Collapsible Legend */}
+      <div className={`absolute top-4 right-4 z-[1000] bg-slate-950/90 backdrop-blur-md rounded-xl border border-slate-800 shadow-2xl transition-all duration-300 pointer-events-auto ${isLegendOpen ? 'w-48 p-4' : 'w-10 h-10 p-0 flex items-center justify-center overflow-hidden'}`}>
+        <button 
+          onClick={() => setIsLegendOpen(!isLegendOpen)}
+          className={`text-slate-400 hover:text-slate-100 transition-colors ${isLegendOpen ? 'absolute top-3 right-3' : 'w-full h-full flex items-center justify-center'}`}
+        >
+          {isLegendOpen ? (
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+          ) : (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" /></svg>
+          )}
+        </button>
+        
+        {isLegendOpen && (
+          <>
+            <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-3">Map Legend</h4>
+            <div className="space-y-2.5">
+              <div className="border-b border-slate-800/50 pb-2 mb-2">
+                <p className="text-[9px] text-slate-600 uppercase tracking-wider mb-2">Quadrants</p>
+                {Object.entries(QUADRANT_COLORS).filter(([k]) => k !== 'UNKNOWN').map(([name, style]) => (
+                  <div key={name} className="flex items-center gap-2 mb-1.5 last:mb-0">
+                    <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: style.fill, border: `1px solid ${style.color}` }}></div>
+                    <span className="text-[10px] font-medium text-slate-300">{QUADRANT_LABELS[name as keyof typeof QUADRANT_LABELS]}</span>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <p className="text-[9px] text-slate-600 uppercase tracking-wider mb-2">Incident Priority</p>
+                {[
+                  { label: 'Critical', color: '#dc2626' },
+                  { label: 'High', color: '#ea580c' },
+                  { label: 'Medium', color: '#f59e0b' },
+                  { label: 'Pending', color: '#eab308' },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-center gap-2 mb-1.5 last:mb-0">
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }}></div>
+                    <span className="text-[10px] font-medium text-slate-300">{item.label}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
-        </div>
+          </>
+        )}
       </div>
 
       <MapContainer
