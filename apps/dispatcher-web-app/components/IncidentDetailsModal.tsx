@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import dynamic from 'next/dynamic'
 
@@ -36,7 +37,12 @@ export default function IncidentDetailsModal({
   onClose,
   incident,
 }: IncidentDetailsModalProps) {
-  if (!isOpen) return null
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!isOpen || !mounted) return null
 
   // Debug logging
   console.log('IncidentDetailsModal - incident data:', incident)

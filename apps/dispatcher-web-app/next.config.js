@@ -9,6 +9,7 @@ const nextConfig = {
   // With react-leaflet v4 + Next 15 (React 18), this can trigger duplicate
   // Leaflet initialization on the same container ("Map container is already initialized").
   reactStrictMode: false,
+  transpilePackages: ["@packages/firebase", "lucide-react"],
   eslint: {
     ignoreDuringBuilds: true,
   },

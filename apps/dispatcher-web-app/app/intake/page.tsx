@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
@@ -410,7 +410,7 @@ function formatIncidentDateForDisplay(date: string | null | undefined): string {
   return `${month}/${day}/${year}`;
 }
 
-export default function IntakePage() {
+function IntakeContent() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
 
@@ -1642,5 +1642,25 @@ export default function IntakePage() {
         </div>
       </div>
     </ProtectedRoute>
+  );
+}
+
+export default function IntakePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col h-full bg-slate-950">
+        <CommandBar 
+          pageName="Intake" 
+          description="Loading intake data..." 
+          statsCategory="Incidents"
+          stats={[]}
+        />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+        </div>
+      </div>
+    }>
+      <IntakeContent />
+    </Suspense>
   );
 }

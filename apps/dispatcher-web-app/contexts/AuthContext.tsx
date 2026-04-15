@@ -21,7 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(getFirebaseAuth(), (user) => {
       setUser(user)
       setLoading(false)
-      console.log('Auth state changed:', user ? `User: ${user.uid}` : 'No user')
+      console.log('Auth state changed:', user ? 'User logged in' : 'No user')
     })
 
     return () => unsubscribe()

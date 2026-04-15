@@ -52,7 +52,7 @@ export default function CommandBar({ pageName, description, statsCategory, stats
                 <div key={i} className="flex items-baseline gap-1">
                   <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold whitespace-nowrap">{stat.label}:</span>
                   <span className={`text-[11px] font-black tabular-nums ${stat.highlight ? 'text-primary-400' : 'text-slate-300'}`}>
-                    {stat.value}
+                    {String(stat.value ?? '')}
                   </span>
                 </div>
               ))}
