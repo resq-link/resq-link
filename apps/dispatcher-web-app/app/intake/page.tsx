@@ -876,7 +876,7 @@ function IntakeContent() {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
                   className={`
-                    relative flex items-center gap-2 px-4 py-2.5 rounded-t-lg text-xs font-bold transition-[background-color,color,transform] duration-200 focus:outline-none focus-visible:outline-none
+                    relative flex items-center gap-2 px-4 py-[14px] rounded-t-lg text-xs font-bold transition-[background-color,color,transform] duration-200 focus:outline-none focus-visible:outline-none
                     ${activeTab === tab.id 
                       ? "bg-slate-950 text-white border-t border-x border-slate-800 translate-y-[1px] z-10 shadow-[0_-4px_12px_rgba(0,0,0,0.5)] \
                          before:content-[''] before:absolute before:bottom-0 before:-left-3 before:w-3 before:h-3 before:bg-[radial-gradient(circle_at_0_0,transparent_11px,#1e293b_11px,#1e293b_12.5px,#020617_12.5px)] \
