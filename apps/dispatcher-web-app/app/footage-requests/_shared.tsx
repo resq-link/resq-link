@@ -128,23 +128,3 @@ export function FootageRequestCard({
     </li>
   )
 }
-
-export function FootageRequestsHeader({
-  title,
-  description,
-}: {
-  title: string
-  description: string
-}) {
-  return (
-    <div className="flex items-start gap-4 mb-6">
-      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-600/20 border border-primary-500/30">
-        <Video className="text-primary-400" size={24} aria-hidden />
-      </div>
-      <div>
-        <h1 className="text-2xl font-bold text-slate-100 tracking-tight">{title}</h1>
-        <p className="text-slate-400 text-sm mt-1">{description}</p>
-      </div>
-    </div>
-  )
-}

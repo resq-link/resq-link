@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import ProtectedRoute from '@/components/ProtectedRoute'
+import CommandBar from '@/components/CommandBar'
 import { useAuth } from '@/contexts/AuthContext'
 import {
   getAgencyLabel,
@@ -13,7 +14,7 @@ import {
   type ResourceType,
   type SaveIncidentTypeRuleInput,
 } from '@packages/firebase'
-import { Plus, Search } from 'lucide-react'
+import { Plus, Search, ShieldAlert } from 'lucide-react'
 
 type RuleFormState = {
   priority: IncidentPriority
@@ -214,31 +215,28 @@ export default function IncidentManagementPage() {
 
   return (
     <ProtectedRoute>
-      <div className="space-y-4">
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-xl shadow-black/30 md:p-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-secondary-300">Command Center Admin</p>
-              <h1 className="mt-1 text-2xl font-semibold text-slate-100 md:text-3xl">Incident Management</h1>
-              <p className="mt-1 max-w-3xl text-sm text-slate-400">
-                Manage the Firestore incident type catalog used across intake and dispatch modules.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="rounded-lg border border-slate-800 bg-slate-950/50 px-3 py-2 text-sm text-slate-300">
-                {rules.length} Incident Types
-              </span>
-              <button
-                type="button"
-                className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm font-medium text-slate-200 transition-colors hover:border-slate-500 hover:bg-slate-800"
-                title="Add incident type is not yet available"
-              >
-                <Plus size={16} />
-                Add Incident Type
-              </button>
-            </div>
+      <div className="flex flex-col h-full">
+        <CommandBar 
+          pageName="Incident Management" 
+          description="Operational rules and incident categorization settings"
+          statsCategory="Management"
+          stats={[
+            { label: 'Incident Types', value: rules.length, highlight: true }
+          ]}
+        >
+          <div className="flex items-center gap-2">
+            <button 
+              className="px-3 py-1.5 rounded-lg bg-primary-600 hover:bg-primary-500 text-[11px] font-bold text-white transition-colors flex items-center gap-2"
+              title="Add incident type is not yet available"
+            >
+              <Plus size={14} />
+              <span>ADD RULE</span>
+            </button>
           </div>
-        </section>
+        </CommandBar>
+
+        <div className="flex-1 p-6 space-y-6 overflow-y-auto custom-scrollbar no-scrollbar">
+
 
         <section className="grid gap-4 xl:grid-cols-[1.05fr_1.2fr]">
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 md:p-5">
@@ -497,6 +495,7 @@ export default function IncidentManagementPage() {
             )}
           </form>
         </section>
+        </div>
       </div>
     </ProtectedRoute>
   )

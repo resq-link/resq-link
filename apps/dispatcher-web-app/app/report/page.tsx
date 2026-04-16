@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import StatusBadge from '@/components/StatusBadge'
 import { subscribeToIncidents, type IncidentRecord, type TeamOnDuty } from '@packages/firebase'
+import CommandBar from '@/components/CommandBar'
 import { useAuth } from '@/contexts/AuthContext'
 
 const teamOnDutyOptions: TeamOnDuty[] = ['Whiskey', 'X-ray', 'Yankee', 'Zulu']
@@ -113,95 +114,38 @@ export default function ReportPage() {
 
   return (
     <ProtectedRoute>
-      <div className="space-y-4">
-        <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-5">
-          <h1 className="text-2xl md:text-3xl font-bold text-slate-100">Incident Reports</h1>
-          <p className="mt-1 text-sm text-slate-400">View and filter incident records by team and date.</p>
-        </div>
-
-        <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-4">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            <div>
-              <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Team on Duty</label>
-              <select
-                value={selectedTeam}
-                onChange={(e) => setSelectedTeam(e.target.value as TeamOnDuty | 'all')}
-                className="mt-1.5 h-10 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="all">All teams</option>
-                {teamOnDutyOptions.map((team) => (
-                  <option key={team} value={team}>
-                    {team}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Date Type</label>
-              <select
-                value={rangeBasis}
-                onChange={(e) => setRangeBasis(e.target.value as RangeBasis)}
-                className="mt-1.5 h-10 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="dateOfDuty">Duty Date</option>
-                <option value="incidentDate">Incident Date</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs uppercase tracking-[0.2em] text-slate-500">From</label>
-              <input
-                type="date"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-                className="mt-1.5 h-10 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs uppercase tracking-[0.2em] text-slate-500">To</label>
-              <input
-                type="date"
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-                className="mt-1.5 h-10 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-            </div>
-
-            <div className="sm:col-span-2 lg:col-span-1 flex items-end">
-              <button
-                type="button"
-                onClick={clearFilters}
-                disabled={!hasActiveFilters}
-                className="h-10 w-full rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm font-medium text-slate-200 transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Clear Filters
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-4 hover:border-slate-700 transition-colors">
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Total Incidents</p>
-            <p className="mt-2 text-2xl font-bold text-slate-100">{isLoading ? '...' : filteredIncidents.length}</p>
-          </div>
-          {teamOnDutyOptions.map((team) => (
-            <div
-              key={team}
-              className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-4 hover:border-slate-700 transition-colors"
+      <div className="flex flex-col h-full">
+        <CommandBar 
+          pageName="Incident Reports" 
+          description="Data-driven incident analysis and agency performance"
+          statsCategory="Reports"
+          stats={[
+            { label: 'Whiskey', value: teamTotals.Whiskey },
+            { label: 'X-ray', value: teamTotals['X-ray'] },
+            { label: 'Yankee', value: teamTotals.Yankee },
+            { label: 'Zulu', value: teamTotals.Zulu },
+            { label: 'Total', value: filteredIncidents.length, highlight: true }
+          ]}
+        >
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={clearFilters}
+              disabled={!hasActiveFilters}
+              className="px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-900 text-[11px] font-bold text-slate-200 transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{team}</p>
-              <p className="mt-2 text-2xl font-bold text-slate-100">{isLoading ? '...' : teamTotals[team]}</p>
-            </div>
-          ))}
-        </div>
+              CLEAR FILTERS
+            </button>
+          </div>
+        </CommandBar>
+
+        <div className="flex-1 p-6 space-y-6 overflow-y-auto custom-scrollbar no-scrollbar">
+
 
         <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-4">
           <div className="mb-4 flex items-end justify-between gap-3">
             <h2 className="text-xl md:text-2xl font-bold text-slate-100">
-            Incidents ({isLoading ? '...' : filteredIncidents.length})
+            Incident Reports ({isLoading ? '...' : filteredIncidents.length})
             </h2>
             <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Sorted by latest created time</p>
           </div>
@@ -274,6 +218,7 @@ export default function ReportPage() {
               ))}
             </div>
           )}
+        </div>
         </div>
       </div>
     </ProtectedRoute>

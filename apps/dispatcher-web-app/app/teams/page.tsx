@@ -16,6 +16,7 @@ import {
   type TeamRecord,
 } from '@packages/firebase'
 import ProtectedRoute from '@/components/ProtectedRoute'
+import CommandBar from '@/components/CommandBar'
 import { useAuth } from '@/contexts/AuthContext'
 import { Loader2, Plus, Save, Search, ShieldCheck, Trash2, UserPlus, Users, X } from 'lucide-react'
 
@@ -279,33 +280,31 @@ export default function TeamsPage() {
 
   return (
     <ProtectedRoute>
-      <div className="space-y-4">
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-xl shadow-black/30 md:p-5">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-secondary-300">Command Center</p>
-              <h1 className="mt-1 text-2xl font-semibold text-slate-100 md:text-3xl">Teams</h1>
-              <p className="mt-1 max-w-3xl text-sm text-slate-400">Define shared operational teams and assign accounts to those team values across the dispatcher app.</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200">
-                <ShieldCheck size={14} />
-                Any signed-in command center account can manage teams for now
-              </div>
-              <button type="button" onClick={() => { setIsCreateAccountOpen(true); setPageError(null); setPageMessage(null) }} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-500">
-                <UserPlus size={16} />
-                Create Account
-              </button>
-            </div>
+      <div className="flex flex-col h-full">
+        <CommandBar 
+          pageName="Teams" 
+          description="Team assignments and responder account management"
+          statsCategory="Personnel"
+          stats={[
+            { label: 'Teams', value: stats.totalTeams },
+            { label: 'Accounts', value: stats.totalMembers, highlight: true },
+            { label: 'Assigned', value: stats.assignedMembers },
+            { label: 'Unassigned', value: stats.unassignedMembers }
+          ]}
+        >
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => { setIsCreateAccountOpen(true); setPageError(null); setPageMessage(null) }}
+              className="px-3 py-1.5 rounded-lg bg-primary-600 hover:bg-primary-500 text-[11px] font-bold text-white transition-colors flex items-center gap-2"
+            >
+              <UserPlus size={14} />
+              <span>CREATE ACCOUNT</span>
+            </button>
           </div>
-        </section>
+        </CommandBar>
 
-        <section className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3"><p className="text-xs uppercase tracking-wide text-slate-400">Total Teams</p><p className="mt-1 text-2xl font-semibold text-slate-100">{stats.totalTeams}</p></div>
-          <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3"><p className="text-xs uppercase tracking-wide text-slate-400">Total Accounts</p><p className="mt-1 text-2xl font-semibold text-slate-100">{stats.totalMembers}</p></div>
-          <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-3"><p className="text-xs uppercase tracking-wide text-blue-200/80">Assigned Members</p><p className="mt-1 text-2xl font-semibold text-blue-200">{stats.assignedMembers}</p></div>
-          <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3"><p className="text-xs uppercase tracking-wide text-amber-200/80">Unassigned Members</p><p className="mt-1 text-2xl font-semibold text-amber-200">{stats.unassignedMembers}</p></div>
-        </section>
+        <div className="flex-1 p-6 space-y-6 overflow-y-auto custom-scrollbar no-scrollbar">
+
 
         <section className="grid gap-4 xl:grid-cols-[1.05fr_1.45fr]">
           <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 md:p-5">
@@ -410,6 +409,7 @@ export default function TeamsPage() {
         </section>
 
         {isCreateAccountOpen ? <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"><div className="w-full max-w-2xl rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl shadow-black/50"><div className="flex items-center justify-between border-b border-slate-800 px-6 py-4"><div><h2 className="text-xl font-semibold text-slate-100">Create Account</h2><p className="mt-1 text-sm text-slate-400">Assign the new account to one of the shared teams.</p></div><button type="button" onClick={() => setIsCreateAccountOpen(false)} className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-800 hover:text-slate-200"><X size={18} /></button></div><form onSubmit={handleCreateMember} className="space-y-4 p-6"><div><label className="text-xs uppercase tracking-[0.2em] text-slate-500">Full Name</label><input value={createAccountForm.fullName} onChange={(event) => setCreateAccountForm((current) => ({ ...current, fullName: event.target.value }))} className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="Juan Dela Cruz" /></div><div className="grid gap-4 md:grid-cols-2"><div><label className="text-xs uppercase tracking-[0.2em] text-slate-500">Email</label><input type="email" required value={createAccountForm.email} onChange={(event) => setCreateAccountForm((current) => ({ ...current, email: event.target.value }))} className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500" /></div><div><label className="text-xs uppercase tracking-[0.2em] text-slate-500">Password</label><input type="password" required minLength={6} value={createAccountForm.password} onChange={(event) => setCreateAccountForm((current) => ({ ...current, password: event.target.value }))} className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500" /></div></div><div className="grid gap-4 md:grid-cols-2"><div><label className="text-xs uppercase tracking-[0.2em] text-slate-500">Agency</label><select value={createAccountForm.role} onChange={(event) => setCreateAccountForm((current) => ({ ...current, role: event.target.value as DispatcherRole }))} className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500">{AGENCY_OPTIONS.map((role) => <option key={role} value={role}>{role}</option>)}</select></div><div><label className="text-xs uppercase tracking-[0.2em] text-slate-500">Team</label><select value={createAccountForm.teamId} onChange={(event) => setCreateAccountForm((current) => ({ ...current, teamId: event.target.value }))} className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"><option value="">Unassigned</option>{teams.map((team) => <option key={team.id} value={team.id}>{team.label}</option>)}</select></div></div><div><label className="text-xs uppercase tracking-[0.2em] text-slate-500">Designation</label><input value={createAccountForm.designation} onChange={(event) => setCreateAccountForm((current) => ({ ...current, designation: event.target.value }))} className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500" placeholder="dispatcher, responder, liaison" /></div><div className="flex items-center justify-end gap-3 border-t border-slate-800 pt-4"><button type="button" onClick={() => setIsCreateAccountOpen(false)} className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-semibold text-slate-300 transition-colors hover:border-slate-500">Cancel</button><button type="submit" disabled={creatingAccount} className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-500 disabled:cursor-not-allowed disabled:opacity-60">{creatingAccount ? 'Creating...' : 'Create Account'}</button></div></form></div></div> : null}
+        </div>
       </div>
     </ProtectedRoute>
   )

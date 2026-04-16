@@ -18,8 +18,9 @@ import {
   type ResourceType,
 } from '@packages/firebase'
 import ProtectedRoute from '@/components/ProtectedRoute'
+import CommandBar from '@/components/CommandBar'
 import { useAuth } from '@/contexts/AuthContext'
-import { MapPin, Pencil, Plus, Radio, Search, Trash2, X } from 'lucide-react'
+import { MapPin, Pencil, Plus, Radio, Search, Trash2, X, Ambulance, ShieldCheck } from 'lucide-react'
 
 const ResourceLocationMap = dynamic(() => import('@/components/ResourceLocationMap'), {
   ssr: false,
@@ -360,49 +361,31 @@ export default function ResourcesPage() {
 
   return (
     <ProtectedRoute>
-      <div className="space-y-4">
-        <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-xl shadow-black/30 md:p-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="text-xs uppercase tracking-[0.3em] text-secondary-300">Command Center</p>
-              <h1 className="mt-1 text-2xl font-semibold text-slate-100 md:text-3xl">Resources</h1>
-              <p className="mt-1 max-w-3xl text-sm text-slate-400">
-                Track deployable assets live from Firestore, manage availability, and map positions.
-              </p>
-            </div>
-            <button
-              type="button"
+      <div className="flex flex-col h-full">
+        <CommandBar 
+          pageName="Resources" 
+          description="Fleet locations and multi-agency asset availability"
+          statsCategory="Assets"
+          stats={[
+            { label: 'Available', value: stats.available, highlight: true },
+            { label: 'Assigned', value: stats.assigned },
+            { label: 'Offline', value: stats.offline },
+            { label: 'Total', value: stats.total }
+          ]}
+        >
+          <div className="flex items-center gap-2">
+            <button 
               onClick={openCreateModal}
-              className="inline-flex h-10 items-center justify-center gap-2 self-start rounded-lg bg-primary-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-primary-500"
+              className="px-3 py-1.5 rounded-lg bg-primary-600 hover:bg-primary-500 text-[11px] font-bold text-white transition-colors flex items-center gap-2"
             >
-              <Plus size={18} />
-              Add Resource
+              <Plus size={14} />
+              <span>ADD ASSET</span>
             </button>
           </div>
-        </section>
+        </CommandBar>
 
-        <section className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-          <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3">
-            <p className="text-xs uppercase tracking-wide text-slate-400">Total Resources</p>
-            <p className="mt-1 text-2xl font-semibold text-slate-100">{stats.total}</p>
-          </div>
-          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
-            <p className="text-xs uppercase tracking-wide text-emerald-200/80">Available</p>
-            <p className="mt-1 text-2xl font-semibold text-emerald-200">{stats.available}</p>
-          </div>
-          <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 px-4 py-3">
-            <p className="text-xs uppercase tracking-wide text-blue-200/80">Assigned</p>
-            <p className="mt-1 text-2xl font-semibold text-blue-200">{stats.assigned}</p>
-          </div>
-          <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
-            <p className="text-xs uppercase tracking-wide text-amber-200/80">Maintenance</p>
-            <p className="mt-1 text-2xl font-semibold text-amber-200">{stats.maintenance}</p>
-          </div>
-          <div className="rounded-xl border border-rose-500/20 bg-rose-500/5 px-4 py-3">
-            <p className="text-xs uppercase tracking-wide text-rose-200/80">Offline</p>
-            <p className="mt-1 text-2xl font-semibold text-rose-200">{stats.offline}</p>
-          </div>
-        </section>
+        <div className="flex-1 p-6 space-y-6 overflow-y-auto custom-scrollbar no-scrollbar">
+
 
         <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 md:p-5">
           <div className="grid gap-2 lg:grid-cols-[1.6fr_0.85fr_0.85fr_auto]">
@@ -863,6 +846,7 @@ export default function ResourcesPage() {
             </div>,
             document.body
           )}
+        </div>
       </div>
     </ProtectedRoute>
   )

@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppReportDetailsModal from "@/components/AppReportDetailsModal";
 import IntakeIncidentDetailsModal from "@/components/IntakeIncidentDetailsModal";
+import CommandBar from "@/components/CommandBar";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   assignDispatcherToEmergency,
@@ -409,7 +410,7 @@ function formatIncidentDateForDisplay(date: string | null | undefined): string {
   return `${month}/${day}/${year}`;
 }
 
-export default function IntakePage() {
+function IntakeContent() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
 
@@ -847,70 +848,33 @@ export default function IntakePage() {
 
   return (
     <ProtectedRoute>
-      <div className="space-y-4">
-        <section className="rounded-lg border border-slate-800 bg-slate-900/70 p-4 shadow-md shadow-black/20 md:p-5">
-          <p className="text-xs uppercase tracking-[0.3em] text-secondary-300">
-            Command Center Admin
-          </p>
-          <h1 className="mt-1 text-2xl font-semibold text-slate-100 md:text-3xl">
-            Incident Intake
-          </h1>
-          <p className="mt-1 text-sm text-slate-400">
-            Create and dispatch incidents using predefined routing rules.
-          </p>
-        </section>
+      <div className="flex flex-col h-full">
+        <CommandBar 
+          pageName="Intake" 
+          description="Incident triage and emergency call management"
+          statsCategory="Incidents"
+          stats={[
+            { label: 'Active', value: activeIncidentCount, highlight: true },
+            { label: 'Resources', value: resources.length },
+            { label: 'Rules', value: incidentRules.length }
+          ]}
+        >
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => {
+                setPageError(null);
+                setPageSuccess(null);
+                setIsFormModalOpen(true);
+              }}
+              className="px-3 py-1.5 rounded-lg bg-primary-600 hover:bg-primary-500 text-[11px] font-bold text-white transition-colors flex items-center gap-2"
+            >
+              <span>+ NEW INCIDENT</span>
+            </button>
+          </div>
+        </CommandBar>
 
-        <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3 shadow-md shadow-black/20 transition hover:bg-slate-800/60">
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-              Configured Types
-            </p>
-            <div className="mt-1 flex items-end justify-between">
-              <p className="text-2xl font-semibold text-slate-100">
-                {incidentRules.length}
-              </p>
-              <p className="text-xs text-slate-400">Available types</p>
-            </div>
-            {!hasIncidentTypeCatalog ? (
-              <p className="mt-3 text-xs text-amber-300">
-                No incident types are configured in Firestore yet.
-              </p>
-            ) : null}
-          </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3 shadow-md shadow-black/20 transition hover:bg-slate-800/60">
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-              Active Incidents
-            </p>
-            <div className="mt-1 flex items-end justify-between">
-              <p className="text-2xl font-semibold text-blue-400">
-                {activeIncidentCount}
-              </p>
-              <p className="text-xs text-slate-400">Open activity</p>
-            </div>
-          </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3 shadow-md shadow-black/20 transition hover:bg-slate-800/60">
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-              Live Resources
-            </p>
-            <div className="mt-1 flex items-end justify-between">
-              <p className="text-2xl font-semibold text-emerald-400">
-                {resources.length}
-              </p>
-              <p className="text-xs text-slate-400">Units online</p>
-            </div>
-          </div>
-          <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-4 py-3 shadow-md shadow-black/20 transition hover:bg-slate-800/60">
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-              Matching Resources
-            </p>
-            <div className="mt-1 flex items-end justify-between">
-              <p className="text-2xl font-semibold text-amber-400">
-                {selectedRule ? matchingResources.length : 0}
-              </p>
-              <p className="text-xs text-slate-400">Eligible units</p>
-            </div>
-          </div>
-        </section>
+        <div className="flex-1 p-6 space-y-6 overflow-y-auto custom-scrollbar no-scrollbar">
+
 
         <section className="rounded-lg border border-slate-800 bg-slate-900/70 p-4 shadow-md shadow-black/20 md:p-5">
           <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-800 pb-3">
@@ -1675,7 +1639,28 @@ export default function IntakePage() {
           incident={selectedQueueIncident}
           onClose={() => setSelectedQueueIncident(null)}
         />
+        </div>
       </div>
     </ProtectedRoute>
+  );
+}
+
+export default function IntakePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col h-full bg-slate-950">
+        <CommandBar 
+          pageName="Intake" 
+          description="Loading intake data..." 
+          statsCategory="Incidents"
+          stats={[]}
+        />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+        </div>
+      </div>
+    }>
+      <IntakeContent />
+    </Suspense>
   );
 }

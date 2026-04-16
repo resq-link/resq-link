@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
+import CommandBar from '@/components/CommandBar'
 import { subscribeToEmergencyReports, subscribeToDispatcherLocations, type EmergencyReport, type DispatcherLocation } from '@packages/firebase'
 import { useAuth } from '@/contexts/AuthContext'
 import ProtectedRoute from '@/components/ProtectedRoute'
@@ -200,81 +201,51 @@ export default function MapPage() {
 
   return (
     <ProtectedRoute>
-      <div className="space-y-6">
-        {/* Header Section */}
-        <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-slate-100 mb-2">
-                Command Center Map
-              </h1>
-              <p className="text-slate-400">
-                Real-time view of incidents and dispatcher locations
-              </p>
-              <div className="flex items-center gap-4 mt-2">
-                <p className="text-sm text-slate-500">
-                  {dispatcherLocations.length} dispatcher{dispatcherLocations.length !== 1 ? 's' : ''} online
-                </p>
-                {dispatcherLocations.length > 0 && (
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
-                    <span className="flex items-center gap-1">
-                      <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                      Fire
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <div className="w-2 h-2 rounded-full bg-blue-600"></div>
-                      Police
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <div className="w-2 h-2 rounded-full bg-green-600"></div>
-                      MDRRMO
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <div className="w-2 h-2 rounded-full bg-orange-500"></div>
-                      Medical
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <div className="w-2 h-2 rounded-full bg-cyan-500"></div>
-                      Coast Guard
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setFilter('all')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  filter === 'all'
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
-                }`}
-              >
-                All
-              </button>
-              <button
-                onClick={() => setFilter('active')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  filter === 'active'
-                    ? 'bg-red-500/80 text-white'
-                    : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
-                }`}
-              >
-                Active
-              </button>
-              <button
-                onClick={() => setFilter('pending')}
-                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                  filter === 'pending'
-                    ? 'bg-yellow-500/80 text-white'
-                    : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
-                }`}
-              >
-                Pending
-              </button>
-            </div>
+      <div className="flex flex-col h-full">
+        <CommandBar 
+          pageName="Live Map" 
+          description="Dynamic spatial intelligence and unit positioning"
+          statsCategory="Incidents"
+          stats={[
+            { label: 'Incidents', value: filteredIncidents.length },
+            { label: 'Dispatchers', value: dispatcherLocations.length, highlight: true }
+          ]}
+        >
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setFilter('all')}
+              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors ${
+                filter === 'all'
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+              }`}
+            >
+              ALL
+            </button>
+            <button
+              onClick={() => setFilter('active')}
+              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors ${
+                filter === 'active'
+                  ? 'bg-red-500/80 text-white'
+                  : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+              }`}
+            >
+              ACTIVE
+            </button>
+            <button
+              onClick={() => setFilter('pending')}
+              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors ${
+                filter === 'pending'
+                  ? 'bg-yellow-500/80 text-white'
+                  : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
+              }`}
+            >
+              PENDING
+            </button>
           </div>
-        </div>
+        </CommandBar>
+
+        <div className="flex-1 p-6 space-y-6 overflow-y-auto custom-scrollbar no-scrollbar">
 
         {/* Map Container */}
         <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 overflow-hidden">
@@ -439,6 +410,7 @@ export default function MapPage() {
               ))}
             </div>
           )}
+        </div>
         </div>
       </div>
     </ProtectedRoute>

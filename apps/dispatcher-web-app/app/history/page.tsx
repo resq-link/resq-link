@@ -6,6 +6,8 @@ import StatusBadge from '@/components/StatusBadge'
 import { subscribeToEmergencyReports, type EmergencyReport } from '@packages/firebase'
 import { useAuth } from '@/contexts/AuthContext'
 import ProtectedRoute from '@/components/ProtectedRoute'
+import CommandBar from '@/components/CommandBar'
+import { Search, Filter, History as HistoryIcon } from 'lucide-react'
 
 type HistoryIncident = {
   id: string
@@ -208,65 +210,48 @@ export default function HistoryPage() {
 
   return (
     <ProtectedRoute>
-      <div className="space-y-4">
-        {/* Header Section */}
-        <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 px-5 py-4">
-          <h1 className="text-3xl font-bold text-slate-100 mb-1">Incident History</h1>
-          <p className="text-slate-400">View past incidents and response records</p>
-        </div>
-
-        {/* Filters and Search */}
-        <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-4">
-          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
-            <div className="flex-1">
+      <div className="flex flex-col h-full">
+        <CommandBar 
+          pageName="History" 
+          description="Archive of past incidents and resolution data"
+          statsCategory="Incidents"
+          stats={[
+            { label: 'Resolved Today', value: resolvedToday, highlight: true },
+            { label: 'Avg Time', value: avgResponseTime },
+            { label: 'Total', value: totalIncidents }
+          ]}
+        >
+          <div className="flex items-center gap-2">
+            <div className="relative group/search">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within/search:text-primary-400 transition-colors" />
               <input
                 type="text"
-                placeholder="Search by type or location..."
+                placeholder="Search history..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-10 w-full px-3 border border-slate-800 bg-slate-950 text-sm text-slate-100 placeholder-slate-500 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                className="h-8 w-48 pl-9 pr-3 border border-slate-800 bg-slate-900/50 text-[11px] text-slate-100 placeholder-slate-500 rounded-lg focus:ring-1 focus:ring-primary-500/50 focus:border-primary-500/50 outline-none transition-all"
               />
             </div>
-            <div className="flex gap-2 shrink-0">
-              <button
-                onClick={() => setSelectedFilter('all')}
-                className={`h-10 px-4 rounded-lg text-sm font-medium transition-colors ${
-                  selectedFilter === 'all'
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
-                }`}
-              >
-                All
-              </button>
-              <button
-                onClick={() => setSelectedFilter('resolved')}
-                className={`h-10 px-4 rounded-lg text-sm font-medium transition-colors ${
-                  selectedFilter === 'resolved'
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
-                }`}
-              >
-                Resolved
-              </button>
+            <div className="flex bg-slate-900/50 p-0.5 rounded-lg border border-slate-800">
+              {(['all', 'resolved'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setSelectedFilter(tab)}
+                  className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${
+                    selectedFilter === tab 
+                      ? 'bg-slate-100 text-slate-950 shadow-sm' 
+                      : 'text-slate-500 hover:text-slate-300'
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
             </div>
           </div>
-        </div>
+        </CommandBar>
 
-        {/* Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 px-4 py-3 min-h-[98px]">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Total Incidents</p>
-            <p className="text-3xl font-bold text-slate-100 mt-1">{isLoading ? '...' : totalIncidents}</p>
-          </div>
-          <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 px-4 py-3 min-h-[98px]">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Resolved Today</p>
-            <p className="text-3xl font-bold text-emerald-300 mt-1">{isLoading ? '...' : resolvedToday}</p>
-          </div>
-          <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 px-4 py-3 min-h-[98px]">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Avg Response Time</p>
-            <p className="text-3xl font-bold text-blue-300 mt-1">{isLoading ? '...' : avgResponseTime}</p>
-          </div>
-        </div>
+        <div className="flex-1 p-6 space-y-6 overflow-y-auto custom-scrollbar no-scrollbar">
+
 
         {/* History List */}
         <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-4">
@@ -439,6 +424,7 @@ export default function HistoryPage() {
               </p>
             </div>
           )}
+        </div>
         </div>
       </div>
     </ProtectedRoute>
