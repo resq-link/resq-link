@@ -8,7 +8,6 @@ import AlarmControl from '@/components/AlarmControl'
 import { subscribeToEmergencyReports, type EmergencyReport } from '@packages/firebase'
 import { useAuth } from '@/contexts/AuthContext'
 import ProtectedRoute from '@/components/ProtectedRoute'
-import { playAlarmSound, initAudioContext } from '@/utils/alarmSound'
 import CommandBar from '@/components/CommandBar'
 import { Activity, Bell, BellOff } from 'lucide-react'
 
@@ -65,41 +64,8 @@ export default function Home() {
   const [onSceneCount, setOnSceneCount] = useState(0)
   const [doneCount, setDoneCount] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
-  const [isAlarmMuted, setIsAlarmMuted] = useState(false)
   const { user } = useAuth()
   const router = useRouter()
-  
-  // Track previous incident IDs to detect new ones
-  const previousIncidentIdsRef = useRef<Set<string>>(new Set())
-  const isInitialLoadRef = useRef(true)
-  const audioInitializedRef = useRef(false)
-
-  useEffect(() => {
-    // Initialize audio context on first user interaction
-    const initAudio = () => {
-      if (!audioInitializedRef.current) {
-        const ctx = initAudioContext()
-        if (ctx) {
-          console.log('✅ Audio context initialized')
-          audioInitializedRef.current = true
-        }
-      }
-    }
-    
-    // Initialize audio on any user interaction (required for browser autoplay policies)
-    const events = ['click', 'touchstart', 'keydown', 'mousedown']
-    const handlers: Array<() => void> = []
-    
-    events.forEach(event => {
-      const handler = initAudio
-      window.addEventListener(event, handler, { once: true, passive: true })
-      handlers.push(() => window.removeEventListener(event, handler))
-    })
-    
-    return () => {
-      handlers.forEach(cleanup => cleanup())
-    }
-  }, [])
 
   useEffect(() => {
     // Redirect to login if not authenticated
@@ -138,37 +104,6 @@ export default function Home() {
           console.log(`Incident ${inc.id} - imageUrl:`, inc.imageUrl || 'NO IMAGE URL')
         })
         
-        // Detect new incidents by comparing IDs
-        if (!isInitialLoadRef.current) {
-          const currentIds = new Set(convertedIncidents.map(inc => inc.id))
-          const previousIds = previousIncidentIdsRef.current
-          
-          // Find new incidents (in current but not in previous)
-          // Only trigger alarm for new incidents that are not done/resolved
-          const newIncidents = convertedIncidents.filter(
-            inc => !previousIds.has(inc.id) && inc.status !== 'done' && inc.status !== 'resolved'
-          )
-          
-          if (newIncidents.length > 0) {
-            console.log(`🚨 New incident(s) detected: ${newIncidents.length}`)
-            console.log('New incident IDs:', newIncidents.map(inc => inc.id))
-            
-            // Play alarm sound for new incidents (only non-done cases)
-            if (!isAlarmMuted) {
-              console.log('Playing alarm sound for new incidents...')
-              playAlarmSound(false)
-            } else {
-              console.log('Alarm is muted, skipping sound')
-            }
-          }
-        } else {
-          // Mark initial load as complete after first data arrives
-          isInitialLoadRef.current = false
-        }
-        
-        // Update previous IDs for next comparison
-        previousIncidentIdsRef.current = new Set(convertedIncidents.map(inc => inc.id))
-        
         setIncidents(convertedIncidents)
         setIsLoading(false)
       },
@@ -182,7 +117,7 @@ export default function Home() {
       console.log('Unsubscribing from emergency reports')
       unsubscribe()
     }
-  }, [user, router, isAlarmMuted])
+  }, [user, router])
 
   useEffect(() => {
     // Update counts for all statuses
@@ -221,10 +156,7 @@ export default function Home() {
               <div className="w-2 h-2 bg-secondary-400 rounded-full animate-pulse"></div>
               <span className="text-[10px] font-bold text-slate-400 tracking-wider">LIVE FEED</span>
             </div>
-            <AlarmControl
-              isMuted={isAlarmMuted}
-              onToggle={() => setIsAlarmMuted(!isAlarmMuted)}
-            />
+            <AlarmControl />
           </div>
         </CommandBar>
 
