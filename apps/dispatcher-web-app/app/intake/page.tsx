@@ -893,7 +893,7 @@ function IntakeContent() {
               ))}
             </div>
 
-            <div className="flex items-end gap-2 mb-3">
+            <div className="flex items-end gap-2 mb-3.5">
               <div className="relative flex-1 max-w-[240px] hidden md:block">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
                 <input 

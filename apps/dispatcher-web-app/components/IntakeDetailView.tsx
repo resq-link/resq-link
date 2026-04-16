@@ -193,22 +193,22 @@ export default function IntakeDetailView({
   return (
     <div className="h-full flex flex-col bg-slate-900/40 rounded-xl border border-slate-800 overflow-hidden shadow-2xl backdrop-blur-md">
       {/* Detail Header */}
-      <div className="px-6 py-3 border-b border-slate-800/80 bg-slate-900/60 flex items-start justify-between">
+      <div className="px-6 pt-3 pb-[14px] border-b border-slate-800/80 bg-slate-900/60 flex items-center justify-between min-h-[58px]">
         <div>
           <div className="flex items-center gap-3">
-            <h2 className="text-lg font-black text-slate-100 tracking-tight uppercase">
+            <h2 className="text-sm font-black text-slate-100 tracking-tight uppercase">
               {item.referenceNumber}
             </h2>
-            <span className={`px-2.5 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest ${item.statusToneClass} shadow-lg shadow-black/20`}>
+            <span className={`px-2 py-0.5 rounded-full border text-[10px] font-black uppercase tracking-widest ${item.statusToneClass} shadow-lg shadow-black/20`}>
               {item.statusLabel}
             </span>
             {isResponderAssigned && (
-              <span className={`px-2 py-1 rounded-full border text-[10px] font-bold uppercase tracking-widest ${responderHasAccepted ? 'border-sky-800 text-sky-400 bg-sky-950/40' : 'border-amber-800 text-amber-400 bg-amber-950/40'}`}>
+              <span className={`px-2 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-widest ${responderHasAccepted ? 'border-sky-800 text-sky-400 bg-sky-950/40' : 'border-amber-800 text-amber-400 bg-amber-950/40'}`}>
                 {responderStatusLabel}
               </span>
             )}
           </div>
-          <p className="mt-1 text-xs text-slate-400 font-medium tracking-wide">
+          <p className="mt-0.5 text-[11px] text-slate-400 font-medium tracking-wide">
             {item.incidentSubtypeLabel} • Reported via {isEmergency ? "App" : incident?.source || "Manual"}
           </p>
         </div>
