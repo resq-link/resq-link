@@ -38,7 +38,6 @@ import {
 import IntakeListItem, { type IntakeQueueItem } from "@/components/IntakeListItem";
 import IntakeDetailView from "@/components/IntakeDetailView";
 import { 
-  Plus, 
   Search, 
   Filter, 
   ChevronRight, 
@@ -904,16 +903,7 @@ function IntakeContent() {
           <div className="flex-1 flex min-h-0 overflow-hidden">
             {/* Left Panel: Incident List */}
             <div className={`${selectedQueueItem ? "hidden lg:flex" : "flex"} flex-col min-h-0 w-full lg:w-[400px] border-r border-slate-800 bg-slate-900/10`}>
-              <div className="px-4 py-3 border-b border-slate-800/50 bg-slate-900/20 flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Queue List</span>
-                <button 
-                  onClick={() => setIsFormModalOpen(true)}
-                  className="p-1.5 rounded-lg bg-primary-600/10 hover:bg-primary-600/20 text-primary-400 transition-colors border border-primary-500/20"
-                  title="New Incident"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-              </div>
+
               <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
                 {filteredQueueItems.length === 0 ? (
                    <div className="h-full flex flex-col items-center justify-center p-8 text-center border-2 border-dashed border-slate-800/50 rounded-2xl">
