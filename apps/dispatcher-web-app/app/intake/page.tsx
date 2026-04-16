@@ -901,9 +901,9 @@ function IntakeContent() {
           </div>
 
           {/* Master-Detail Layout */}
-          <div className="flex-1 flex overflow-hidden">
+          <div className="flex-1 flex min-h-0 overflow-hidden">
             {/* Left Panel: Incident List */}
-            <div className={`${selectedQueueItem ? "hidden lg:flex" : "flex"} flex-col w-full lg:w-[400px] border-r border-slate-800 bg-slate-900/10`}>
+            <div className={`${selectedQueueItem ? "hidden lg:flex" : "flex"} flex-col min-h-0 w-full lg:w-[400px] border-r border-slate-800 bg-slate-900/10`}>
               <div className="px-4 py-3 border-b border-slate-800/50 bg-slate-900/20 flex items-center justify-between">
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Queue List</span>
                 <button 
@@ -938,7 +938,7 @@ function IntakeContent() {
             </div>
 
             {/* Right Panel: Detail View */}
-            <div className={`${selectedQueueItem ? "flex" : "hidden lg:flex"} flex-1 flex-col p-4 lg:p-6 bg-slate-950/10 overflow-hidden`}>
+            <div className={`${selectedQueueItem ? "flex" : "hidden lg:flex"} flex-1 flex-col min-h-0 p-4 lg:p-6 bg-slate-950/10 overflow-hidden`}>
               <IntakeDetailView 
                 item={selectedQueueItem} 
                 onCloseDetail={() => setSelectedQueueItem(null)}
