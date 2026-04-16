@@ -845,18 +845,7 @@ function IntakeContent() {
             { label: 'Rules', value: incidentRules.length }
           ]}
         >
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={() => {
-                setPageError(null);
-                setPageSuccess(null);
-                setIsFormModalOpen(true);
-              }}
-              className="px-3 py-1.5 rounded-lg bg-primary-600 hover:bg-primary-500 text-[11px] font-bold text-white transition-colors flex items-center gap-2"
-            >
-              <span>+ NEW INCIDENT</span>
-            </button>
-          </div>
+
         </CommandBar>
 
         <div className="flex-1 flex flex-col min-h-0 bg-slate-950/20 backdrop-blur-sm">
@@ -890,15 +879,27 @@ function IntakeContent() {
               ))}
             </div>
 
-            <div className="relative flex-1 max-w-[240px] hidden md:block mb-3">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
-              <input 
-                type="text" 
-                placeholder="Search incidents..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-8 pl-8 pr-4 rounded-lg bg-slate-950 border border-slate-800 text-[11px] text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-primary-500/50"
-              />
+            <div className="flex items-end gap-2 mb-3">
+              <div className="relative flex-1 max-w-[240px] hidden md:block">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                <input 
+                  type="text" 
+                  placeholder="Search incidents..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full h-8 pl-8 pr-4 rounded-lg bg-slate-950 border border-slate-800 text-[11px] text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-primary-500/50"
+                />
+              </div>
+              <button 
+                onClick={() => {
+                  setPageError(null);
+                  setPageSuccess(null);
+                  setIsFormModalOpen(true);
+                }}
+                className="h-8 px-3 rounded-lg bg-primary-600 hover:bg-primary-500 text-[10px] font-black text-white transition-colors flex items-center gap-2 whitespace-nowrap"
+              >
+                <span>+ NEW INCIDENT</span>
+              </button>
             </div>
           </div>
 
