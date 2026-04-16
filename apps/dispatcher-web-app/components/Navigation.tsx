@@ -178,10 +178,10 @@ const NavLinks = ({
   onNavigate?: () => void 
 }) => {
   return (
-    <nav className="flex flex-col px-2 pb-6" aria-label="Main navigation">
+    <nav className="flex flex-col px-3 pb-6" aria-label="Main navigation">
       {navGroups.map((group, groupIdx) => (
         <div key={group.title} className={groupIdx > 0 ? "mt-6" : ""}>
-          <h3 className="px-2 mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+          <h3 className="px-3 mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
             {group.title}
           </h3>
           <div className="flex flex-col gap-0.5">
@@ -199,7 +199,7 @@ const NavLinks = ({
                   title={item.label}
                   onClick={onNavigate}
                   className={`
-                    flex items-center justify-between gap-3 rounded-lg px-2 py-2 text-sm font-medium transition-all duration-200
+                    flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200
                     ${
                       isActive
                         ? "bg-primary-600/90 text-white shadow-md shadow-primary-900/25"
