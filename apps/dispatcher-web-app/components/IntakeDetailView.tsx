@@ -22,7 +22,6 @@ import {
   CheckCircle,
   XCircle,
   History,
-  Navigation,
   Activity
 } from "lucide-react";
 
@@ -203,6 +202,11 @@ export default function IntakeDetailView({
             <span className={`px-2.5 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest ${item.statusToneClass} shadow-lg shadow-black/20`}>
               {item.statusLabel}
             </span>
+            {isResponderAssigned && (
+              <span className={`px-2 py-1 rounded-full border text-[10px] font-bold uppercase tracking-widest ${responderHasAccepted ? 'border-sky-800 text-sky-400 bg-sky-950/40' : 'border-amber-800 text-amber-400 bg-amber-950/40'}`}>
+                {responderStatusLabel}
+              </span>
+            )}
           </div>
           <p className="mt-1 text-sm text-slate-400 font-medium tracking-wide">
             {item.incidentSubtypeLabel} • Reported via {isEmergency ? "App" : incident?.source || "Manual"}
@@ -283,22 +287,10 @@ export default function IntakeDetailView({
 
       {/* Content Scroll Area */}
       <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar no-scrollbar">
-        {/* Geographic Tracking & Operational Metadata */}
+        {/* Operational Metadata */}
         <div className={hasPinnedLocation ? "grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch" : "space-y-8"}>
            {hasPinnedLocation && (
              <div className="lg:col-span-2 flex flex-col space-y-4">
-                <div className="flex items-center justify-between">
-                   <div className="flex items-center gap-2">
-                     <Navigation className="w-4 h-4 text-primary-500" />
-                     <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Geographic Tracking</h3>
-                   </div>
-                   {isResponderAssigned && (
-                     <span className={`px-2 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-widest ${responderHasAccepted ? 'border-sky-800 text-sky-400 bg-sky-950/40' : 'border-amber-800 text-amber-400 bg-amber-950/40'}`}>
-                       {responderStatusLabel}
-                     </span>
-                   )}
-                </div>
-
                 <div className="flex-1 flex flex-col min-h-[300px]">
                   {isResponderAssigned ? (
                     <AppReportResponseMap 
