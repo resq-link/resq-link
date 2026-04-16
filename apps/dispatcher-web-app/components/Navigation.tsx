@@ -509,7 +509,7 @@ export default function Navigation({ children }: NavigationProps) {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
+    <div className="h-screen bg-slate-950 text-slate-100 overflow-hidden">
       {/* Desktop: fixed to viewport so it never stretches with page content */}
       <aside
         className="hidden lg:flex lg:flex-col fixed inset-y-0 left-0 z-40 w-64 xl:w-72 border-r border-slate-800/80 bg-slate-950/95 backdrop-blur-xl min-h-0"
@@ -562,7 +562,7 @@ export default function Navigation({ children }: NavigationProps) {
         </>
       )}
 
-      <div className="flex min-h-screen min-w-0 flex-col lg:pl-64 xl:pl-72">
+      <div className="flex h-screen min-w-0 flex-col lg:pl-64 xl:pl-72 focus:outline-none">
         <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-slate-800/80 bg-slate-950/95 px-4 backdrop-blur-xl lg:hidden">
           <button
             type="button"
