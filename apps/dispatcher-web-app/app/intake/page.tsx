@@ -4,8 +4,6 @@ import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import AppReportDetailsModal from "@/components/AppReportDetailsModal";
-import IntakeIncidentDetailsModal from "@/components/IntakeIncidentDetailsModal";
 import CommandBar from "@/components/CommandBar";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -442,8 +440,6 @@ function IntakeContent() {
   const [barangayGeojson, setBarangayGeojson] =
     useState<BarangayFeatureCollection | null>(null);
   const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([]);
-  const [selectedAppReport, setSelectedAppReport] = useState<EmergencyReport | null>(null);
-  const [selectedQueueIncident, setSelectedQueueIncident] = useState<IncidentRecord | null>(null);
   const [activeTab, setActiveTab] = useState<"all" | "app" | "sms" | "manual">("all");
   const [selectedQueueItem, setSelectedQueueItem] = useState<IntakeQueueItem | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -512,22 +508,7 @@ function IntakeContent() {
     setSelectedResourceIds([]);
   }, [formState.incidentSubtypeId]);
 
-  useEffect(() => {
-    if (!selectedAppReport?.id) {
-      return;
-    }
 
-    const unsubscribe = subscribeToEmergencyReport(
-      selectedAppReport.id,
-      (latestReport) => {
-        if (latestReport) {
-          setSelectedAppReport(latestReport);
-        }
-      },
-    );
-
-    return unsubscribe;
-  }, [selectedAppReport?.id]);
 
   const matchingResources = useMemo(() => {
     if (!selectedRule) {
@@ -668,19 +649,9 @@ function IntakeContent() {
   };
 
   const handleOpenQueueItem = async (item: IntakeQueueItem) => {
-    if (item.channel === "incident") {
-      if (!item.rawIncident || item.rawIncident.source === "sms") {
-        return;
-      }
-      setSelectedQueueIncident(item.rawIncident);
-      return;
-    }
-
     if (item.channel !== "emergency_report" || !item.rawEmergencyReport) {
       return;
     }
-
-    setSelectedAppReport(item.rawEmergencyReport);
 
     if (!item.rawEmergencyReport.id) return;
 
@@ -689,9 +660,10 @@ function IntakeContent() {
         item.rawEmergencyReport.id,
         currentDispatcherLabel,
       );
-      setSelectedAppReport(updated);
+      // Update the selected item with the viewed status
+      setSelectedQueueItem(prev => (prev && prev.id === updated.id) ? { ...prev, rawEmergencyReport: updated, statusLabel: "Viewed", statusToneClass: "border-sky-800 text-sky-400 bg-sky-950/40" } as IntakeQueueItem : prev);
     } catch (error: any) {
-      setPageError(error.message || "Failed to mark report as viewed.");
+      console.error("Failed to mark report as viewed:", error);
     }
   };
 
@@ -714,7 +686,7 @@ function IntakeContent() {
         assignedAgency: responder.agency,
         suggestedAgency: responder.suggestedAgency || report.suggestedAgency || null,
       });
-      setSelectedAppReport(updated);
+      setSelectedQueueItem(prev => (prev && prev.id === report.id) ? { ...prev, rawEmergencyReport: updated } as IntakeQueueItem : prev);
       setPageSuccess(
         `Report ${report.id.slice(-6).toUpperCase()} is now assigned to ${responder.label}.`,
       );
@@ -728,7 +700,7 @@ function IntakeContent() {
 
     try {
       const updated = await requestEmergencyAdditionalDetails(report.id);
-      setSelectedAppReport(updated);
+      setSelectedQueueItem(prev => (prev && prev.id === report.id) ? { ...prev, rawEmergencyReport: updated } as IntakeQueueItem : prev);
       setPageSuccess(
         `Report ${report.id.slice(-6).toUpperCase()} is now waiting for additional civilian details.`,
       );
@@ -746,10 +718,7 @@ function IntakeContent() {
 
     try {
       const updated = await moveEmergencyReportToHistory(report.id);
-      setSelectedAppReport(null);
-      setAppEmergencyReports((current) =>
-        current.filter((entry) => entry.id !== updated.id),
-      );
+      setSelectedQueueItem(null);
       setPageSuccess(
         `Report ${report.id.slice(-6).toUpperCase()} was moved to history.`,
       );
@@ -1442,19 +1411,7 @@ function IntakeContent() {
           </div>
         )}
 
-        <AppReportDetailsModal
-          isOpen={Boolean(selectedAppReport)}
-          report={selectedAppReport}
-          onClose={() => setSelectedAppReport(null)}
-          onRespondStart={handleRespondStartForAppReport}
-          onRespond={handleRespondToAppReport}
-          onReject={handleRejectAppReport}
-          onMoveToHistory={handleMoveAppReportToHistory}
-        />
-        <IntakeIncidentDetailsModal
-          incident={selectedQueueIncident}
-          onClose={() => setSelectedQueueIncident(null)}
-        />
+
       </div>
     </ProtectedRoute>
   );
