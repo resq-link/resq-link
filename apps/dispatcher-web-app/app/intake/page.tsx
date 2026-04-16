@@ -862,7 +862,7 @@ function IntakeContent() {
         <div className="flex-1 flex flex-col min-h-0 bg-slate-950/20 backdrop-blur-sm">
           {/* Tab Navigation & Search Bar */}
           <div className="px-3 pt-2 border-b border-slate-800 bg-slate-900/40 flex flex-wrap items-end justify-between gap-4">
-            <div className="flex items-end gap-1">
+            <div className="flex items-end gap-0">
               {[
                 { id: "all", label: "All", icon: <Filter className="w-3 h-3" />, count: appQueueItems.length + smsCallQueueItems.length + manualQueueItems.length },
                 { id: "app", label: "App", icon: <Smartphone className="w-3 h-3" />, count: appQueueItems.length },
@@ -873,9 +873,11 @@ function IntakeContent() {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
                   className={`
-                    relative flex items-center gap-2 px-4 py-3 rounded-t-lg text-[11px] font-bold transition-all duration-200
+                    relative flex items-center gap-2 px-6 py-3 rounded-t-lg text-[11px] font-bold transition-all duration-200
                     ${activeTab === tab.id 
-                      ? "bg-slate-950 text-white border-t border-x border-slate-800 translate-y-[1px] z-10 shadow-[0_-4px_12px_rgba(0,0,0,0.5)]" 
+                      ? "bg-slate-950 text-white border-t border-x border-slate-800 translate-y-[1px] z-10 shadow-[0_-4px_12px_rgba(0,0,0,0.5)] \
+                         before:content-[''] before:absolute before:bottom-0 before:-left-3 before:w-3 before:h-3 before:bg-[radial-gradient(circle_at_0_0,transparent_12px,#020617_12.5px)] \
+                         after:content-[''] after:absolute after:bottom-0 after:-right-3 after:w-3 after:h-3 after:bg-[radial-gradient(circle_at_100%_0,transparent_12px,#020617_12.5px)]" 
                       : "text-slate-500 hover:text-slate-300 hover:bg-slate-900/40"}
                   `}
                 >
