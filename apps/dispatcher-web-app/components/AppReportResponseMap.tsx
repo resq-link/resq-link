@@ -80,6 +80,7 @@ export default function AppReportResponseMap({
     <div className={`overflow-hidden rounded-lg border border-slate-800 bg-slate-950 flex flex-col ${className}`}>
       <div className="flex-1 w-full min-h-[144px]">
         <MapContainer
+          key={`${incident.latitude}-${incident.longitude}-${responder ? 'live' : 'static'}`}
           center={center}
           zoom={15}
           scrollWheelZoom={false}
