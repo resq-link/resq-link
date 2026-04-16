@@ -212,7 +212,7 @@ export default function HistoryPage() {
     <ProtectedRoute>
       <div className="flex flex-col h-full">
         <CommandBar 
-          pageName="History" 
+          pageName="Incident History" 
           description="Archive of past incidents and resolution data"
           statsCategory="Incidents"
           stats={[

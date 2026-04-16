@@ -25,11 +25,10 @@ import {
 
 const navItems = [
   { href: "/overview", label: "Overview", icon: LayoutDashboard },
-  { href: "/intake", label: "Intake", icon: FileText },
+  { href: "/intake", label: "Incident Intake", icon: Radio },
   { href: "/report", label: "Report", icon: FileText },
-  { href: "/", label: "Live Incidents", icon: Radio },
   { href: "/map", label: "Map", icon: Map },
-  { href: "/history", label: "History", icon: History },
+  { href: "/history", label: "Incident History", icon: History },
 ];
 
 const managementSubNav = [
