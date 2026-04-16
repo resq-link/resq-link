@@ -902,7 +902,7 @@ function IntakeContent() {
 
           {/* Master-Detail Layout */}
           <div className="flex-1 flex min-h-0 overflow-hidden relative">
-            <div className="absolute top-0 left-0 right-0 h-10 bg-gradient-to-b from-slate-950/80 to-transparent z-10 pointer-events-none"></div>
+            <div className="absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-slate-950 to-transparent z-10 pointer-events-none"></div>
             {/* Left Panel: Incident List */}
             <div className={`${selectedQueueItem ? "hidden lg:flex" : "flex"} flex-col min-h-0 w-full lg:w-[400px] border-r border-slate-800 bg-slate-900/10`}>
 
