@@ -219,7 +219,7 @@ export default function IntakeDetailView({
                {!isResponderAssigned && !isChoosingResponder ? (
                  <button 
                    onClick={handleStartRespond}
-                   className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-[10px] font-black text-white transition-all uppercase tracking-widest shadow-lg shadow-emerald-900/20"
+                   className="h-8 px-3 flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-[10px] font-black text-white transition-all uppercase tracking-widest shadow-lg shadow-emerald-900/20"
                  >
                    <Send className="w-3 h-3" />
                    Assign
@@ -238,13 +238,13 @@ export default function IntakeDetailView({
                    <button 
                      onClick={handleConfirmRespond}
                      disabled={isLoadingResponders || !selectedResponderId}
-                     className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-[10px] font-black text-white uppercase tracking-widest disabled:opacity-50"
+                     className="h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-[10px] font-black text-white uppercase tracking-widest disabled:opacity-50"
                    >
                      Confirm
                    </button>
                    <button 
                       onClick={() => setIsChoosingResponder(false)}
-                      className="px-2.5 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-[10px] font-black text-slate-400 uppercase tracking-widest"
+                      className="h-8 px-3 rounded-lg border border-slate-700 hover:bg-slate-800 text-[10px] font-black text-slate-400 uppercase tracking-widest"
                    >
                      Cancel
                    </button>
@@ -255,7 +255,7 @@ export default function IntakeDetailView({
                  <>
                    <button 
                      onClick={() => onReject?.(report)}
-                     className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-red-900/60 bg-red-950/20 hover:bg-red-950/40 text-[10px] font-black text-red-500 transition-all uppercase tracking-widest"
+                     className="h-8 px-3 flex items-center gap-2 rounded-lg border border-red-900/60 bg-red-950/20 hover:bg-red-950/40 text-[10px] font-black text-red-500 transition-all uppercase tracking-widest"
                    >
                      <XCircle className="w-3 h-3" />
                      Reject
@@ -264,7 +264,7 @@ export default function IntakeDetailView({
                    {report.touchdownAt && (
                      <button 
                        onClick={() => onMoveToHistory?.(report)}
-                       className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-emerald-900/60 bg-emerald-950/20 hover:bg-emerald-950/40 text-[10px] font-black text-emerald-400 transition-all uppercase tracking-widest"
+                       className="h-8 px-3 flex items-center gap-2 rounded-lg border border-emerald-900/60 bg-emerald-950/20 hover:bg-emerald-950/40 text-[10px] font-black text-emerald-400 transition-all uppercase tracking-widest"
                      >
                        <History className="w-3 h-3" />
                        Finalize
