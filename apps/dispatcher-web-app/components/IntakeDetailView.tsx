@@ -215,7 +215,7 @@ export default function IntakeDetailView({
         
         <div className="flex items-center gap-3">
            {isEmergency && report && (
-             <div className="hidden sm:flex items-center gap-2 mr-2 border-r border-slate-800 pr-4">
+             <div className="hidden sm:flex items-center gap-2">
                {!isResponderAssigned && !isChoosingResponder ? (
                  <button 
                    onClick={handleStartRespond}
