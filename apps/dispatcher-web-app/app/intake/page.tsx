@@ -38,6 +38,7 @@ import {
 import IntakeListItem, { type IntakeQueueItem } from "@/components/IntakeListItem";
 import IntakeDetailView from "@/components/IntakeDetailView";
 import { 
+  Plus,
   Search, 
   Filter, 
   ChevronRight, 
@@ -898,7 +899,8 @@ function IntakeContent() {
                 }}
                 className="h-8 px-3 rounded-lg bg-primary-600 hover:bg-primary-500 text-[10px] font-black text-white transition-colors flex items-center gap-2 whitespace-nowrap"
               >
-                <span>+ NEW INCIDENT</span>
+                <Plus className="w-3.5 h-3.5" />
+                <span>NEW INCIDENT</span>
               </button>
             </div>
           </div>

@@ -41,7 +41,7 @@ export default function CommandBar({ pageName, description, statsCategory, stats
       {/* Right Section: Stats & Utility */}
       <div className="flex items-center gap-4">
         {stats.length > 0 && (
-          <div className="hidden lg:flex flex-col items-end gap-1 border-r border-slate-800 pr-4 mr-2">
+          <div className="hidden lg:flex flex-col items-end gap-1">
             {statsCategory && (
               <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 leading-none">
                 {statsCategory}
