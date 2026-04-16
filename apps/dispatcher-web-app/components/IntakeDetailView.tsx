@@ -283,69 +283,75 @@ export default function IntakeDetailView({
 
       {/* Content Scroll Area */}
       <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar no-scrollbar">
-        {/* Geographic Tracking */}
-        {hasPinnedLocation && (
-          <div className="space-y-4">
-             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Navigation className="w-4 h-4 text-primary-500" />
-                  <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Geographic Tracking</h3>
+        {/* Geographic Tracking & Operational Metadata */}
+        <div className={hasPinnedLocation ? "grid grid-cols-1 lg:grid-cols-3 gap-8" : "space-y-8"}>
+           {hasPinnedLocation && (
+             <div className="lg:col-span-2 space-y-4">
+                <div className="flex items-center justify-between">
+                   <div className="flex items-center gap-2">
+                     <Navigation className="w-4 h-4 text-primary-500" />
+                     <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Geographic Tracking</h3>
+                   </div>
+                   {isResponderAssigned && (
+                     <span className={`px-2 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-widest ${responderHasAccepted ? 'border-sky-800 text-sky-400 bg-sky-950/40' : 'border-amber-800 text-amber-400 bg-amber-950/40'}`}>
+                       {responderStatusLabel}
+                     </span>
+                   )}
                 </div>
-                {isResponderAssigned && (
-                  <span className={`px-2 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-widest ${responderHasAccepted ? 'border-sky-800 text-sky-400 bg-sky-950/40' : 'border-amber-800 text-amber-400 bg-amber-950/40'}`}>
-                    {responderStatusLabel}
-                  </span>
-                )}
+
+                <div className="rounded-xl overflow-hidden border border-slate-800 shadow-inner bg-slate-950">
+                  {isResponderAssigned ? (
+                    <AppReportResponseMap 
+                      incident={{
+                        latitude: (report || incident).latitude!,
+                        longitude: (report || incident).longitude!,
+                        label: (report || incident).locationText || "Incident Site"
+                      }}
+                      responder={responderLocation ? {
+                        latitude: responderLocation.latitude,
+                        longitude: responderLocation.longitude,
+                        label: report?.responder || "En route"
+                      } : null}
+                    />
+                  ) : (
+                    <PinnedLocationMap 
+                      latitude={(report || incident).latitude!}
+                      longitude={(report || incident).longitude!}
+                      label={(report || incident).locationText || "Incident Site"}
+                    />
+                  )}
+                </div>
              </div>
+           )}
 
-             {isResponderAssigned ? (
-               <AppReportResponseMap 
-                incident={{
-                  latitude: (report || incident).latitude!,
-                  longitude: (report || incident).longitude!,
-                  label: (report || incident).locationText || "Incident Site"
-                }}
-                responder={responderLocation ? {
-                  latitude: responderLocation.latitude,
-                  longitude: responderLocation.longitude,
-                  label: report?.responder || "En route"
-                } : null}
-               />
-             ) : (
-               <PinnedLocationMap 
-                latitude={(report || incident).latitude!}
-                longitude={(report || incident).longitude!}
-                label={(report || incident).locationText || "Incident Site"}
-               />
-             )}
-          </div>
-        )}
+           <div className={hasPinnedLocation 
+             ? "lg:col-span-1 flex flex-col gap-6" 
+             : "grid gap-6 md:grid-cols-2 lg:grid-cols-3 border-y border-slate-800/50 py-6"
+           }>
+              <DetailSection icon={<Activity className="w-3.5 h-3.5" />} title="Operations Control">
+                 <div className="space-y-2 mt-1">
+                   <p className="text-xs text-slate-400">Status: <span className="text-slate-100 font-bold uppercase font-mono">{report?.status || incident?.status}</span></p>
+                   <p className="text-xs text-slate-400">Agency: <span className="text-slate-100">{report?.assignedAgency || report?.suggestedAgency || primarySuggestedAgency || 'Awaiting Routing'}</span></p>
+                   <p className="text-xs text-slate-400">Responder: <span className="text-slate-100">{report?.responder || 'Unassigned'}</span></p>
+                 </div>
+              </DetailSection>
 
-        {/* Status Timeline / Metadata */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 border-y border-slate-800/50 py-6">
-           <DetailSection icon={<Activity className="w-3.5 h-3.5" />} title="Operations Control">
-              <div className="space-y-2 mt-1">
-                <p className="text-xs text-slate-400">Status: <span className="text-slate-100 font-bold uppercase font-mono">{report?.status || incident?.status}</span></p>
-                <p className="text-xs text-slate-400">Agency: <span className="text-slate-100">{report?.assignedAgency || report?.suggestedAgency || primarySuggestedAgency || 'Awaiting Routing'}</span></p>
-                <p className="text-xs text-slate-400">Responder: <span className="text-slate-100">{report?.responder || 'Unassigned'}</span></p>
-              </div>
-           </DetailSection>
+              <DetailSection icon={<Clock className="w-3.5 h-3.5" />} title="GPS Timeline">
+                 <div className="space-y-2 mt-1">
+                   <p className="text-xs text-slate-400">Reported: <span className="text-slate-100">{getDateLabel(item.createdAt)}</span></p>
+                   <p className="text-xs text-slate-400">Viewed: <span className="text-slate-100">{getDateLabel(report?.viewedAt)}</span></p>
+                   <p className="text-xs text-slate-400">Touchdown: <span className="text-emerald-400 font-bold">{report?.touchdownAt ? getDateLabel(report.touchdownAt) : 'N/A'}</span></p>
+                 </div>
+              </DetailSection>
 
-           <DetailSection icon={<Clock className="w-3.5 h-3.5" />} title="GPS Timeline">
-              <div className="space-y-2 mt-1">
-                <p className="text-xs text-slate-400">Reported: <span className="text-slate-100">{getDateLabel(item.createdAt)}</span></p>
-                <p className="text-xs text-slate-400">Viewed: <span className="text-slate-100">{getDateLabel(report?.viewedAt)}</span></p>
-                <p className="text-xs text-slate-400">Touchdown: <span className="text-emerald-400 font-bold">{report?.touchdownAt ? getDateLabel(report.touchdownAt) : 'N/A'}</span></p>
-              </div>
-           </DetailSection>
-
-           <DetailSection icon={<MapPin className="w-3.5 h-3.5" />} title="Spatial Context">
-              <div className="space-y-2 mt-1">
-                <p className="text-xs text-slate-400">Lat: <span className="text-slate-200 font-mono">{(report || incident)?.latitude?.toFixed(6) || '—'}</span></p>
-                <p className="text-xs text-slate-400">Lon: <span className="text-slate-200 font-mono">{(report || incident)?.longitude?.toFixed(6) || '—'}</span></p>
-                <p className="text-xs text-slate-400">Landmark: <span className="text-slate-200 truncate inline-block max-w-[100px]">{(report || incident)?.landmark || 'None'}</span></p>
-              </div>
-           </DetailSection>
+              <DetailSection icon={<MapPin className="w-3.5 h-3.5" />} title="Spatial Context">
+                 <div className="space-y-2 mt-1">
+                   <p className="text-xs text-slate-400">Lat: <span className="text-slate-200 font-mono">{(report || incident)?.latitude?.toFixed(6) || '—'}</span></p>
+                   <p className="text-xs text-slate-400">Lon: <span className="text-slate-200 font-mono">{(report || incident)?.longitude?.toFixed(6) || '—'}</span></p>
+                   <p className="text-xs text-slate-400">Landmark: <span className="text-slate-200 truncate inline-block max-w-[100px]">{(report || incident)?.landmark || 'None'}</span></p>
+                 </div>
+              </DetailSection>
+           </div>
         </div>
 
         {/* Narrative & Field-Specific Data */}
