@@ -37,7 +37,18 @@ import {
   type ResourceRecord,
   type TeamOnDuty,
 } from "@packages/firebase";
-import { Calendar } from "lucide-react";
+import IntakeListItem, { type IntakeQueueItem } from "@/components/IntakeListItem";
+import IntakeDetailView from "@/components/IntakeDetailView";
+import { 
+  Plus, 
+  Search, 
+  Filter, 
+  ChevronRight, 
+  MessageSquare, 
+  Smartphone, 
+  Keyboard,
+  Calendar 
+} from "lucide-react";
 
 const IncidentLocationPicker = dynamic(
   () => import("@/components/IncidentLocationPicker"),
@@ -138,26 +149,6 @@ const priorityTone: Record<IncidentRecord["priority"], string> = {
   medium: "text-blue-300",
   high: "text-amber-300",
   critical: "text-red-300",
-};
-
-type IntakeQueueItem = {
-  id: string;
-  channel: "incident" | "emergency_report";
-  referenceNumber: string;
-  incidentSubtypeLabel: string;
-  locationText: string;
-  priority: IncidentRecord["priority"];
-  statusLabel: string;
-  statusToneClass: string;
-  quadrantLabel: string | null;
-  teamOnDutyLabel: string | null;
-  incidentDateLabel: string | null;
-  incidentTimeLabel: string | null;
-  createdAt: IncidentRecord["createdAt"] | EmergencyReport["createdAt"];
-  viewedByName: string | null;
-  suggestedAgencyLabel: string | null;
-  rawEmergencyReport: EmergencyReport | null;
-  rawIncident: IncidentRecord | null;
 };
 
 const teamOnDutyOptions: TeamOnDuty[] = ["Whiskey", "X-ray", "Yankee", "Zulu"];
@@ -453,11 +444,14 @@ function IntakeContent() {
   const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([]);
   const [selectedAppReport, setSelectedAppReport] = useState<EmergencyReport | null>(null);
   const [selectedQueueIncident, setSelectedQueueIncident] = useState<IncidentRecord | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoadingResources, setIsLoadingResources] = useState(true);
+  const [activeTab, setActiveTab] = useState<"all" | "app" | "sms" | "manual">("all");
+  const [selectedQueueItem, setSelectedQueueItem] = useState<IntakeQueueItem | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
   const [pageSuccess, setPageSuccess] = useState<string | null>(null);
+  const [isLoadingResources, setIsLoadingResources] = useState(true);
   const incidentDateInputRef = useRef<HTMLInputElement | null>(null);
 
   const selectedRule = useMemo<IncidentTypeRule | null>(
@@ -615,6 +609,30 @@ function IntakeContent() {
     ],
     [appQueueItems, manualQueueItems, smsCallQueueItems],
   );
+
+  const filteredQueueItems = useMemo(() => {
+    let items: IntakeQueueItem[] = [];
+    if (activeTab === "all") items = [...appQueueItems, ...smsCallQueueItems, ...manualQueueItems];
+    else if (activeTab === "app") items = appQueueItems;
+    else if (activeTab === "sms") items = smsCallQueueItems;
+    else if (activeTab === "manual") items = manualQueueItems;
+
+    items.sort((a, b) => {
+      const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : (a.createdAt as any)?.toDate?.()?.getTime() || 0;
+      const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : (b.createdAt as any)?.toDate?.()?.getTime() || 0;
+      return dateB - dateA;
+    });
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      return items.filter(val => 
+        val.referenceNumber.toLowerCase().includes(q) || 
+        val.incidentSubtypeLabel.toLowerCase().includes(q) ||
+        val.locationText.toLowerCase().includes(q)
+      );
+    }
+    return items;
+  }, [activeTab, appQueueItems, smsCallQueueItems, manualQueueItems, searchQuery]);
 
   const currentDispatcherLabel = useMemo(
     () => user?.displayName || user?.email || user?.uid || "Dispatcher",
@@ -873,337 +891,96 @@ function IntakeContent() {
           </div>
         </CommandBar>
 
-        <div className="flex-1 p-6 space-y-6 overflow-y-auto custom-scrollbar no-scrollbar">
-
-
-        <section className="rounded-lg border border-slate-800 bg-slate-900/70 p-4 shadow-md shadow-black/20 md:p-5">
-          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-800 pb-3">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-100 md:text-xl">
-                Intake Channels
-              </h2>
-              <p className="mt-1 text-xs text-slate-400">
-                Incident intake is organized into app-submitted, SMS or call,
-                and manual-entry sections.
-              </p>
+        <div className="flex-1 flex flex-col min-h-0 bg-slate-950/20 backdrop-blur-sm">
+          {/* Tab Navigation & Search Bar */}
+          <div className="px-6 py-4 border-b border-slate-800 bg-slate-900/40 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center p-1 bg-slate-950 rounded-xl border border-slate-800">
+              {[
+                { id: "all", label: "All", icon: <Filter className="w-3 h-3" />, count: appQueueItems.length + smsCallQueueItems.length + manualQueueItems.length },
+                { id: "app", label: "App", icon: <Smartphone className="w-3 h-3" />, count: appQueueItems.length },
+                { id: "sms", label: "SMS/Call", icon: <MessageSquare className="w-3 h-3" />, count: smsCallQueueItems.length },
+                { id: "manual", label: "Manual", icon: <Keyboard className="w-3 h-3" />, count: manualQueueItems.length },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 ${
+                    activeTab === tab.id 
+                      ? "bg-primary-600 text-white shadow-lg shadow-primary-900/20" 
+                      : "text-slate-500 hover:text-slate-300 hover:bg-slate-900"
+                  }`}
+                >
+                  {tab.icon}
+                  <span>{tab.label}</span>
+                  <span className={`px-1.5 py-0.5 rounded-md text-[10px] ${activeTab === tab.id ? "bg-white/20 text-white" : "bg-slate-900 text-slate-400"}`}>
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
             </div>
-            <span className="rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300">
-              {appQueueItems.length + smsCallQueueItems.length + manualQueueItems.length} total in queue
-            </span>
+
+            <div className="relative flex-1 max-w-md hidden md:block">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <input 
+                type="text" 
+                placeholder="Search by ID, type, or location..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-10 pl-10 pr-4 rounded-xl bg-slate-950 border border-slate-800 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-primary-500/50"
+              />
+            </div>
           </div>
 
-          <div className="mt-4 grid gap-4 xl:grid-cols-3">
-            {groupedRecentIncidents.map((group) => (
-              <section
-                key={group.id}
-                className="rounded-lg border border-slate-800 bg-slate-950/40 p-3"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="text-sm font-semibold text-slate-100">
-                      {group.title}
-                    </h3>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {group.description}
-                    </p>
-                  </div>
-                  <span className="rounded-full border border-slate-700 px-2.5 py-0.5 text-[11px] text-slate-300">
-                    {group.incidents.length}
-                  </span>
-                </div>
-
-                {group.incidents.length === 0 ? (
-                  <div className="mt-3 rounded-lg border border-dashed border-slate-800 px-3 py-6 text-center">
-                    <p className="text-sm text-slate-500">
-                      No incidents in this section.
-                    </p>
+          {/* Master-Detail Layout */}
+          <div className="flex-1 flex overflow-hidden">
+            {/* Left Panel: Incident List */}
+            <div className={`${selectedQueueItem ? "hidden lg:flex" : "flex"} flex-col w-full lg:w-[400px] border-r border-slate-800 bg-slate-900/10`}>
+              <div className="px-4 py-3 border-b border-slate-800/50 bg-slate-900/20 flex items-center justify-between">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Queue List</span>
+                <button 
+                  onClick={() => setIsFormModalOpen(true)}
+                  className="p-1.5 rounded-lg bg-primary-600/10 hover:bg-primary-600/20 text-primary-400 transition-colors border border-primary-500/20"
+                  title="New Incident"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar no-scrollbar">
+                {filteredQueueItems.length === 0 ? (
+                   <div className="h-full flex flex-col items-center justify-center p-8 text-center border-2 border-dashed border-slate-800/50 rounded-2xl">
+                    <Search className="w-10 h-10 text-slate-800 mb-3" />
+                    <p className="text-slate-500 text-sm font-medium">No results found</p>
+                    <p className="text-slate-600 text-xs mt-1">Try adjusting your filters or search query.</p>
                   </div>
                 ) : (
-                  <div className="mt-3 max-h-[460px] space-y-2 overflow-y-auto pr-1">
-                    {group.incidents.map((incident) => (
-                      <article
-                        key={incident.id}
-                        onClick={() => void handleOpenQueueItem(incident)}
-                        className={`rounded-lg border border-slate-800 bg-slate-950/60 p-3 ${
-                          incident.channel === "emergency_report" ||
-                          (incident.channel === "incident" &&
-                            incident.rawIncident?.source !== "sms")
-                            ? "cursor-pointer transition hover:border-primary-500/60 hover:bg-slate-900/80"
-                            : ""
-                        }`}
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div>
-                            <p className="text-sm font-semibold text-slate-100">
-                              {incident.referenceNumber}
-                            </p>
-                            <p className="mt-1 text-xs text-slate-300">
-                              {incident.incidentSubtypeLabel}
-                            </p>
-                          </div>
-                          <div className="text-right">
-                            <span
-                              className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${incident.statusToneClass}`}
-                            >
-                              {incident.statusLabel}
-                            </span>
-                            <p
-                              className={`mt-1 text-[11px] font-semibold uppercase tracking-[0.2em] ${priorityTone[incident.priority]}`}
-                            >
-                              {incident.priority}
-                            </p>
-                          </div>
-                        </div>
-                        <p className="mt-2 text-xs text-slate-400">
-                          {incident.locationText}
-                        </p>
-                        {incident.suggestedAgencyLabel ? (
-                          <p className="mt-1 text-[11px] text-secondary-200">
-                            Suggested responder:{" "}
-                            <span className="font-semibold">
-                              {incident.suggestedAgencyLabel}
-                            </span>
-                          </p>
-                        ) : null}
-                        {incident.viewedByName ? (
-                          <p className="mt-1 text-[11px] text-emerald-300">
-                            Viewed by: <span className="font-semibold">{incident.viewedByName}</span>
-                          </p>
-                        ) : null}
-                        {incident.quadrantLabel ? (
-                          <p className="mt-1 text-[11px] uppercase tracking-[0.2em] text-slate-500">
-                            Quadrant: <span className="font-semibold text-slate-300">{incident.quadrantLabel}</span>
-                          </p>
-                        ) : null}
-                        <div className="mt-2 grid grid-cols-1 gap-1 text-[11px] text-slate-500">
-                          <span>
-                            Team on Duty:{" "}
-                            <span className="font-semibold text-slate-200">
-                              {incident.teamOnDutyLabel ?? "—"}
-                            </span>
-                          </span>
-                          <span>
-                            Date/Time:{" "}
-                            <span className="font-semibold text-slate-200">
-                              {formatIncidentDateForDisplay(
-                                incident.incidentDateLabel,
-                              )}{" "}
-                              • {incident.incidentTimeLabel ?? "—"}
-                            </span>
-                          </span>
-                          <span>
-                            Logged:{" "}
-                            <span className="font-semibold text-slate-200">
-                              {toDateLabel(incident.createdAt)}
-                            </span>
-                          </span>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
+                  filteredQueueItems.map((item) => (
+                    <IntakeListItem 
+                      key={item.id} 
+                      item={item} 
+                      isSelected={selectedQueueItem?.id === item.id}
+                      onClick={(item) => {
+                        setSelectedQueueItem(item);
+                        handleOpenQueueItem(item);
+                      }}
+                    />
+                  ))
                 )}
-              </section>
-            ))}
+              </div>
+            </div>
+
+            {/* Right Panel: Detail View */}
+            <div className={`${selectedQueueItem ? "flex" : "hidden lg:flex"} flex-1 flex-col p-4 lg:p-6 bg-slate-950/10 overflow-hidden`}>
+              <IntakeDetailView 
+                item={selectedQueueItem} 
+                onCloseDetail={() => setSelectedQueueItem(null)}
+                onRespondStart={handleRespondStartForAppReport}
+                onRespond={handleRespondToAppReport}
+                onReject={handleRejectAppReport}
+                onMoveToHistory={handleMoveAppReportToHistory}
+              />
+            </div>
           </div>
-        </section>
-
-        <section className="grid gap-4 xl:grid-cols-[1.1fr_1fr]">
-          <section className="rounded-lg border border-slate-800 bg-slate-900/70 p-4 shadow-md shadow-black/20 md:p-5">
-            <div className="flex items-start justify-between gap-4 border-b border-slate-800 pb-3">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-100 md:text-xl">
-                  Incident Form
-                </h2>
-                <p className="mt-1 text-xs text-slate-400">
-                  Open a focused modal to encode and dispatch a new incident.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setPageError(null);
-                  setPageSuccess(null);
-                  setIsFormModalOpen(true);
-                }}
-                className="h-11 rounded-lg bg-primary-600 px-5 text-sm font-semibold text-white transition-colors hover:bg-primary-500"
-              >
-                Open Incident Form
-              </button>
-            </div>
-
-            <div className="mt-4 rounded-lg border border-dashed border-slate-800 bg-slate-950/40 px-4 py-8 text-center">
-              <p className="text-sm font-semibold text-slate-100">
-                Keep the intake page clean until encoding is needed.
-              </p>
-              <p className="mt-2 text-sm text-slate-400">
-                Use the button above to open the full incident intake modal.
-              </p>
-            </div>
-
-            {(pageError || pageSuccess) && (
-              <div
-                className={`mt-4 rounded-lg px-4 py-3 text-sm ${
-                  pageError
-                    ? "border border-red-900/60 bg-red-950/40 text-red-200"
-                    : "border border-emerald-900/60 bg-emerald-950/40 text-emerald-200"
-                }`}
-              >
-                {pageError || pageSuccess}
-              </div>
-            )}
-          </section>
-
-          <aside className="space-y-4 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:overflow-y-auto xl:pr-1">
-            <section className="rounded-lg border border-slate-800 bg-slate-900/70 p-4 shadow-md shadow-black/20">
-              <h2 className="text-base font-semibold text-slate-100">
-                Routing Summary
-              </h2>
-              {!selectedRule ? (
-                <div className="mt-3 rounded-lg border border-dashed border-slate-800 px-4 py-6 text-sm text-slate-500">
-                  Select an incident subtype to view routing.
-                </div>
-              ) : (
-                <div className="mt-3 space-y-3">
-                  <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-3.5">
-                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                      Subtype
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-slate-100">
-                      {selectedRule.label}
-                    </p>
-                  </div>
-                  <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-3.5">
-                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                      Agencies Involved
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {selectedRule.recommendedAgencies.map((agency) => (
-                        <span
-                          key={agency}
-                          className="rounded-full border border-secondary-500/40 bg-secondary-500/10 px-2.5 py-1 text-xs font-semibold text-secondary-200"
-                        >
-                          {getAgencyLabel(agency)}
-                        </span>
-                      ))}
-                      <span
-                        className={`rounded-full border border-slate-700 px-2.5 py-1 text-xs font-semibold ${priorityTone[selectedRule.priority]}`}
-                      >
-                        {selectedRule.priority.toUpperCase()}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-3.5">
-                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                      Dispatch Path
-                    </p>
-                    <p className="mt-1 text-sm text-slate-300">
-                      {selectedRule.requiresExternalAgency
-                        ? "External liaison required in the routing workflow."
-                        : "Direct internal dispatch workflow."}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </section>
-
-            <section className="rounded-lg border border-slate-800 bg-slate-900/70 p-4 shadow-md shadow-black/20">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-base font-semibold text-slate-100">
-                    Live Resource Matching
-                  </h2>
-                  <p className="mt-1 text-xs text-slate-400">
-                    Eligible resources by routing rules
-                  </p>
-                </div>
-                {selectedRule && (
-                  <p className="text-xs text-slate-400">
-                    {matchingResources.length} eligible
-                  </p>
-                )}
-              </div>
-              {!selectedRule ? (
-                <div className="mt-3 rounded-lg border border-dashed border-slate-800 px-4 py-6 text-sm text-slate-500">
-                  No eligible resources yet. Select an incident subtype to load
-                  matching resources.
-                </div>
-              ) : isLoadingResources ? (
-                <div className="mt-3 py-8 text-center">
-                  <div className="inline-block h-7 w-7 animate-spin rounded-full border-b-2 border-primary-600"></div>
-                  <p className="mt-3 text-sm text-slate-400">
-                    Loading resources...
-                  </p>
-                </div>
-              ) : matchingResources.length === 0 ? (
-                <div className="mt-3 rounded-lg border border-dashed border-slate-800 px-4 py-6 text-sm text-slate-500">
-                  No eligible resources yet. Select an incident subtype to load
-                  matching resources.
-                </div>
-              ) : (
-                <div className="mt-3 max-h-[320px] space-y-2 overflow-y-auto pr-1">
-                  {matchingResources.map((resource) => {
-                    const selected = resource.id
-                      ? selectedResourceIds.includes(resource.id)
-                      : false;
-                    return (
-                      <label
-                        key={resource.id}
-                        className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition ${
-                          selected
-                            ? "border-primary-500 bg-primary-500/10"
-                            : "border-slate-800 bg-slate-900/50 hover:border-slate-700"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selected}
-                          onChange={() =>
-                            resource.id && toggleResourceSelection(resource.id)
-                          }
-                          className="mt-1 h-4 w-4 rounded border-slate-700 bg-slate-950 text-primary-500 focus:ring-primary-500"
-                        />
-                        <div className="flex-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-sm font-semibold text-slate-100">
-                              {resource.name}
-                            </p>
-                            <span className="rounded-full border border-slate-700 px-2.5 py-0.5 text-xs text-slate-300">
-                              {resource.type === "OTHER"
-                                ? resource.customType || "OTHER"
-                                : resource.type}
-                            </span>
-                          </div>
-                          <p className="mt-1 text-xs text-slate-400">
-                            {[
-                              resource.agency,
-                              resource.department,
-                              resource.stationName,
-                            ]
-                              .filter(Boolean)
-                              .join(" / ") || "No agency details"}
-                          </p>
-                          <p className="mt-2 text-xs text-slate-500">
-                            Team: {resource.teamName || "Unassigned"} | Base
-                            status: {resource.status.replace("_", " ")}
-                          </p>
-                        </div>
-                      </label>
-                    );
-                  })}
-                </div>
-              )}
-
-              {selectedResources.length > 0 && (
-                <div className="mt-3 rounded-lg border border-secondary-500/20 bg-secondary-500/10 px-4 py-3 text-sm text-secondary-100">
-                  Selected resources:{" "}
-                  {selectedResources
-                    .map((resource) => resource.name)
-                    .join(", ")}
-                </div>
-              )}
-            </section>
-          </aside>
-        </section>
+        </div>
 
         {isFormModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
@@ -1588,6 +1365,45 @@ function IntakeContent() {
                     </div>
                   </section>
 
+                  {/* Coordination Tools */}
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <section className="rounded-lg border border-slate-800 bg-slate-950/40 p-4">
+                      <h3 className="text-xs font-bold text-slate-100 uppercase tracking-widest mb-3">Routing Summary</h3>
+                      {!selectedRule ? (
+                        <p className="text-xs text-slate-500 italic">Select subtype to view routing.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          <p className="text-xs text-slate-300">Agencies: <span className="text-primary-400 font-bold">{selectedRule.recommendedAgencies.join(", ")}</span></p>
+                          <p className="text-xs text-slate-300">Priority: <span className="text-amber-400 uppercase font-black">{selectedRule.priority}</span></p>
+                        </div>
+                      )}
+                    </section>
+                    
+                    <section className="rounded-lg border border-slate-800 bg-slate-950/40 p-4">
+                       <h3 className="text-xs font-bold text-slate-100 uppercase tracking-widest mb-3">Live Dispatch</h3>
+                       {isLoadingResources ? (
+                         <div className="flex items-center gap-2 text-xs text-slate-500">
+                           <div className="w-3 h-3 border-2 border-primary-500 border-t-transparent animate-spin rounded-full"></div>
+                           Loading resources...
+                         </div>
+                       ) : (
+                         <div className="max-h-[120px] overflow-y-auto space-y-1.5 custom-scrollbar pr-1">
+                            {matchingResources.map(r => (
+                              <label key={r.id} className="flex items-center gap-2 p-1.5 rounded bg-slate-900 border border-slate-800 cursor-pointer hover:border-primary-500/50">
+                                <input 
+                                  type="checkbox" 
+                                  checked={selectedResourceIds.includes(r.id || "")}
+                                  onChange={() => r.id && toggleResourceSelection(r.id)}
+                                  className="rounded border-slate-700 bg-slate-950 text-primary-500"
+                                />
+                                <span className="text-[10px] font-medium text-slate-300 truncate">{r.name}</span>
+                              </label>
+                            ))}
+                         </div>
+                       )}
+                    </section>
+                  </div>
+
                   {(pageError || pageSuccess) && (
                     <div
                       className={`rounded-lg px-4 py-3 text-sm ${
@@ -1639,7 +1455,6 @@ function IntakeContent() {
           incident={selectedQueueIncident}
           onClose={() => setSelectedQueueIncident(null)}
         />
-        </div>
       </div>
     </ProtectedRoute>
   );
