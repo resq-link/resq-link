@@ -193,10 +193,10 @@ export default function IntakeDetailView({
   return (
     <div className="h-full flex flex-col bg-slate-900/40 rounded-xl border border-slate-800 overflow-hidden shadow-2xl backdrop-blur-md">
       {/* Detail Header */}
-      <div className="px-6 py-4 border-b border-slate-800/80 bg-slate-900/60 flex items-start justify-between">
+      <div className="px-6 py-3 border-b border-slate-800/80 bg-slate-900/60 flex items-start justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <h2 className="text-xl font-black text-slate-100 tracking-tight uppercase">
+            <h2 className="text-lg font-black text-slate-100 tracking-tight uppercase">
               {item.referenceNumber}
             </h2>
             <span className={`px-2.5 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest ${item.statusToneClass} shadow-lg shadow-black/20`}>
@@ -208,7 +208,7 @@ export default function IntakeDetailView({
               </span>
             )}
           </div>
-          <p className="mt-1 text-sm text-slate-400 font-medium tracking-wide">
+          <p className="mt-1 text-xs text-slate-400 font-medium tracking-wide">
             {item.incidentSubtypeLabel} • Reported via {isEmergency ? "App" : incident?.source || "Manual"}
           </p>
         </div>
