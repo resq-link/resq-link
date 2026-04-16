@@ -876,8 +876,8 @@ function IntakeContent() {
                     relative flex items-center gap-2 px-6 py-3 rounded-t-lg text-[11px] font-bold transition-all duration-200
                     ${activeTab === tab.id 
                       ? "bg-slate-950 text-white border-t border-x border-slate-800 translate-y-[1px] z-10 shadow-[0_-4px_12px_rgba(0,0,0,0.5)] \
-                         before:content-[''] before:absolute before:bottom-0 before:-left-3 before:w-3 before:h-3 before:bg-[radial-gradient(circle_at_0_0,transparent_12px,#020617_12.5px)] \
-                         after:content-[''] after:absolute after:bottom-0 after:-right-3 after:w-3 after:h-3 after:bg-[radial-gradient(circle_at_100%_0,transparent_12px,#020617_12.5px)]" 
+                         before:content-[''] before:absolute before:bottom-0 before:-left-3 before:w-3 before:h-3 before:bg-[radial-gradient(circle_at_0_0,transparent_11px,#1e293b_11px,#1e293b_12.5px,#020617_12.5px)] \
+                         after:content-[''] after:absolute after:bottom-0 after:-right-3 after:w-3 after:h-3 after:bg-[radial-gradient(circle_at_100%_0,transparent_11px,#1e293b_11px,#1e293b_12.5px,#020617_12.5px)]" 
                       : "text-slate-500 hover:text-slate-300 hover:bg-slate-900/40"}
                   `}
                 >
