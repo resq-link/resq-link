@@ -864,7 +864,7 @@ function IntakeContent() {
 
         <div className="flex-1 flex flex-col min-h-0 bg-slate-950/20 backdrop-blur-sm">
           {/* Tab Navigation & Search Bar */}
-          <div className="px-3 pt-2 border-b border-slate-800 bg-slate-900/40 flex flex-wrap items-end justify-between gap-4">
+          <div className="px-3 pt-3 border-b border-slate-800 bg-slate-900/40 flex flex-wrap items-end justify-between gap-4">
             <div className="flex items-end gap-0">
               {[
                 { id: "all", label: "All", icon: <Filter className="w-4 h-4" />, count: appQueueItems.length + smsCallQueueItems.length + manualQueueItems.length },
