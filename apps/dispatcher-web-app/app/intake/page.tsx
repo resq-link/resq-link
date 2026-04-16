@@ -914,7 +914,7 @@ function IntakeContent() {
                   <Plus className="w-4 h-4" />
                 </button>
               </div>
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar no-scrollbar">
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
                 {filteredQueueItems.length === 0 ? (
                    <div className="h-full flex flex-col items-center justify-center p-8 text-center border-2 border-dashed border-slate-800/50 rounded-2xl">
                     <Search className="w-10 h-10 text-slate-800 mb-3" />
