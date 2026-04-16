@@ -854,16 +854,16 @@ function IntakeContent() {
           <div className="px-3 pt-2 border-b border-slate-800 bg-slate-900/40 flex flex-wrap items-end justify-between gap-4">
             <div className="flex items-end gap-0">
               {[
-                { id: "all", label: "All", icon: <Filter className="w-3 h-3" />, count: appQueueItems.length + smsCallQueueItems.length + manualQueueItems.length },
-                { id: "app", label: "App", icon: <Smartphone className="w-3 h-3" />, count: appQueueItems.length },
-                { id: "sms", label: "SMS/Call", icon: <MessageSquare className="w-3 h-3" />, count: smsCallQueueItems.length },
-                { id: "manual", label: "Manual", icon: <Keyboard className="w-3 h-3" />, count: manualQueueItems.length },
+                { id: "all", label: "All", icon: <Filter className="w-4 h-4" />, count: appQueueItems.length + smsCallQueueItems.length + manualQueueItems.length },
+                { id: "app", label: "App", icon: <Smartphone className="w-4 h-4" />, count: appQueueItems.length },
+                { id: "sms", label: "SMS/Call", icon: <MessageSquare className="w-4 h-4" />, count: smsCallQueueItems.length },
+                { id: "manual", label: "Manual", icon: <Keyboard className="w-4 h-4" />, count: manualQueueItems.length },
               ].map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
                   className={`
-                    relative flex items-center gap-2 px-6 py-3 rounded-t-lg text-[11px] font-bold transition-all duration-200
+                    relative flex items-center gap-2 px-4 py-2.5 rounded-t-lg text-xs font-bold transition-all duration-200
                     ${activeTab === tab.id 
                       ? "bg-slate-950 text-white border-t border-x border-slate-800 translate-y-[1px] z-10 shadow-[0_-4px_12px_rgba(0,0,0,0.5)] \
                          before:content-[''] before:absolute before:bottom-0 before:-left-3 before:w-3 before:h-3 before:bg-[radial-gradient(circle_at_0_0,transparent_11px,#1e293b_11px,#1e293b_12.5px,#020617_12.5px)] \
@@ -873,7 +873,7 @@ function IntakeContent() {
                 >
                   {tab.icon}
                   <span>{tab.label}</span>
-                  <span className={`px-1.5 py-0.5 rounded-md text-[9px] ${activeTab === tab.id ? "bg-primary-600 text-white" : "bg-slate-900 text-slate-500"}`}>
+                  <span className={`px-1.5 py-0.5 rounded-md text-[10px] ${activeTab === tab.id ? "bg-primary-600 text-white" : "bg-slate-900 text-slate-500"}`}>
                     {tab.count}
                   </span>
                 </button>
