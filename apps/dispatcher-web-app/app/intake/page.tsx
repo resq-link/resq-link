@@ -860,9 +860,7 @@ function IntakeContent() {
             { label: 'Awaiting Resources', value: awaitingResourcesCount },
             { label: 'Unassigned', value: unassignedCount }
           ]}
-        >
-
-        </CommandBar>
+        />
 
         <div className="flex-1 flex flex-col min-h-0 bg-slate-950/20 backdrop-blur-sm">
           {/* Tab Navigation & Search Bar */}
