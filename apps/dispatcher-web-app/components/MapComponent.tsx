@@ -61,7 +61,7 @@ export default function MapComponent({
 }: MapComponentProps) {
   const mapRef = useRef<L.Map | null>(null)
   const [geojsonData, setGeojsonData] = useState<any>(null)
-  const [isLegendOpen, setIsLegendOpen] = useState(false)
+  const [isLegendOpen, setIsLegendOpen] = useState(true)
 
   useEffect(() => {
     // Fetch the Tuguegarao barangays GeoJSON
@@ -378,6 +378,7 @@ export default function MapComponent({
         zoom={mapZoom}
         style={{ height: '100%', width: '100%' }}
         ref={mapRef}
+        zoomControl={false}
       >
         <MapCenter center={mapCenter} zoom={mapZoom} />
         <TileLayer
