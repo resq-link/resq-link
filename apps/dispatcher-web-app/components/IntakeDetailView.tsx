@@ -213,77 +213,80 @@ export default function IntakeDetailView({
           </p>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+           {isEmergency && report && (
+             <div className="hidden sm:flex items-center gap-2 mr-2 border-r border-slate-800 pr-4">
+               {!isResponderAssigned && !isChoosingResponder ? (
+                 <button 
+                   onClick={handleStartRespond}
+                   className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-[10px] font-black text-white transition-all uppercase tracking-widest shadow-lg shadow-emerald-900/20"
+                 >
+                   <Send className="w-3 h-3" />
+                   Assign
+                 </button>
+               ) : isChoosingResponder ? (
+                 <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-2 duration-200">
+                   <select 
+                     value={selectedResponderId}
+                     onChange={(e) => setSelectedResponderId(e.target.value)}
+                     className="h-8 w-40 bg-slate-900 border border-slate-700 rounded-lg text-[10px] text-slate-200 px-2 outline-none focus:ring-1 focus:ring-emerald-500"
+                   >
+                      {isLoadingResponders ? <option>Loading...</option> : responders.map(r => (
+                        <option key={r.uid} value={r.uid}>{r.account.fullName || r.account.email}</option>
+                      ))}
+                   </select>
+                   <button 
+                     onClick={handleConfirmRespond}
+                     disabled={isLoadingResponders || !selectedResponderId}
+                     className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-[10px] font-black text-white uppercase tracking-widest disabled:opacity-50"
+                   >
+                     Confirm
+                   </button>
+                   <button 
+                      onClick={() => setIsChoosingResponder(false)}
+                      className="px-2.5 py-1.5 rounded-lg border border-slate-700 hover:bg-slate-800 text-[10px] font-black text-slate-400 uppercase tracking-widest"
+                   >
+                     Cancel
+                   </button>
+                 </div>
+               ) : null}
+               
+               {!isChoosingResponder && (
+                 <>
+                   <button 
+                     onClick={() => onReject?.(report)}
+                     className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-red-900/60 bg-red-950/20 hover:bg-red-950/40 text-[10px] font-black text-red-500 transition-all uppercase tracking-widest"
+                   >
+                     <XCircle className="w-3 h-3" />
+                     Reject
+                   </button>
+
+                   {report.touchdownAt && (
+                     <button 
+                       onClick={() => onMoveToHistory?.(report)}
+                       className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-emerald-900/60 bg-emerald-950/20 hover:bg-emerald-950/40 text-[10px] font-black text-emerald-400 transition-all uppercase tracking-widest"
+                     >
+                       <History className="w-3 h-3" />
+                       Finalize
+                     </button>
+                   )}
+                 </>
+               )}
+             </div>
+           )}
+
            {onCloseDetail && (
             <button 
               onClick={onCloseDetail}
               className="md:hidden p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 border border-slate-700 transition-all"
             >
-              <AlertTriangle className="w-5 h-5" />
+              <XCircle className="w-5 h-5" />
             </button>
            )}
         </div>
       </div>
 
-      {/* Main Actions Bar */}
-      <div className="px-6 py-3 border-b border-slate-800 bg-slate-950/40 flex flex-wrap items-center gap-3">
-        {isEmergency && report && (
-          <>
-            {!isResponderAssigned && !isChoosingResponder ? (
-              <button 
-                onClick={handleStartRespond}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-bold text-white transition-all uppercase tracking-widest shadow-lg shadow-emerald-900/20"
-              >
-                <Send className="w-3.5 h-3.5" />
-                Assign Responder
-              </button>
-            ) : isChoosingResponder ? (
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <select 
-                  value={selectedResponderId}
-                  onChange={(e) => setSelectedResponderId(e.target.value)}
-                  className="flex-1 h-9 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-200 px-3 outline-none focus:ring-1 focus:ring-emerald-500"
-                >
-                   {isLoadingResponders ? <option>Loading...</option> : responders.map(r => (
-                     <option key={r.uid} value={r.uid}>{r.account.fullName || r.account.email} ({r.account.role})</option>
-                   ))}
-                </select>
-                <button 
-                  onClick={handleConfirmRespond}
-                  disabled={isLoadingResponders || !selectedResponderId}
-                  className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-[10px] font-bold text-white uppercase tracking-widest disabled:opacity-50"
-                >
-                  Confirm
-                </button>
-                <button 
-                   onClick={() => setIsChoosingResponder(false)}
-                   className="px-3 py-2 rounded-lg border border-slate-700 hover:bg-slate-800 text-[10px] font-bold text-slate-400 uppercase tracking-widest"
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : null}
-            
-            <button 
-              onClick={() => onReject?.(report)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-red-900/60 bg-red-950/20 hover:bg-red-950/40 text-xs font-bold text-red-400 transition-all uppercase tracking-widest"
-            >
-              <XCircle className="w-3.5 h-3.5" />
-              Reject
-            </button>
 
-            {report.touchdownAt && (
-               <button 
-                onClick={() => onMoveToHistory?.(report)}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg border border-emerald-900/60 bg-emerald-950/20 hover:bg-emerald-950/40 text-xs font-bold text-emerald-400 transition-all uppercase tracking-widest"
-              >
-                <History className="w-3.5 h-3.5" />
-                Finalize
-              </button>
-            )}
-          </>
-        )}
-      </div>
 
       {/* Content Scroll Area */}
       <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar no-scrollbar">
