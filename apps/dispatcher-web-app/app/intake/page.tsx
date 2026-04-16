@@ -482,15 +482,14 @@ function IntakeContent() {
     });
 
     const unsubscribeIncidents = subscribeToIncidents((items) => {
-      setRecentIncidents(items.slice(0, 8));
-    }, 8);
+      setRecentIncidents(items);
+    }, 100);
 
     const unsubscribeEmergencyReports = subscribeToEmergencyReports(
       (reports) => {
         setAppEmergencyReports(
           reports
             .filter((report) => report.status !== "done" && report.status !== "resolved")
-            .slice(0, 8),
         );
       },
       { limitCount: 100 },
@@ -562,6 +561,21 @@ function IntakeContent() {
         .filter((incident) => manualEntrySources.includes(incident.source))
         .map(toQueueItemFromIncident),
     [recentIncidents],
+  );
+
+  const totalQueueCount = useMemo(() => 
+    appQueueItems.length + smsCallQueueItems.length + manualQueueItems.length,
+    [appQueueItems, smsCallQueueItems, manualQueueItems]
+  );
+
+  const awaitingResourcesCount = useMemo(() => 
+    recentIncidents.filter(i => i.status === "awaiting_resources").length,
+    [recentIncidents]
+  );
+
+  const unassignedCount = useMemo(() => 
+    appEmergencyReports.filter(r => !r.viewedByName).length,
+    [appEmergencyReports]
   );
 
   const hasIncidentTypeCatalog = incidentRules.length > 0;
@@ -841,9 +855,10 @@ function IntakeContent() {
           description="Incident triage and emergency call management"
           statsCategory="Incidents"
           stats={[
-            { label: 'Active', value: activeIncidentCount, highlight: true },
-            { label: 'Resources', value: resources.length },
-            { label: 'Rules', value: incidentRules.length }
+            { label: 'Total In Queue', value: totalQueueCount, highlight: true },
+            { label: 'Active', value: activeIncidentCount },
+            { label: 'Awaiting Resources', value: awaitingResourcesCount },
+            { label: 'Unassigned', value: unassignedCount }
           ]}
         >
 
