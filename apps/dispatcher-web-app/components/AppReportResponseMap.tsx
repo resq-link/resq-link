@@ -77,8 +77,8 @@ export default function AppReportResponseMap({
     : null
 
   return (
-    <div className={`overflow-hidden rounded-lg border border-slate-800 bg-slate-950 ${className}`}>
-      <div className="h-36 w-full">
+    <div className={`overflow-hidden rounded-lg border border-slate-800 bg-slate-950 flex flex-col ${className}`}>
+      <div className="flex-1 w-full min-h-[144px]">
         <MapContainer
           center={center}
           zoom={15}

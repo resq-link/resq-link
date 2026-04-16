@@ -49,8 +49,8 @@ export default function PinnedLocationMap({
     : null
 
   return (
-    <div className={`overflow-hidden rounded-lg border border-slate-800 bg-slate-950 ${className}`}>
-      <div className="h-44 w-full">
+    <div className={`overflow-hidden rounded-lg border border-slate-800 bg-slate-950 flex flex-col ${className}`}>
+      <div className="flex-1 w-full min-h-[176px]">
         <MapContainer
           center={center}
           zoom={15}

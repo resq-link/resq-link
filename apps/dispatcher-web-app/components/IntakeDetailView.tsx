@@ -284,9 +284,9 @@ export default function IntakeDetailView({
       {/* Content Scroll Area */}
       <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar no-scrollbar">
         {/* Geographic Tracking & Operational Metadata */}
-        <div className={hasPinnedLocation ? "grid grid-cols-1 lg:grid-cols-3 gap-8" : "space-y-8"}>
+        <div className={hasPinnedLocation ? "grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch" : "space-y-8"}>
            {hasPinnedLocation && (
-             <div className="lg:col-span-2 space-y-4">
+             <div className="lg:col-span-2 flex flex-col space-y-4">
                 <div className="flex items-center justify-between">
                    <div className="flex items-center gap-2">
                      <Navigation className="w-4 h-4 text-primary-500" />
@@ -299,9 +299,10 @@ export default function IntakeDetailView({
                    )}
                 </div>
 
-                <div className="rounded-xl overflow-hidden border border-slate-800 shadow-inner bg-slate-950">
+                <div className="flex-1 flex flex-col min-h-[300px]">
                   {isResponderAssigned ? (
                     <AppReportResponseMap 
+                      className="h-full"
                       incident={{
                         latitude: (report || incident).latitude!,
                         longitude: (report || incident).longitude!,
@@ -315,6 +316,7 @@ export default function IntakeDetailView({
                     />
                   ) : (
                     <PinnedLocationMap 
+                      className="h-full"
                       latitude={(report || incident).latitude!}
                       longitude={(report || incident).longitude!}
                       label={(report || incident).locationText || "Incident Site"}
