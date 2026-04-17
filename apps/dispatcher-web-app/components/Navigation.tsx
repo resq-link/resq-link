@@ -5,52 +5,73 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { subscribeToFootageRequests } from "@packages/firebase";
+import { subscribeToFootageRequests, subscribeToEmergencyReports } from "@packages/firebase";
 import {
   LayoutDashboard,
-  FileText,
+  Globe,
   ClipboardList,
-  Radio,
-  Map,
-  History,
-  Ambulance,
+  Video,
+  BarChart2,
+  Clock,
+  Settings,
+  Truck,
   Users,
   Menu,
   X,
   ChevronDown,
   LogOut,
   User,
-  Video,
 } from "lucide-react";
 
-const navItems = [
-  { href: "/overview", label: "Overview", icon: LayoutDashboard },
-  { href: "/intake", label: "Intake", icon: FileText },
-  { href: "/report", label: "Report", icon: FileText },
-  { href: "/", label: "Live Incidents", icon: Radio },
-  { href: "/map", label: "Map", icon: Map },
-  { href: "/history", label: "History", icon: History },
-];
+type NavBadgeKey = "intakeCount" | "pendingFootageCount";
 
-const managementSubNav = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  badgeKey?: NavBadgeKey;
+};
+
+type NavGroup = {
+  title: string;
+  items: NavItem[];
+};
+
+const navGroups: NavGroup[] = [
   {
-    href: "/incident-management",
-    label: "Incident Management",
-    icon: ClipboardList,
+    title: "DASHBOARD",
+    items: [
+      { href: "/overview", label: "Overview", icon: LayoutDashboard },
+      { href: "/map", label: "Map", icon: Globe },
+    ],
   },
-  { href: "/resources", label: "Resources", icon: Ambulance },
-  { href: "/teams", label: "Teams", icon: Users },
-] as const;
-
-const footageSubNav = [
-  { href: "/footage-requests", label: "Live" },
-  { href: "/footage-requests/history", label: "History" },
-] as const;
+  {
+    title: "OPERATIONS",
+    items: [
+      { href: "/intake", label: "Incident Intake", icon: ClipboardList, badgeKey: "intakeCount" as NavBadgeKey },
+      { href: "/footage-requests", label: "Footage Requests", icon: Video, badgeKey: "pendingFootageCount" as NavBadgeKey },
+    ],
+  },
+  {
+    title: "ANALYTICS",
+    items: [
+      { href: "/report", label: "Reports", icon: BarChart2 },
+      { href: "/history", label: "Incident History", icon: Clock },
+    ],
+  },
+  {
+    title: "ADMINISTRATION",
+    items: [
+      { href: "/incident-management", label: "Incident Types", icon: Settings },
+      { href: "/resources", label: "Resources", icon: Truck },
+      { href: "/teams", label: "Teams", icon: Users },
+    ],
+  },
+];
 
 type NavigationProps = {
   children: React.ReactNode;
 };
-
 
 const BrandBlock = ({ compact = false, onNavigate }: { compact?: boolean, onNavigate?: () => void }) => (
   <Link
@@ -149,206 +170,69 @@ const UserMenu = ({ user, userMenuOpen, setUserMenuOpen, handleSignOut, alignUp 
 
 const NavLinks = ({ 
   pathname, 
-  pendingFootageCount, 
-  managementNavOpen, 
-  setManagementNavOpen, 
-  footageNavOpen, 
-  setFootageNavOpen, 
+  badges,
   onNavigate 
 }: { 
   pathname: string, 
-  pendingFootageCount: number, 
-  managementNavOpen: boolean, 
-  setManagementNavOpen: (Updater: (o: boolean) => boolean) => void, 
-  footageNavOpen: boolean, 
-  setFootageNavOpen: (Updater: (o: boolean) => boolean) => void, 
+  badges: Record<NavBadgeKey, number>,
   onNavigate?: () => void 
 }) => {
-  const managementSectionActive =
-    (pathname?.startsWith("/incident-management")) ||
-    (pathname?.startsWith("/resources")) ||
-    (pathname?.startsWith("/teams"));
-  const footageSectionActive = pathname?.startsWith("/footage-requests");
-  const pendingBadge =
-    pendingFootageCount > 0
-      ? pendingFootageCount > 99
-        ? "99+"
-        : String(pendingFootageCount)
-      : null;
-
   return (
-    <nav className="flex flex-col gap-0.5 px-2" aria-label="Main navigation">
-      {navItems.map((item) => {
-        const isActive = pathname === item.href;
-        const IconComponent = item.icon;
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            title={item.label}
-            onClick={onNavigate}
-            className={`
-            flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200
-            ${
-              isActive
-                ? "bg-primary-600/90 text-white shadow-md shadow-primary-900/25"
-                : "text-slate-300 hover:bg-slate-800/80 hover:text-slate-100"
-            }
-          `}
-          >
-            <IconComponent size={20} className="shrink-0" aria-hidden />
-            <span className="truncate">{item.label}</span>
-          </Link>
-        );
-      })}
+    <nav className="flex flex-col px-3 pb-6" aria-label="Main navigation">
+      {navGroups.map((group, groupIdx) => (
+        <div key={group.title} className={groupIdx > 0 ? "mt-6" : ""}>
+          <h3 className="px-3 mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+            {group.title}
+          </h3>
+          <div className="flex flex-col gap-0.5">
+            {group.items.map((item) => {
+              const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href));
+              const IconComponent = item.icon;
+              const badgeValue = item.badgeKey ? badges[item.badgeKey] : 0;
+              const hasBadge = badgeValue > 0;
+              const displayBadge = badgeValue > 99 ? "99+" : String(badgeValue);
 
-      <div className="mt-0.5">
-        <button
-          type="button"
-          onClick={() => setManagementNavOpen((open) => !open)}
-          aria-expanded={managementNavOpen}
-          aria-label="Management"
-          className={`
-            flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-all duration-200
-            ${
-              managementSectionActive
-                ? "bg-slate-800/90 text-slate-100 ring-1 ring-primary-500/35"
-                : "text-slate-300 hover:bg-slate-800/80 hover:text-slate-100"
-            }
-          `}
-        >
-          <ClipboardList size={20} className="shrink-0" aria-hidden />
-          <span className="min-w-0 flex-1 truncate">Management</span>
-          <ChevronDown
-            size={18}
-            className={`shrink-0 text-slate-500 transition-transform ${managementNavOpen ? "rotate-180" : ""}`}
-            aria-hidden
-          />
-        </button>
-
-        {managementNavOpen ? (
-          <div
-            className="mt-0.5 ml-3 flex flex-col gap-0.5 border-l border-slate-700/70 pl-3 py-0.5"
-            role="group"
-            aria-label="Management"
-          >
-            {managementSubNav.map((sub) => {
-              const IconComponent = sub.icon;
-              const subActive = pathname.startsWith(sub.href);
               return (
                 <Link
-                  key={sub.href}
-                  href={sub.href}
-                  title={sub.label}
+                  key={item.href}
+                  href={item.href}
+                  title={item.label}
                   onClick={onNavigate}
                   className={`
-                    flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors
+                    flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200
                     ${
-                      subActive
-                        ? "bg-primary-600/90 text-white shadow-sm shadow-primary-900/20"
-                        : "text-slate-400 hover:bg-slate-800/70 hover:text-slate-100"
+                      isActive
+                        ? "bg-primary-600/90 text-white shadow-md shadow-primary-900/25"
+                        : "text-slate-300 hover:bg-slate-800/80 hover:text-slate-100"
                     }
                   `}
                 >
-                  <IconComponent size={16} className="shrink-0" aria-hidden />
-                  <span className="truncate">{sub.label}</span>
-                </Link>
-              );
-            })}
-          </div>
-        ) : null}
-      </div>
-
-      <div className="mt-0.5">
-        <button
-          type="button"
-          onClick={() => setFootageNavOpen((o) => !o)}
-          aria-expanded={footageNavOpen}
-          aria-label={
-            pendingFootageCount > 0
-              ? `Footage requests, ${pendingFootageCount} pending`
-              : "Footage requests"
-          }
-          className={`
-            flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-all duration-200
-            ${
-              footageSectionActive
-                ? "bg-slate-800/90 text-slate-100 ring-1 ring-primary-500/35"
-                : "text-slate-300 hover:bg-slate-800/80 hover:text-slate-100"
-            }
-          `}
-        >
-          <Video size={20} className="shrink-0" aria-hidden />
-          <span className="min-w-0 flex-1 truncate">Footage requests</span>
-          {pendingBadge ? (
-            <span
-              className="shrink-0 min-w-[1.25rem] h-5 px-1.5 inline-flex items-center justify-center rounded-full bg-amber-500 text-slate-950 text-[10px] font-bold tabular-nums"
-              aria-hidden
-            >
-              {pendingBadge}
-            </span>
-          ) : null}
-          <ChevronDown
-            size={18}
-            className={`shrink-0 text-slate-500 transition-transform ${footageNavOpen ? "rotate-180" : ""}`}
-            aria-hidden
-          />
-        </button>
-
-        {footageNavOpen ? (
-          <div
-            className="mt-0.5 ml-3 flex flex-col gap-0.5 border-l border-slate-700/70 pl-3 py-0.5"
-            role="group"
-            aria-label="Footage requests"
-          >
-            {footageSubNav.map((sub) => {
-              const subActive =
-                sub.href === "/footage-requests"
-                  ? pathname === "/footage-requests"
-                  : pathname.startsWith(sub.href);
-              const isLive = sub.href === "/footage-requests";
-              return (
-                <Link
-                  key={sub.href}
-                  href={sub.href}
-                  title={sub.label}
-                  onClick={onNavigate}
-                  aria-label={
-                    isLive && pendingFootageCount > 0
-                      ? `${sub.label}, ${pendingFootageCount} pending`
-                      : undefined
-                  }
-                  className={`
-                    flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors
-                    ${
-                      subActive
-                        ? "bg-primary-600/90 text-white shadow-sm shadow-primary-900/20"
-                        : "text-slate-400 hover:bg-slate-800/70 hover:text-slate-100"
-                    }
-                  `}
-                >
-                  <span>{sub.label}</span>
-                  {isLive && pendingBadge ? (
+                  <div className="flex items-center gap-3 min-w-0">
+                    <IconComponent size={20} className="shrink-0" aria-hidden />
+                    <span className="truncate">{item.label}</span>
+                  </div>
+                  
+                  {hasBadge && (
                     <span
                       className={`
-                        shrink-0 min-w-[1.25rem] h-5 px-1.5 inline-flex items-center justify-center rounded-full text-[10px] font-bold tabular-nums
+                        shrink-0 min-w-[1.5rem] h-5 px-1.5 inline-flex items-center justify-center rounded-full text-[10px] font-bold tabular-nums
                         ${
-                          subActive
+                          isActive
                             ? "bg-white/20 text-white"
                             : "bg-amber-500 text-slate-950"
                         }
                       `}
-                      aria-hidden
+                      aria-label={`${badgeValue} items`}
                     >
-                      {pendingBadge}
+                      {displayBadge}
                     </span>
-                  ) : null}
+                  )}
                 </Link>
               );
             })}
           </div>
-        ) : null}
-      </div>
+        </div>
+      ))}
     </nav>
   );
 };
@@ -359,11 +243,7 @@ const SidebarChrome = ({
   setUserMenuOpen,
   handleSignOut,
   pathname,
-  pendingFootageCount,
-  managementNavOpen,
-  setManagementNavOpen,
-  footageNavOpen,
-  setFootageNavOpen,
+  badges,
   onNavigate,
   showClose = false,
 }: {
@@ -372,11 +252,7 @@ const SidebarChrome = ({
   setUserMenuOpen: (o: boolean) => void;
   handleSignOut: () => void;
   pathname: string;
-  pendingFootageCount: number;
-  managementNavOpen: boolean;
-  setManagementNavOpen: (Updater: (o: boolean) => boolean) => void;
-  footageNavOpen: boolean;
-  setFootageNavOpen: (Updater: (o: boolean) => boolean) => void;
+  badges: Record<NavBadgeKey, number>;
   onNavigate?: () => void;
   showClose?: boolean;
 }) => (
@@ -394,14 +270,10 @@ const SidebarChrome = ({
         </button>
       )}
     </div>
-    <div className="flex-1 overflow-y-auto py-4">
+    <div className="flex-1 overflow-y-auto pt-5 pb-4 custom-scrollbar">
       <NavLinks 
         pathname={pathname}
-        pendingFootageCount={pendingFootageCount}
-        managementNavOpen={managementNavOpen}
-        setManagementNavOpen={setManagementNavOpen}
-        footageNavOpen={footageNavOpen}
-        setFootageNavOpen={setFootageNavOpen}
+        badges={badges}
         onNavigate={onNavigate}
       />
     </div>
@@ -424,16 +296,8 @@ export default function Navigation({ children }: NavigationProps) {
   const { user, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [managementNavOpen, setManagementNavOpen] = useState(
-    () =>
-      (pathname?.startsWith("/incident-management")) ||
-      (pathname?.startsWith("/resources")) ||
-      (pathname?.startsWith("/teams")),
-  );
-  const [footageNavOpen, setFootageNavOpen] = useState(() =>
-    pathname?.startsWith("/footage-requests") ?? false,
-  );
   const [pendingFootageCount, setPendingFootageCount] = useState(0);
+  const [intakeCount, setIntakeCount] = useState(0);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -455,22 +319,7 @@ export default function Navigation({ children }: NavigationProps) {
     setMobileMenuOpen(false);
   }, [pathname]);
 
-  useEffect(() => {
-    if (
-      pathname.startsWith("/incident-management") ||
-      pathname.startsWith("/resources") ||
-      pathname.startsWith("/teams")
-    ) {
-      setManagementNavOpen(true);
-    }
-  }, [pathname]);
-
-  useEffect(() => {
-    if (pathname.startsWith("/footage-requests")) {
-      setFootageNavOpen(true);
-    }
-  }, [pathname]);
-
+  // Subscribe to Footage Requests Badge
   useEffect(() => {
     if (!user) {
       setPendingFootageCount(0);
@@ -484,6 +333,25 @@ export default function Navigation({ children }: NavigationProps) {
     return () => {
       unsub();
       setPendingFootageCount(0);
+    };
+  }, [user]);
+
+  // Subscribe to Emergency Reports (Intake Awaiting Triage Badge)
+  useEffect(() => {
+    if (!user) {
+      setIntakeCount(0);
+      return;
+    }
+    const unsub = subscribeToEmergencyReports((reports) => {
+      // Calculate unassigned/pending emergencies needing triage
+      const awaitingTriage = reports.filter(
+        (r) => r.status !== 'done' && r.status !== 'resolved' && !r.viewedByName
+      ).length;
+      setIntakeCount(awaitingTriage);
+    }, { limitCount: 200 }); // get a healthy pool to accurately calculate metrics
+    return () => {
+      unsub();
+      setIntakeCount(0);
     };
   }, [user]);
 
@@ -508,6 +376,11 @@ export default function Navigation({ children }: NavigationProps) {
     return <>{children}</>;
   }
 
+  const badges: Record<NavBadgeKey, number> = {
+    intakeCount,
+    pendingFootageCount
+  };
+
   return (
     <div className="h-screen bg-slate-950 text-slate-100 overflow-hidden">
       {/* Desktop: fixed to viewport so it never stretches with page content */}
@@ -521,11 +394,7 @@ export default function Navigation({ children }: NavigationProps) {
           setUserMenuOpen={setUserMenuOpen}
           handleSignOut={handleSignOut}
           pathname={pathname}
-          pendingFootageCount={pendingFootageCount}
-          managementNavOpen={managementNavOpen}
-          setManagementNavOpen={setManagementNavOpen}
-          footageNavOpen={footageNavOpen}
-          setFootageNavOpen={setFootageNavOpen}
+          badges={badges}
         />
       </aside>
 
@@ -550,11 +419,7 @@ export default function Navigation({ children }: NavigationProps) {
               setUserMenuOpen={setUserMenuOpen}
               handleSignOut={handleSignOut}
               pathname={pathname}
-              pendingFootageCount={pendingFootageCount}
-              managementNavOpen={managementNavOpen}
-              setManagementNavOpen={setManagementNavOpen}
-              footageNavOpen={footageNavOpen}
-              setFootageNavOpen={setFootageNavOpen}
+              badges={badges}
               onNavigate={() => setMobileMenuOpen(false)}
               showClose
             />
