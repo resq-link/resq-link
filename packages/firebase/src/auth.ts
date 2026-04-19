@@ -242,11 +242,20 @@ export async function signInDispatcher(
   email: string,
   password: string
 ): Promise<User> {
+  const normalizedEmail = email.trim().toLowerCase();
   try {
-    const userCredential = await signInWithEmailAndPassword(getFirebaseAuth(), email, password);
+    const userCredential = await signInWithEmailAndPassword(
+      getFirebaseAuth(),
+      normalizedEmail,
+      password
+    );
     return userCredential.user;
   } catch (error: any) {
-    throw new Error(`Failed to sign in dispatcher: ${error.message}`);
+    const wrapped = new Error(`Failed to sign in dispatcher: ${error.message}`) as Error & {
+      code?: string;
+    };
+    wrapped.code = error.code;
+    throw wrapped;
   }
 }
 

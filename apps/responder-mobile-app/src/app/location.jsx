@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -18,11 +18,12 @@ import {
   SpaceGrotesk_700Bold,
 } from "@expo-google-fonts/space-grotesk";
 import { useFonts } from "expo-font";
-import { colors, spacing, radii } from "@/theme";
+import { spacing, radii, useResqTheme } from "@/theme";
 
 export const LOCATION_PAUSED_KEY = "responder_location_paused";
 
 export default function LocationScreen() {
+  const { colors, t, statusBarStyle } = useResqTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [locationPaused, setLocationPaused] = useState(false);
@@ -32,6 +33,70 @@ export default function LocationScreen() {
     SpaceGrotesk_600SemiBold,
     SpaceGrotesk_700Bold,
   });
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flex: 1,
+          backgroundColor: colors.background,
+          paddingHorizontal: spacing.lg,
+        },
+        header: {
+          flexDirection: "row",
+          alignItems: "center",
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
+          marginBottom: spacing.lg,
+        },
+        backButton: {
+          marginRight: spacing.md,
+          padding: 4,
+        },
+        title: {
+          fontFamily: "SpaceGrotesk_700Bold",
+          fontSize: 20,
+          color: colors.text,
+        },
+        card: {
+          backgroundColor: colors.surface,
+          borderRadius: radii.lg,
+          borderWidth: 1,
+          borderColor: colors.border,
+          padding: spacing.lg,
+        },
+        toggleRow: {
+          flexDirection: "row",
+          alignItems: "center",
+        },
+        toggleContent: {
+          flex: 1,
+          marginRight: spacing.md,
+        },
+        toggleLabel: {
+          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontSize: 16,
+          color: colors.text,
+        },
+        toggleDescription: {
+          fontFamily: "SpaceGrotesk_400Regular",
+          fontSize: 13,
+          color: colors.textSecondary,
+          marginTop: 8,
+        },
+        infoBox: {
+          marginTop: spacing.xl,
+          padding: spacing.lg,
+        },
+        infoText: {
+          fontFamily: "SpaceGrotesk_400Regular",
+          fontSize: 13,
+          color: colors.textMuted,
+          lineHeight: 20,
+        },
+      }),
+    [colors]
+  );
 
   useEffect(() => {
     const load = async () => {
@@ -64,7 +129,7 @@ export default function LocationScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" backgroundColor={colors.background} />
+      <StatusBar style={statusBarStyle} backgroundColor={colors.background} />
 
       <View
         style={[
@@ -95,8 +160,9 @@ export default function LocationScreen() {
           <Switch
             value={!locationPaused}
             onValueChange={(v) => handleToggle(!v)}
-            trackColor={{ false: colors.border, true: colors.accent + "80" }}
-            thumbColor={!locationPaused ? colors.accent : colors.textMuted}
+            trackColor={{ false: t.switchTrackOff, true: t.switchTrackOn }}
+            thumbColor={!locationPaused ? t.switchThumbOn : t.switchThumbOff}
+            ios_backgroundColor={t.switchTrackOff}
           />
         </View>
       </View>
@@ -110,63 +176,3 @@ export default function LocationScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    paddingHorizontal: spacing.lg,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    marginBottom: spacing.lg,
-  },
-  backButton: {
-    marginRight: spacing.md,
-    padding: 4,
-  },
-  title: {
-    fontFamily: "SpaceGrotesk_700Bold",
-    fontSize: 20,
-    color: colors.text,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-  },
-  toggleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  toggleContent: {
-    flex: 1,
-    marginRight: spacing.md,
-  },
-  toggleLabel: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
-    fontSize: 16,
-    color: colors.text,
-  },
-  toggleDescription: {
-    fontFamily: "SpaceGrotesk_400Regular",
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginTop: 8,
-  },
-  infoBox: {
-    marginTop: spacing.xl,
-    padding: spacing.lg,
-  },
-  infoText: {
-    fontFamily: "SpaceGrotesk_400Regular",
-    fontSize: 13,
-    color: colors.textMuted,
-    lineHeight: 20,
-  },
-});

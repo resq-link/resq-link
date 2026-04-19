@@ -19,7 +19,7 @@ import { getDoc, doc, getFirebaseFirestore, onSnapshot } from "@packages/firebas
 import CaseInfoCard from "@/components/CaseInfoCard";
 import LoadingScreen from "@/components/LoadingScreen";
 import ErrorAlert from "@/components/ErrorAlert";
-import { colors, spacing } from "@/theme";
+import { spacing, useResqTheme } from "@/theme";
 
 const toDateValue = (value) => {
   if (!value) return null;
@@ -29,6 +29,7 @@ const toDateValue = (value) => {
 };
 
 export default function CaseDetailScreen() {
+  const { colors, statusBarStyle } = useResqTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { caseId } = useLocalSearchParams();
@@ -155,7 +156,7 @@ export default function CaseDetailScreen() {
   if (error && !caseData) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.background }}>
-        <StatusBar style="light" backgroundColor={colors.background} />
+        <StatusBar style={statusBarStyle} backgroundColor={colors.background} />
         <View
           style={{
             backgroundColor: colors.surface,
@@ -216,7 +217,7 @@ export default function CaseDetailScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <StatusBar style="light" backgroundColor={colors.background} />
+      <StatusBar style={statusBarStyle} backgroundColor={colors.background} />
 
       <View
         style={{

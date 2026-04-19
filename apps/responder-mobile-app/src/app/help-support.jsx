@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   View,
   Text,
@@ -17,9 +17,10 @@ import {
   SpaceGrotesk_700Bold,
 } from "@expo-google-fonts/space-grotesk";
 import { useFonts } from "expo-font";
-import { colors, spacing, radii } from "@/theme";
+import { spacing, radii, useResqTheme } from "@/theme";
 
 export default function HelpSupportScreen() {
+  const { colors, t, statusBarStyle } = useResqTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -28,6 +29,72 @@ export default function HelpSupportScreen() {
     SpaceGrotesk_600SemiBold,
     SpaceGrotesk_700Bold,
   });
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flex: 1,
+          backgroundColor: colors.background,
+          paddingHorizontal: spacing.lg,
+        },
+        header: {
+          flexDirection: "row",
+          alignItems: "center",
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
+          marginBottom: spacing.lg,
+        },
+        backButton: {
+          marginRight: spacing.md,
+          padding: 4,
+        },
+        title: {
+          fontFamily: "SpaceGrotesk_700Bold",
+          fontSize: 20,
+          color: colors.text,
+        },
+        subtitle: {
+          fontFamily: "SpaceGrotesk_400Regular",
+          fontSize: 15,
+          color: colors.textSecondary,
+          lineHeight: 22,
+          marginBottom: spacing.xl,
+        },
+        primaryButton: {
+          backgroundColor: t.buttonPrimaryBg,
+          borderRadius: radii.lg,
+          padding: 16,
+          alignItems: "center",
+        },
+        primaryButtonText: {
+          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontSize: 16,
+          color: t.buttonPrimaryText,
+        },
+        infoBox: {
+          marginTop: spacing.xxl,
+          backgroundColor: colors.surface,
+          borderRadius: radii.lg,
+          padding: spacing.lg,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        infoTitle: {
+          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontSize: 14,
+          color: colors.text,
+          marginBottom: 8,
+        },
+        infoText: {
+          fontFamily: "SpaceGrotesk_400Regular",
+          fontSize: 14,
+          color: colors.textSecondary,
+          lineHeight: 20,
+        },
+      }),
+    [colors, t]
+  );
 
   const openEmail = async () => {
     const url = "mailto:support@rescue.ph?subject=RESCUE%20Responder%20Support";
@@ -43,7 +110,7 @@ export default function HelpSupportScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="light" backgroundColor={colors.background} />
+      <StatusBar style={statusBarStyle} backgroundColor={colors.background} />
 
       <View
         style={[
@@ -83,65 +150,3 @@ export default function HelpSupportScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    paddingHorizontal: spacing.lg,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    marginBottom: spacing.lg,
-  },
-  backButton: {
-    marginRight: spacing.md,
-    padding: 4,
-  },
-  title: {
-    fontFamily: "SpaceGrotesk_700Bold",
-    fontSize: 20,
-    color: colors.text,
-  },
-  subtitle: {
-    fontFamily: "SpaceGrotesk_400Regular",
-    fontSize: 15,
-    color: colors.textSecondary,
-    lineHeight: 22,
-    marginBottom: spacing.xl,
-  },
-  primaryButton: {
-    backgroundColor: colors.accent,
-    borderRadius: radii.lg,
-    padding: 16,
-    alignItems: "center",
-  },
-  primaryButtonText: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
-    fontSize: 16,
-    color: colors.white,
-  },
-  infoBox: {
-    marginTop: spacing.xxl,
-    backgroundColor: colors.surface,
-    borderRadius: radii.lg,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  infoTitle: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
-    fontSize: 14,
-    color: colors.text,
-    marginBottom: 8,
-  },
-  infoText: {
-    fontFamily: "SpaceGrotesk_400Regular",
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
-  },
-});

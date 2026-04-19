@@ -1,21 +1,31 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
-import { colors, radii } from "@/theme";
+import { radii, useResqTheme } from "@/theme";
 
-export default function ErrorAlert({ message, onDismiss }) {
+export default function ErrorAlert({
+  message,
+  onDismiss,
+  variant = "default",
+  softBorderColor,
+  softTextColor,
+}) {
   if (!message) return null;
+
+  const isSoft = variant === "soft";
 
   return (
     <View
       style={{
-        backgroundColor: colors.critical,
-        borderRadius: radii.md,
-        padding: 16,
+        backgroundColor: isSoft ? "rgba(201, 125, 110, 0.12)" : colors.critical,
+        borderRadius: radii.lg,
+        padding: 14,
         marginBottom: 16,
         flexDirection: "row",
         alignItems: "center",
         borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.15)",
+        borderColor: isSoft
+          ? softBorderColor ?? "rgba(201, 125, 110, 0.35)"
+          : "rgba(255,255,255,0.15)",
       }}
     >
       <Text
@@ -23,7 +33,8 @@ export default function ErrorAlert({ message, onDismiss }) {
           flex: 1,
           fontFamily: "SpaceGrotesk_400Regular",
           fontSize: 14,
-          color: colors.white,
+          lineHeight: 20,
+          color: isSoft ? softTextColor ?? "#E8D5D0" : colors.white,
         }}
       >
         {message}
@@ -41,7 +52,7 @@ export default function ErrorAlert({ message, onDismiss }) {
             style={{
               fontFamily: "SpaceGrotesk_600SemiBold",
               fontSize: 18,
-              color: colors.white,
+              color: isSoft ? softTextColor ?? t.alertSoftText : t.alertErrorText,
               opacity: 0.9,
             }}
           >

@@ -48,7 +48,8 @@ service cloud.firestore {
     match /dispatchers/{userId} {
       // Allow reading individual dispatcher documents and collection queries
       // Command center can read all dispatchers (needed for getAllDispatchers query)
-      allow read: if isOwner(userId) || isCommandCenter() || isSuperAdmin();
+      // Any dispatcher/responder account can read peer dispatchers (online counts, team views)
+      allow read: if isOwner(userId) || isCommandCenter() || isSuperAdmin() || isDispatcher();
       allow create: if (isAuthenticated() && isOwner(userId)) || isSuperAdmin();
       allow update: if isOwner(userId) || isCommandCenter() || isSuperAdmin();
       allow delete: if isCommandCenter() || isSuperAdmin();

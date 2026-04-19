@@ -48,6 +48,10 @@ Responders must log in with their email and password. The app verifies that:
 - Real-time updates ensure responders see new assignments immediately
 - Case status changes are reflected in real-time
 
+## Architecture
+
+For the **target folder layout**, feature boundaries, and migration principles, see [ARCHITECTURE.md](./ARCHITECTURE.md).
+
 ## Project Structure
 
 ```

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   View,
   Text,
@@ -26,9 +26,9 @@ import CaseStatusBadge from "./CaseStatusBadge";
 import PriorityBadge from "./PriorityBadge";
 import CustomButton from "./CustomButton";
 import ErrorAlert from "./ErrorAlert";
-import { colors, radii, spacing } from "@/theme";
+import { radii, spacing, useResqTheme } from "@/theme";
 
-const Section = ({ title, children }) => (
+const Section = ({ title, children, colors }) => (
   <View
     style={{
       backgroundColor: colors.surface,
@@ -117,6 +117,8 @@ export default function CaseInfoCard({
   reporterInfo,
   onStatusUpdate,
 }) {
+  const { colors } = useResqTheme();
+
   const [imageModalVisible, setImageModalVisible] = React.useState(false);
   const [selectedStatus, setSelectedStatus] = React.useState(caseData.status);
   const [isUpdating, setIsUpdating] = React.useState(false);
@@ -347,6 +349,280 @@ export default function CaseInfoCard({
     handleTouchdown("gps", touchdownDistanceMeters);
   }, [isWithinTouchdownRadius, touchdownDistanceMeters, canMarkTouchdown]);
 
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        mapShell: {
+          height: 220,
+          width: "100%",
+          borderRadius: radii.md,
+          overflow: "hidden",
+          borderWidth: 1,
+          borderColor: colors.border,
+          backgroundColor: colors.background,
+        },
+        map: {
+          flex: 1,
+        },
+        detailRow: {
+          backgroundColor: colors.background,
+          borderRadius: radii.md,
+          borderWidth: 1,
+          borderColor: colors.border,
+          padding: spacing.md,
+          marginBottom: spacing.sm,
+        },
+        detailLabel: {
+          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontSize: 12,
+          color: colors.textMuted,
+          textTransform: "uppercase",
+          letterSpacing: 0.8,
+          marginBottom: 6,
+        },
+        detailValue: {
+          fontFamily: "SpaceGrotesk_400Regular",
+          fontSize: 15,
+          color: colors.text,
+          lineHeight: 22,
+        },
+        currentLocationText: {
+          fontFamily: "SpaceGrotesk_400Regular",
+          fontSize: 12,
+          color: colors.info,
+          marginTop: 6,
+        },
+        locationErrorText: {
+          fontFamily: "SpaceGrotesk_400Regular",
+          fontSize: 12,
+          color: colors.warning,
+          marginTop: spacing.sm,
+        },
+        navigationButton: {
+          marginTop: spacing.md,
+          borderRadius: radii.md,
+          backgroundColor: colors.info,
+          paddingVertical: spacing.md,
+          paddingHorizontal: spacing.lg,
+          alignItems: "center",
+        },
+        navigationButtonText: {
+          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontSize: 14,
+          color: colors.white,
+        },
+        touchdownDistanceText: {
+          fontFamily: "SpaceGrotesk_400Regular",
+          fontSize: 12,
+          color: colors.textSecondary,
+          marginTop: spacing.sm,
+        },
+        touchdownTimeText: {
+          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontSize: 13,
+          color: colors.success,
+          marginTop: spacing.sm,
+        },
+        touchdownButton: {
+          marginTop: spacing.md,
+          borderRadius: radii.md,
+          backgroundColor: colors.success,
+          paddingVertical: spacing.md,
+          paddingHorizontal: spacing.lg,
+          alignItems: "center",
+        },
+        touchdownButtonText: {
+          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontSize: 14,
+          color: colors.white,
+        },
+        postReportButton: {
+          marginTop: spacing.md,
+          borderRadius: radii.md,
+          backgroundColor: colors.accent,
+          paddingVertical: spacing.md,
+          paddingHorizontal: spacing.lg,
+          alignItems: "center",
+        },
+        postReportButtonText: {
+          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontSize: 14,
+          color: colors.white,
+        },
+        postReportSubmittedText: {
+          fontFamily: "SpaceGrotesk_400Regular",
+          fontSize: 12,
+          color: colors.success,
+          marginTop: spacing.sm,
+        },
+        postReportInput: {
+          borderRadius: radii.md,
+          borderWidth: 1,
+          borderColor: colors.border,
+          backgroundColor: colors.background,
+          color: colors.text,
+          padding: spacing.md,
+          marginBottom: spacing.sm,
+          fontFamily: "SpaceGrotesk_400Regular",
+          fontSize: 15,
+        },
+        postReportNotesInput: {
+          minHeight: 96,
+          textAlignVertical: "top",
+        },
+        pendingActions: {
+          gap: spacing.md,
+        },
+        declineButton: {
+          alignSelf: "center",
+          minWidth: 150,
+          borderRadius: radii.md,
+          borderWidth: 1,
+          borderColor: colors.error,
+          paddingHorizontal: spacing.lg,
+          paddingVertical: spacing.sm,
+          alignItems: "center",
+        },
+        declineButtonText: {
+          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontSize: 13,
+          color: colors.error,
+        },
+        disabledButton: {
+          opacity: 0.55,
+        },
+        reasonModalContainer: {
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,0.75)",
+          justifyContent: "center",
+          padding: spacing.lg,
+        },
+        reasonModalContent: {
+          backgroundColor: colors.surface,
+          borderRadius: radii.lg,
+          borderWidth: 1,
+          borderColor: colors.border,
+          padding: spacing.lg,
+        },
+        reasonModalTitle: {
+          fontFamily: "SpaceGrotesk_700Bold",
+          fontSize: 20,
+          color: colors.text,
+          marginBottom: spacing.sm,
+        },
+        reasonModalDescription: {
+          fontFamily: "SpaceGrotesk_400Regular",
+          fontSize: 14,
+          color: colors.textSecondary,
+          lineHeight: 20,
+          marginBottom: spacing.md,
+        },
+        reasonInput: {
+          minHeight: 120,
+          borderRadius: radii.md,
+          borderWidth: 1,
+          borderColor: colors.border,
+          backgroundColor: colors.background,
+          color: colors.text,
+          padding: spacing.md,
+          textAlignVertical: "top",
+          fontFamily: "SpaceGrotesk_400Regular",
+          fontSize: 15,
+          lineHeight: 22,
+        },
+        reasonError: {
+          marginTop: spacing.sm,
+          fontFamily: "SpaceGrotesk_400Regular",
+          fontSize: 13,
+          color: colors.error,
+        },
+        reasonActions: {
+          marginTop: spacing.lg,
+          flexDirection: "row",
+          justifyContent: "flex-end",
+          gap: spacing.sm,
+        },
+        reasonCancelButton: {
+          borderRadius: radii.md,
+          borderWidth: 1,
+          borderColor: colors.border,
+          paddingHorizontal: spacing.lg,
+          paddingVertical: spacing.md,
+        },
+        reasonCancelText: {
+          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontSize: 14,
+          color: colors.textSecondary,
+        },
+        reasonSubmitButton: {
+          borderRadius: radii.md,
+          backgroundColor: colors.error,
+          paddingHorizontal: spacing.lg,
+          paddingVertical: spacing.md,
+        },
+        reasonSubmitText: {
+          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontSize: 14,
+          color: colors.white,
+        },
+        modalContainer: {
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,0.95)",
+          justifyContent: "center",
+          alignItems: "center",
+        },
+        modalBackdrop: {
+          flex: 1,
+          width: "100%",
+          justifyContent: "center",
+          alignItems: "center",
+        },
+        modalContent: {
+          width: "90%",
+          height: "80%",
+          position: "relative",
+        },
+        fullImage: {
+          width: "100%",
+          height: "80%",
+          resizeMode: "contain",
+        },
+        closeButton: {
+          position: "absolute",
+          top: 40,
+          right: 20,
+          backgroundColor: "rgba(255,255,255,0.15)",
+          width: 44,
+          height: 44,
+          borderRadius: 22,
+          justifyContent: "center",
+          alignItems: "center",
+          zIndex: 10,
+        },
+        picker: {
+          height: Platform.OS === "ios" ? 220 : 56,
+          width: "100%",
+          color: colors.text,
+          backgroundColor: "transparent",
+        },
+        pickerShell: {
+          backgroundColor: colors.background,
+          borderRadius: radii.md,
+          borderWidth: 1,
+          borderColor: colors.border,
+          overflow: "hidden",
+          height: Platform.OS === "ios" ? 140 : 60,
+          justifyContent: "center",
+        },
+        pickerItem: {
+          color: colors.text,
+          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontSize: 16,
+        },
+      }),
+    [colors]
+  );
+
   const handleOpenNavigation = async () => {
     if (!hasPinnedLocation) return;
 
@@ -417,7 +693,7 @@ export default function CaseInfoCard({
         </View>
 
         {hasPinnedLocation && (
-          <Section title="Pinned Location">
+          <Section title="Pinned Location" colors={colors}>
             <View style={styles.mapShell}>
               <MapView
                 provider={PROVIDER_GOOGLE}
@@ -530,7 +806,7 @@ export default function CaseInfoCard({
         )}
 
         {caseData.description && (
-          <Section title="Description">
+          <Section title="Description" colors={colors}>
             <Text
               style={{
                 fontFamily: "SpaceGrotesk_400Regular",
@@ -545,7 +821,7 @@ export default function CaseInfoCard({
         )}
 
         {caseData.imageUrl && (
-          <Section title="Photo">
+          <Section title="Photo" colors={colors}>
             <TouchableOpacity
               onPress={() => setImageModalVisible(true)}
               style={{ borderRadius: radii.md, overflow: "hidden" }}
@@ -564,7 +840,7 @@ export default function CaseInfoCard({
           </Section>
         )}
 
-        <Section title="Location">
+        <Section title="Location" colors={colors}>
           <Text
             style={{
               fontFamily: "SpaceGrotesk_400Regular",
@@ -612,7 +888,7 @@ export default function CaseInfoCard({
           )}
         </Section>
 
-        <Section title="Additional Details">
+        <Section title="Additional Details" colors={colors}>
           {hasAdditionalDetails ? (
             <View>
               {caseData.additionalDetailsSubmittedAt && (
@@ -659,7 +935,7 @@ export default function CaseInfoCard({
         </Section>
 
         {reporterInfo && (
-          <Section title="Reporter">
+          <Section title="Reporter" colors={colors}>
             <Text
               style={{
                 fontFamily: "SpaceGrotesk_400Regular",
@@ -696,7 +972,7 @@ export default function CaseInfoCard({
           </Section>
         )}
 
-        <Section title="Timestamps">
+        <Section title="Timestamps" colors={colors}>
           <Text
             style={{
               fontFamily: "SpaceGrotesk_400Regular",
@@ -1020,273 +1296,3 @@ export default function CaseInfoCard({
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  mapShell: {
-    height: 220,
-    width: "100%",
-    borderRadius: radii.md,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
-  },
-  map: {
-    flex: 1,
-  },
-  detailRow: {
-    backgroundColor: colors.background,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-  },
-  detailLabel: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
-    fontSize: 12,
-    color: colors.textMuted,
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-    marginBottom: 6,
-  },
-  detailValue: {
-    fontFamily: "SpaceGrotesk_400Regular",
-    fontSize: 15,
-    color: colors.text,
-    lineHeight: 22,
-  },
-  currentLocationText: {
-    fontFamily: "SpaceGrotesk_400Regular",
-    fontSize: 12,
-    color: colors.info,
-    marginTop: 6,
-  },
-  locationErrorText: {
-    fontFamily: "SpaceGrotesk_400Regular",
-    fontSize: 12,
-    color: colors.warning,
-    marginTop: spacing.sm,
-  },
-  navigationButton: {
-    marginTop: spacing.md,
-    borderRadius: radii.md,
-    backgroundColor: colors.info,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    alignItems: "center",
-  },
-  navigationButtonText: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
-    fontSize: 14,
-    color: colors.white,
-  },
-  touchdownDistanceText: {
-    fontFamily: "SpaceGrotesk_400Regular",
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginTop: spacing.sm,
-  },
-  touchdownTimeText: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
-    fontSize: 13,
-    color: colors.success,
-    marginTop: spacing.sm,
-  },
-  touchdownButton: {
-    marginTop: spacing.md,
-    borderRadius: radii.md,
-    backgroundColor: colors.success,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    alignItems: "center",
-  },
-  touchdownButtonText: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
-    fontSize: 14,
-    color: colors.white,
-  },
-  postReportButton: {
-    marginTop: spacing.md,
-    borderRadius: radii.md,
-    backgroundColor: colors.accent,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    alignItems: "center",
-  },
-  postReportButtonText: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
-    fontSize: 14,
-    color: colors.white,
-  },
-  postReportSubmittedText: {
-    fontFamily: "SpaceGrotesk_400Regular",
-    fontSize: 12,
-    color: colors.success,
-    marginTop: spacing.sm,
-  },
-  postReportInput: {
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
-    color: colors.text,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    fontFamily: "SpaceGrotesk_400Regular",
-    fontSize: 15,
-  },
-  postReportNotesInput: {
-    minHeight: 96,
-    textAlignVertical: "top",
-  },
-  pendingActions: {
-    gap: spacing.md,
-  },
-  declineButton: {
-    alignSelf: "center",
-    minWidth: 150,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.error,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    alignItems: "center",
-  },
-  declineButtonText: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
-    fontSize: 13,
-    color: colors.error,
-  },
-  disabledButton: {
-    opacity: 0.55,
-  },
-  reasonModalContainer: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.75)",
-    justifyContent: "center",
-    padding: spacing.lg,
-  },
-  reasonModalContent: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-  },
-  reasonModalTitle: {
-    fontFamily: "SpaceGrotesk_700Bold",
-    fontSize: 20,
-    color: colors.text,
-    marginBottom: spacing.sm,
-  },
-  reasonModalDescription: {
-    fontFamily: "SpaceGrotesk_400Regular",
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
-    marginBottom: spacing.md,
-  },
-  reasonInput: {
-    minHeight: 120,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.background,
-    color: colors.text,
-    padding: spacing.md,
-    textAlignVertical: "top",
-    fontFamily: "SpaceGrotesk_400Regular",
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  reasonError: {
-    marginTop: spacing.sm,
-    fontFamily: "SpaceGrotesk_400Regular",
-    fontSize: 13,
-    color: colors.error,
-  },
-  reasonActions: {
-    marginTop: spacing.lg,
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    gap: spacing.sm,
-  },
-  reasonCancelButton: {
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  reasonCancelText: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  reasonSubmitButton: {
-    borderRadius: radii.md,
-    backgroundColor: colors.error,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  reasonSubmitText: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
-    fontSize: 14,
-    color: colors.white,
-  },
-  modalContainer: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.95)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalBackdrop: {
-    flex: 1,
-    width: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalContent: {
-    width: "90%",
-    height: "80%",
-    position: "relative",
-  },
-  fullImage: {
-    width: "100%",
-    height: "80%",
-    resizeMode: "contain",
-  },
-  closeButton: {
-    position: "absolute",
-    top: 40,
-    right: 20,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 10,
-  },
-  picker: {
-    height: Platform.OS === "ios" ? 220 : 56,
-    width: "100%",
-    color: colors.text,
-    backgroundColor: "transparent",
-  },
-  pickerShell: {
-    backgroundColor: colors.background,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: "hidden",
-    height: Platform.OS === "ios" ? 140 : 60,
-    justifyContent: "center",
-  },
-  pickerItem: {
-    color: colors.text,
-    fontFamily: "SpaceGrotesk_600SemiBold",
-    fontSize: 16,
-  },
-});

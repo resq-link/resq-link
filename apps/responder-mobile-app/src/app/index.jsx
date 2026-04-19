@@ -8,9 +8,10 @@ import {
 } from "@expo-google-fonts/space-grotesk";
 import { useFonts } from "expo-font";
 import useUserStore from "@/utils/userStore";
-import { colors } from "@/theme";
+import { useResqTheme } from "@/theme";
 
 export default function Index() {
+  const { colors } = useResqTheme();
   const router = useRouter();
   const { user, isLoading, loadUser } = useUserStore();
 

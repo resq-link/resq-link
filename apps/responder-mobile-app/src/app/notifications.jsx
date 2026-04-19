@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -18,30 +18,12 @@ import {
   SpaceGrotesk_700Bold,
 } from "@expo-google-fonts/space-grotesk";
 import { useFonts } from "expo-font";
-import { colors, spacing, radii } from "@/theme";
+import { spacing, radii, useResqTheme } from "@/theme";
 
 const STORAGE_KEY = "responder_notification_settings";
 
-function ToggleRow({ label, description, value, onValueChange }) {
-  return (
-    <View style={styles.toggleRow}>
-      <View style={styles.toggleContent}>
-        <Text style={styles.toggleLabel}>{label}</Text>
-        {description && (
-          <Text style={styles.toggleDescription}>{description}</Text>
-        )}
-      </View>
-      <Switch
-        value={value}
-        onValueChange={onValueChange}
-        trackColor={{ false: colors.border, true: colors.accent + "80" }}
-        thumbColor={value ? colors.accent : colors.textMuted}
-      />
-    </View>
-  );
-}
-
 export default function NotificationsScreen() {
+  const { colors, t, statusBarStyle } = useResqTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [caseAlerts, setCaseAlerts] = useState(true);
@@ -52,6 +34,77 @@ export default function NotificationsScreen() {
     SpaceGrotesk_600SemiBold,
     SpaceGrotesk_700Bold,
   });
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flex: 1,
+          backgroundColor: colors.background,
+          paddingHorizontal: spacing.lg,
+        },
+        header: {
+          flexDirection: "row",
+          alignItems: "center",
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
+          marginBottom: spacing.lg,
+        },
+        backButton: {
+          marginRight: spacing.md,
+          padding: 4,
+        },
+        title: {
+          fontFamily: "SpaceGrotesk_700Bold",
+          fontSize: 20,
+          color: colors.text,
+        },
+        card: {
+          backgroundColor: colors.surface,
+          borderRadius: radii.lg,
+          borderWidth: 1,
+          borderColor: colors.border,
+          padding: spacing.lg,
+        },
+        toggleRow: {
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+        },
+        toggleContent: {
+          flex: 1,
+        },
+        toggleLabel: {
+          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontSize: 16,
+          color: colors.text,
+        },
+        toggleDescription: {
+          fontFamily: "SpaceGrotesk_400Regular",
+          fontSize: 13,
+          color: colors.textSecondary,
+          marginTop: 4,
+        },
+        separator: {
+          height: 1,
+          backgroundColor: colors.border,
+          marginVertical: spacing.lg,
+        },
+        saveButton: {
+          marginTop: spacing.xxl,
+          backgroundColor: t.buttonPrimaryBg,
+          borderRadius: radii.lg,
+          padding: 16,
+          alignItems: "center",
+        },
+        saveButtonText: {
+          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontSize: 16,
+          color: t.buttonPrimaryText,
+        },
+      }),
+    [colors, t]
+  );
 
   useEffect(() => {
     const load = async () => {
@@ -83,9 +136,27 @@ export default function NotificationsScreen() {
 
   if (!fontsLoaded) return null;
 
+  const ToggleRow = ({ label, description, value, onValueChange }) => (
+    <View style={styles.toggleRow}>
+      <View style={styles.toggleContent}>
+        <Text style={styles.toggleLabel}>{label}</Text>
+        {description && (
+          <Text style={styles.toggleDescription}>{description}</Text>
+        )}
+      </View>
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        trackColor={{ false: t.switchTrackOff, true: t.switchTrackOn }}
+        thumbColor={value ? t.switchThumbOn : t.switchThumbOff}
+        ios_backgroundColor={t.switchTrackOff}
+      />
+    </View>
+  );
+
   return (
     <View style={styles.container}>
-      <StatusBar style="light" backgroundColor={colors.background} />
+      <StatusBar style={statusBarStyle} backgroundColor={colors.background} />
 
       <View
         style={[
@@ -129,70 +200,3 @@ export default function NotificationsScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-    paddingHorizontal: spacing.lg,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    marginBottom: spacing.lg,
-  },
-  backButton: {
-    marginRight: spacing.md,
-    padding: 4,
-  },
-  title: {
-    fontFamily: "SpaceGrotesk_700Bold",
-    fontSize: 20,
-    color: colors.text,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
-  },
-  toggleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  toggleContent: {
-    flex: 1,
-  },
-  toggleLabel: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
-    fontSize: 16,
-    color: colors.text,
-  },
-  toggleDescription: {
-    fontFamily: "SpaceGrotesk_400Regular",
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginTop: 4,
-  },
-  separator: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: spacing.lg,
-  },
-  saveButton: {
-    marginTop: spacing.xxl,
-    backgroundColor: colors.accent,
-    borderRadius: radii.lg,
-    padding: 16,
-    alignItems: "center",
-  },
-  saveButtonText: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
-    fontSize: 16,
-    color: colors.white,
-  },
-});

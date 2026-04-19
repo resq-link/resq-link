@@ -1,3 +1,12 @@
+export {
+  ResqThemeProvider,
+  useResqTheme,
+  buildSemanticColors,
+} from "@/context/ResqThemeContext";
+
+export { darkResqTokens, lightResqTokens } from "./resqTokens";
+
+/** @deprecated Static snapshot (dark-only). Prefer `useResqTheme().colors`. */
 export { colors } from "./colors";
 
 export const spacing = {

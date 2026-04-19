@@ -1,17 +1,102 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { View, TouchableOpacity, StyleSheet, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, usePathname } from "expo-router";
 import { BlurView } from "expo-blur";
 import { LayoutDashboard, Map, Settings } from "lucide-react-native";
 import useUserStore from "@/utils/userStore";
-import { colors } from "@/theme";
+import { useResqTheme } from "@/theme";
+import {
+  opsDashboardThemeDark,
+  opsDashboardThemeLight,
+} from "@/theme/opsDashboardTheme";
 
 export default function CustomBottomNav() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const pathname = usePathname();
   const { user } = useUserStore();
+  const { resolvedScheme } = useResqTheme();
+
+  /** Teal chrome aligned with RES.Q logo — same palette in light & dark */
+  const navPalette =
+    resolvedScheme === "dark" ? opsDashboardThemeDark : opsDashboardThemeLight;
+
+  const navChrome = useMemo(
+    () => ({
+      navBorder: navPalette.navBorder,
+      navActiveBg: navPalette.navActiveBg,
+      navGlassOverlay: navPalette.navGlassOverlay,
+      accent: navPalette.navAccent,
+      textSecondary: navPalette.textSecondary,
+    }),
+    [navPalette]
+  );
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          position: "absolute",
+          left: 0,
+          right: 0,
+          alignItems: "center",
+          zIndex: 999,
+          pointerEvents: "box-none",
+          backgroundColor: "transparent",
+        },
+        navBar: {
+          flexDirection: "row",
+          width: 340,
+          minHeight: 64,
+          borderRadius: 32,
+          overflow: "hidden",
+          borderWidth: 1,
+          borderColor: navChrome.navBorder,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: resolvedScheme === "light" ? 0.12 : 0.38,
+          shadowRadius: 16,
+          elevation: 14,
+        },
+        glassOverlay: {
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: navChrome.navGlassOverlay,
+        },
+        navContent: {
+          flex: 1,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-around",
+          paddingHorizontal: 8,
+          paddingVertical: 8,
+        },
+        iconButton: {
+          alignItems: "center",
+          justifyContent: "center",
+          paddingVertical: 8,
+          paddingHorizontal: 12,
+          borderRadius: 20,
+        },
+        iconButtonActive: {
+          backgroundColor: navChrome.navActiveBg,
+        },
+        label: {
+          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontSize: 11,
+          color: navChrome.textSecondary,
+          marginTop: 4,
+        },
+        labelActive: {
+          color: navChrome.accent,
+        },
+      }),
+    [navChrome, resolvedScheme]
+  );
 
   const isDashboardActive = pathname === "/dashboard";
   const isMapActive = pathname === "/map";
@@ -37,13 +122,11 @@ export default function CustomBottomNav() {
     return null;
   }
 
+  const blurTint = resolvedScheme === "light" ? "light" : "dark";
+
   return (
     <View style={[styles.container, { bottom: insets.bottom + 10 }]}>
-      <BlurView
-        intensity={70}
-        tint="dark"
-        style={styles.navBar}
-      >
+      <BlurView intensity={resolvedScheme === "light" ? 55 : 70} tint={blurTint} style={styles.navBar}>
         <View style={styles.glassOverlay} />
         <View style={styles.navContent}>
           <TouchableOpacity
@@ -54,7 +137,8 @@ export default function CustomBottomNav() {
           >
             <LayoutDashboard
               size={22}
-              color={isDashboardActive ? colors.accent : colors.textSecondary}
+              color={isDashboardActive ? navChrome.accent : navChrome.textSecondary}
+              strokeWidth={isDashboardActive ? 2.25 : 2}
             />
             <Text
               style={[
@@ -74,7 +158,8 @@ export default function CustomBottomNav() {
           >
             <Map
               size={22}
-              color={isMapActive ? colors.accent : colors.textSecondary}
+              color={isMapActive ? navChrome.accent : navChrome.textSecondary}
+              strokeWidth={isMapActive ? 2.25 : 2}
             />
             <Text
               style={[
@@ -94,7 +179,8 @@ export default function CustomBottomNav() {
           >
             <Settings
               size={22}
-              color={isSettingsActive ? colors.accent : colors.textSecondary}
+              color={isSettingsActive ? navChrome.accent : navChrome.textSecondary}
+              strokeWidth={isSettingsActive ? 2.25 : 2}
             />
             <Text
               style={[
@@ -110,64 +196,3 @@ export default function CustomBottomNav() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    alignItems: "center",
-    zIndex: 999,
-    pointerEvents: "box-none",
-    backgroundColor: "transparent",
-  },
-  navBar: {
-    flexDirection: "row",
-    width: 340,
-    minHeight: 64,
-    borderRadius: 32,
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.12)",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 12,
-  },
-  glassOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(19, 23, 30, 0.9)",
-  },
-  navContent: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-  },
-  iconButton: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-  },
-  iconButtonActive: {
-    backgroundColor: "rgba(232, 93, 4, 0.15)",
-  },
-  label: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
-    fontSize: 11,
-    color: colors.textSecondary,
-    marginTop: 4,
-  },
-  labelActive: {
-    color: colors.accent,
-  },
-});

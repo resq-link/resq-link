@@ -1,8 +1,10 @@
 import React from "react";
 import { View, Text } from "react-native";
-import { colors } from "@/theme";
+import { useResqTheme } from "@/theme";
 
 export default function PriorityBadge({ priority }) {
+  const { colors } = useResqTheme();
+
   const getPriorityConfig = () => {
     switch (priority) {
       case "critical":

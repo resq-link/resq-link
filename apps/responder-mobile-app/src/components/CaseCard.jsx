@@ -4,9 +4,10 @@ import { acceptCase } from "@packages/firebase";
 import useUserStore from "@/utils/userStore";
 import CaseStatusBadge from "./CaseStatusBadge";
 import PriorityBadge from "./PriorityBadge";
-import { colors, radii, spacing } from "@/theme";
+import { radii, spacing, useResqTheme } from "@/theme";
 
 export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
+  const { colors } = useResqTheme();
   const [isAccepting, setIsAccepting] = useState(false);
   const { user } = useUserStore();
 

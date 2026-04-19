@@ -1,6 +1,6 @@
 import React from "react";
 import { TouchableOpacity, Text } from "react-native";
-import { colors, radii } from "@/theme";
+import { radii, useResqTheme } from "@/theme";
 
 export default function CustomButton({
   title,
@@ -11,6 +11,8 @@ export default function CustomButton({
   textStyle,
   ...props
 }) {
+  const { t } = useResqTheme();
+
   const getButtonStyle = () => {
     const baseStyle = {
       paddingVertical: 16,
@@ -51,7 +53,7 @@ export default function CustomButton({
     if (variant === "primary") {
       return {
         ...baseTextStyle,
-        color: colors.white,
+        color: t.buttonPrimaryText,
         ...textStyle,
       };
     }
@@ -59,7 +61,7 @@ export default function CustomButton({
     if (variant === "secondary") {
       return {
         ...baseTextStyle,
-        color: colors.accent,
+        color: t.buttonSecondaryText,
         ...textStyle,
       };
     }
