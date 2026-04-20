@@ -2,11 +2,11 @@ import React, { useMemo } from "react";
 import { View, TouchableOpacity, StyleSheet, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
-import { LayoutDashboard, Map, Bell, Settings } from "lucide-react-native";
+import { LayoutDashboard, Map, Settings } from "lucide-react-native";
 import { useResqTheme, dashboardThemeDark, dashboardThemeLight } from "@/theme";
 
 /**
- * Primary app navigation: exactly four tabs (Dashboard, Map, Notifications, Settings).
+ * Primary app navigation: three visible tabs (Dashboard, Map, Settings).
  * Used as `tabBar` for `app/(tabs)/_layout.jsx` — not shown on auth, incident, or support stacks.
  *
  * @param {import("@react-navigation/bottom-tabs").BottomTabBarProps} props
@@ -112,12 +112,6 @@ export default function MainTabBar({ state, navigation }) {
         label: "Map",
         Icon: Map,
         accessibilityLabel: "Go to map",
-      },
-      {
-        name: "notifications",
-        label: "Notifications",
-        Icon: Bell,
-        accessibilityLabel: "Notifications",
       },
       {
         name: "settings",

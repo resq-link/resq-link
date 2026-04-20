@@ -2,8 +2,8 @@ import { Tabs } from "expo-router";
 import MainTabBar from "@/components/layout/MainTabBar";
 
 /**
- * Primary surface: exactly four visible destinations (Expo Router tabs).
- * URLs stay flat: /dashboard, /map, /notifications, /settings (route groups omit (tabs)).
+ * Primary surface: three visible destinations (Dashboard, Map, Settings).
+ * Notifications stay reachable at /notifications from Settings, but are hidden from the bottom navbar.
  */
 export default function TabsLayout() {
   return (
@@ -16,7 +16,7 @@ export default function TabsLayout() {
     >
       <Tabs.Screen name="dashboard" options={{ title: "Dashboard" }} />
       <Tabs.Screen name="map" options={{ title: "Map" }} />
-      <Tabs.Screen name="notifications" options={{ title: "Notifications" }} />
+      <Tabs.Screen name="notifications" options={{ href: null }} />
       <Tabs.Screen name="settings" options={{ title: "Settings" }} />
     </Tabs>
   );

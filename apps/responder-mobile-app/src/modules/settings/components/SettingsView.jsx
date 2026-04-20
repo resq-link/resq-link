@@ -19,6 +19,7 @@ import Constants from "expo-constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   ChevronRight,
+  Bell,
   Info,
   LogOut,
   UserPen,
@@ -615,6 +616,15 @@ export default function SettingsView() {
               })}
             </View>
           </View>
+        </SectionCard>
+
+        <SectionCard title="Notifications">
+          <SettingsNavRow
+            icon={Bell}
+            label="Notification preferences"
+            onPress={() => router.push("/notifications")}
+            isLast
+          />
         </SectionCard>
 
         <SectionCard title="About">
