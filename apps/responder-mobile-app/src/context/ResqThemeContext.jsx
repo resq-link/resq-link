@@ -8,7 +8,7 @@ import React, {
 } from "react";
 import { useColorScheme } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { darkResqTokens, lightResqTokens } from "@/theme/resqTokens";
+import { darkResqTokens, lightResqTokens } from "@/theme/tokens/resqTokens";
 
 export const RESQ_APPEARANCE_KEY = "resq.appearance.preference";
 

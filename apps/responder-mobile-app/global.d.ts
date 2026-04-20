@@ -28,5 +28,9 @@ declare module "@/theme" {
   export const spacing: Record<string, number>;
   export const radii: Record<string, number>;
   export const colors: Record<string, string>;
+
+  export const dashboardThemeDark: Record<string, string | number | boolean>;
+  export const dashboardThemeLight: Record<string, string | number | boolean>;
+  export const dashboardTheme: Record<string, string | number | boolean>;
 }
 

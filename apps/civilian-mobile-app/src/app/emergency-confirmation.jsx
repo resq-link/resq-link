@@ -10,7 +10,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { CheckCircle2, Radio, ShieldAlert } from "lucide-react-native";
+import { CheckCircle2, Radio } from "lucide-react-native";
 import {
   Inter_400Regular,
   Inter_600SemiBold,
@@ -89,7 +89,9 @@ export default function EmergencyConfirmationScreen() {
   const [isSubmittingDetails, setIsSubmittingDetails] = useState(false);
   const [detailError, setDetailError] = useState("");
   const [detailValues, setDetailValues] = useState({});
-  const loadingAnim = useRef(new Animated.Value(0)).current;
+  const channelWave = useRef(new Animated.Value(0)).current;
+  const ringPulseA = useRef(new Animated.Value(0)).current;
+  const ringPulseB = useRef(new Animated.Value(0)).current;
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -99,16 +101,48 @@ export default function EmergencyConfirmationScreen() {
 
   useEffect(() => {
     const loop = Animated.loop(
-      Animated.timing(loadingAnim, {
+      Animated.timing(channelWave, {
         toValue: 1,
-        duration: 1200,
+        duration: 1800,
         easing: Easing.linear,
         useNativeDriver: true,
       }),
     );
     loop.start();
     return () => loop.stop();
-  }, [loadingAnim]);
+  }, [channelWave]);
+
+  useEffect(() => {
+    const expandLoop = (value) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(value, {
+            toValue: 1,
+            duration: 1700,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          Animated.timing(value, {
+            toValue: 0,
+            duration: 0,
+            useNativeDriver: true,
+          }),
+        ]),
+      );
+
+    const loopA = expandLoop(ringPulseA);
+    loopA.start();
+    let loopB;
+    const t = setTimeout(() => {
+      loopB = expandLoop(ringPulseB);
+      loopB.start();
+    }, 780);
+    return () => {
+      clearTimeout(t);
+      loopA.stop();
+      loopB?.stop();
+    };
+  }, [ringPulseA, ringPulseB]);
 
   useEffect(() => {
     if (!reportId) {
@@ -154,22 +188,20 @@ export default function EmergencyConfirmationScreen() {
       return;
     }
 
-    const missingField = expectedFields.find(
-      (field) => !String(detailValues[field.key] || "").trim(),
-    );
-    if (missingField) {
-      setDetailError(`Please complete "${missingField.label}".`);
-      return;
-    }
-
     setIsSubmittingDetails(true);
     setDetailError("");
 
     try {
       const payload = expectedFields.reduce((acc, field) => {
-        acc[field.key] = String(detailValues[field.key] || "").trim();
+        const value = String(detailValues[field.key] || "").trim();
+        if (value) {
+          acc[field.key] = value;
+        }
         return acc;
       }, {});
+      if (Object.keys(payload).length === 0) {
+        payload.noAdditionalDetails = "No additional details were provided.";
+      }
       await submitEmergencyAdditionalDetails(reportId, payload);
     } catch (error) {
       setDetailError(error.message || "Failed to submit additional details.");
@@ -178,10 +210,39 @@ export default function EmergencyConfirmationScreen() {
     }
   };
 
-  const barTranslate = loadingAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-220, 220],
+  const ACCENT = "#9AFF55";
+
+  const hubScale = channelWave.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [1, 1.1, 1],
   });
+
+  const ringScaleA = ringPulseA.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.55, 2.35],
+  });
+  const ringOpacityA = ringPulseA.interpolate({
+    inputRange: [0, 0.12, 1],
+    outputRange: [0.55, 0.4, 0],
+  });
+  const ringScaleB = ringPulseB.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.55, 2.35],
+  });
+  const ringOpacityB = ringPulseB.interpolate({
+    inputRange: [0, 0.12, 1],
+    outputRange: [0.55, 0.4, 0],
+  });
+
+  const dispatchDotOpacity = (index) => {
+    const pattern = [0.22, 0.5, 1, 0.38, 0.72];
+    const n = pattern.length;
+    const outputRange = Array.from({ length: n }, (_, i) => pattern[(i + index) % n]);
+    return channelWave.interpolate({
+      inputRange: [0, 0.25, 0.5, 0.75, 1],
+      outputRange,
+    });
+  };
 
   if (!fontsLoaded) {
     return null;
@@ -216,97 +277,121 @@ export default function EmergencyConfirmationScreen() {
             <>
               <View
                 style={{
-                  width: 96,
-                  height: 96,
-                  borderRadius: 48,
-                  backgroundColor: "#9AFF5522",
+                  alignSelf: "center",
+                  width: 132,
+                  height: 132,
                   alignItems: "center",
                   justifyContent: "center",
-                  alignSelf: "center",
-                  marginBottom: 24,
+                  marginBottom: 22,
                 }}
               >
-                <Radio size={48} color="#9AFF55" />
+                <Animated.View
+                  pointerEvents="none"
+                  style={{
+                    position: "absolute",
+                    width: 88,
+                    height: 88,
+                    borderRadius: 44,
+                    borderWidth: 2,
+                    borderColor: ACCENT,
+                    opacity: ringOpacityA,
+                    transform: [{ scale: ringScaleA }],
+                  }}
+                />
+                <Animated.View
+                  pointerEvents="none"
+                  style={{
+                    position: "absolute",
+                    width: 88,
+                    height: 88,
+                    borderRadius: 44,
+                    borderWidth: 2,
+                    borderColor: ACCENT,
+                    opacity: ringOpacityB,
+                    transform: [{ scale: ringScaleB }],
+                  }}
+                />
+                <Animated.View
+                  style={{
+                    width: 88,
+                    height: 88,
+                    borderRadius: 44,
+                    backgroundColor: `${ACCENT}28`,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    transform: [{ scale: hubScale }],
+                  }}
+                >
+                  <Radio size={44} color={ACCENT} strokeWidth={2.2} />
+                </Animated.View>
               </View>
 
               <Text
                 style={{
                   fontFamily: "Inter_700Bold",
-                  fontSize: 26,
+                  fontSize: 24,
                   color: colors.text,
                   textAlign: "center",
                 }}
               >
-                Report Received
+                Handoff in progress
               </Text>
 
               <Text
                 style={{
                   fontFamily: "Inter_400Regular",
-                  fontSize: 16,
+                  fontSize: 15,
                   color: colors.textSecondary,
                   textAlign: "center",
-                  lineHeight: 24,
-                  marginTop: 12,
+                  lineHeight: 22,
+                  marginTop: 10,
+                  paddingHorizontal: 4,
                 }}
               >
-                Your report has been submitted and is now being responded to, please do not close the app as dispatcher would need additional details.
+                Live on the dispatch queue — stay on this screen.
               </Text>
 
               <View
                 style={{
-                  marginTop: 28,
-                  height: 14,
-                  borderRadius: 999,
-                  overflow: "hidden",
-                  backgroundColor: colors.cardInner,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 10,
+                  marginTop: 26,
+                  height: 28,
                 }}
               >
-                <Animated.View
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    bottom: 0,
-                    width: 140,
-                    borderRadius: 999,
-                    backgroundColor: "#9AFF55",
-                    opacity: 0.9,
-                    transform: [{ translateX: barTranslate }],
-                  }}
-                />
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <Animated.View
+                    key={i}
+                    style={{
+                      width: 7,
+                      height: 7,
+                      borderRadius: 4,
+                      backgroundColor: ACCENT,
+                      opacity: dispatchDotOpacity(i),
+                    }}
+                  />
+                ))}
               </View>
 
               <Text
                 style={{
                   fontFamily: "Inter_400Regular",
-                  fontSize: 13,
+                  fontSize: 12,
                   color: colors.textSecondary,
-                  marginTop: 12,
+                  marginTop: 14,
                   textAlign: "center",
+                  fontStyle: "italic",
                 }}
               >
-                Waiting for dispatcher acknowledgement...
+                Listening for dispatcher acknowledgement…
               </Text>
             </>
           ) : null}
 
           {stage === "request_details" ? (
             <>
-              <View
-                style={{
-                  width: 96,
-                  height: 96,
-                  borderRadius: 48,
-                  backgroundColor: "#9AFF5522",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  alignSelf: "center",
-                  marginBottom: 24,
-                }}
-              >
-                <ShieldAlert size={48} color="#9AFF55" />
-              </View>
-
               <Text
                 style={{
                   fontFamily: "Inter_700Bold",
@@ -329,7 +414,7 @@ export default function EmergencyConfirmationScreen() {
                   marginBottom: 24,
                 }}
               >
-                Please provide additional details so dispatch can refine the response.
+                Providing additional details is optional.
               </Text>
 
               {expectedFields.map((field) => (
@@ -342,7 +427,7 @@ export default function EmergencyConfirmationScreen() {
                       marginBottom: 8,
                     }}
                   >
-                    {field.label}
+                    {field.label} (optional)
                   </Text>
                   <TextInput
                     value={detailValues[field.key] || ""}
@@ -453,50 +538,15 @@ export default function EmergencyConfirmationScreen() {
             </>
           ) : null}
 
-          <View
-            style={{
-              marginTop: 16,
-              paddingTop: 16,
-              borderTopWidth: 1,
-              borderTopColor: colors.border,
-              gap: 8,
-            }}
-          >
-            {reportId ? (
-              <View
-                style={{
-                  padding: 14,
-                  backgroundColor: colors.background,
-                  borderRadius: 14,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                }}
-              >
-                <Text
-                  style={{
-                    fontFamily: "Inter_400Regular",
-                    fontSize: 12,
-                    color: colors.textSecondary,
-                    marginBottom: 4,
-                    textAlign: "center",
-                  }}
-                >
-                  Report ID
-                </Text>
-                <Text
-                  style={{
-                    fontFamily: "Inter_600SemiBold",
-                    fontSize: 14,
-                    color: colors.text,
-                    textAlign: "center",
-                  }}
-                >
-                  {reportId}
-                </Text>
-              </View>
-            ) : null}
-
-            {reportSubmittedLabel ? (
+          {reportSubmittedLabel ? (
+            <View
+              style={{
+                marginTop: 16,
+                paddingTop: 16,
+                borderTopWidth: 1,
+                borderTopColor: colors.border,
+              }}
+            >
               <Text
                 style={{
                   fontFamily: "Inter_400Regular",
@@ -507,8 +557,8 @@ export default function EmergencyConfirmationScreen() {
               >
                 Submitted {reportSubmittedLabel}
               </Text>
-            ) : null}
-          </View>
+            </View>
+          ) : null}
         </View>
       </ScrollView>
     </View>

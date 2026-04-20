@@ -269,11 +269,20 @@ export async function signInCommandCenter(
   email: string,
   password: string
 ): Promise<User> {
+  const normalizedEmail = email.trim().toLowerCase();
   try {
-    const userCredential = await signInWithEmailAndPassword(getFirebaseAuth(), email, password);
+    const userCredential = await signInWithEmailAndPassword(
+      getFirebaseAuth(),
+      normalizedEmail,
+      password
+    );
     return userCredential.user;
   } catch (error: any) {
-    throw new Error(`Failed to sign in command center: ${error.message}`);
+    const wrapped = new Error(`Failed to sign in command center: ${error.message}`) as Error & {
+      code?: string;
+    };
+    wrapped.code = error.code;
+    throw wrapped;
   }
 }
 
@@ -300,33 +309,53 @@ export async function signInCivilian(
   email: string,
   password: string
 ): Promise<{ user: User; profile: CivilianUserProfile }> {
+  const normalizedEmail = email.trim().toLowerCase();
   try {
-    // Sign in with email and password
-    const userCredential = await signInWithEmailAndPassword(getFirebaseAuth(), email, password);
+    const userCredential = await signInWithEmailAndPassword(
+      getFirebaseAuth(),
+      normalizedEmail,
+      password
+    );
     const user = userCredential.user;
 
-    // Fetch user profile from Firestore
     const userDocRef = doc(getFirebaseFirestore(), 'users', user.uid);
-    const userDoc = await getDoc(userDocRef);
+    let userDoc = await getDoc(userDocRef);
 
     if (!userDoc.exists()) {
-      throw new Error('User profile not found. Please contact support.');
+      const seed: Record<string, unknown> = {
+        name: user.displayName || 'Civilian',
+        email: normalizedEmail,
+        phone: user.phoneNumber || '',
+        role: 'civilian',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+      await setDoc(userDocRef, seed, { merge: true });
+      userDoc = await getDoc(userDocRef);
     }
 
-    const profileData = userDoc.data();
+    const profileData = userDoc.data() || {};
+    const displayName =
+      (typeof profileData.name === 'string' && profileData.name) ||
+      (typeof profileData.fullName === 'string' && profileData.fullName) ||
+      '';
     const profile: CivilianUserProfile = {
       uid: user.uid,
-      name: profileData.name || '',
-      phone: profileData.phone || '',
-      email: profileData.email || email,
-      role: profileData.role || 'civilian',
+      name: displayName,
+      phone: (profileData.phone as string) || user.phoneNumber || '',
+      email: (profileData.email as string) || user.email || normalizedEmail,
+      role: (profileData.role as string) || 'civilian',
       createdAt: profileData.createdAt,
       updatedAt: profileData.updatedAt,
     };
 
     return { user, profile };
   } catch (error: any) {
-    throw new Error(`Failed to sign in: ${error.message}`);
+    const wrapped = new Error(`Failed to sign in: ${error.message}`) as Error & {
+      code?: string;
+    };
+    wrapped.code = error.code;
+    throw wrapped;
   }
 }
 
@@ -340,9 +369,68 @@ export async function verifyCommandCenterUser(): Promise<boolean> {
     if (!currentUser) {
       return false;
     }
-    
-    const commandCenterDoc = await getDoc(doc(getFirebaseFirestore(), 'commandCenters', currentUser.uid));
-    return commandCenterDoc.exists();
+
+    // Primary source of truth: dedicated command center profile.
+    const commandCenterDoc = await getDoc(
+      doc(getFirebaseFirestore(), 'commandCenters', currentUser.uid)
+    );
+    if (commandCenterDoc.exists()) {
+      return true;
+    }
+
+    // Backward-compatible fallback: role/designation stored under users or dispatchers.
+    const readDocSafe = async (collectionName: 'users' | 'dispatchers') => {
+      try {
+        return await getDoc(doc(getFirebaseFirestore(), collectionName, currentUser.uid));
+      } catch (error: any) {
+        // Some roles are not allowed to read certain collections; treat as absent.
+        const code = typeof error?.code === 'string' ? error.code : '';
+        if (code.includes('permission-denied') || code.includes('PERMISSION_DENIED')) {
+          return null;
+        }
+        throw error;
+      }
+    };
+
+    const [userDoc, dispatcherDoc] = await Promise.all([
+      readDocSafe('users'),
+      readDocSafe('dispatchers'),
+    ]);
+
+    const normalize = (value: unknown): string =>
+      typeof value === 'string' ? value.trim().toLowerCase().replace(/[\s-]/g, '_') : '';
+
+    const acceptedRoleValues = new Set([
+      'command_center',
+      'commandcenter',
+      'command',
+      'command_admin',
+      'command_center_admin',
+    ]);
+
+    const roleFromUser = normalize(userDoc?.data()?.role);
+    const roleFromDispatcher = normalize(dispatcherDoc?.data()?.role);
+    const designationFromDispatcher = normalize(dispatcherDoc?.data()?.designation);
+
+    if (
+      acceptedRoleValues.has(roleFromUser) ||
+      acceptedRoleValues.has(roleFromDispatcher) ||
+      acceptedRoleValues.has(designationFromDispatcher)
+    ) {
+      return true;
+    }
+
+    // Optional fallback: custom auth claims.
+    const tokenResult = await currentUser.getIdTokenResult();
+    const claimRole = normalize(tokenResult.claims?.role);
+    const claimDesignation = normalize(tokenResult.claims?.designation);
+    const claimCommandCenter = tokenResult.claims?.isCommandCenter === true;
+
+    return (
+      claimCommandCenter ||
+      acceptedRoleValues.has(claimRole) ||
+      acceptedRoleValues.has(claimDesignation)
+    );
   } catch (error: any) {
     console.error('Error verifying command center user:', error);
     return false;
@@ -364,6 +452,14 @@ export async function getAllDispatchers(): Promise<Array<{ uid: string; account:
       const q = query(dispatchersRef, where('active', '==', true));
       querySnapshot = await getDocs(q);
       console.log(`[getAllDispatchers] Query with active filter returned ${querySnapshot.size} documents`);
+
+      // Backward compatibility: older dispatcher docs may not include `active`.
+      // If strict query returns none, fetch all and apply relaxed in-memory filter.
+      if (querySnapshot.empty) {
+        console.log('[getAllDispatchers] No active==true docs found, falling back to full collection scan');
+        querySnapshot = await getDocs(dispatchersRef);
+        console.log(`[getAllDispatchers] Fallback fetched ${querySnapshot.size} dispatcher documents`);
+      }
     } catch (queryError: any) {
       // If query fails (e.g., missing index), get all dispatchers and filter in memory
       console.warn('[getAllDispatchers] Query with active filter failed, fetching all dispatchers:', queryError.message);
@@ -374,8 +470,9 @@ export async function getAllDispatchers(): Promise<Array<{ uid: string; account:
     const dispatchers: Array<{ uid: string; account: DispatcherAccount }> = [];
     querySnapshot.forEach((doc) => {
       const data = doc.data();
-      // Filter in memory if we got all documents (active might be missing or false)
-      const isActive = data.active !== false && data.active !== undefined;
+      // Backward compatibility: older dispatcher docs may not have `active`.
+      // Treat missing as active unless explicitly false.
+      const isActive = data.active !== false;
       
       if (isActive) {
         dispatchers.push({
