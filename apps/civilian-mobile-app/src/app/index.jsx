@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import { View, Text, TouchableOpacity, Animated, Easing } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -11,11 +11,13 @@ import {
 } from "@expo-google-fonts/inter";
 import { useFonts } from "expo-font";
 import useUserStore from "@/utils/userStore";
+import { UI_MODE } from "@/utils/api";
+import { getFirebaseAuth, onAuthStateChanged } from "@packages/firebase";
 
 export default function Index() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { user, isLoading, loadUser } = useUserStore();
+  const { user, isLoading, loadUser, setUser } = useUserStore();
   const gradientDrift = useRef(new Animated.Value(0)).current;
 
   const [fontsLoaded] = useFonts({
@@ -29,10 +31,29 @@ export default function Index() {
   }, []);
 
   useEffect(() => {
-    if (!isLoading && user) {
+    if (isLoading || !user) return;
+
+    // In UI_MODE we intentionally bypass Firebase Auth checks.
+    if (UI_MODE) {
       router.replace("/dashboard");
+      return;
     }
-  }, [user, isLoading]);
+
+    const auth = getFirebaseAuth();
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        router.replace("/dashboard");
+        return;
+      }
+
+      // If AsyncStorage has stale user data but Firebase has no session,
+      // clear local user and force login to avoid unauthorized Firestore calls.
+      await setUser(null);
+      router.replace("/login");
+    });
+
+    return unsubscribe;
+  }, [user, isLoading, router, setUser]);
 
   useEffect(() => {
     const loop = Animated.loop(
