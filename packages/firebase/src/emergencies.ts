@@ -692,10 +692,6 @@ export async function submitEmergencyAdditionalDetails(
       {}
     );
 
-    if (Object.keys(normalizedDetails).length === 0) {
-      throw new Error('Additional details cannot be empty');
-    }
-
     const reportRef = doc(getFirebaseFirestore(), 'emergencies', reportId);
     const reportDocSnap = await getDoc(reportRef);
     if (!reportDocSnap.exists()) {
@@ -703,7 +699,8 @@ export async function submitEmergencyAdditionalDetails(
     }
 
     await updateDoc(reportRef, {
-      additionalDetails: normalizedDetails,
+      additionalDetails:
+        Object.keys(normalizedDetails).length > 0 ? normalizedDetails : null,
       additionalDetailsSubmittedAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });
