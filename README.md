@@ -1,4 +1,4 @@
-# RESQ-Link - Project Setup Guide 
+# RESQ-Link - Project Setup Guide  
 
 Welcome to the rescue dispatch monorepo: multiple client apps and one shared Firebase library. **There is no root `package.json`** — each app under `apps/` and `packages/firebase` is installed with **its own** `npm install` (see the **Setup order summary** section below).
 
