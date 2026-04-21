@@ -1,9 +1,42 @@
 import { Stack, useRouter } from "expo-router";
+import React, { useMemo } from "react";
 import { StyleSheet, View, Text, TouchableOpacity } from "react-native";
-import { colors, radii, spacing } from "@/theme";
+import { radii, spacing, useResqTheme } from "@/theme";
 
 export default function NotFoundScreen() {
   const router = useRouter();
+  const { colors, t } = useResqTheme();
+
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          padding: spacing.xl,
+          backgroundColor: colors.background,
+        },
+        title: {
+          fontSize: 18,
+          fontFamily: "SpaceGrotesk_600SemiBold",
+          color: colors.text,
+          marginBottom: spacing.xl,
+        },
+        button: {
+          backgroundColor: t.buttonPrimaryBg,
+          paddingHorizontal: 24,
+          paddingVertical: 14,
+          borderRadius: radii.md,
+        },
+        buttonText: {
+          color: t.buttonPrimaryText,
+          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontSize: 16,
+        },
+      }),
+    [colors, t]
+  );
 
   return (
     <>
@@ -20,30 +53,3 @@ export default function NotFoundScreen() {
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: spacing.xl,
-    backgroundColor: colors.background,
-  },
-  title: {
-    fontSize: 18,
-    fontFamily: "SpaceGrotesk_600SemiBold",
-    color: colors.text,
-    marginBottom: spacing.xl,
-  },
-  button: {
-    backgroundColor: colors.accent,
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: radii.md,
-  },
-  buttonText: {
-    color: colors.white,
-    fontFamily: "SpaceGrotesk_600SemiBold",
-    fontSize: 16,
-  },
-});

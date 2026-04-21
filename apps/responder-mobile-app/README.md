@@ -48,30 +48,46 @@ Responders must log in with their email and password. The app verifies that:
 - Real-time updates ensure responders see new assignments immediately
 - Case status changes are reflected in real-time
 
+## Architecture
+
+- **[docs/architecture.md](./docs/architecture.md)** — folder layout, routing, theme, services (source of truth)  
+- **[docs/RESPONDER-APP-STRUCTURE-GUIDE.md](./docs/RESPONDER-APP-STRUCTURE-GUIDE.md)** — route map and quick conventions  
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** — short pointer to the docs above  
+
+**`.env`** lives at the **app root** (this folder). Do not move it.
+
 ## Project Structure
 
 ```
 responder-mobile-app/
 ├── src/
-│   ├── app/
-│   │   ├── _layout.jsx      # Navigation setup
-│   │   ├── index.jsx        # Entry point (redirects to login/dashboard)
-│   │   ├── login.jsx        # Responder login screen
-│   │   ├── dashboard.jsx    # Main dashboard with assigned cases
-│   │   └── case-detail.jsx  # Case detail view
-│   ├── components/
-│   │   ├── CaseCard.jsx         # Case card component
-│   │   ├── CaseStatusBadge.jsx  # Status badge
-│   │   ├── PriorityBadge.jsx    # Priority badge
-│   │   ├── CaseInfoCard.jsx     # Case information display
-│   │   ├── LoadingScreen.jsx    # Loading state
-│   │   ├── ErrorAlert.jsx       # Error display
-│   │   ├── CustomButton.jsx     # Reusable button
-│   │   └── FormInput.jsx        # Form input component
-│   └── utils/
-│       ├── auth/
-│       │   └── dispatcherAuth.js  # Dispatcher authentication utilities
-│       └── userStore.js           # User state management
+│   ├── app/                          # Expo Router — URLs defined only here
+│   │   ├── _layout.jsx               # Root providers + Stack
+│   │   ├── index.jsx                 # / → redirect to /login or /dashboard
+│   │   ├── +not-found.tsx            # Unmatched routes
+│   │   ├── (auth)/login.jsx          # /login
+│   │   ├── (tabs)/
+│   │   │   ├── _layout.jsx           # 4 tabs: Dashboard, Map, Notifications, Settings
+│   │   │   ├── dashboard.jsx         # /dashboard
+│   │   │   ├── map.jsx               # /map
+│   │   │   ├── notifications.jsx    # /notifications
+│   │   │   └── settings.jsx          # /settings
+│   │   ├── incident/[id].jsx         # /incident/:id — case detail
+│   │   └── support/
+│   │       ├── about.jsx             # /support/about
+│   │       ├── help-support.jsx      # /support/help-support
+│   │       └── location.jsx          # /support/location
+│   │
+│   ├── modules/                      # Feature code (components, hooks) — no duplicate /screens here
+│   │   ├── auth/, dashboard/, incidents/, map/, notifications/, settings/
+│   │
+│   ├── components/                   # Shared UI only: ui/, feedback/, layout/
+│   ├── services/                     # Firebase / API (incidentService, responderService, auth/…)
+│   ├── store/userStore.ts            # Zustand session user
+│   ├── query/                        # TanStack Query client + keys
+│   ├── utils/                        # Pure helpers (formatting, map helpers)
+│   ├── theme/, context/
+│   └── constants/
 ```
 
 ## Firebase Integration

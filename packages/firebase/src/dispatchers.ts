@@ -85,6 +85,13 @@ export async function setDispatcherOnlineStatus(isOnline: boolean): Promise<void
   try {
     const currentUser = getFirebaseAuth().currentUser;
     if (!currentUser) {
+      /**
+       * Going offline during logout/unmount often runs after auth is cleared.
+       * Firestore cannot be updated without a uid; skipping is correct and avoids noisy errors.
+       */
+      if (!isOnline) {
+        return;
+      }
       throw new Error('User must be authenticated to update online status');
     }
 

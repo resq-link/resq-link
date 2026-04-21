@@ -2,6 +2,8 @@ node_modules/
 .expo/
 .expo-shared/
 dist/
+dist-test/
+dist-export-test/
 npm-debug.*
 *.jks
 *.p8

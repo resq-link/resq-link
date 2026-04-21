@@ -56,6 +56,7 @@ module.exports = ({ config }) => {
         storageBucket: getEnv('FIREBASE_STORAGE_BUCKET'),
         messagingSenderId: getEnv('FIREBASE_MESSAGING_SENDER_ID'),
         appId: getEnv('FIREBASE_APP_ID'),
+        databaseURL: getEnv('FIREBASE_DATABASE_URL'),
       },
     },
   };

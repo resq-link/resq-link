@@ -1,6 +1,7 @@
 import { initializeApp, getApps, FirebaseApp, type FirebaseOptions } from 'firebase/app';
 import { getAuth, initializeAuth, type Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
+import { getDatabase, Database } from 'firebase/database';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 
 const isPlaceholder = (value: string | undefined | null): boolean => {
@@ -44,6 +45,7 @@ type ExpoFirebaseExtra = {
   storageBucket?: string;
   messagingSenderId?: string;
   appId?: string;
+  databaseURL?: string;
 } | null;
 
 /** `undefined` = not loaded yet; `null` = no usable Expo extra */
@@ -140,6 +142,12 @@ function getFirebaseOptions(): FirebaseOptions {
       process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
       process.env.FIREBASE_APP_ID
     ),
+    databaseURL: getConfigValue(
+      expoFirebaseConfig?.databaseURL,
+      process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL,
+      process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL,
+      process.env.FIREBASE_DATABASE_URL
+    ),
   };
 
   return cachedFirebaseOptions;
@@ -157,6 +165,7 @@ function isConfigValid(cfg: FirebaseOptions): boolean {
 let _app: FirebaseApp | null = null;
 let _auth: Auth | null = null;
 let _firestore: Firestore | null = null;
+let _database: Database | null = null;
 let _storage: FirebaseStorage | null = null;
 
 function ensureFirebaseApp(): FirebaseApp {
@@ -280,6 +289,29 @@ function ensureFirebaseFirestore(): Firestore {
   }
 }
 
+function ensureFirebaseRealtimeDatabase(): Database {
+  if (_database) {
+    return _database;
+  }
+
+  const app = ensureFirebaseApp();
+  const cfg = getFirebaseOptions();
+
+  if (!cfg.databaseURL || isPlaceholder(cfg.databaseURL)) {
+    throw new Error(
+      'Firebase Realtime Database URL is missing. Set EXPO_PUBLIC_FIREBASE_DATABASE_URL (or NEXT_PUBLIC_FIREBASE_DATABASE_URL) to your database URL from the Firebase console.',
+    );
+  }
+
+  try {
+    _database = getDatabase(app);
+    return _database;
+  } catch (error: any) {
+    console.error('❌ Error initializing Realtime Database:', error.message);
+    throw new Error(`Failed to initialize Firebase Realtime Database: ${error.message}`);
+  }
+}
+
 function ensureFirebaseStorage(): FirebaseStorage {
   if (_storage) {
     return _storage;
@@ -309,6 +341,17 @@ export function getFirebaseAuth(): Auth {
 export function getFirebaseFirestore(): Firestore {
   return ensureFirebaseFirestore();
 }
+
+/** Returns true when a Realtime Database URL is configured (presence features). */
+export function isFirebaseRealtimeDatabaseConfigured(): boolean {
+  const cfg = getFirebaseOptions();
+  return !!(cfg.databaseURL && !isPlaceholder(cfg.databaseURL));
+}
+
+export function getFirebaseRealtimeDatabase(): Database {
+  return ensureFirebaseRealtimeDatabase();
+}
+
 export function getFirebaseStorage(): FirebaseStorage {
   return ensureFirebaseStorage();
 }

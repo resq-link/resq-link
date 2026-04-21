@@ -4,6 +4,8 @@ export {
   getFirebaseAuth,
   getFirebaseFirestore,
   getFirebaseStorage,
+  getFirebaseRealtimeDatabase,
+  isFirebaseRealtimeDatabaseConfigured,
 } from './config';
 
 // Export Firestore functions
@@ -89,6 +91,16 @@ export {
   getActiveDispatcherLocations,
   type DispatcherLocation,
 } from './dispatchers';
+
+// Responder presence (Realtime DB) + live online count
+export {
+  subscribeToOnlineResponderCount,
+  beginResponderRealtimePresence,
+  suspendResponderRealtimePresence,
+  resumeResponderRealtimePresence,
+  clearResponderRealtimePresence,
+  isResponderDesignation,
+} from './responderPresence';
 
 // Export resource management functions
 export {
