@@ -724,7 +724,10 @@ export async function dispatchIncidentResources(
 
 export function subscribeToIncidents(
   callback: (incidents: IncidentRecord[]) => void,
-  limitCount: number = 100
+  limitCount: number = 100,
+  options?: {
+    includeAllCommandCenters?: boolean;
+  }
 ): () => void {
   try {
     // Avoid permission errors during auth initialization races.
@@ -735,13 +738,15 @@ export function subscribeToIncidents(
     }
 
     const incidentsRef = collection(getFirebaseFirestore(), 'incidents');
-    // Scope to the signed-in command center.
-    // This matches authorization checks used in `dispatchIncidentResources`.
-    const q = query(
-      incidentsRef,
-      where('commandCenterAdminId', '==', currentUser.uid),
-      limit(limitCount * 3)
-    );
+    const constraints = options?.includeAllCommandCenters
+      ? [limit(limitCount * 3)]
+      : [
+          // Scope to the signed-in command center by default.
+          // This matches authorization checks used in `dispatchIncidentResources`.
+          where('commandCenterAdminId', '==', currentUser.uid),
+          limit(limitCount * 3),
+        ];
+    const q = query(incidentsRef, ...constraints);
 
     return onSnapshot(
       q,

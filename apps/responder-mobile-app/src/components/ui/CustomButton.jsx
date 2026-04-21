@@ -11,7 +11,7 @@ export default function CustomButton({
   textStyle,
   ...props
 }) {
-  const { t } = useResqTheme();
+  const { colors, t } = useResqTheme();
 
   const getButtonStyle = () => {
     const baseStyle = {

@@ -9,6 +9,8 @@ export default function ErrorAlert({
   softBorderColor,
   softTextColor,
 }) {
+  const { colors, t } = useResqTheme();
+
   if (!message) return null;
 
   const isSoft = variant === "soft";

@@ -19,7 +19,9 @@ import StatusBadge from '@/components/StatusBadge'
 import CommandBar from '@/components/CommandBar'
 import { useAuth } from '@/contexts/AuthContext'
 import {
+  subscribeToEmergencyReports,
   subscribeToIncidents,
+  type EmergencyReport,
   type IncidentCategory,
   type IncidentPriority,
   type IncidentRecord,
@@ -105,6 +107,19 @@ function getTimestamp(value: IncidentRecord['createdAt'] | IncidentRecord['resol
   return 0
 }
 
+function toDate(value: unknown): Date | null {
+  if (!value) return null
+  if (value instanceof Date) return value
+  if (typeof value === 'object' && 'toDate' in value && typeof value.toDate === 'function') {
+    return value.toDate()
+  }
+  if (typeof value === 'string' || typeof value === 'number') {
+    const date = new Date(value)
+    return Number.isNaN(date.getTime()) ? null : date
+  }
+  return null
+}
+
 function getIncidentDate(incident: IncidentRecord): Date | null {
   const fromIncidentDate = parseDateInput(incident.incidentDate ?? '')
   if (fromIncidentDate) return fromIncidentDate
@@ -128,6 +143,113 @@ function formatIncidentDateTime(incident: IncidentRecord): string {
   const time = incident.incidentTime ?? ''
   if (!date) return 'No date recorded'
   return time ? `${formatReadableDate(date)} at ${time}` : formatReadableDate(date)
+}
+
+function getEmergencyIncidentCategory(type: EmergencyReport['incidentType']): IncidentCategory {
+  switch (type) {
+    case 'fire':
+      return 'fire'
+    case 'medical':
+      return 'medical'
+    case 'vehicular_accident':
+      return 'vehicular'
+    case 'police_emergency':
+      return 'peace_and_order'
+    case 'electrical_powerline_hazard':
+      return 'utility'
+    case 'other_emergency':
+    default:
+      return 'other'
+  }
+}
+
+function getEmergencyIncidentLabel(type: EmergencyReport['incidentType']): string {
+  switch (type) {
+    case 'fire':
+      return 'Fire'
+    case 'medical':
+      return 'Medical Emergency'
+    case 'vehicular_accident':
+      return 'Vehicular Accident'
+    case 'police_emergency':
+      return 'Police Emergency'
+    case 'electrical_powerline_hazard':
+      return 'Electrical / Powerline Hazard'
+    case 'other_emergency':
+    default:
+      return 'Other Emergency'
+  }
+}
+
+function getEmergencyIncidentStatus(status: EmergencyReport['status']): IncidentStatus {
+  switch (status) {
+    case 'pending':
+      return 'new'
+    case 'active':
+      return 'dispatched'
+    case 'enroute':
+      return 'enroute'
+    case 'on_scene':
+      return 'on_scene'
+    case 'done':
+    case 'resolved':
+      return 'resolved'
+    default:
+      return 'new'
+  }
+}
+
+function convertEmergencyReportToIncident(report: EmergencyReport): IncidentRecord {
+  const createdAt = toDate(report.createdAt) ?? new Date()
+  const updatedAt = toDate(report.updatedAt) ?? undefined
+  const resolvedAt =
+    report.status === 'done' || report.status === 'resolved'
+      ? toDate(report.movedToHistoryAt) ?? updatedAt ?? createdAt
+      : null
+  const incidentDate = formatDateInput(createdAt)
+  const incidentTime = createdAt.toLocaleTimeString('en-PH', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  })
+
+  return {
+    id: report.id ? `emergency-${report.id}` : `emergency-${createdAt.getTime()}`,
+    referenceNumber: report.id ? `APP-${report.id.slice(-6).toUpperCase()}` : 'APP-REPORT',
+    source: 'civilian_app',
+    createdByUserId: report.userId || '',
+    commandCenterAdminId: report.viewedByDispatcherId || '',
+    incidentCategory: getEmergencyIncidentCategory(report.incidentType),
+    incidentSubtypeId: report.incidentType,
+    incidentSubtypeLabel: getEmergencyIncidentLabel(report.incidentType),
+    priority: report.priority || 'medium',
+    locationText: report.locationText || 'Unspecified location',
+    landmark: report.landmark || null,
+    quadrant: null,
+    latitude: report.latitude,
+    longitude: report.longitude,
+    callerName: null,
+    callerContact: null,
+    description: report.description || null,
+    vehicularAccidentReason: null,
+    notes: report.postIncidentReport?.notes || null,
+    requiresExternalAgency: Boolean(report.assignedAgency || report.suggestedAgency),
+    recommendedAgencies: [],
+    assignedAgencies: [],
+    assignedResourceIds: [],
+    teamId: report.assignedResponderId || null,
+    teamName: report.responder || null,
+    incidentDate,
+    incidentTime,
+    dateOfDuty: incidentDate,
+    scheduleOfDuty: incidentTime.includes('PM') ? 'PM' : 'AM',
+    teamOnDuty: null,
+    status: getEmergencyIncidentStatus(report.status),
+    resolutionStatus: report.status === 'done' || report.status === 'resolved' ? 'resolved' : 'open',
+    createdAt,
+    updatedAt,
+    resolvedAt,
+  }
 }
 
 function countBy<T extends string>(
@@ -372,7 +494,8 @@ export default function ReportPage() {
   const { user } = useAuth()
   const router = useRouter()
 
-  const [incidents, setIncidents] = useState<IncidentRecord[]>([])
+  const [manualIncidents, setManualIncidents] = useState<IncidentRecord[]>([])
+  const [appReportIncidents, setAppReportIncidents] = useState<IncidentRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [preset, setPreset] = useState<DatePreset>('30d')
   const [selectedTeam, setSelectedTeam] = useState<TeamOnDuty | 'all'>('all')
@@ -385,13 +508,41 @@ export default function ReportPage() {
       return
     }
 
-    const unsubscribe = subscribeToIncidents((items) => {
-      setIncidents(items)
-      setIsLoading(false)
-    }, 1000)
+    let loadedManual = false
+    let loadedAppReports = false
+    const markLoaded = () => {
+      if (loadedManual && loadedAppReports) setIsLoading(false)
+    }
 
-    return () => unsubscribe()
+    const unsubscribeIncidents = subscribeToIncidents(
+      (items) => {
+        setManualIncidents(items)
+        loadedManual = true
+        markLoaded()
+      },
+      1000,
+      { includeAllCommandCenters: true }
+    )
+
+    const unsubscribeAppReports = subscribeToEmergencyReports(
+      (reports) => {
+        setAppReportIncidents(reports.map(convertEmergencyReportToIncident))
+        loadedAppReports = true
+        markLoaded()
+      },
+      { statusFilter: 'all', limitCount: 1000 }
+    )
+
+    return () => {
+      unsubscribeIncidents()
+      unsubscribeAppReports()
+    }
   }, [user, router])
+
+  const incidents = useMemo(
+    () => [...manualIncidents, ...appReportIncidents],
+    [manualIncidents, appReportIncidents]
+  )
 
   const filteredIncidents = useMemo(() => {
     const from = fromDate ? startOfDay(parseDateInput(fromDate) ?? new Date(0)) : null
