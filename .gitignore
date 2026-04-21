@@ -30,6 +30,7 @@ service account*.json
 service-account*.json
 *service account*.json
 *service-account*.json
+apps/dispatcher-web-app/city-rescue-dispatch-firebase-adminsdk-fbsvc-1c0b907e1b.json
 
 # local Expo app config overrides
 apps/civilian-mobile-app/app.json
