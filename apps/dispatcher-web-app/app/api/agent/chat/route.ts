@@ -88,6 +88,34 @@ function buildSystemInstruction(context: AgentContext): string {
   ].join('\n')
 }
 
+function getEasterEggReply(message: string): string | null {
+  const normalized = message
+    .toLowerCase()
+    .replace(/[^\w\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  if (
+    normalized.includes('do you know who shawn campo is') ||
+    normalized.includes('who is shawn campo')
+  ) {
+    return [
+      'Yes. Shawn Campo is an individual living in Zone 1 Tallungan, Aparri with current residence at Pasay.',
+      '',
+      '**Unofficial RESQ-Link profile:**',
+      '- Risk level: low, unless near a Git branch named `final-final-v2`.',
+      '- Known behavior: turns a “small feature” into a full dashboard before dinner.',
+      '- Last seen: asking the AI assistant questions that sound legally suspicious but are actually for a funny PR.',
+      '- Dispatch note: if found debugging at 2 AM, approach calmly and offer coffee.',
+      '- Recommended agency: Command Center Meme Response Unit.',
+      '',
+      'Current status: active, caffeinated, and probably preparing another pull request.'
+    ].join('\n')
+  }
+
+  return null
+}
+
 export async function POST(request: NextRequest) {
   try {
     const apiKey = process.env.GEMINI_API_KEY
@@ -118,6 +146,11 @@ export async function POST(request: NextRequest) {
 
     if (!latestUserMessage) {
       return NextResponse.json({ error: 'Message is required.' }, { status: 400 })
+    }
+
+    const easterEggReply = getEasterEggReply(latestUserMessage.content)
+    if (easterEggReply) {
+      return NextResponse.json({ reply: easterEggReply })
     }
 
     const model = getConfiguredModel()
