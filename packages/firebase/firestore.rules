@@ -65,7 +65,7 @@ service cloud.firestore {
     
     // Footage requests (civilian submit; command center / dispatchers manage status)
     match /footageRequests/{requestId} {
-      allow create: if isAuthenticated() &&*["]
+      allow create: if isAuthenticated() &&
         request.resource.data.userId == request.auth.uid &&
         request.resource.data.keys().hasAll([
           'userId', 'purpose', 'purposeOtherText', 'locationText', 'notes',
