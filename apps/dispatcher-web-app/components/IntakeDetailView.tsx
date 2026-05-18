@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { 
   type EmergencyReport, 
@@ -8,7 +8,13 @@ import {
   getAllDispatchers,
   getSuggestedAgenciesForEmergencyType,
   subscribeToDispatcherLocations,
-  type DispatcherLocation
+  type DispatcherLocation,
+  query,
+  collection,
+  where,
+  onSnapshot,
+  getFirebaseFirestore,
+  convertFirestoreDoc,
 } from "@packages/firebase";
 import { 
   Calendar, 
@@ -22,7 +28,8 @@ import {
   CheckCircle,
   XCircle,
   History,
-  Activity
+  Activity,
+  Link2
 } from "lucide-react";
 
 const PinnedLocationMap = dynamic(() => import("./PinnedLocationMap"), {
@@ -77,20 +84,32 @@ const getDateLabel = (value: any) => {
 
 interface IntakeDetailViewProps {
   item: any | null // IntakeQueueItem
+  recentIncidents?: IncidentRecord[]
+  allCivilianReports?: EmergencyReport[]
   onRespondStart?: (report: EmergencyReport) => void
   onRespond?: (report: EmergencyReport, responder: any) => void
   onReject?: (report: EmergencyReport) => void
   onMoveToHistory?: (report: EmergencyReport) => void
   onCloseDetail?: () => void
+  onLinkToIncident?: (reportId: string, incidentId: string) => Promise<void>
+  onUnlinkFromIncident?: (reportId: string, incidentId: string) => Promise<void>
+  onLinkReportToReport?: (primaryReportId: string, secondaryReportId: string) => Promise<void>
+  onUnlinkReportFromReport?: (secondaryReportId: string) => Promise<void>
 }
 
 export default function IntakeDetailView({ 
   item,
+  recentIncidents = [],
+  allCivilianReports = [],
   onRespondStart,
   onRespond,
   onReject,
   onMoveToHistory,
-  onCloseDetail
+  onCloseDetail,
+  onLinkToIncident,
+  onUnlinkFromIncident,
+  onLinkReportToReport,
+  onUnlinkReportFromReport
 }: IntakeDetailViewProps) {
   const [isChoosingResponder, setIsChoosingResponder] = useState(false);
   const [responders, setResponders] = useState<any[]>([]);
@@ -98,6 +117,8 @@ export default function IntakeDetailView({
   const [isLoadingResponders, setIsLoadingResponders] = useState(false);
   const [responderError, setResponderError] = useState<string | null>(null);
   const [responderLocation, setResponderLocation] = useState<DispatcherLocation | null>(null);
+  const [associatedReports, setAssociatedReports] = useState<EmergencyReport[]>([]);
+  const [isLinking, setIsLinking] = useState(false);
 
   useEffect(() => {
     setIsChoosingResponder(false);
@@ -107,6 +128,162 @@ export default function IntakeDetailView({
 
   const report = item?.rawEmergencyReport as EmergencyReport;
   const incident = item?.rawIncident as IncidentRecord;
+
+  useEffect(() => {
+    if (item?.channel !== "incident" || !incident?.id) {
+      setAssociatedReports([]);
+      return;
+    }
+
+    const db = getFirebaseFirestore();
+    const q = query(
+      collection(db, "emergencies"),
+      where("incidentId", "==", incident.id)
+    );
+
+    const unsubscribe = onSnapshot(
+      q,
+      (querySnapshot) => {
+        const reportsList: EmergencyReport[] = [];
+        querySnapshot.forEach((docSnap) => {
+          reportsList.push(convertFirestoreDoc(docSnap));
+        });
+        setAssociatedReports(reportsList);
+      },
+      (error) => {
+        console.error("Error subscribing to associated reports:", error);
+      }
+    );
+
+    return unsubscribe;
+  }, [incident?.id, item?.channel]);
+
+  const calculateDistanceInMeters = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371e3; // Earth's radius in meters
+    const phi1 = (lat1 * Math.PI) / 180;
+    const phi2 = (lat2 * Math.PI) / 180;
+    const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
+    const deltaLambda = ((lon2 - lon1) * Math.PI) / 180;
+
+    const a =
+      Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+      Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c; // in meters
+  };
+
+  const isEmergency = item?.channel === "emergency_report";
+
+  // Potential duplicate matching
+  const potentialDuplicates = useMemo(() => {
+    if (!isEmergency || !report || !recentIncidents || report.incidentId) {
+      console.log("[Dedup Debug] Skipping check. Reasons:", { 
+        isEmergency, 
+        hasReport: !!report, 
+        hasRecentIncidents: !!recentIncidents, 
+        alreadyLinked: report?.incidentId 
+      });
+      return [];
+    }
+
+    const reportLat = report.latitude;
+    const reportLng = report.longitude;
+    if (reportLat == null || reportLng == null) {
+      console.log("[Dedup Debug] Report coordinates are null:", { reportLat, reportLng });
+      return [];
+    }
+
+    const reportTime = report.createdAt instanceof Date 
+      ? report.createdAt.getTime() 
+      : (report.createdAt && typeof report.createdAt === 'object' && 'toDate' in report.createdAt)
+      ? (report.createdAt as any).toDate().getTime()
+      : new Date(report.createdAt || Date.now()).getTime();
+
+    console.log("[Dedup Debug] Checking duplicates for report at coordinates:", { reportLat, reportLng }, "Total open incidents:", recentIncidents.length);
+
+    return recentIncidents.filter((inc) => {
+      // Only check open master incidents
+      if (inc.resolutionStatus !== "open" || !inc.id) return false;
+      if (inc.latitude == null || inc.longitude == null) return false;
+
+      const distance = calculateDistanceInMeters(
+        reportLat,
+        reportLng,
+        inc.latitude,
+        inc.longitude
+      );
+
+      const incTime = inc.createdAt instanceof Date 
+        ? inc.createdAt.getTime() 
+        : (inc.createdAt && typeof inc.createdAt === 'object' && 'toDate' in inc.createdAt)
+        ? (inc.createdAt as any).toDate().getTime()
+        : new Date(inc.createdAt || Date.now()).getTime();
+
+      const timeDiffMs = Math.abs(reportTime - incTime);
+      const timeDiffMins = timeDiffMs / (60 * 1000);
+
+      console.log(`[Dedup Debug] Comparing with master incident ${inc.referenceNumber}:`, {
+        distanceMeters: distance,
+        timeDiffMinutes: timeDiffMins,
+        isDistanceMatch: distance <= 150,
+        isTimeMatch: timeDiffMins <= 30
+      });
+
+      // Within 150 meters and 30 minutes
+      return distance <= 150 && timeDiffMs <= 30 * 60 * 1000;
+    });
+  }, [isEmergency, report, recentIncidents]);
+
+  // Potential duplicate civilian reports matching (raw calls)
+  const potentialDuplicateReports = useMemo(() => {
+    if (!isEmergency || !report || !allCivilianReports || allCivilianReports.length === 0) {
+      return [];
+    }
+
+    const reportLat = report.latitude;
+    const reportLng = report.longitude;
+    if (reportLat == null || reportLng == null) {
+      return [];
+    }
+
+    const reportTime = report.createdAt instanceof Date 
+      ? report.createdAt.getTime() 
+      : (report.createdAt && typeof report.createdAt === 'object' && 'toDate' in report.createdAt)
+      ? (report.createdAt as any).toDate().getTime()
+      : new Date(report.createdAt || Date.now()).getTime();
+
+    return allCivilianReports.filter((other) => {
+      // Don't compare with itself
+      if (other.id === report.id || !other.id) return false;
+      // Only check pending/active reports that are not yet grouped/linked
+      if (other.incidentId || other.status === "resolved" || other.status === "done") return false;
+      if (other.latitude == null || other.longitude == null) return false;
+
+      const distance = calculateDistanceInMeters(
+        reportLat,
+        reportLng,
+        other.latitude,
+        other.longitude
+      );
+
+      const otherTime = other.createdAt instanceof Date 
+        ? other.createdAt.getTime() 
+        : (other.createdAt && typeof other.createdAt === 'object' && 'toDate' in other.createdAt)
+        ? (other.createdAt as any).toDate().getTime()
+        : new Date(other.createdAt || Date.now()).getTime();
+
+      const timeDiffMs = Math.abs(reportTime - otherTime);
+
+      // Within 150 meters and 30 minutes
+      return distance <= 150 && timeDiffMs <= 30 * 60 * 1000;
+    });
+  }, [isEmergency, report, allCivilianReports]);
+
+  const linkedIncident = useMemo(() => {
+    if (!report?.incidentId || !recentIncidents) return null;
+    return recentIncidents.find((inc) => inc.id === report.incidentId) || null;
+  }, [report?.incidentId, recentIncidents]);
 
   useEffect(() => {
     if (!report?.assignedResponderId) {
@@ -137,8 +314,6 @@ export default function IntakeDetailView({
     );
   }
 
-  const isEmergency = item.channel === "emergency_report";
-  
   const isResponderAssigned = Boolean(report?.assignedResponderId || report?.responder);
   const responderHasAccepted = ["enroute", "on_scene", "done", "resolved"].includes(report?.status || "");
   const responderStatusLabel = !isResponderAssigned 
@@ -290,6 +465,160 @@ export default function IntakeDetailView({
 
       {/* Content Scroll Area */}
       <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar no-scrollbar">
+        {/* Linked Incident Banner */}
+        {isEmergency && report?.incidentId && (
+          <div className="rounded-xl border border-sky-900/60 bg-sky-950/40 p-4 flex items-center justify-between shadow-lg shadow-sky-950/20 border-dashed">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
+                <Shield className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-100">Linked to Master Incident</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  Grouped under case <span className="font-mono font-bold text-sky-400">{linkedIncident?.referenceNumber || "Active Incident"}</span>
+                </p>
+              </div>
+            </div>
+            {onUnlinkFromIncident && (
+              <button
+                disabled={isLinking}
+                onClick={async () => {
+                  setIsLinking(true);
+                  try {
+                    await onUnlinkFromIncident(report.id!, report.incidentId!);
+                  } catch (err) {
+                    console.error(err);
+                  } finally {
+                    setIsLinking(false);
+                  }
+                }}
+                className="px-3 py-1.5 rounded-lg border border-red-900/60 bg-red-950/20 hover:bg-red-950/45 text-[9px] font-black text-red-400 uppercase tracking-widest transition-all shadow-md shadow-red-950/20"
+              >
+                {isLinking ? "..." : "Unlink"}
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Grouped Report Banner — this report is a secondary grouped under a primary report */}
+        {isEmergency && report?.primaryReportId && !report?.incidentId && (
+          <div className="rounded-xl border border-purple-900/60 bg-purple-950/20 p-4 flex items-center justify-between shadow-lg shadow-purple-950/10 border-dashed">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                <Link2 className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-100">Grouped With Another Report</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">
+                  Sharing status with primary report{" "}
+                  <span className="font-mono font-bold text-purple-400">APP-{report.primaryReportId.slice(-6).toUpperCase()}</span>
+                </p>
+              </div>
+            </div>
+            {onUnlinkReportFromReport && (
+              <button
+                disabled={isLinking}
+                onClick={async () => {
+                  setIsLinking(true);
+                  try {
+                    await onUnlinkReportFromReport(report.id!);
+                  } catch (err) {
+                    console.error(err);
+                  } finally {
+                    setIsLinking(false);
+                  }
+                }}
+                className="px-3 py-1.5 rounded-lg border border-red-900/60 bg-red-950/20 hover:bg-red-950/45 text-[9px] font-black text-red-400 uppercase tracking-widest transition-all shadow-md shadow-red-950/20"
+              >
+                {isLinking ? "..." : "Ungroup"}
+              </button>
+            )}
+          </div>
+        )}
+        {isEmergency && !report?.incidentId && potentialDuplicates.length > 0 && (
+          <div className="rounded-xl border border-amber-900/60 bg-amber-950/20 p-4 space-y-3 shadow-lg shadow-amber-950/10 border-dashed animate-pulse-slow">
+            <div className="flex items-center gap-2 text-amber-400">
+              <AlertTriangle className="w-4 h-4" />
+              <h4 className="text-xs font-black uppercase tracking-wider">Potential Duplicate Detected</h4>
+            </div>
+            <p className="text-[11px] text-slate-300 leading-relaxed">
+              This report is within 150m and 30m of {potentialDuplicates.length === 1 ? "an active master incident" : "multiple active master incidents"}. Grouping reports keeps dispatcher dispatch channels clean.
+            </p>
+            <div className="space-y-2 mt-2">
+              {potentialDuplicates.map((dup) => (
+                <div key={dup.id} className="flex items-center justify-between p-2 rounded-lg bg-slate-950/50 border border-slate-800">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-mono font-bold text-amber-400">{dup.referenceNumber}</span>
+                    <span className="text-[10px] text-slate-400 mt-0.5">{dup.incidentSubtypeLabel} • {dup.locationText.split(',')[0]}</span>
+                  </div>
+                  {onLinkToIncident && (
+                    <button
+                      disabled={isLinking}
+                      onClick={async () => {
+                        setIsLinking(true);
+                        try {
+                          await onLinkToIncident(report.id!, dup.id!);
+                        } catch (err) {
+                          console.error(err);
+                        } finally {
+                          setIsLinking(false);
+                        }
+                      }}
+                      className="px-2.5 py-1.5 rounded bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-[9px] text-amber-400 font-bold tracking-widest uppercase transition-colors"
+                    >
+                      {isLinking ? "..." : "Link"}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Potential Duplicate Civilian Reports Alert */}
+        {isEmergency && !report?.incidentId && potentialDuplicateReports.length > 0 && (
+          <div className="rounded-xl border border-orange-500/40 bg-orange-950/20 p-4 space-y-2 shadow-lg shadow-orange-950/10 border-dashed animate-pulse-slow">
+            <div className="flex items-center gap-2 text-orange-400">
+              <AlertTriangle className="w-4 h-4" />
+              <h4 className="text-xs font-black uppercase tracking-wider">Multiple Reports of Same Incident</h4>
+            </div>
+            <p className="text-[11px] text-slate-300 leading-relaxed">
+              There {potentialDuplicateReports.length === 1 ? "is 1 other citizen report" : `are ${potentialDuplicateReports.length} other citizen reports`} submitted nearby in the last 30 minutes. 
+              Accepting this report will allow you to link and merge the remaining reports.
+            </p>
+            <div className="mt-2 space-y-1.5 max-h-[120px] overflow-y-auto custom-scrollbar">
+              {potentialDuplicateReports.map((other) => (
+                <div key={other.id} className="p-2.5 rounded bg-slate-950/60 border border-slate-900 text-[10px] text-slate-400 flex items-center justify-between gap-3">
+                  <div className="flex flex-col flex-1 min-w-0">
+                    <span className="font-mono text-orange-400/90 font-bold">APP-{other.id!.slice(-6).toUpperCase()}</span>
+                    <span className="text-[10px] text-slate-200 mt-1 leading-relaxed truncate">"{other.description || "No description provided."}"</span>
+                  </div>
+                  {other.primaryReportId ? (
+                    <span className="shrink-0 text-[9px] text-purple-400 font-bold uppercase tracking-widest border border-purple-900/40 bg-purple-950/20 px-2 py-1 rounded">Grouped</span>
+                  ) : onLinkReportToReport ? (
+                    <button
+                      disabled={isLinking}
+                      onClick={async () => {
+                        setIsLinking(true);
+                        try {
+                          await onLinkReportToReport(report.id!, other.id!);
+                        } catch (err) {
+                          console.error(err);
+                        } finally {
+                          setIsLinking(false);
+                        }
+                      }}
+                      className="shrink-0 px-2.5 py-1.5 rounded bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 text-[9px] text-orange-400 font-bold tracking-widest uppercase transition-colors"
+                    >
+                      {isLinking ? "..." : "Link"}
+                    </button>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Operational Metadata */}
         <div className={hasPinnedLocation ? "grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch" : "space-y-8"}>
            {hasPinnedLocation && (
@@ -400,8 +729,55 @@ export default function IntakeDetailView({
                   </div>
                 </DetailSection>
               )}
-           </div>
-        </div>
+            </div>
+         </div>
+
+         {/* Associated Citizen Reports Section */}
+         {!isEmergency && associatedReports.length > 0 && (
+           <DetailSection full icon={<Shield className="w-3.5 h-3.5" />} title={`Associated Citizen Reports (${associatedReports.length})`}>
+             <div className="space-y-4 mt-3">
+               <div className="grid gap-3 grid-cols-1 md:grid-cols-2">
+                 {associatedReports.map((assocReport, index) => (
+                   <div key={assocReport.id || index} className="rounded-xl border border-slate-800 bg-slate-950/40 p-4 space-y-3 relative group overflow-hidden">
+                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-sky-500" />
+                     <div className="flex items-start justify-between gap-2">
+                       <div>
+                         <p className="text-xs font-bold text-slate-100 uppercase font-mono">
+                           APP-{assocReport.id?.slice(-6).toUpperCase() || "REPORT"}
+                         </p>
+                         <p className="text-[10px] text-slate-500 mt-0.5">
+                           Reported at {getDateLabel(assocReport.createdAt)}
+                         </p>
+                       </div>
+                       <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-sky-950 text-sky-400 border border-sky-900/50 uppercase tracking-widest">
+                         Linked
+                       </span>
+                     </div>
+
+                     <p className="text-xs text-slate-300 bg-slate-950/50 p-3 rounded-lg border border-slate-900/40 leading-relaxed italic">
+                       "{assocReport.description || "No description provided."}"
+                     </p>
+
+                     {assocReport.imageUrl && (
+                       <div className="rounded-lg overflow-hidden border border-slate-800 bg-slate-950 max-h-48 relative">
+                         <img 
+                           src={assocReport.imageUrl} 
+                           alt="Citizen evidence photo" 
+                           className="w-full h-auto object-cover max-h-48 hover:scale-105 transition-transform duration-300"
+                         />
+                       </div>
+                     )}
+                     
+                     <div className="text-[10px] text-slate-500 space-y-1 pt-1">
+                       <p>Citizen: <span className="text-slate-300 font-medium">Verified Civilian Reporter</span></p>
+                       {assocReport.landmark && <p>Landmark: <span className="text-slate-300">{assocReport.landmark}</span></p>}
+                     </div>
+                   </div>
+                 ))}
+               </div>
+             </div>
+           </DetailSection>
+         )}
       </div>
     </div>
   );
