@@ -61,6 +61,9 @@ export {
   submitPostIncidentReport,
   updateCaseStatus,
   linkEmergencyToIncident,
+  linkReportToReport,
+  unlinkReportFromReport,
+  convertFirestoreDoc,
   type EmergencyReport,
 } from './emergencies';
 

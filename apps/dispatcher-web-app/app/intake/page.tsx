@@ -25,6 +25,10 @@ import {
   subscribeToIncidents,
   subscribeToIncidentTypeRules,
   subscribeToResources,
+  associateReportsWithIncident,
+  disassociateReportFromIncident,
+  linkReportToReport,
+  unlinkReportFromReport,
   type CreateIncidentInput,
   type DispatcherRole,
   type EmergencyReport,
@@ -741,6 +745,80 @@ function IntakeContent() {
     }
   };
 
+  const handleLinkToIncident = async (reportId: string, incidentId: string) => {
+    try {
+      await associateReportsWithIncident(incidentId, [reportId]);
+      
+      // Update local state instantly
+      setPageSuccess("Successfully grouped and linked report to active incident.");
+      
+      // Update selected queue item in real-time so that UI status updates
+      setSelectedQueueItem((prev) => {
+        if (prev && prev.id === reportId && prev.rawEmergencyReport) {
+          return {
+            ...prev,
+            rawEmergencyReport: {
+              ...prev.rawEmergencyReport,
+              incidentId: incidentId,
+              status: "linked",
+            },
+            statusLabel: "Linked",
+            statusToneClass: "border-sky-800 text-sky-400 bg-sky-950/40",
+          };
+        }
+        return prev;
+      });
+    } catch (error: any) {
+      setPageError(error.message || "Failed to link report to incident.");
+    }
+  };
+
+  const handleUnlinkFromIncident = async (reportId: string, incidentId: string) => {
+    try {
+      await disassociateReportFromIncident(incidentId, reportId);
+      
+      // Update local state instantly
+      setPageSuccess("Successfully unlinked civilian report from master incident.");
+      
+      // Update selected queue item in real-time
+      setSelectedQueueItem((prev) => {
+        if (prev && prev.id === reportId && prev.rawEmergencyReport) {
+          return {
+            ...prev,
+            rawEmergencyReport: {
+              ...prev.rawEmergencyReport,
+              incidentId: null,
+              status: "pending",
+            },
+            statusLabel: "Pending",
+            statusToneClass: "border-amber-800 text-amber-400 bg-amber-950/40",
+          };
+        }
+        return prev;
+      });
+    } catch (error: any) {
+      setPageError(error.message || "Failed to unlink report from incident.");
+    }
+  };
+
+  const handleLinkReportToReport = async (primaryReportId: string, secondaryReportId: string) => {
+    try {
+      await linkReportToReport(primaryReportId, secondaryReportId);
+      setPageSuccess("Reports grouped successfully. They now share the same incident status.");
+    } catch (error: any) {
+      setPageError(error.message || "Failed to group reports.");
+    }
+  };
+
+  const handleUnlinkReportFromReport = async (secondaryReportId: string) => {
+    try {
+      await unlinkReportFromReport(secondaryReportId);
+      setPageSuccess("Report ungrouped and reset to pending.");
+    } catch (error: any) {
+      setPageError(error.message || "Failed to ungroup report.");
+    }
+  };
+
   const openIncidentDatePicker = () => {
     const input = incidentDateInputRef.current;
     if (!input) return;
@@ -951,11 +1029,17 @@ function IntakeContent() {
             <div className={`${selectedQueueItem ? "flex" : "hidden lg:flex"} flex-1 flex-col min-h-0 p-4 lg:p-6 bg-slate-950/10 overflow-hidden`}>
               <IntakeDetailView 
                 item={selectedQueueItem} 
+                recentIncidents={recentIncidents}
+                allCivilianReports={appEmergencyReports}
                 onCloseDetail={() => setSelectedQueueItem(null)}
                 onRespondStart={handleRespondStartForAppReport}
                 onRespond={handleRespondToAppReport}
                 onReject={handleRejectAppReport}
                 onMoveToHistory={handleMoveAppReportToHistory}
+                onLinkToIncident={handleLinkToIncident}
+                onUnlinkFromIncident={handleUnlinkFromIncident}
+                onLinkReportToReport={handleLinkReportToReport}
+                onUnlinkReportFromReport={handleUnlinkReportFromReport}
               />
             </div>
           </div>

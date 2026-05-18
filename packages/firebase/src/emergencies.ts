@@ -38,6 +38,7 @@ export interface EmergencyReport {
   description?: string | null;
   imageUrl?: string | null;
   incidentId?: string | null; // Associated master incident (if any)
+  primaryReportId?: string | null; // Primary report this is grouped under (report-to-report grouping)
   status: 'pending' | 'linked' | 'enroute' | 'on_scene' | 'done' | 'active' | 'resolved'; // Support both old and new statuses for backward compatibility
   priority?: 'low' | 'medium' | 'high' | 'critical';
   createdAt?: Date | Timestamp;
@@ -77,7 +78,7 @@ export interface EmergencyReport {
 }
 
 // Convert Firestore document to EmergencyReport
-const convertFirestoreDoc = (doc: DocumentData): EmergencyReport => {
+export const convertFirestoreDoc = (doc: DocumentData): EmergencyReport => {
   const data = doc.data();
   return {
     id: doc.id,
@@ -96,6 +97,7 @@ const convertFirestoreDoc = (doc: DocumentData): EmergencyReport => {
     description: data.description || null,
     imageUrl: data.imageUrl || data.image_url || null,
     incidentId: data.incidentId || data.incident_id || null,
+    primaryReportId: data.primaryReportId || null,
     status: data.status || 'pending',
     priority: data.priority || getDefaultPriority(data.incidentType || data.incident_type),
     createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : (data.created_at?.toDate ? data.created_at.toDate() : new Date()),
@@ -1167,6 +1169,89 @@ export async function linkEmergencyToIncident(
   } catch (error: any) {
     console.error('Error linking emergency to incident:', error);
     throw new Error(`Failed to link emergency to incident: ${error.message}`);
+  }
+}
+
+/**
+ * Link a secondary (duplicate) civilian report to a primary report.
+ * The secondary will copy the primary's current status so they stay in sync.
+ */
+export async function linkReportToReport(
+  primaryReportId: string,
+  secondaryReportId: string
+): Promise<EmergencyReport> {
+  try {
+    const currentUser = getFirebaseAuth().currentUser;
+    if (!currentUser) {
+      throw new Error('User must be authenticated to link reports');
+    }
+
+    const db = getFirebaseFirestore();
+
+    // Fetch primary report to copy its current status
+    const primaryRef = doc(db, 'emergencies', primaryReportId);
+    const primarySnap = await getDoc(primaryRef);
+    if (!primarySnap.exists()) {
+      throw new Error('Primary report not found');
+    }
+    const primaryData = primarySnap.data();
+    const inheritedStatus = primaryData.status || 'pending';
+    const inheritedResponderId = primaryData.assignedResponderId || null;
+    const inheritedResponder = primaryData.responder || null;
+    const inheritedAgency = primaryData.assignedAgency || null;
+
+    // Update secondary report to point to primary and inherit status
+    const secondaryRef = doc(db, 'emergencies', secondaryReportId);
+    await updateDoc(secondaryRef, {
+      primaryReportId,
+      status: inheritedStatus,
+      assignedResponderId: inheritedResponderId,
+      responder: inheritedResponder,
+      assignedAgency: inheritedAgency,
+      updatedAt: Timestamp.now(),
+    });
+
+    const updatedSnap = await getDoc(secondaryRef);
+    if (!updatedSnap.exists()) {
+      throw new Error('Secondary report not found after update');
+    }
+    return convertFirestoreDoc(updatedSnap);
+  } catch (error: any) {
+    console.error('Error linking reports:', error);
+    throw new Error(`Failed to link reports: ${error.message}`);
+  }
+}
+
+/**
+ * Unlink a secondary report from its primary, resetting it to pending.
+ */
+export async function unlinkReportFromReport(
+  secondaryReportId: string
+): Promise<EmergencyReport> {
+  try {
+    const currentUser = getFirebaseAuth().currentUser;
+    if (!currentUser) {
+      throw new Error('User must be authenticated to unlink reports');
+    }
+
+    const secondaryRef = doc(getFirebaseFirestore(), 'emergencies', secondaryReportId);
+    await updateDoc(secondaryRef, {
+      primaryReportId: null,
+      status: 'pending',
+      assignedResponderId: null,
+      responder: null,
+      assignedAgency: null,
+      updatedAt: Timestamp.now(),
+    });
+
+    const updatedSnap = await getDoc(secondaryRef);
+    if (!updatedSnap.exists()) {
+      throw new Error('Report not found after unlink');
+    }
+    return convertFirestoreDoc(updatedSnap);
+  } catch (error: any) {
+    console.error('Error unlinking report:', error);
+    throw new Error(`Failed to unlink report: ${error.message}`);
   }
 }
 
