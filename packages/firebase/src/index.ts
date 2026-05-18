@@ -60,6 +60,7 @@ export {
   moveEmergencyReportToHistory,
   submitPostIncidentReport,
   updateCaseStatus,
+  linkEmergencyToIncident,
   type EmergencyReport,
 } from './emergencies';
 
@@ -153,6 +154,8 @@ export {
   getIncidentPriorityTone,
   getIncidentResourceMatch,
   validateIncidentAgencyRouting,
+  associateReportsWithIncident,
+  disassociateReportFromIncident,
   incidentAgencyCatalog,
   type AgencyCode,
   type CreateIncidentInput,

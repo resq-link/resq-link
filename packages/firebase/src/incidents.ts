@@ -71,6 +71,7 @@ export interface IncidentTypeRule {
 export interface IncidentRecord {
   id?: string;
   referenceNumber: string;
+  associatedReportIds?: string[]; // Linked citizen emergency report IDs
   source: IncidentSource;
   createdByUserId: string;
   commandCenterAdminId: string;
@@ -266,6 +267,7 @@ const toIncidentRecord = (snapshot: DocumentData): IncidentRecord => {
   return {
     id: snapshot.id,
     referenceNumber: data.referenceNumber || '',
+    associatedReportIds: Array.isArray(data.associatedReportIds) ? data.associatedReportIds : [],
     source: data.source || 'manual',
     createdByUserId: data.createdByUserId || '',
     commandCenterAdminId: data.commandCenterAdminId || '',
@@ -552,6 +554,7 @@ export async function createIncident(input: CreateIncidentInput): Promise<Incide
     updatedAt: Timestamp;
   } = {
     referenceNumber,
+    associatedReportIds: [],
     source: input.source,
     createdByUserId: currentUser.uid,
     commandCenterAdminId: currentUser.uid,
@@ -832,4 +835,103 @@ export function validateIncidentAgencyRouting(
   }
 
   return arraysMatch(rule.recommendedAgencies, agencies);
+}
+
+/**
+ * Associate multiple emergency reports with a master incident record in a batch/transaction.
+ * Updates both the incident's associatedReportIds array and the status/incidentId of each report.
+ * @param incidentId - The ID of the master incident record
+ * @param reportIds - Array of emergency report IDs to associate
+ */
+export async function associateReportsWithIncident(
+  incidentId: string,
+  reportIds: string[]
+): Promise<void> {
+  const currentUser = ensureAuthenticated();
+  
+  const db = getFirebaseFirestore();
+  const incidentRef = doc(db, 'incidents', incidentId);
+  const incidentSnapshot = await getDoc(incidentRef);
+  
+  if (!incidentSnapshot.exists()) {
+    throw new Error('Incident not found.');
+  }
+  
+  const incident = toIncidentRecord(incidentSnapshot);
+  if (incident.commandCenterAdminId !== currentUser.uid) {
+    throw new Error('Only the command center admin assigned to the incident can associate reports.');
+  }
+
+  const batch = writeBatch(db);
+  const timestamp = Timestamp.now();
+  
+  // Calculate merged report IDs
+  const existingReportIds = incident.associatedReportIds || [];
+  const mergedReportIds = Array.from(new Set([...existingReportIds, ...reportIds]));
+  
+  // Update each EmergencyReport document to link it to the incident
+  reportIds.forEach((reportId) => {
+    const reportRef = doc(db, 'emergencies', reportId);
+    batch.update(reportRef, {
+      incidentId: incidentId,
+      status: 'linked',
+      updatedAt: timestamp,
+    });
+  });
+  
+  // Update the master IncidentRecord
+  batch.update(incidentRef, {
+    associatedReportIds: mergedReportIds,
+    updatedAt: timestamp,
+  });
+  
+  await batch.commit();
+}
+
+/**
+ * Unassociate an emergency report from a master incident record.
+ * @param incidentId - The ID of the master incident record
+ * @param reportId - The ID of the emergency report to unlink
+ */
+export async function disassociateReportFromIncident(
+  incidentId: string,
+  reportId: string
+): Promise<void> {
+  const currentUser = ensureAuthenticated();
+  
+  const db = getFirebaseFirestore();
+  const incidentRef = doc(db, 'incidents', incidentId);
+  const incidentSnapshot = await getDoc(incidentRef);
+  
+  if (!incidentSnapshot.exists()) {
+    throw new Error('Incident not found.');
+  }
+  
+  const incident = toIncidentRecord(incidentSnapshot);
+  if (incident.commandCenterAdminId !== currentUser.uid) {
+    throw new Error('Only the command center admin assigned to the incident can disassociate reports.');
+  }
+
+  const batch = writeBatch(db);
+  const timestamp = Timestamp.now();
+  
+  // Remove the report ID from the incident's array
+  const existingReportIds = incident.associatedReportIds || [];
+  const updatedReportIds = existingReportIds.filter(id => id !== reportId);
+  
+  // Update the EmergencyReport document to unlink it
+  const reportRef = doc(db, 'emergencies', reportId);
+  batch.update(reportRef, {
+    incidentId: null,
+    status: 'pending', // Reverts to pending when unlinked
+    updatedAt: timestamp,
+  });
+  
+  // Update the master IncidentRecord
+  batch.update(incidentRef, {
+    associatedReportIds: updatedReportIds,
+    updatedAt: timestamp,
+  });
+  
+  await batch.commit();
 }
