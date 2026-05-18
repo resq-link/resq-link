@@ -37,7 +37,8 @@ export interface EmergencyReport {
   longitude: number | null;
   description?: string | null;
   imageUrl?: string | null;
-  status: 'pending' | 'enroute' | 'on_scene' | 'done' | 'active' | 'resolved'; // Support both old and new statuses for backward compatibility
+  incidentId?: string | null; // Associated master incident (if any)
+  status: 'pending' | 'linked' | 'enroute' | 'on_scene' | 'done' | 'active' | 'resolved'; // Support both old and new statuses for backward compatibility
   priority?: 'low' | 'medium' | 'high' | 'critical';
   createdAt?: Date | Timestamp;
   updatedAt?: Date | Timestamp;
@@ -94,6 +95,7 @@ const convertFirestoreDoc = (doc: DocumentData): EmergencyReport => {
     longitude: data.longitude ?? null,
     description: data.description || null,
     imageUrl: data.imageUrl || data.image_url || null,
+    incidentId: data.incidentId || data.incident_id || null,
     status: data.status || 'pending',
     priority: data.priority || getDefaultPriority(data.incidentType || data.incident_type),
     createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : (data.created_at?.toDate ? data.created_at.toDate() : new Date()),
@@ -224,6 +226,7 @@ export async function submitEmergencyReport(report: Omit<EmergencyReport, 'id' |
       longitude: report.longitude,
       description: report.description || null,
       imageUrl: report.imageUrl || null,
+      incidentId: report.incidentId || null,
       status: report.status || 'pending',
       priority: report.priority || getDefaultPriority(report.incidentType),
       createdAt: Timestamp.now(),
@@ -1120,6 +1123,50 @@ export function subscribeToDispatcherAssignedEmergencies(
   } catch (error: any) {
     console.error('Error setting up dispatcher assigned emergencies subscription:', error);
     return () => {}; // Return empty unsubscribe function
+  }
+}
+
+/**
+ * Link an emergency report to a master incident
+ * @param reportId - The ID of the emergency report
+ * @param incidentId - The ID of the master incident (null to unlink)
+ * @returns Updated emergency report
+ */
+export async function linkEmergencyToIncident(
+  reportId: string,
+  incidentId: string | null
+): Promise<EmergencyReport> {
+  try {
+    const currentUser = getFirebaseAuth().currentUser;
+    if (!currentUser) {
+      throw new Error('User must be authenticated to link reports to incidents');
+    }
+
+    const reportRef = doc(getFirebaseFirestore(), 'emergencies', reportId);
+    
+    // Update report
+    const updateData: any = {
+      incidentId: incidentId || null,
+      updatedAt: Timestamp.now(),
+    };
+    
+    if (incidentId) {
+      updateData.status = 'linked';
+    } else {
+      updateData.status = 'pending';
+    }
+
+    await updateDoc(reportRef, updateData);
+
+    const updatedDocSnap = await getDoc(reportRef);
+    if (!updatedDocSnap.exists()) {
+      throw new Error('Emergency report not found after update');
+    }
+
+    return convertFirestoreDoc(updatedDocSnap);
+  } catch (error: any) {
+    console.error('Error linking emergency to incident:', error);
+    throw new Error(`Failed to link emergency to incident: ${error.message}`);
   }
 }
 
