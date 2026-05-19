@@ -287,7 +287,7 @@ export default function CaseInfoCard({
     touchdownDistanceMeters != null &&
     touchdownDistanceMeters <= TOUCHDOWN_RADIUS_METERS;
   const canMarkTouchdown =
-    isAssignedDispatcher &&
+    isAssignedResponder &&
     !caseData.touchdownAt &&
     (caseData.status === "enroute" || caseData.status === "on_scene");
   const mapRegion =
@@ -1071,7 +1071,7 @@ export default function CaseInfoCard({
           )}
         </Section>
 
-        {isAssignedDispatcher && (
+        {isAssignedResponder && (
           <View
             style={{
               backgroundColor: colors.surface,
