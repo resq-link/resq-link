@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { 
   type EmergencyReport, 
@@ -113,6 +114,7 @@ export default function IntakeDetailView({
   onUnlinkReportFromReport,
   onLinkAllReports
 }: IntakeDetailViewProps) {
+  const router = useRouter();
   const [isElevateModalOpen, setIsElevateModalOpen] = useState(false);
   const [responders, setResponders] = useState<any[]>([]);
   const [selectedResponderId, setSelectedResponderId] = useState("");
@@ -353,6 +355,21 @@ export default function IntakeDetailView({
     await loadResponders();
   };
 
+  const handleQuickLinkAndRedirect = async (incidentId: string | undefined, referenceNumber: string) => {
+    if (onLinkToIncident && report?.id && incidentId) {
+      try {
+        setIsLoadingResponders(true);
+        await onLinkToIncident(report.id, incidentId);
+        setIsElevateModalOpen(false);
+        router.push(`/incidents?id=${incidentId}`);
+      } catch (err) {
+        setResponderError("Failed to link to existing incident.");
+      } finally {
+        setIsLoadingResponders(false);
+      }
+    }
+  };
+
   const handleConfirmRespond = async () => {
     if (!selectedResponderId) return;
     const selected = responders.find(r => r.uid === selectedResponderId);
@@ -393,7 +410,7 @@ export default function IntakeDetailView({
         <div className="flex items-center gap-3">
            {isEmergency && report && (
              <div className="hidden sm:flex items-center gap-2">
-               {!isResponderAssigned && (
+               {!isResponderAssigned && !report?.incidentId && (
                   <button 
                     onClick={handleStartElevate}
                     className="h-8 px-3 flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-[10px] font-black text-white transition-all uppercase tracking-widest shadow-lg shadow-emerald-900/20"
@@ -801,6 +818,48 @@ export default function IntakeDetailView({
 
             {/* Modal Body */}
             <div className="p-6 space-y-5">
+              {/* Proximity Warning & Quick Link */}
+              {potentialDuplicates.length > 0 && (
+                <div className="rounded-xl border border-amber-900/60 bg-amber-950/20 p-4 space-y-3 animate-in fade-in zoom-in-95 duration-200">
+                  <div className="flex items-start gap-2.5">
+                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="text-xs font-black text-amber-200 uppercase tracking-wide">
+                        Nearby Active Incident Detected
+                      </h4>
+                      <p className="text-[10px] text-amber-400/80 leading-normal mt-0.5">
+                        We detected {potentialDuplicates.length} active master incident${potentialDuplicates.length > 1 ? 's' : ''} nearby. You can link this report directly instead of elevating to a new one.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {potentialDuplicates.map((dup: any) => (
+                      <div
+                        key={dup.id}
+                        className="flex items-center justify-between p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80 text-xs"
+                      >
+                        <div className="space-y-0.5">
+                          <span className="font-mono font-black text-slate-200 tracking-wider">
+                            {dup.referenceNumber}
+                          </span>
+                          <p className="text-[9px] text-slate-500 font-medium">
+                            {dup.incidentSubtypeLabel} • {dup.locationText}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleQuickLinkAndRedirect(dup.id, dup.referenceNumber)}
+                          className="h-7 px-3 rounded-md bg-amber-500 hover:bg-amber-400 text-[9px] font-black text-slate-950 uppercase tracking-widest transition-all shadow-md shadow-amber-900/10 flex items-center gap-1"
+                        >
+                          <Link2 className="w-3 h-3" />
+                          Link Case
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               {/* Incident ID Preview */}
               <div className="rounded-xl bg-slate-950/60 border border-slate-800/80 p-4 space-y-2">
                 <span className="text-[9px] uppercase tracking-[0.2em] font-black text-slate-500 block">
