@@ -522,6 +522,12 @@ export async function assignDispatcherToEmergency(
     
     await updateDoc(reportRef, updateData);
 
+    // Propagate dispatcher and status updates to all secondary (grouped) reports
+    await propagateUpdatesToSecondaries(reportId, {
+      dispatcherId: dispatcherId || null,
+      status: updateData.status || currentData.status || 'pending',
+    });
+
     // Fetch and return the updated report
     const updatedDocSnap = await getDoc(reportRef);
     if (!updatedDocSnap.exists()) {
@@ -598,6 +604,14 @@ export async function assignResponderToEmergency(
       declineReason: null,
       declinedAt: null,
       updatedAt: Timestamp.now(),
+    });
+
+    // Propagate responder assignments to all secondary (grouped) reports
+    await propagateUpdatesToSecondaries(reportId, {
+      responder: assignment.responder?.trim() || null,
+      assignedResponderId: assignment.assignedResponderId || null,
+      assignedAgency: assignment.assignedAgency || null,
+      suggestedAgency: assignment.suggestedAgency || null,
     });
 
     const updatedDocSnap = await getDoc(reportRef);
@@ -762,6 +776,11 @@ export async function acceptCase(reportId: string): Promise<EmergencyReport> {
     await updateDoc(reportRef, {
       status: 'enroute',
       updatedAt: Timestamp.now(),
+    });
+
+    // Propagate status change to all secondary (grouped) reports
+    await propagateUpdatesToSecondaries(reportId, {
+      status: 'enroute',
     });
 
     // Fetch and return the updated report
@@ -1039,6 +1058,11 @@ export async function updateCaseStatus(
       updatedAt: Timestamp.now(),
     });
 
+    // Propagate status change to all secondary (grouped) reports
+    await propagateUpdatesToSecondaries(reportId, {
+      status: newStatus,
+    });
+
     // Fetch and return the updated report
     const updatedDocSnap = await getDoc(reportRef);
     if (!updatedDocSnap.exists()) {
@@ -1171,6 +1195,33 @@ export async function linkEmergencyToIncident(
     throw new Error(`Failed to link emergency to incident: ${error.message}`);
   }
 }
+
+/**
+ * Propagate updates to all secondary (duplicate) reports that are linked to this primary report.
+ */
+async function propagateUpdatesToSecondaries(primaryReportId: string, updates: any) {
+  try {
+    const db = getFirebaseFirestore();
+    const q = query(
+      collection(db, 'emergencies'),
+      where('primaryReportId', '==', primaryReportId)
+    );
+    const querySnapshot = await getDocs(q);
+    
+    const updatePromises = querySnapshot.docs.map((docSnap) => {
+      const secondaryRef = doc(db, 'emergencies', docSnap.id);
+      return updateDoc(secondaryRef, {
+        ...updates,
+        updatedAt: Timestamp.now(),
+      });
+    });
+    
+    await Promise.all(updatePromises);
+  } catch (error) {
+    console.error(`Error propagating updates from primary ${primaryReportId} to secondaries:`, error);
+  }
+}
+
 
 /**
  * Link a secondary (duplicate) civilian report to a primary report.
