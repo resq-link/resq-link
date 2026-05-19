@@ -786,9 +786,10 @@ export async function acceptCase(reportId: string): Promise<EmergencyReport> {
       updatedAt: Timestamp.now(),
     });
 
-    // Propagate status change to all secondary (grouped) reports
+    // Propagate status change to all secondary (grouped) reports and master incident
     await propagateUpdatesToSecondaries(reportId, {
       status: 'enroute',
+      acceptedAt,
     });
 
     // Fetch and return the updated report
@@ -923,6 +924,9 @@ export async function markCaseTouchdown(
 
     await updateDoc(reportRef, updateData);
 
+    // Propagate touchdown info to master incident and linked reports
+    await propagateUpdatesToSecondaries(reportId, updateData);
+
     const updatedDocSnap = await getDoc(reportRef);
     if (!updatedDocSnap.exists()) {
       throw new Error('Emergency report not found after update');
@@ -963,7 +967,7 @@ export async function submitPostIncidentReport(
       throw new Error('Only the assigned dispatcher can submit a post report');
     }
 
-    await updateDoc(reportRef, {
+    const updateData = {
       postIncidentReport: {
         reasonForIncident: postReport.reasonForIncident?.trim() || null,
         notes: postReport.notes?.trim() || null,
@@ -978,7 +982,12 @@ export async function submitPostIncidentReport(
         submittedByName: currentUser.displayName || currentUser.email || currentUser.uid,
       },
       updatedAt: Timestamp.now(),
-    });
+    };
+
+    await updateDoc(reportRef, updateData);
+
+    // Propagate post incident report to master incident and linked reports
+    await propagateUpdatesToSecondaries(reportId, updateData);
 
     const updatedDocSnap = await getDoc(reportRef);
     if (!updatedDocSnap.exists()) {
@@ -1226,23 +1235,70 @@ export async function linkEmergencyToIncident(
 async function propagateUpdatesToSecondaries(primaryReportId: string, updates: any) {
   try {
     const db = getFirebaseFirestore();
-    const q = query(
+    
+    // Fetch the primary report to check if it has an incidentId
+    const primaryRef = doc(db, 'emergencies', primaryReportId);
+    const primarySnap = await getDoc(primaryRef);
+    if (!primarySnap.exists()) return;
+    const primaryData = primarySnap.data();
+
+    const updatePromises: Promise<any>[] = [];
+
+    // 1. Propagate to secondaries (report-to-report grouping)
+    const qSecondaries = query(
       collection(db, 'emergencies'),
       where('primaryReportId', '==', primaryReportId)
     );
-    const querySnapshot = await getDocs(q);
-    
-    const updatePromises = querySnapshot.docs.map((docSnap) => {
-      const secondaryRef = doc(db, 'emergencies', docSnap.id);
-      return updateDoc(secondaryRef, {
-        ...updates,
-        updatedAt: Timestamp.now(),
-      });
+    const secSnap = await getDocs(qSecondaries);
+    secSnap.forEach((docSnap) => {
+      updatePromises.push(
+        updateDoc(docSnap.ref, {
+          ...updates,
+          updatedAt: Timestamp.now(),
+        })
+      );
     });
-    
+
+    // 2. Propagate to master incident if one exists
+    if (primaryData.incidentId) {
+      const incidentRef = doc(db, 'incidents', primaryData.incidentId);
+      const incidentUpdates: any = { updatedAt: Timestamp.now() };
+
+      // Map report statuses to incident statuses if status is being updated
+      if (updates.status) {
+        if (updates.status === 'enroute') incidentUpdates.status = 'enroute';
+        else if (updates.status === 'on_scene') incidentUpdates.status = 'on_scene';
+        else if (updates.status === 'done' || updates.status === 'resolved') {
+          incidentUpdates.status = 'resolved';
+          incidentUpdates.resolutionStatus = 'resolved';
+          incidentUpdates.resolvedAt = Timestamp.now();
+        }
+      }
+
+      updatePromises.push(updateDoc(incidentRef, incidentUpdates));
+
+      // 3. Propagate to all OTHER reports linked to this incident
+      const qIncidentReports = query(
+        collection(db, 'emergencies'),
+        where('incidentId', '==', primaryData.incidentId)
+      );
+      const incReportsSnap = await getDocs(qIncidentReports);
+      incReportsSnap.forEach((docSnap) => {
+        // Avoid double-updating the primary or its secondaries (which were handled above)
+        if (docSnap.id !== primaryReportId && docSnap.data().primaryReportId !== primaryReportId) {
+          updatePromises.push(
+            updateDoc(docSnap.ref, {
+              ...updates,
+              updatedAt: Timestamp.now(),
+            })
+          );
+        }
+      });
+    }
+
     await Promise.all(updatePromises);
   } catch (error) {
-    console.error(`Error propagating updates from primary ${primaryReportId} to secondaries:`, error);
+    console.error(`Error propagating updates from primary ${primaryReportId} to related records:`, error);
   }
 }
 
