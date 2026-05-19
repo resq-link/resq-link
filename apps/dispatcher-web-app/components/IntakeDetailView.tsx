@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 import { 
   type EmergencyReport, 
@@ -116,6 +117,11 @@ export default function IntakeDetailView({
 }: IntakeDetailViewProps) {
   const router = useRouter();
   const [isElevateModalOpen, setIsElevateModalOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const [responders, setResponders] = useState<any[]>([]);
   const [selectedResponderId, setSelectedResponderId] = useState("");
   const [isLoadingResponders, setIsLoadingResponders] = useState(false);
@@ -385,6 +391,7 @@ export default function IntakeDetailView({
   };
 
   return (
+    <>
     <div className="h-full flex flex-col bg-slate-900/40 rounded-xl border border-slate-800 overflow-hidden shadow-2xl backdrop-blur-md">
       {/* Detail Header */}
       <div className="px-6 pt-3 pb-[14px] border-b border-slate-800/80 bg-slate-900/60 flex items-center justify-between min-h-[58px]">
@@ -792,9 +799,12 @@ export default function IntakeDetailView({
            </DetailSection>
          )}
 
+      </div>
+    </div>
+
       {/* Elevate Modal */}
-      {isElevateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+      {isElevateModalOpen && mounted && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
           <div
             className="absolute inset-0"
             onClick={() => setIsElevateModalOpen(false)}
@@ -803,8 +813,8 @@ export default function IntakeDetailView({
           <div className="relative z-10 flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl shadow-black/80 animate-in zoom-in-95 duration-200">
             {/* Modal Header */}
             <div className="flex items-center gap-3.5 border-b border-slate-800/80 bg-slate-950/40 px-6 py-4">
-              <div className="h-9 w-9 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                <Shield className="w-5 h-5 animate-pulse" />
+              <div className="h-9 w-9 rounded-lg bg-emerald-500/10 border border-emerald-500/30 grid place-items-center text-emerald-400">
+                <Shield className="w-5 h-5" />
               </div>
               <div>
                 <h3 className="text-sm font-black text-slate-100 uppercase tracking-wider">
@@ -828,31 +838,30 @@ export default function IntakeDetailView({
                         Nearby Active Incident Detected
                       </h4>
                       <p className="text-[10px] text-amber-400/80 leading-normal mt-0.5">
-                        We detected {potentialDuplicates.length} active master incident${potentialDuplicates.length > 1 ? 's' : ''} nearby. You can link this report directly instead of elevating to a new one.
+                        We detected {potentialDuplicates.length} active master incident{potentialDuplicates.length > 1 ? 's' : ''} nearby. You can link this report directly instead of elevating to a new one.
                       </p>
                     </div>
                   </div>
-
-                  <div className="space-y-2">
+                  
+                  <div className="grid gap-2 pt-1">
                     {potentialDuplicates.map((dup: any) => (
-                      <div
-                        key={dup.id}
-                        className="flex items-center justify-between p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80 text-xs"
+                      <div 
+                        key={dup.id} 
+                        className="flex items-center justify-between p-2.5 rounded-lg bg-slate-950/50 border border-slate-850 hover:border-slate-800 transition-colors"
                       >
                         <div className="space-y-0.5">
-                          <span className="font-mono font-black text-slate-200 tracking-wider">
+                          <div className="text-[10px] font-mono font-black text-amber-400 tracking-wider">
                             {dup.referenceNumber}
-                          </span>
-                          <p className="text-[9px] text-slate-500 font-medium">
+                          </div>
+                          <div className="text-[9px] text-slate-500 font-medium">
                             {dup.incidentSubtypeLabel} • {dup.locationText}
-                          </p>
+                          </div>
                         </div>
                         <button
                           type="button"
                           onClick={() => handleQuickLinkAndRedirect(dup.id, dup.referenceNumber)}
-                          className="h-7 px-3 rounded-md bg-amber-500 hover:bg-amber-400 text-[9px] font-black text-slate-950 uppercase tracking-widest transition-all shadow-md shadow-amber-900/10 flex items-center gap-1"
+                          className="h-7 px-3 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-[9px] font-black text-amber-400 uppercase tracking-wider border border-amber-500/25 transition-all"
                         >
-                          <Link2 className="w-3 h-3" />
                           Link Case
                         </button>
                       </div>
@@ -860,17 +869,18 @@ export default function IntakeDetailView({
                   </div>
                 </div>
               )}
-              {/* Incident ID Preview */}
-              <div className="rounded-xl bg-slate-950/60 border border-slate-800/80 p-4 space-y-2">
+
+              {/* Generated Incident ID */}
+              <div className="rounded-xl border border-slate-800/80 bg-slate-950/40 p-4 space-y-2">
                 <span className="text-[9px] uppercase tracking-[0.2em] font-black text-slate-500 block">
                   Generated Incident Case ID
                 </span>
-                <span className="text-lg font-mono font-black text-amber-400 tracking-wider flex items-center gap-2">
-                  INC-${Math.floor(Date.now() / 1000)}
-                  <span className="px-2 py-0.5 rounded text-[8px] font-black bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-widest animate-pulse">
+                <div className="flex items-center gap-2 text-lg font-mono font-black text-amber-400 tracking-wider">
+                  <span>INC-{Math.floor(Date.now() / 1000)}</span>
+                  <span className="inline-flex items-center justify-center h-4.5 px-2 py-0.5 rounded text-[8px] font-black bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-widest">
                     Preview
                   </span>
-                </span>
+                </div>
                 <p className="text-[10px] text-slate-500 leading-normal">
                   This ID namespace separates client citizen alerts from master operational logs, enabling multiple duplicate reports to group under it.
                 </p>
@@ -885,7 +895,7 @@ export default function IntakeDetailView({
                   <select
                     value={selectedResponderId}
                     onChange={(e) => setSelectedResponderId(e.target.value)}
-                    className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 px-4 outline-none focus:ring-1 focus:ring-emerald-500/50 appearance-none transition-colors animate-none"
+                    className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 px-4 outline-none focus:ring-1 focus:ring-emerald-500/50 appearance-none transition-colors"
                   >
                     {isLoadingResponders ? (
                       <option>Loading responder units...</option>
@@ -912,14 +922,15 @@ export default function IntakeDetailView({
             </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-end gap-3 border-t border-slate-800/80 bg-slate-950/20 px-6 py-4">
+            <div className="flex items-center justify-between border-t border-slate-800/80 bg-slate-950/40 px-6 py-4">
               <button
                 type="button"
                 onClick={() => setIsElevateModalOpen(false)}
-                className="h-9 px-4 rounded-xl border border-slate-800 hover:bg-slate-800 text-[10px] font-black text-slate-400 uppercase tracking-widest transition-all"
+                className="h-9 px-4 rounded-xl border border-slate-850 hover:border-slate-800 text-[10px] font-black text-slate-400 uppercase tracking-widest transition-all"
               >
                 Cancel
               </button>
+
               <button
                 type="button"
                 disabled={isLoadingResponders || !selectedResponderId}
@@ -932,10 +943,8 @@ export default function IntakeDetailView({
             </div>
           </div>
         </div>
-      )}
-
-      </div>
-    </div>
+      , document.body)}
+    </>
   );
 }
 

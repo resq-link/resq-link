@@ -360,7 +360,7 @@ function IncidentsContent() {
           {/* Active Search Bar */}
           <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/40 flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-2.5">
-              <ShieldAlert className="w-5 h-5 text-indigo-400 animate-pulse" />
+              <ShieldAlert className="w-5 h-5 text-indigo-400" />
               <h2 className="text-sm font-black uppercase tracking-widest text-slate-100">
                 Dispatch Board
               </h2>
