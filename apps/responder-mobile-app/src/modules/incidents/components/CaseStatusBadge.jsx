@@ -9,6 +9,10 @@ export default function CaseStatusBadge({ status }) {
     switch (status) {
       case "pending":
         return { color: colors.pending, text: "Pending" };
+      case "dispatched":
+        return { color: colors.pending, text: "Dispatched" };
+      case "awaiting_resources":
+        return { color: colors.pending, text: "Awaiting Resources" };
       case "enroute":
         return { color: colors.enroute, text: "En Route" };
       case "on_scene":
@@ -19,6 +23,8 @@ export default function CaseStatusBadge({ status }) {
         return { color: colors.enroute, text: "Active" };
       case "resolved":
         return { color: colors.done, text: "Resolved" };
+      case "unresolved":
+        return { color: colors.priorityCritical, text: "Unresolved" };
       default:
         return { color: colors.textMuted, text: "Unknown" };
     }
