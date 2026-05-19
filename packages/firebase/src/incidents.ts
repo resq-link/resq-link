@@ -1009,6 +1009,7 @@ export async function elevateEmergencyToIncident(
     incidentId: incidentDocRef.id,
     status: isAssigned ? 'active' : 'linked', // active if responder is dispatched, linked otherwise
     assignedResponderId: input.assignedResponderId || null,
+    dispatcherId: input.assignedResponderId || null,
     responder: input.responderName || null,
     assignedAgency: input.assignedAgency || null,
     updatedAt: timestamp,
@@ -1034,6 +1035,7 @@ export async function elevateEmergencyToIncident(
       incidentId: incidentDocRef.id,
       status: isAssigned ? 'active' : 'linked',
       assignedResponderId: input.assignedResponderId || null,
+      dispatcherId: input.assignedResponderId || null,
       responder: input.responderName || null,
       assignedAgency: input.assignedAgency || null,
       updatedAt: timestamp,
