@@ -84,6 +84,14 @@ const getDateLabel = (value: any) => {
   return Number.isNaN(date.getTime()) ? "—" : date.toLocaleString();
 };
 
+const formatResponseTime = (seconds: number | null | undefined) => {
+  if (seconds == null) return null;
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  if (mins > 0) return `${mins} min ${secs} sec`;
+  return `${secs} sec`;
+};
+
 interface IntakeDetailViewProps {
   item: any | null // IntakeQueueItem
   recentIncidents?: IncidentRecord[]
@@ -454,9 +462,14 @@ export default function IntakeDetailView({
                   Reject
                 </button>
 
-                {report?.touchdownAt && (
+                {(incident?.touchdownAt || report?.touchdownAt) && (
                   <button 
-                    onClick={() => onMoveToHistory?.(report)}
+                    onClick={() => {
+                      const targetReport = report || associatedReports.find(r => !r.primaryReportId) || associatedReports[0];
+                      if (targetReport) {
+                        onMoveToHistory?.(targetReport);
+                      }
+                    }}
                     className="h-8 px-3 flex items-center gap-2 rounded-lg border border-emerald-900/60 bg-emerald-950/20 hover:bg-emerald-950/40 text-[10px] font-black text-emerald-400 transition-all uppercase tracking-widest"
                   >
                     <History className="w-3 h-3" />
@@ -705,7 +718,13 @@ export default function IntakeDetailView({
                  <div className="space-y-2 mt-1">
                    <p className="text-xs text-slate-400">Reported: <span className="text-slate-100">{getDateLabel(item.createdAt)}</span></p>
                    <p className="text-xs text-slate-400">Viewed: <span className="text-slate-100">{getDateLabel(report?.viewedAt)}</span></p>
-                   <p className="text-xs text-slate-400">Touchdown: <span className="text-emerald-400 font-bold">{report?.touchdownAt ? getDateLabel(report.touchdownAt) : 'N/A'}</span></p>
+                    {(incident?.acceptedAt || report?.acceptedAt) && (
+                      <p className="text-xs text-slate-400">Accepted: <span className="text-slate-100">{getDateLabel(incident?.acceptedAt || report?.acceptedAt)}</span></p>
+                    )}
+                   <p className="text-xs text-slate-400">Touchdown: <span className="text-emerald-400 font-bold">{(incident?.touchdownAt || report?.touchdownAt) ? getDateLabel(incident?.touchdownAt || report?.touchdownAt) : 'N/A'}</span></p>
+                    {(incident?.responseTimeSeconds ?? report?.responseTimeSeconds) != null && (
+                      <p className="text-xs text-slate-400">Response Time: <span className="text-cyan-400 font-bold">{formatResponseTime(incident?.responseTimeSeconds ?? report?.responseTimeSeconds)}</span></p>
+                    )}
                  </div>
               </DetailSection>
 
