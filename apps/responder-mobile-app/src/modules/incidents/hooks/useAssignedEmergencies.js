@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/query/queryKeys";
-import { subscribeAssignedEmergencies } from "@/services/incidentService";
+import { subscribeAssignedIncidents } from "@/services/incidentService";
 
 const ASSIGNED_OPTS = { statusFilter: "all", limitCount: 100 };
 
@@ -30,7 +30,7 @@ export function useAssignedEmergencies(uid, options = {}) {
       return;
     }
     setInitialSyncPending(true);
-    const unsubscribe = subscribeAssignedEmergencies(
+    const unsubscribe = subscribeAssignedIncidents(
       uid,
       (reports) => {
         queryClient.setQueryData(queryKeys.incidents.assigned(uid), reports);

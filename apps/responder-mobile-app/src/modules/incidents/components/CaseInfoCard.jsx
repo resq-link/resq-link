@@ -15,12 +15,12 @@ import { Picker } from "@react-native-picker/picker";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import * as Location from "expo-location";
 import {
-  acceptCase,
-  declineCase,
-  markCaseTouchdown,
-  submitPostIncidentReport,
-  updateCaseStatus,
-} from "@packages/firebase";
+  acceptIncidentCase as acceptCase,
+  declineIncidentCase as declineCase,
+  markIncidentCaseTouchdown as markCaseTouchdown,
+  submitIncidentPostReport as submitPostIncidentReport,
+  updateIncidentStatus as updateCaseStatus,
+} from "@/services/incidentService";
 import useUserStore from "@/store/userStore";
 import CaseStatusBadge from "./CaseStatusBadge";
 import PriorityBadge from "./PriorityBadge";
@@ -204,7 +204,8 @@ export default function CaseInfoCard({
     }
   };
 
-  const isAssignedDispatcher = user && caseData.dispatcherId === user.uid;
+  const isAssignedDispatcher =
+    user && caseData.assignedResourceIds && caseData.assignedResourceIds.includes(user.uid);
   const showAcceptButton =
     isAssignedDispatcher &&
     (caseData.status === "pending" || caseData.status === "active");
@@ -255,7 +256,7 @@ export default function CaseInfoCard({
     caseData.latitude !== 0 &&
     caseData.longitude !== 0;
   const expectedAdditionalFields =
-    additionalDetailFields[caseData.incidentType] ||
+    additionalDetailFields[caseData.incidentCategory] ||
     additionalDetailFields.other_emergency;
   const additionalDetails = caseData.additionalDetails || {};
   const submittedAdditionalFields = expectedAdditionalFields.filter((field) =>
@@ -691,7 +692,7 @@ export default function CaseInfoCard({
               letterSpacing: -0.3,
             }}
           >
-            {getIncidentTypeName(caseData.incidentType)}
+            {getIncidentTypeName(caseData.incidentCategory)}
           </Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <CaseStatusBadge status={caseData.status} />
@@ -716,7 +717,7 @@ export default function CaseInfoCard({
                     latitude: caseData.latitude,
                     longitude: caseData.longitude,
                   }}
-                  title={getIncidentTypeName(caseData.incidentType)}
+                  title={getIncidentTypeName(caseData.incidentCategory)}
                   description={caseData.locationText || "Pinned incident location"}
                   pinColor={colors.accent}
                 />

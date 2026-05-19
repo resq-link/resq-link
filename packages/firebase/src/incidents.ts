@@ -107,6 +107,24 @@ export interface IncidentRecord {
   createdAt?: Date | Timestamp;
   updatedAt?: Date | Timestamp;
   resolvedAt?: Date | Timestamp | null;
+  // Responder Tracking Fields (1 team per incident)
+  acceptedAt?: Date | Timestamp | null;
+  touchdownAt?: Date | Timestamp | null;
+  responseTimeSeconds?: number | null;
+  touchdownByDispatcherId?: string | null;
+  touchdownByName?: string | null;
+  touchdownSource?: 'gps' | 'manual' | null;
+  touchdownDistanceMeters?: number | null;
+  postIncidentReport?: {
+    reasonForIncident?: string | null;
+    notes?: string | null;
+    peopleInvolved?: number | null;
+    peopleStatus?: string | null;
+    hospital?: string | null;
+    submittedAt?: Date | Timestamp | null;
+    submittedByDispatcherId?: string | null;
+    submittedByName?: string | null;
+  } | null;
 }
 
 export interface IncidentDispatchRecord {
@@ -1045,4 +1063,245 @@ export async function elevateEmergencyToIncident(
   await batch.commit();
 
   return incidentPayload;
+}
+// Append this to incidents.ts
+
+export function subscribeToResponderAssignedIncidents(
+  responderId: string,
+  callback: (incidents: IncidentRecord[]) => void,
+  options?: {
+    statusFilter?: 'all' | 'pending' | 'active' | 'resolved';
+    limitCount?: number;
+  }
+): () => void {
+  try {
+    const db = getFirebaseFirestore();
+    const constraints: any[] = [
+      where('assignedResourceIds', 'array-contains', responderId)
+    ];
+    
+    if (options?.statusFilter && options.statusFilter !== 'all') {
+      if (options.statusFilter === 'pending' || options.statusFilter === 'active') {
+        // Approximate mapping: active means dispatched/enroute/on_scene
+        constraints.push(where('status', 'in', ['dispatched', 'enroute', 'on_scene', 'awaiting_resources']));
+      } else if (options.statusFilter === 'resolved') {
+        constraints.push(where('status', 'in', ['resolved', 'unresolved']));
+      }
+    }
+    
+    const fetchLimit = options?.limitCount || 100;
+    constraints.push(limit(fetchLimit));
+    
+    const q = query(collection(db, 'incidents'), ...constraints);
+    
+    return onSnapshot(q, (snapshot) => {
+      const incidents = snapshot.docs.map(doc => doc.data() as IncidentRecord);
+      callback(incidents);
+    }, (error) => {
+      console.error('Error in incident subscription:', error);
+      callback([]);
+    });
+  } catch (error) {
+    console.error('Error setting up incident subscription:', error);
+    callback([]);
+    return () => {};
+  }
+}
+
+async function propagateIncidentUpdatesToReports(incidentId: string, updates: any) {
+  try {
+    const db = getFirebaseFirestore();
+    const q = query(collection(db, 'emergencies'), where('incidentId', '==', incidentId));
+    const snap = await getDocs(q);
+    const updatePromises: Promise<any>[] = [];
+    
+    const reportUpdates: any = { updatedAt: Timestamp.now() };
+    if (updates.status) {
+      if (updates.status === 'enroute') reportUpdates.status = 'enroute';
+      else if (updates.status === 'on_scene') reportUpdates.status = 'on_scene';
+      else if (updates.status === 'resolved') reportUpdates.status = 'resolved';
+    }
+    if (updates.acceptedAt) reportUpdates.acceptedAt = updates.acceptedAt;
+    if (updates.touchdownAt) reportUpdates.touchdownAt = updates.touchdownAt;
+    if (updates.responseTimeSeconds) reportUpdates.responseTimeSeconds = updates.responseTimeSeconds;
+    if (updates.postIncidentReport) reportUpdates.postIncidentReport = updates.postIncidentReport;
+    
+    snap.forEach((docSnap) => {
+      updatePromises.push(updateDoc(docSnap.ref, reportUpdates));
+    });
+    await Promise.all(updatePromises);
+  } catch (error) {
+    console.error(`Error propagating incident updates to reports:`, error);
+  }
+}
+
+export async function acceptIncident(incidentId: string): Promise<IncidentRecord> {
+  const currentUser = ensureAuthenticated();
+  const db = getFirebaseFirestore();
+  const incidentRef = doc(db, 'incidents', incidentId);
+  const snap = await getDoc(incidentRef);
+  if (!snap.exists()) throw new Error('Incident not found');
+  
+  const currentData = snap.data() as IncidentRecord;
+  if (!currentData.assignedResourceIds.includes(currentUser.uid)) {
+    throw new Error('Only an assigned responder can accept this incident');
+  }
+  
+  const acceptedAt = Timestamp.now();
+  const updateData = { status: 'enroute' as IncidentStatus, acceptedAt, updatedAt: Timestamp.now() };
+  await updateDoc(incidentRef, updateData);
+  await propagateIncidentUpdatesToReports(incidentId, updateData);
+  
+  const updatedSnap = await getDoc(incidentRef);
+  return updatedSnap.data() as IncidentRecord;
+}
+
+export async function markIncidentTouchdown(
+  incidentId: string,
+  options: { source: 'gps' | 'manual'; distanceMeters?: number | null; }
+): Promise<IncidentRecord> {
+  const currentUser = ensureAuthenticated();
+  const db = getFirebaseFirestore();
+  const incidentRef = doc(db, 'incidents', incidentId);
+  const snap = await getDoc(incidentRef);
+  if (!snap.exists()) throw new Error('Incident not found');
+  
+  const currentData = snap.data() as IncidentRecord;
+  if (!currentData.assignedResourceIds.includes(currentUser.uid)) {
+    throw new Error('Only an assigned responder can mark touchdown');
+  }
+  
+  const touchdownAt = currentData.touchdownAt || Timestamp.now();
+  let responseTimeSeconds: number | null = null;
+  if (currentData.acceptedAt) {
+    const acceptedMs = currentData.acceptedAt instanceof Timestamp ? currentData.acceptedAt.toDate().getTime() : new Date(currentData.acceptedAt).getTime();
+    const touchdownMs = touchdownAt instanceof Timestamp ? touchdownAt.toDate().getTime() : new Date(touchdownAt).getTime();
+    const diff = Math.round((touchdownMs - acceptedMs) / 1000);
+    if (diff >= 0) responseTimeSeconds = diff;
+  }
+  
+  const updateData: any = {
+    touchdownAt,
+    touchdownByDispatcherId: currentUser.uid,
+    touchdownByName: currentUser.displayName || currentUser.email || currentUser.uid,
+    touchdownSource: options.source,
+    touchdownDistanceMeters: typeof options.distanceMeters === 'number' ? options.distanceMeters : null,
+    responseTimeSeconds,
+    updatedAt: Timestamp.now()
+  };
+  
+  if (currentData.status !== 'on_scene') {
+    updateData.status = 'on_scene' as IncidentStatus;
+  }
+  
+  await updateDoc(incidentRef, updateData);
+  await propagateIncidentUpdatesToReports(incidentId, updateData);
+  
+  const updatedSnap = await getDoc(incidentRef);
+  return updatedSnap.data() as IncidentRecord;
+}
+
+export async function submitPostIncidentReportForIncident(
+  incidentId: string,
+  postReport: {
+    reasonForIncident?: string | null;
+    notes?: string | null;
+    peopleInvolved?: number | null;
+    peopleStatus?: string | null;
+    hospital?: string | null;
+  }
+): Promise<IncidentRecord> {
+  const currentUser = ensureAuthenticated();
+  const db = getFirebaseFirestore();
+  const incidentRef = doc(db, 'incidents', incidentId);
+  const snap = await getDoc(incidentRef);
+  if (!snap.exists()) throw new Error('Incident not found');
+  
+  const currentData = snap.data() as IncidentRecord;
+  if (!currentData.assignedResourceIds.includes(currentUser.uid)) {
+    throw new Error('Only an assigned responder can submit a post report');
+  }
+  
+  const updateData = {
+    postIncidentReport: {
+      reasonForIncident: postReport.reasonForIncident?.trim() || null,
+      notes: postReport.notes?.trim() || null,
+      peopleInvolved: typeof postReport.peopleInvolved === 'number' ? postReport.peopleInvolved : null,
+      peopleStatus: postReport.peopleStatus?.trim() || null,
+      hospital: postReport.hospital?.trim() || null,
+      submittedAt: Timestamp.now(),
+      submittedByDispatcherId: currentUser.uid,
+      submittedByName: currentUser.displayName || currentUser.email || currentUser.uid,
+    },
+    updatedAt: Timestamp.now(),
+  };
+  
+  await updateDoc(incidentRef, updateData);
+  await propagateIncidentUpdatesToReports(incidentId, updateData);
+  
+  const updatedSnap = await getDoc(incidentRef);
+  return updatedSnap.data() as IncidentRecord;
+}
+
+export async function updateIncidentCaseStatus(
+  incidentId: string,
+  newStatus: 'enroute' | 'on_scene' | 'done' | 'resolved'
+): Promise<IncidentRecord> {
+  const currentUser = ensureAuthenticated();
+  const db = getFirebaseFirestore();
+  const incidentRef = doc(db, 'incidents', incidentId);
+  const snap = await getDoc(incidentRef);
+  if (!snap.exists()) throw new Error('Incident not found');
+  
+  const currentData = snap.data() as IncidentRecord;
+  if (!currentData.assignedResourceIds.includes(currentUser.uid)) {
+    throw new Error('Only an assigned responder can update this case');
+  }
+  
+  const finalStatus = (newStatus === 'done' ? 'resolved' : newStatus) as IncidentStatus;
+  const updateData: any = {
+    status: finalStatus,
+    updatedAt: Timestamp.now(),
+  };
+  
+  if (finalStatus === 'resolved') {
+    updateData.resolutionStatus = 'resolved';
+    updateData.resolvedAt = Timestamp.now();
+  }
+  
+  await updateDoc(incidentRef, updateData);
+  await propagateIncidentUpdatesToReports(incidentId, updateData);
+  
+  const updatedSnap = await getDoc(incidentRef);
+  return updatedSnap.data() as IncidentRecord;
+}
+// Append this to incidents.ts
+export async function declineIncident(
+  incidentId: string,
+  reason: string
+): Promise<IncidentRecord> {
+  const currentUser = ensureAuthenticated();
+  const db = getFirebaseFirestore();
+  const incidentRef = doc(db, 'incidents', incidentId);
+  const snap = await getDoc(incidentRef);
+  if (!snap.exists()) throw new Error('Incident not found');
+  
+  const currentData = snap.data() as IncidentRecord;
+  if (!currentData.assignedResourceIds.includes(currentUser.uid)) {
+    throw new Error('Only an assigned responder can decline this incident');
+  }
+  
+  // Remove them from assignedResourceIds and change status to awaiting_resources
+  const newAssigned = currentData.assignedResourceIds.filter(id => id !== currentUser.uid);
+  const updateData: any = {
+    assignedResourceIds: newAssigned,
+    status: newAssigned.length > 0 ? currentData.status : 'awaiting_resources',
+    updatedAt: Timestamp.now(),
+  };
+  
+  await updateDoc(incidentRef, updateData);
+  await propagateIncidentUpdatesToReports(incidentId, { status: updateData.status });
+  
+  const updatedSnap = await getDoc(incidentRef);
+  return updatedSnap.data() as IncidentRecord;
 }

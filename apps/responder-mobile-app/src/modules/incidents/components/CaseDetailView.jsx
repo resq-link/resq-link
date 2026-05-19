@@ -54,7 +54,7 @@ export default function CaseDetailView() {
       return;
     }
 
-    const caseDocRef = doc(getFirebaseFirestore(), "emergencies", caseId);
+    const caseDocRef = doc(getFirebaseFirestore(), "incidents", caseId);
     const unsubscribe = onSnapshot(
       caseDocRef,
       async (docSnap) => {
@@ -67,8 +67,8 @@ export default function CaseDetailView() {
           const data = docSnap.data();
           const caseInfo = {
             id: docSnap.id,
-            userId: data.userId || data.user_id || "",
-            incidentType: data.incidentType || data.incident_type || "other_emergency",
+            userId: data.createdByUserId || data.userId || data.user_id || "",
+            incidentType: data.incidentCategory || data.incidentType || data.incident_type || "other",
             locationText: data.locationText || data.location_text || "",
             landmark: data.landmark || null,
             peopleInvolved:
@@ -89,7 +89,7 @@ export default function CaseDetailView() {
               new Date(),
             updatedAt:
               toDateValue(data.updatedAt) || toDateValue(data.updated_at),
-            dispatcherId: data.dispatcherId || data.dispatcher_id || null,
+            assignedResourceIds: data.assignedResourceIds || [],
             additionalDetails:
               data.additionalDetails && typeof data.additionalDetails === "object"
                 ? data.additionalDetails
