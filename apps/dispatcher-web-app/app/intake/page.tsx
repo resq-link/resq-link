@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, Suspense } from "react";
 import dynamic from "next/dynamic";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import CommandBar from "@/components/CommandBar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -408,6 +408,7 @@ function formatIncidentDateForDisplay(date: string | null | undefined): string {
 function IntakeContent() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   const preselectedTeamOnDuty = useMemo<TeamOnDuty | null>(() => {
     // Optional: allow prefill via query string.
@@ -800,7 +801,11 @@ function IntakeContent() {
       setPageSuccess(
         `Report APP-${report.id.slice(-6).toUpperCase()} elevated to master incident ${incident.referenceNumber} and assigned to ${responder.label}.`,
       );
-    } catch (error: any) {
+    
+      setTimeout(() => {
+        router.push(`/incidents?id=${incident.id}`);
+      }, 1500);
+} catch (error: any) {
       setPageError(error.message || "Failed to assign and elevate report.");
     }
   };

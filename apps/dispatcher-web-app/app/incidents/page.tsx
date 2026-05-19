@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import CommandBar from "@/components/CommandBar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -135,11 +136,30 @@ const toQueueItemFromIncident = (incident: IncidentRecord): IntakeQueueItem => (
   rawIncident: incident,
 });
 
-export default function ActiveIncidentsPage() {
+function IncidentsContent() {
+  const searchParams = useSearchParams();
+  const focusId = searchParams.get("id");
   const { user } = useAuth();
   const [appEmergencyReports, setAppEmergencyReports] = useState<EmergencyReport[]>([]);
   const [recentIncidents, setRecentIncidents] = useState<IncidentRecord[]>([]);
   const [selectedQueueItem, setSelectedQueueItem] = useState<IntakeQueueItem | null>(null);
+
+  // Auto-select deep-linked incident from URL parameters on mount/update
+  useEffect(() => {
+    if (!focusId || recentIncidents.length === 0) return;
+    if (selectedQueueItem?.id === focusId) return;
+
+    const matchInc = recentIncidents.find((i) => i.id === focusId || i.referenceNumber === focusId);
+    if (matchInc) {
+      setSelectedQueueItem(toQueueItemFromIncident(matchInc));
+      return;
+    }
+
+    const matchRep = appEmergencyReports.find((r) => r.id === focusId);
+    if (matchRep) {
+      setSelectedQueueItem(toQueueItemFromEmergency(matchRep));
+    }
+  }, [focusId, recentIncidents, appEmergencyReports, selectedQueueItem?.id]);
   const [searchQuery, setSearchQuery] = useState("");
   const [pageError, setPageError] = useState<string | null>(null);
   const [pageSuccess, setPageSuccess] = useState<string | null>(null);
@@ -434,5 +454,17 @@ export default function ActiveIncidentsPage() {
         </div>
       </div>
     </ProtectedRoute>
+  );
+}
+
+export default function ActiveIncidentsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-xs text-slate-500 uppercase tracking-widest">
+        Loading active incidents...
+      </div>
+    }>
+      <IncidentsContent />
+    </Suspense>
   );
 }
