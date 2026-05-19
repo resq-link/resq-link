@@ -4,8 +4,8 @@
   markIncidentTouchdown,
   submitPostIncidentReportForIncident,
   updateIncidentCaseStatus,
-  type IncidentRecord,
 } from "@packages/firebase";
+import type { IncidentRecord } from "@packages/firebase";
 
 export type AssignedEmergenciesOptions = {
   statusFilter?: "pending" | "active" | "resolved" | "all";
