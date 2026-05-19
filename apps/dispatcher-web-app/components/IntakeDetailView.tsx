@@ -390,6 +390,25 @@ export default function IntakeDetailView({
     }
   };
 
+  const derivedAgencies = Array.from(new Set([
+    report?.assignedAgency,
+    ...(incident?.assignedAgencies || []),
+    ...associatedReports.map(r => r.assignedAgency)
+  ].filter(Boolean)));
+  
+  const displayAgency = derivedAgencies.length > 0 
+    ? derivedAgencies.join(", ") 
+    : (report?.suggestedAgency || primarySuggestedAgency || 'Awaiting Routing');
+
+  const derivedResponders = Array.from(new Set([
+    report?.responder,
+    ...associatedReports.map(r => r.responder)
+  ].filter(Boolean)));
+  
+  const displayResponder = derivedResponders.length > 0
+    ? derivedResponders.join(", ")
+    : ((incident?.assignedResourceIds?.length || 0) > 0 ? `${incident?.assignedResourceIds?.length} resource(s) dispatched` : 'Unassigned');
+
   return (
     <>
     <div className="h-full flex flex-col bg-slate-900/40 rounded-xl border border-slate-800 overflow-hidden shadow-2xl backdrop-blur-md">
@@ -677,8 +696,8 @@ export default function IntakeDetailView({
               <DetailSection icon={<Activity className="w-3.5 h-3.5" />} title="Operations Control">
                  <div className="space-y-2 mt-1">
                    <p className="text-xs text-slate-400">Status: <span className="text-slate-100 font-bold uppercase font-mono">{report?.status || incident?.status}</span></p>
-                   <p className="text-xs text-slate-400">Agency: <span className="text-slate-100">{report?.assignedAgency || report?.suggestedAgency || primarySuggestedAgency || 'Awaiting Routing'}</span></p>
-                   <p className="text-xs text-slate-400">Responder: <span className="text-slate-100">{report?.responder || 'Unassigned'}</span></p>
+                   <p className="text-xs text-slate-400">Agency: <span className="text-slate-100">{displayAgency}</span></p>
+                   <p className="text-xs text-slate-400">Responder: <span className="text-slate-100">{displayResponder}</span></p>
                  </div>
               </DetailSection>
 
