@@ -545,7 +545,7 @@ function IntakeContent() {
   const appQueueItems = useMemo(
     () =>
       appEmergencyReports
-        .filter((report) => report.status === "pending" && !report.primaryReportId)
+        .filter((report) => report.status !== "done" && report.status !== "resolved" && !report.primaryReportId)
         .map(toQueueItemFromEmergency)
         .sort((left, right) => toMillis(right.createdAt) - toMillis(left.createdAt)),
     [appEmergencyReports],
