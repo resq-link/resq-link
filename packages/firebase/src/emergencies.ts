@@ -58,6 +58,8 @@ export interface EmergencyReport {
   declinedByName?: string | null;
   declineReason?: string | null;
   declinedAt?: Date | Timestamp | null;
+  acceptedAt?: Date | Timestamp | null;
+  responseTimeSeconds?: number | null;
   touchdownAt?: Date | Timestamp | null;
   touchdownByDispatcherId?: string | null;
   touchdownByName?: string | null;
@@ -129,6 +131,8 @@ export const convertFirestoreDoc = (doc: DocumentData): EmergencyReport => {
     declinedByName: data.declinedByName || null,
     declineReason: data.declineReason || null,
     declinedAt: data.declinedAt?.toDate ? data.declinedAt.toDate() : null,
+    acceptedAt: data.acceptedAt?.toDate ? data.acceptedAt.toDate() : null,
+    responseTimeSeconds: typeof data.responseTimeSeconds === 'number' ? data.responseTimeSeconds : null,
     touchdownAt: data.touchdownAt?.toDate ? data.touchdownAt.toDate() : null,
     touchdownByDispatcherId: data.touchdownByDispatcherId || null,
     touchdownByName: data.touchdownByName || null,
@@ -248,6 +252,8 @@ export async function submitEmergencyReport(report: Omit<EmergencyReport, 'id' |
       declinedByName: report.declinedByName || null,
       declineReason: report.declineReason || null,
       declinedAt: report.declinedAt || null,
+      acceptedAt: report.acceptedAt || null,
+      responseTimeSeconds: report.responseTimeSeconds ?? null,
       touchdownAt: report.touchdownAt || null,
       touchdownByDispatcherId: report.touchdownByDispatcherId || null,
       touchdownByName: report.touchdownByName || null,
@@ -772,9 +778,11 @@ export async function acceptCase(reportId: string): Promise<EmergencyReport> {
       throw new Error('Case can only be accepted when status is pending or active');
     }
     
-    // Update the report status to enroute
+    // Update the report status to enroute and record the acceptance timestamp
+    const acceptedAt = Timestamp.now();
     await updateDoc(reportRef, {
       status: 'enroute',
+      acceptedAt,
       updatedAt: Timestamp.now(),
     });
 
@@ -883,13 +891,29 @@ export async function markCaseTouchdown(
       throw new Error('Cannot mark touchdown after the case is completed');
     }
 
+    const touchdownAt = currentData.touchdownAt || Timestamp.now();
+
+    // Compute response time: seconds between acceptance and touchdown
+    let responseTimeSeconds: number | null = null;
+    if (currentData.acceptedAt) {
+      const acceptedMs = currentData.acceptedAt.toDate
+        ? currentData.acceptedAt.toDate().getTime()
+        : new Date(currentData.acceptedAt).getTime();
+      const touchdownMs = touchdownAt.toDate
+        ? touchdownAt.toDate().getTime()
+        : new Date(touchdownAt).getTime();
+      const diff = Math.round((touchdownMs - acceptedMs) / 1000);
+      if (diff >= 0) responseTimeSeconds = diff;
+    }
+
     const updateData: Record<string, unknown> = {
-      touchdownAt: currentData.touchdownAt || Timestamp.now(),
+      touchdownAt,
       touchdownByDispatcherId: currentUser.uid,
       touchdownByName: currentUser.displayName || currentUser.email || currentUser.uid,
       touchdownSource: options.source,
       touchdownDistanceMeters:
         typeof options.distanceMeters === 'number' ? options.distanceMeters : null,
+      responseTimeSeconds,
       updatedAt: Timestamp.now(),
     };
 
