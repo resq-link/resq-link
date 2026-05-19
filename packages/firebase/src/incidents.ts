@@ -891,14 +891,59 @@ export async function associateReportsWithIncident(
   const existingReportIds = incident.associatedReportIds || [];
   const mergedReportIds = Array.from(new Set([...existingReportIds, ...reportIds]));
   
+  // Determine if this is a late association (incident already enroute, on scene, or resolved)
+  const isLateAssociation = ['enroute', 'on_scene', 'resolved'].includes(incident.status);
+  
+  // Fetch assignment details from an existing associated report if possible
+  let existingAssignment: any = {};
+  if (existingReportIds.length > 0) {
+    try {
+      const existingRef = doc(db, 'emergencies', existingReportIds[0]);
+      const existingSnap = await getDoc(existingRef);
+      if (existingSnap.exists()) {
+        const eData = existingSnap.data();
+        existingAssignment = {
+          responder: eData.responder || null,
+          assignedResponderId: eData.assignedResponderId || null,
+          assignedAgency: eData.assignedAgency || null,
+          suggestedAgency: eData.suggestedAgency || null,
+          dispatcherId: eData.dispatcherId || eData.dispatcher_id || null,
+        };
+      }
+    } catch (err) {
+      console.error('Error fetching existing report for assignment cloning:', err);
+    }
+  }
+
   // Update each EmergencyReport document to link it to the incident
   reportIds.forEach((reportId) => {
     const reportRef = doc(db, 'emergencies', reportId);
-    batch.update(reportRef, {
+    const reportPayload: any = {
       incidentId: incidentId,
-      status: 'linked',
       updatedAt: timestamp,
-    });
+    };
+
+    if (isLateAssociation) {
+      reportPayload.status = incident.status;
+      if (incident.acceptedAt) reportPayload.acceptedAt = incident.acceptedAt;
+      if (incident.touchdownAt) reportPayload.touchdownAt = incident.touchdownAt;
+      if (incident.responseTimeSeconds != null) reportPayload.responseTimeSeconds = incident.responseTimeSeconds;
+      if (incident.resolvedAt) reportPayload.resolvedAt = incident.resolvedAt;
+
+      // Copy BFP responder/dispatcher credentials so they can read/manage this civilian report in Firestore rules
+      if (existingAssignment.responder) reportPayload.responder = existingAssignment.responder;
+      if (existingAssignment.assignedResponderId) reportPayload.assignedResponderId = existingAssignment.assignedResponderId;
+      if (existingAssignment.assignedAgency) reportPayload.assignedAgency = existingAssignment.assignedAgency;
+      if (existingAssignment.suggestedAgency) reportPayload.suggestedAgency = existingAssignment.suggestedAgency;
+      if (existingAssignment.dispatcherId) {
+        reportPayload.dispatcherId = existingAssignment.dispatcherId;
+        reportPayload.dispatcher_id = existingAssignment.dispatcherId;
+      }
+    } else {
+      reportPayload.status = 'linked';
+    }
+
+    batch.update(reportRef, reportPayload);
   });
   
   // Update the master IncidentRecord
