@@ -11,6 +11,7 @@ import {
   assignResponderToEmergency,
   createIncident,
   dispatchIncidentResources,
+  elevateEmergencyToIncident,
   getAgencyLabel,
   getIncidentResourceMatch,
   getSuggestedAgenciesForEmergencyType,
@@ -29,6 +30,7 @@ import {
   disassociateReportFromIncident,
   linkReportToReport,
   unlinkReportFromReport,
+  Timestamp,
   type CreateIncidentInput,
   type DispatcherRole,
   type EmergencyReport,
@@ -750,19 +752,56 @@ function IntakeContent() {
     if (!report.id) return;
 
     try {
-      await assignDispatcherToEmergency(report.id, responder.uid);
-      const updated = await assignResponderToEmergency(report.id, {
-        responder: responder.label,
+      // Find matching incident subtype rule to inherit correct taxonomy, category, and priority
+      const matchingRule = incidentRules.find(
+        (rule) =>
+          rule.id === report.incidentType ||
+          rule.category === report.incidentType ||
+          rule.label.toLowerCase().includes(report.incidentType.toLowerCase())
+      );
+
+      const subtypeId = matchingRule?.id || "other-assistance";
+      const subtypeLabel = matchingRule?.label || "Request for Assistance";
+      const priority = matchingRule?.priority || report.priority || "medium";
+
+      // Elevate civilian report to master INC incident atomically
+      const incident = await elevateEmergencyToIncident(report.id, {
+        priority: priority as any,
+        teamOnDuty: "Whiskey", // Default test operational dispatch team
+        incidentSubtypeId: subtypeId,
+        incidentSubtypeLabel: subtypeLabel,
         assignedResponderId: responder.uid,
+        responderName: responder.label,
         assignedAgency: responder.agency,
-        suggestedAgency: responder.suggestedAgency || report.suggestedAgency || null,
       });
-      setSelectedQueueItem(prev => (prev && prev.id === report.id) ? { ...prev, rawEmergencyReport: updated } as IntakeQueueItem : prev);
+
+      // Update the local queue item immediately for smooth real-time visual feedback
+      const updatedReport: EmergencyReport = {
+        ...report,
+        incidentId: incident.id!,
+        status: "active",
+        assignedResponderId: responder.uid,
+        responder: responder.label,
+        assignedAgency: responder.agency,
+        updatedAt: Timestamp.now(),
+      };
+
+      setSelectedQueueItem((prev) =>
+        prev && prev.id === report.id
+          ? ({
+              ...prev,
+              rawEmergencyReport: updatedReport,
+              statusLabel: "En Route",
+              statusToneClass: "border-emerald-800 text-emerald-400 bg-emerald-950/40",
+            } as IntakeQueueItem)
+          : prev
+      );
+
       setPageSuccess(
-        `Report ${report.id.slice(-6).toUpperCase()} is now assigned to ${responder.label}.`,
+        `Report APP-${report.id.slice(-6).toUpperCase()} elevated to master incident ${incident.referenceNumber} and assigned to ${responder.label}.`,
       );
     } catch (error: any) {
-      setPageError(error.message || "Failed to assign report.");
+      setPageError(error.message || "Failed to assign and elevate report.");
     }
   };
 

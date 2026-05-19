@@ -18,6 +18,7 @@ import {
 import { getFirebaseAuth, getFirebaseFirestore } from './config';
 import { normalizeQuadrant, type OperationalQuadrant } from './quadrants';
 import type { ResourceRecord, ResourceStatus, ResourceType } from './resources';
+import { type DispatcherRole } from './auth';
 
 export type IncidentSource = 'civilian_app' | 'call' | 'sms' | 'walk_in' | 'radio' | 'manual';
 export type IncidentCategory =
@@ -934,4 +935,112 @@ export async function disassociateReportFromIncident(
   });
   
   await batch.commit();
+}
+
+/**
+ * Elevate a civilian emergency report to a master incident record atomically.
+ */
+export async function elevateEmergencyToIncident(
+  reportId: string,
+  input: {
+    priority?: 'low' | 'medium' | 'high' | 'critical' | null;
+    teamOnDuty: string;
+    incidentSubtypeId: string;
+    incidentSubtypeLabel: string;
+    assignedResponderId?: string | null;
+    responderName?: string | null;
+    assignedAgency?: DispatcherRole | null;
+  }
+): Promise<IncidentRecord> {
+  const currentUser = ensureAuthenticated();
+  const db = getFirebaseFirestore();
+  
+  // 1. Fetch the civilian emergency report
+  const reportRef = doc(db, 'emergencies', reportId);
+  const reportSnap = await getDoc(reportRef);
+  if (!reportSnap.exists()) {
+    throw new Error('Civilian report not found.');
+  }
+  const report = reportSnap.data();
+
+  // 2. Set up the master incident fields
+  const incidentsRef = collection(db, 'incidents');
+  const incidentDocRef = doc(incidentsRef); // Auto-generate ID
+  const referenceNumber = `INC-${Date.now()}`;
+  const timestamp = Timestamp.now();
+
+  const isAssigned = Boolean(input.assignedResponderId || input.responderName);
+  const initialStatus: IncidentStatus = isAssigned ? 'dispatched' : 'awaiting_resources';
+
+  const incidentPayload: IncidentRecord = {
+    id: incidentDocRef.id,
+    referenceNumber,
+    associatedReportIds: [reportId],
+    source: 'civilian_app',
+    createdByUserId: currentUser.uid,
+    commandCenterAdminId: currentUser.uid,
+    incidentCategory: report.incidentType || 'other',
+    incidentSubtypeId: input.incidentSubtypeId,
+    incidentSubtypeLabel: input.incidentSubtypeLabel,
+    priority: input.priority || report.priority || 'medium',
+    locationText: report.locationText || 'No location provided',
+    landmark: report.landmark || null,
+    quadrant: report.quadrant || null,
+    latitude: report.latitude || null,
+    longitude: report.longitude || null,
+    callerName: report.userName || 'Citizen Reporter',
+    callerContact: report.userPhone || null,
+    description: report.description || 'No description provided.',
+    teamOnDuty: input.teamOnDuty as any,
+    status: initialStatus,
+    resolutionStatus: 'open',
+    requiresExternalAgency: false, // Default to false, resolved in UI rules
+    recommendedAgencies: [],
+    assignedAgencies: input.assignedAgency ? [input.assignedAgency as any] : [],
+    assignedResourceIds: input.assignedResponderId ? [input.assignedResponderId] : [],
+    incidentDate: new Date().toISOString().split('T')[0],
+    incidentTime: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+
+  // 3. Update the civilian report: point to new master incident, inherit responder and agency
+  const reportUpdatePayload: any = {
+    incidentId: incidentDocRef.id,
+    status: isAssigned ? 'active' : 'linked', // active if responder is dispatched, linked otherwise
+    assignedResponderId: input.assignedResponderId || null,
+    responder: input.responderName || null,
+    assignedAgency: input.assignedAgency || null,
+    updatedAt: timestamp,
+  };
+
+  const batch = writeBatch(db);
+
+  // Write new incident
+  batch.set(incidentDocRef, incidentPayload);
+
+  // Update original civilian report
+  batch.update(reportRef, reportUpdatePayload);
+
+  // Propagate to secondary grouped reports if any
+  // Note: Secondary reports have primaryReportId === reportId
+  const q = query(
+    collection(db, 'emergencies'),
+    where('primaryReportId', '==', reportId)
+  );
+  const secondariesSnap = await getDocs(q);
+  secondariesSnap.forEach((secDoc) => {
+    batch.update(secDoc.ref, {
+      incidentId: incidentDocRef.id,
+      status: isAssigned ? 'active' : 'linked',
+      assignedResponderId: input.assignedResponderId || null,
+      responder: input.responderName || null,
+      assignedAgency: input.assignedAgency || null,
+      updatedAt: timestamp,
+    });
+  });
+
+  await batch.commit();
+
+  return incidentPayload;
 }

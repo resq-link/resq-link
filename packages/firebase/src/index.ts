@@ -159,6 +159,7 @@ export {
   validateIncidentAgencyRouting,
   associateReportsWithIncident,
   disassociateReportFromIncident,
+  elevateEmergencyToIncident,
   incidentAgencyCatalog,
   type AgencyCode,
   type CreateIncidentInput,
