@@ -355,10 +355,6 @@ export default function CaseInfoCard({
     }
   };
 
-  React.useEffect(() => {
-    if (!isWithinTouchdownRadius || !canMarkTouchdown) return;
-    handleTouchdown("gps", touchdownDistanceMeters);
-  }, [isWithinTouchdownRadius, touchdownDistanceMeters, canMarkTouchdown]);
 
   const styles = useMemo(
     () =>
