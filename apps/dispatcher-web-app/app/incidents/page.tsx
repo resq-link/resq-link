@@ -9,11 +9,13 @@ import {
   assignResponderToEmergency,
   moveEmergencyReportToHistory,
   subscribeToEmergencyReports,
+  subscribeToIncidents,
   associateReportsWithIncident,
   disassociateReportFromIncident,
   linkReportToReport,
   unlinkReportFromReport,
   getSuggestedAgenciesForEmergencyType,
+  QUADRANT_LABELS,
   type DispatcherRole,
   type EmergencyReport,
   type IncidentRecord,
@@ -70,6 +72,17 @@ const emergencyStatusTone: Record<string, string> = {
   resolved: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
 };
 
+const statusTone: Record<IncidentRecord["status"], string> = {
+  new: "border-slate-600 bg-slate-800/80 text-slate-200",
+  awaiting_resources: "border-amber-500/30 bg-amber-500/10 text-amber-200",
+  liaison_pending: "border-cyan-500/30 bg-cyan-500/10 text-cyan-200",
+  dispatched: "border-blue-500/30 bg-blue-500/10 text-blue-200",
+  enroute: "border-indigo-500/30 bg-indigo-500/10 text-indigo-200",
+  on_scene: "border-violet-500/30 bg-violet-500/10 text-violet-200",
+  resolved: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
+  unresolved: "border-red-500/30 bg-red-500/10 text-red-200",
+};
+
 function toQueueItemFromEmergency(report: EmergencyReport): IntakeQueueItem {
   const suggestedAgency =
     report.suggestedAgency ||
@@ -102,38 +115,77 @@ function toQueueItemFromEmergency(report: EmergencyReport): IntakeQueueItem {
   };
 }
 
+const toQueueItemFromIncident = (incident: IncidentRecord): IntakeQueueItem => ({
+  id: incident.id || incident.referenceNumber,
+  channel: "incident",
+  referenceNumber: incident.referenceNumber,
+  incidentSubtypeLabel: incident.incidentSubtypeLabel,
+  locationText: incident.locationText,
+  priority: incident.priority,
+  statusLabel: formatStatus(incident.status),
+  statusToneClass: statusTone[incident.status] || "border-slate-600 bg-slate-800/80 text-slate-200",
+  quadrantLabel: incident.quadrant ? QUADRANT_LABELS[incident.quadrant] : null,
+  teamOnDutyLabel: incident.teamOnDuty ?? null,
+  incidentDateLabel: incident.incidentDate ?? null,
+  incidentTimeLabel: incident.incidentTime ?? null,
+  createdAt: incident.createdAt,
+  viewedByName: null,
+  suggestedAgencyLabel: null,
+  rawEmergencyReport: null,
+  rawIncident: incident,
+});
+
 export default function ActiveIncidentsPage() {
   const { user } = useAuth();
   const [appEmergencyReports, setAppEmergencyReports] = useState<EmergencyReport[]>([]);
+  const [recentIncidents, setRecentIncidents] = useState<IncidentRecord[]>([]);
   const [selectedQueueItem, setSelectedQueueItem] = useState<IntakeQueueItem | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [pageError, setPageError] = useState<string | null>(null);
   const [pageSuccess, setPageSuccess] = useState<string | null>(null);
 
-  // Subscribe to real-time emergency reports
+  // Subscribe to real-time emergency reports and incidents
   useEffect(() => {
     if (!user) return;
 
-    const unsubscribe = subscribeToEmergencyReports((reports) => {
+    const unsubscribeEmergencyReports = subscribeToEmergencyReports((reports) => {
       setAppEmergencyReports(reports);
     }, { statusFilter: "all", limitCount: 200 });
 
-    return () => unsubscribe();
+    const unsubscribeIncidents = subscribeToIncidents((items) => {
+      setRecentIncidents(items);
+    }, 100);
+
+    return () => {
+      unsubscribeEmergencyReports();
+      unsubscribeIncidents();
+    };
   }, [user]);
 
-  // Compute active queues
-  const activeQueueItems = useMemo(() => {
+  // Compute active queues from both collections
+  const activeAppQueueItems = useMemo(() => {
     return appEmergencyReports
       .filter((report) => ["active", "enroute", "on_scene"].includes(report.status) && !report.primaryReportId)
-      .map(toQueueItemFromEmergency)
-      .sort((left, right) => toMillis(right.createdAt) - toMillis(left.createdAt));
+      .map(toQueueItemFromEmergency);
   }, [appEmergencyReports]);
 
-  // Compute duplicate counts
+  const activeManualQueueItems = useMemo(() => {
+    return recentIncidents
+      .filter((incident) => incident.resolutionStatus === "open")
+      .map(toQueueItemFromIncident);
+  }, [recentIncidents]);
+
+  const activeQueueItems = useMemo(() => {
+    return [...activeAppQueueItems, ...activeManualQueueItems].sort(
+      (left, right) => toMillis(right.createdAt) - toMillis(left.createdAt)
+    );
+  }, [activeAppQueueItems, activeManualQueueItems]);
+
+  // Compute duplicate counts for app reports
   const duplicateCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     activeQueueItems.forEach((item) => {
-      if (item.id) {
+      if (item.id && item.channel === "emergency_report") {
         counts[item.id] = appEmergencyReports.filter(r => r.primaryReportId === item.id).length;
       }
     });
@@ -155,6 +207,23 @@ export default function ActiveIncidentsPage() {
     return items;
   }, [activeQueueItems, searchQuery]);
 
+  // Keep selected item updated with live updates
+  useEffect(() => {
+    if (!selectedQueueItem) return;
+
+    if (selectedQueueItem.channel === "emergency_report") {
+      const match = appEmergencyReports.find((r) => r.id === selectedQueueItem.id);
+      if (match) {
+        setSelectedQueueItem(toQueueItemFromEmergency(match));
+      }
+    } else if (selectedQueueItem.channel === "incident") {
+      const match = recentIncidents.find((i) => i.id === selectedQueueItem.id);
+      if (match) {
+        setSelectedQueueItem(toQueueItemFromIncident(match));
+      }
+    }
+  }, [appEmergencyReports, recentIncidents, selectedQueueItem?.id]);
+
   // Actions/handlers
   const handleRespondToAppReport = async (
     report: EmergencyReport,
@@ -175,7 +244,7 @@ export default function ActiveIncidentsPage() {
         assignedAgency: responder.agency,
         suggestedAgency: responder.suggestedAgency || report.suggestedAgency || null,
       });
-      setSelectedQueueItem(prev => (prev && prev.id === report.id) ? { ...prev, rawEmergencyReport: updated } as IntakeQueueItem : prev);
+      setSelectedQueueItem(toQueueItemFromEmergency(updated));
       setPageSuccess(
         `Report ${report.id.slice(-6).toUpperCase()} is now assigned to ${responder.label}.`,
       );
@@ -243,9 +312,15 @@ export default function ActiveIncidentsPage() {
     }
   };
 
-  const activeCount = activeQueueItems.filter(i => i.rawEmergencyReport?.status === "active").length;
-  const enRouteCount = activeQueueItems.filter(i => i.rawEmergencyReport?.status === "enroute").length;
-  const onSceneCount = activeQueueItems.filter(i => i.rawEmergencyReport?.status === "on_scene").length;
+  const activeCount = activeQueueItems.filter(
+    (i) => i.rawEmergencyReport?.status === "active" || i.rawIncident?.status === "dispatched"
+  ).length;
+  const enRouteCount = activeQueueItems.filter(
+    (i) => i.rawEmergencyReport?.status === "enroute" || i.rawIncident?.status === "enroute"
+  ).length;
+  const onSceneCount = activeQueueItems.filter(
+    (i) => i.rawEmergencyReport?.status === "on_scene" || i.rawIncident?.status === "on_scene"
+  ).length;
 
   return (
     <ProtectedRoute>
@@ -318,9 +393,9 @@ export default function ActiveIncidentsPage() {
                 ) : (
                   filteredQueueItems.map((item) => (
                     <IntakeListItem 
-                      key={item.id} 
+                      key={`${item.channel}-${item.id}`} 
                       item={item} 
-                      isSelected={selectedQueueItem?.id === item.id}
+                      isSelected={selectedQueueItem?.id === item.id && selectedQueueItem?.channel === item.channel}
                       duplicateCount={duplicateCounts[item.id || ""]}
                       onClick={(item) => setSelectedQueueItem(item)}
                     />
@@ -334,6 +409,7 @@ export default function ActiveIncidentsPage() {
               {selectedQueueItem ? (
                 <IntakeDetailView 
                   item={selectedQueueItem} 
+                  recentIncidents={recentIncidents}
                   allCivilianReports={appEmergencyReports}
                   onCloseDetail={() => setSelectedQueueItem(null)}
                   onRespond={handleRespondToAppReport}
