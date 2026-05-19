@@ -1,433 +1,260 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import StatusBadge from '@/components/StatusBadge'
-import { subscribeToEmergencyReports, type EmergencyReport } from '@packages/firebase'
-import { useAuth } from '@/contexts/AuthContext'
-import ProtectedRoute from '@/components/ProtectedRoute'
-import CommandBar from '@/components/CommandBar'
-import { Search, Filter, History as HistoryIcon } from 'lucide-react'
+import { useEffect, useMemo, useState, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import CommandBar from "@/components/CommandBar";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  subscribeToEmergencyReports,
+  subscribeToIncidents,
+  QUADRANT_LABELS,
+  type EmergencyReport,
+  type IncidentRecord,
+} from "@packages/firebase";
+import IntakeListItem, { type IntakeQueueItem } from "@/components/IntakeListItem";
+import IntakeDetailView from "@/components/IntakeDetailView";
+import { Search, ShieldAlert, History as HistoryIcon } from "lucide-react";
 
-type HistoryIncident = {
-  id: string
-  type: string
-  location: string
-  priority: string
-  status: EmergencyReport['status']
-  reportedAt: Date
-  resolvedAt: Date | null
-  description: string
-  responder: string | null
-  duration: string | null
-  postIncidentReport: EmergencyReport['postIncidentReport']
-  touchdownAt: Date | null
-}
+const formatStatus = (status: IncidentRecord["status"]) =>
+  status
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
 
-// Map incident type to display name
-const getIncidentTypeName = (incidentType: string): string => {
-  const typeMap: Record<string, string> = {
-    fire: 'Fire',
-    medical: 'Medical Emergency',
-    vehicular_accident: 'Vehicular Accident',
-    police_emergency: 'Police Emergency',
-    electrical_powerline_hazard: 'Electrical / Powerline Hazard',
-    other_emergency: 'Other Emergency',
-  }
-  return typeMap[incidentType] || 'Emergency'
-}
+const toMillis = (val: any): number => {
+  if (!val) return 0;
+  if (val instanceof Date) return val.getTime();
+  if (typeof val === "object" && "toDate" in val) return val.toDate().getTime();
+  if (typeof val === "number") return val;
+  return new Date(val).getTime();
+};
 
-// Convert EmergencyReport to History Incident format
-const convertToHistoryIncident = (report: EmergencyReport): HistoryIncident => {
-  const reportedAt = report.createdAt instanceof Date 
-    ? report.createdAt 
-    : (report.createdAt && typeof report.createdAt === 'object' && 'toDate' in report.createdAt)
-    ? (report.createdAt as any).toDate()
-    : new Date(report.createdAt || Date.now())
+const statusTone: Record<IncidentRecord["status"], string> = {
+  new: "border-slate-600 bg-slate-800/80 text-slate-200",
+  awaiting_resources: "border-amber-500/30 bg-amber-500/10 text-amber-200",
+  liaison_pending: "border-cyan-500/30 bg-cyan-500/10 text-cyan-200",
+  dispatched: "border-blue-500/30 bg-blue-500/10 text-blue-200",
+  enroute: "border-indigo-500/30 bg-indigo-500/10 text-indigo-200",
+  on_scene: "border-violet-500/30 bg-violet-500/10 text-violet-200",
+  resolved: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
+  unresolved: "border-red-500/30 bg-red-500/10 text-red-200",
+};
 
-  const resolvedAt = report.updatedAt instanceof Date 
-    ? report.updatedAt 
-    : (report.updatedAt && typeof report.updatedAt === 'object' && 'toDate' in report.updatedAt)
-    ? (report.updatedAt as any).toDate()
-    : null
+const toQueueItemFromIncident = (incident: IncidentRecord): IntakeQueueItem => ({
+  id: incident.id || incident.referenceNumber,
+  channel: "incident",
+  referenceNumber: incident.referenceNumber,
+  incidentSubtypeLabel: incident.incidentSubtypeLabel,
+  locationText: incident.locationText,
+  priority: incident.priority,
+  statusLabel: formatStatus(incident.status),
+  statusToneClass: statusTone[incident.status] || "border-slate-600 bg-slate-800/80 text-slate-200",
+  quadrantLabel: incident.quadrant ? QUADRANT_LABELS[incident.quadrant] : null,
+  teamOnDutyLabel: incident.teamOnDuty ?? null,
+  incidentDateLabel: incident.incidentDate ?? null,
+  incidentTimeLabel: incident.incidentTime ?? null,
+  createdAt: incident.createdAt,
+  viewedByName: null,
+  suggestedAgencyLabel: null,
+  rawEmergencyReport: null,
+  rawIncident: incident,
+});
 
-  // Calculate duration in minutes
-  let duration: string | null = null
-  if (resolvedAt && reportedAt) {
-    const durationMs = resolvedAt.getTime() - reportedAt.getTime()
-    const durationMinutes = Math.round(durationMs / 60000)
-    if (durationMinutes < 60) {
-      duration = `${durationMinutes} minutes`
-    } else {
-      const hours = Math.floor(durationMinutes / 60)
-      const minutes = durationMinutes % 60
-      duration = minutes > 0 ? `${hours}h ${minutes}m` : `${hours} hour${hours > 1 ? 's' : ''}`
-    }
-  }
+function HistoryContent() {
+  const searchParams = useSearchParams();
+  const focusId = searchParams.get("id");
+  const { user } = useAuth();
+  const router = useRouter();
+  const [appEmergencyReports, setAppEmergencyReports] = useState<EmergencyReport[]>([]);
+  const [recentIncidents, setRecentIncidents] = useState<IncidentRecord[]>([]);
+  const [selectedQueueItem, setSelectedQueueItem] = useState<IntakeQueueItem | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  return {
-    id: report.id || '',
-    type: getIncidentTypeName(report.incidentType),
-    location: report.locationText,
-    priority: report.priority || 'medium',
-    status: report.status === 'done' || report.status === 'resolved' ? 'resolved' : report.status,
-    reportedAt,
-    resolvedAt,
-    description: report.description || 'No description provided',
-    responder: report.responder || null,
-    duration,
-    postIncidentReport: report.postIncidentReport || null,
-    touchdownAt: report.touchdownAt instanceof Date
-      ? report.touchdownAt
-      : (report.touchdownAt && typeof report.touchdownAt === 'object' && 'toDate' in report.touchdownAt)
-      ? (report.touchdownAt as any).toDate()
-      : null,
-  }
-}
-
-const formatDateTime = (date: Date) =>
-  new Intl.DateTimeFormat('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  })
-    .format(date)
-    .replace(', ', ' • ')
-
-const formatDurationFromDates = (start: Date, end: Date): string => {
-  const totalMinutes = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000))
-  const days = Math.floor(totalMinutes / 1440)
-  const hours = Math.floor((totalMinutes % 1440) / 60)
-  const minutes = totalMinutes % 60
-
-  if (days > 0) {
-    if (hours > 0) return `${days} day${days > 1 ? 's' : ''} ${hours} hour${hours > 1 ? 's' : ''}`
-    return `${days} day${days > 1 ? 's' : ''}`
-  }
-  if (hours > 0) {
-    if (minutes > 0) return `${hours}h ${minutes}m`
-    return `${hours} hour${hours > 1 ? 's' : ''}`
-  }
-  return `${minutes} min`
-}
-
-const getPriorityBadgeClass = (priority: string) => {
-  const normalized = priority.toLowerCase()
-  if (normalized === 'high' || normalized === 'critical') return 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
-  if (normalized === 'medium') return 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
-  return 'bg-sky-500/15 text-sky-300 border border-sky-500/30'
-}
-
-export default function HistoryPage() {
-  const [selectedFilter, setSelectedFilter] = useState<string>('all')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [history, setHistory] = useState<HistoryIncident[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const { user } = useAuth()
-  const router = useRouter()
-
-  // Subscribe to live data
+  // Subscribe to real-time emergency reports and incidents
   useEffect(() => {
-    // Redirect to login if not authenticated
     if (!user) {
-      router.push('/login')
-      return
+      router.push('/login');
+      return;
     }
 
-    console.log('Setting up emergency reports subscription for history...')
-    console.log('✅ User authenticated:', user.uid)
-    
-    // Subscribe to real-time emergency reports from Firestore
-    const unsubscribe = subscribeToEmergencyReports(
-      (reports: EmergencyReport[]) => {
-        console.log('Received emergency reports for history:', reports.length)
-        
-        // Filter for resolved/done incidents only
-        const resolvedReports = reports.filter(
-          report => report.status === 'done' || report.status === 'resolved'
-        )
-        
-        // Convert to history format
-        const historyIncidents = resolvedReports.map(convertToHistoryIncident)
-        
-        // Sort by reportedAt descending (newest first)
-        historyIncidents.sort((a, b) => b.reportedAt.getTime() - a.reportedAt.getTime())
-        
-        setHistory(historyIncidents)
-        setIsLoading(false)
-      },
-      {
-        statusFilter: 'all', // Get all, we'll filter in the callback
-        limitCount: 200, // Get more for history
-      }
-    )
+    const unsubscribeEmergencyReports = subscribeToEmergencyReports((reports) => {
+      setAppEmergencyReports(reports);
+    }, { statusFilter: "all", limitCount: 200 });
+
+    const unsubscribeIncidents = subscribeToIncidents((items) => {
+      setRecentIncidents(items);
+    }, 200);
 
     return () => {
-      console.log('Unsubscribing from emergency reports')
-      unsubscribe()
+      unsubscribeEmergencyReports();
+      unsubscribeIncidents();
+    };
+  }, [user, router]);
+
+  // Auto-select deep-linked incident from URL parameters on mount/update
+  useEffect(() => {
+    if (!focusId || recentIncidents.length === 0) return;
+    if (selectedQueueItem?.id === focusId) return;
+
+    const matchInc = recentIncidents.find((i) => i.id === focusId || i.referenceNumber === focusId);
+    if (matchInc && matchInc.resolutionStatus === 'resolved') {
+      setSelectedQueueItem(toQueueItemFromIncident(matchInc));
     }
-  }, [user, router])
+  }, [focusId, recentIncidents, selectedQueueItem?.id]);
 
-  const filteredHistory = history.filter((incident) => {
-    const matchesFilter =
-      selectedFilter === 'all' || incident.status === selectedFilter
-    const matchesSearch =
-      searchQuery === '' ||
-      incident.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      incident.location.toLowerCase().includes(searchQuery.toLowerCase())
-    return matchesFilter && matchesSearch
-  })
+  // Keep selected item updated with live updates
+  useEffect(() => {
+    if (!selectedQueueItem) return;
+    const match = recentIncidents.find((i) => i.id === selectedQueueItem.id);
+    if (match) {
+      setSelectedQueueItem(toQueueItemFromIncident(match));
+    }
+  }, [recentIncidents, selectedQueueItem?.id]);
 
-  // Calculate statistics
-  const totalIncidents = history.length
-  const resolvedToday = history.filter(
-    (i) =>
-      i.resolvedAt &&
-      i.resolvedAt.getTime() > Date.now() - 24 * 60 * 60000
-  ).length
+  // Compute resolved queue items from history
+  const resolvedIncidents = useMemo(() => {
+    return recentIncidents.filter((incident) => incident.resolutionStatus === "resolved");
+  }, [recentIncidents]);
 
-  // Calculate average response time (time from reported to resolved)
-  const incidentsWithDuration = history.filter(i => i.duration !== null)
-  const avgResponseTime = incidentsWithDuration.length > 0
-    ? (() => {
-        const totalMinutes = incidentsWithDuration.reduce((sum, i) => {
-          if (!i.resolvedAt || !i.reportedAt) return sum
-          const durationMs = i.resolvedAt.getTime() - i.reportedAt.getTime()
-          return sum + Math.round(durationMs / 60000)
-        }, 0)
-        const avgMinutes = Math.round(totalMinutes / incidentsWithDuration.length)
-        if (avgMinutes < 60) {
-          return `${avgMinutes} min`
-        } else {
-          const hours = Math.floor(avgMinutes / 60)
-          const minutes = avgMinutes % 60
-          return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`
-        }
-      })()
-    : 'N/A'
+  const resolvedQueueItems = useMemo(() => {
+    return resolvedIncidents
+      .map(toQueueItemFromIncident)
+      .sort((left, right) => toMillis(right.createdAt) - toMillis(left.createdAt));
+  }, [resolvedIncidents]);
+
+  const filteredQueueItems = useMemo(() => {
+    let items = resolvedQueueItems;
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      return items.filter(
+        (val) =>
+          val.referenceNumber.toLowerCase().includes(q) ||
+          val.incidentSubtypeLabel.toLowerCase().includes(q) ||
+          val.locationText.toLowerCase().includes(q)
+      );
+    }
+    return items;
+  }, [resolvedQueueItems, searchQuery]);
+
+  // Stats calculation
+  const totalResolved = resolvedIncidents.length;
+  
+  // Calculate average response time
+  const incidentsWithResponseTime = resolvedIncidents.filter(i => typeof i.responseTimeSeconds === 'number');
+  const avgResponseTimeFormatted = useMemo(() => {
+    if (incidentsWithResponseTime.length === 0) return '—';
+    const sum = incidentsWithResponseTime.reduce((acc, curr) => acc + (curr.responseTimeSeconds || 0), 0);
+    const avgSeconds = Math.round(sum / incidentsWithResponseTime.length);
+    const mins = Math.floor(avgSeconds / 60);
+    const secs = avgSeconds % 60;
+    if (mins > 0) return `${mins}m ${secs}s`;
+    return `${secs}s`;
+  }, [incidentsWithResponseTime]);
+
+  const totalTouchdowns = resolvedIncidents.filter(i => !!i.touchdownAt).length;
 
   return (
     <ProtectedRoute>
       <div className="flex flex-col h-full">
         <CommandBar 
           pageName="Incident History" 
-          description="Archive of past incidents and resolution data"
-          statsCategory="Incidents"
+          description="Archive of past resolved incidents and operational logs"
+          statsCategory="Archived"
           stats={[
-            { label: 'Resolved Today', value: resolvedToday, highlight: true },
-            { label: 'Avg Time', value: avgResponseTime },
-            { label: 'Total', value: totalIncidents }
+            { label: 'Total Resolved', value: totalResolved, highlight: true },
+            { label: 'Avg Response Time', value: avgResponseTimeFormatted },
+            { label: 'GPS Touchdowns', value: totalTouchdowns }
           ]}
-        >
-          <div className="flex items-center gap-2">
-            <div className="relative group/search">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within/search:text-primary-400 transition-colors" />
-              <input
-                type="text"
-                placeholder="Search history..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="h-8 w-48 pl-9 pr-3 border border-slate-800 bg-slate-900/50 text-[11px] text-slate-100 placeholder-slate-500 rounded-lg focus:ring-1 focus:ring-primary-500/50 focus:border-primary-500/50 outline-none transition-all"
-              />
+        />
+
+        <div className="flex-1 flex flex-col min-h-0 bg-slate-950/20 backdrop-blur-sm">
+          {/* Search & Info Banner */}
+          <div className="px-4 py-3 border-b border-slate-800 bg-slate-900/40 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-2.5">
+              <HistoryIcon className="w-5 h-5 text-emerald-400" />
+              <h2 className="text-sm font-black uppercase tracking-widest text-slate-100">
+                Resolution Archive
+              </h2>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                {filteredQueueItems.length} ARCHIVED
+              </span>
             </div>
-            <div className="flex bg-slate-900/50 p-0.5 rounded-lg border border-slate-800">
-              {(['all', 'resolved'] as const).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setSelectedFilter(tab)}
-                  className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${
-                    selectedFilter === tab 
-                      ? 'bg-slate-100 text-slate-950 shadow-sm' 
-                      : 'text-slate-500 hover:text-slate-300'
-                  }`}
-                >
-                  {tab}
-                </button>
-              ))}
+ 
+            <div className="flex items-center gap-2">
+              <div className="relative w-[240px]">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                <input 
+                  type="text" 
+                  placeholder="Search resolution logs..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full h-8 pl-8 pr-4 rounded-lg bg-slate-950 border border-slate-800 text-[11px] text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-primary-500/50"
+                />
+              </div>
             </div>
           </div>
-        </CommandBar>
 
-        <div className="flex-1 p-6 space-y-6 overflow-y-auto custom-scrollbar no-scrollbar">
-
-
-        {/* History List */}
-        <div className="bg-slate-900/70 rounded-lg shadow-md shadow-black/20 border border-slate-800 p-4">
-          <h2 className="text-xl font-bold text-slate-100 mb-4">Past Incidents ({filteredHistory.length})</h2>
-
-          {isLoading ? (
-            <div className="space-y-3 py-1">
-              {[1, 2, 3].map((item) => (
-                <div
-                  key={item}
-                  className="rounded-lg border border-slate-800 bg-slate-950/60 p-4 animate-pulse"
-                >
-                  <div className="h-5 w-2/5 rounded bg-slate-800 mb-3" />
-                  <div className="h-4 w-full rounded bg-slate-800/80 mb-2" />
-                  <div className="h-4 w-4/5 rounded bg-slate-800/80 mb-4" />
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    <div className="h-3 w-3/4 rounded bg-slate-800/70" />
-                    <div className="h-3 w-2/3 rounded bg-slate-800/70" />
-                    <div className="h-3 w-1/2 rounded bg-slate-800/70" />
-                    <div className="h-3 w-1/3 rounded bg-slate-800/70" />
+          {/* Master-Detail Layout */}
+          <div className="flex-1 flex min-h-0 overflow-hidden relative">
+            <div className="absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-slate-950 to-transparent z-10 pointer-events-none"></div>
+            
+            {/* Left Panel: Incident List */}
+            <div className={`${selectedQueueItem ? "hidden lg:flex" : "flex"} flex-col min-h-0 w-full lg:w-[400px] border-r border-slate-800 bg-slate-900/10`}>
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                {filteredQueueItems.length === 0 ? (
+                   <div className="h-full flex flex-col items-center justify-center p-8 text-center border-2 border-dashed border-slate-800/50 rounded-2xl">
+                    <ShieldAlert className="w-10 h-10 text-slate-800 mb-3" />
+                    <p className="text-slate-500 text-sm font-medium">No resolved incidents found</p>
+                    <p className="text-slate-600 text-xs mt-1">Past emergency responses will appear in this archive once resolved.</p>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filteredHistory.map((incident) => (
-                <div
-                  key={incident.id}
-                  className="border border-slate-800 rounded-lg p-4 bg-slate-950/60 shadow-sm shadow-black/20 transition-all duration-200 hover:border-slate-700 hover:shadow-md hover:shadow-black/30"
-                >
-                  {/* Top Section */}
-                  <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-lg font-semibold text-slate-100">{incident.type}</h3>
-                        <StatusBadge status={incident.status} />
-                        {incident.priority && (
-                          <span
-                            className={`text-xs font-semibold px-2 py-0.5 rounded-full capitalize ${getPriorityBadgeClass(
-                              incident.priority
-                            )}`}
-                          >
-                            {incident.priority}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    {incident.resolvedAt && (
-                      <span className="text-xs text-slate-400 bg-slate-900/80 border border-slate-800 rounded-md px-2 py-1">
-                        Duration: {formatDurationFromDates(incident.reportedAt, incident.resolvedAt)}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="border-t border-slate-800 my-3" />
-
-                  {/* Middle Section */}
-                    <div className="space-y-3">
-                      <p className="text-sm text-slate-300 leading-relaxed">{incident.description}</p>
-                    {incident.postIncidentReport && (
-                      <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-3">
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500 mb-2">Post Report</p>
-                        <div className="grid gap-2 text-sm text-slate-300 md:grid-cols-2">
-                          <p><span className="text-slate-500">Reason:</span> {incident.postIncidentReport.reasonForIncident || 'Not provided'}</p>
-                          <p><span className="text-slate-500">People involved:</span> {incident.postIncidentReport.peopleInvolved ?? 'Not provided'}</p>
-                          <p><span className="text-slate-500">People status:</span> {incident.postIncidentReport.peopleStatus || 'Not provided'}</p>
-                          <p><span className="text-slate-500">Hospital:</span> {incident.postIncidentReport.hospital || 'Not provided'}</p>
-                          <p className="md:col-span-2"><span className="text-slate-500">Notes:</span> {incident.postIncidentReport.notes || 'Not provided'}</p>
-                        </div>
-                      </div>
-                    )}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 text-sm text-slate-400">
-                      <span className="flex items-center gap-2 min-w-0">
-                        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-                          />
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-                          />
-                        </svg>
-                        <span className="truncate">{incident.location}</span>
-                      </span>
-                      <span className="flex items-center gap-2">
-                        <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                          />
-                        </svg>
-                        <span>Reported: {formatDateTime(incident.reportedAt)}</span>
-                      </span>
-                      {incident.resolvedAt && (
-                        <span className="flex items-center gap-2 lg:col-span-2">
-                          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                          </svg>
-                          <span>Resolved: {formatDateTime(incident.resolvedAt)}</span>
-                        </span>
-                      )}
-                      {incident.touchdownAt && (
-                        <span className="flex items-center gap-2 lg:col-span-2">
-                          <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                          </svg>
-                          <span>GPS Touchdown: {formatDateTime(incident.touchdownAt)}</span>
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="border-t border-slate-800 my-3" />
-
-                  {/* Bottom Section */}
-                  <div className="flex items-center justify-between gap-3 text-sm">
-                    <div>
-                      <p className="text-slate-500">Responder</p>
-                      <p className="font-medium text-slate-100">{incident.responder || 'Unassigned'}</p>
-                    </div>
-                    {incident.resolvedAt && (
-                      <p className="text-slate-300">
-                        <span className="text-slate-500 mr-1">Duration</span>
-                        <span className="font-semibold text-blue-300">
-                          {formatDurationFromDates(incident.reportedAt, incident.resolvedAt)}
-                        </span>
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {!isLoading && filteredHistory.length === 0 && (
-            <div className="text-center py-10 px-4 border border-dashed border-slate-800 rounded-lg bg-slate-950/40">
-              <div className="mx-auto mb-3 w-10 h-10 rounded-full border border-slate-700 bg-slate-900/80 flex items-center justify-center text-slate-400">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                  />
-                </svg>
+                ) : (
+                  filteredQueueItems.map((item) => (
+                    <IntakeListItem 
+                      key={`${item.channel}-${item.id}`} 
+                      item={item} 
+                      isSelected={selectedQueueItem?.id === item.id && selectedQueueItem?.channel === item.channel}
+                      onClick={(item) => setSelectedQueueItem(item)}
+                    />
+                  ))
+                )}
               </div>
-              <p className="text-slate-300 text-lg font-semibold">No incident history available</p>
-              <p className="text-slate-500 text-sm mt-2">
-                {history.length === 0
-                  ? 'Resolved incidents will appear here once available.'
-                  : 'Try adjusting your search or filter criteria.'}
-              </p>
             </div>
-          )}
-        </div>
+
+            {/* Right Panel: Detail Coordination View */}
+            <div className={`${selectedQueueItem ? "flex" : "hidden lg:flex"} flex-1 flex-col min-h-0 p-4 lg:p-6 bg-slate-950/10 overflow-hidden`}>
+              {selectedQueueItem ? (
+                <IntakeDetailView 
+                  item={selectedQueueItem} 
+                  recentIncidents={recentIncidents}
+                  allCivilianReports={appEmergencyReports}
+                  onCloseDetail={() => setSelectedQueueItem(null)}
+                />
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center border-2 border-dashed border-slate-800/50 rounded-3xl m-4">
+                  <HistoryIcon className="w-12 h-12 text-slate-800 mb-4 animate-pulse text-emerald-500/40" />
+                  <p className="text-slate-400 text-base font-bold">No archived incident selected</p>
+                  <p className="text-slate-500 text-xs max-w-sm mt-1">
+                    Select a resolved incident from the archive list to review dispatcher tracking timelines, final post-incident reports, and responder response times.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </ProtectedRoute>
-  )
+  );
 }
 
+export default function HistoryPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center text-xs text-slate-500 uppercase tracking-widest">
+        Loading resolution history...
+      </div>
+    }>
+      <HistoryContent />
+    </Suspense>
+  );
+}
