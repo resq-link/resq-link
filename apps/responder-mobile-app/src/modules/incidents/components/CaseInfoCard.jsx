@@ -204,14 +204,19 @@ export default function CaseInfoCard({
     }
   };
 
-  const isAssignedDispatcher =
+  const isAssignedResponder =
     user && caseData.assignedResourceIds && caseData.assignedResourceIds.includes(user.uid);
   const showAcceptButton =
-    isAssignedDispatcher &&
-    (caseData.status === "pending" || caseData.status === "active");
+    isAssignedResponder &&
+    (caseData.status === "pending" ||
+      caseData.status === "dispatched" ||
+      caseData.status === "awaiting_resources" ||
+      caseData.status === "active");
   const showStatusDropdown =
-    isAssignedDispatcher &&
+    isAssignedResponder &&
     caseData.status !== "pending" &&
+    caseData.status !== "dispatched" &&
+    caseData.status !== "awaiting_resources" &&
     caseData.status !== "active" &&
     caseData.status !== "done";
 

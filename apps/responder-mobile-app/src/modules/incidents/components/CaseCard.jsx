@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import useUserStore from "@/store/userStore";
-import { acceptEmergencyCase } from "@/services/incidentService";
+import { acceptIncidentCase } from "@/services/incidentService";
 import CaseStatusBadge from "./CaseStatusBadge";
 import PriorityBadge from "./PriorityBadge";
 import { radii, spacing, useResqTheme } from "@/theme";
@@ -11,16 +11,20 @@ export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
   const [isAccepting, setIsAccepting] = useState(false);
   const { user } = useUserStore();
 
-  const isAssignedDispatcher = user && caseData.dispatcherId === user.uid;
+  const isAssignedResponder =
+    user && caseData.assignedResourceIds && caseData.assignedResourceIds.includes(user.uid);
   const showAcceptButton =
-    isAssignedDispatcher &&
-    (caseData.status === "pending" || caseData.status === "active");
+    isAssignedResponder &&
+    (caseData.status === "pending" ||
+      caseData.status === "dispatched" ||
+      caseData.status === "awaiting_resources" ||
+      caseData.status === "active");
 
   const handleAcceptCase = async () => {
     if (!caseData.id) return;
     try {
       setIsAccepting(true);
-      const updatedCase = await acceptEmergencyCase(caseData.id);
+      const updatedCase = await acceptIncidentCase(caseData.id);
       onStatusUpdate?.(caseData.id, updatedCase.status || "enroute");
     } catch (err) {
       console.error("Error accepting case:", err);
