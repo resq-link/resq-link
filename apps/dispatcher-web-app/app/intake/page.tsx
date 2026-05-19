@@ -609,6 +609,61 @@ function IntakeContent() {
     [appQueueItems, manualQueueItems, smsCallQueueItems],
   );
 
+  const duplicateCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    const timeLimitMinutes = 30;
+    const distanceLimitMeters = 150;
+
+    const getReportTime = (r: EmergencyReport) => {
+      return r.createdAt instanceof Date 
+        ? r.createdAt.getTime() 
+        : (r.createdAt as any)?.toDate?.()?.getTime() || Date.now();
+    };
+
+    const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+      const R = 6371e3;
+      const phi1 = (lat1 * Math.PI) / 180;
+      const phi2 = (lat2 * Math.PI) / 180;
+      const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
+      const deltaLambda = ((lon2 - lon1) * Math.PI) / 180;
+
+      const a =
+        Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+        Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+      return R * c;
+    };
+
+    appEmergencyReports.forEach((report) => {
+      if (!report.id || !report.latitude || !report.longitude || report.incidentId || report.primaryReportId) {
+        return;
+      }
+
+      const reportTime = getReportTime(report);
+
+      const duplicates = appEmergencyReports.filter((other) => {
+        if (other.id === report.id) return false;
+        if (other.incidentId) return false;
+        if (other.primaryReportId && other.primaryReportId !== report.id) return false;
+        if (other.incidentType !== report.incidentType) return false;
+        if (!other.latitude || !other.longitude) return false;
+
+        const dist = calculateDistance(report.latitude!, report.longitude!, other.latitude, other.longitude);
+        const otherTime = getReportTime(other);
+        const timeDiff = Math.abs(reportTime - otherTime) / (1000 * 60);
+
+        return dist <= distanceLimitMeters && timeDiff <= timeLimitMinutes;
+      });
+
+      if (duplicates.length > 0) {
+        counts[report.id] = duplicates.length;
+      }
+    });
+
+    return counts;
+  }, [appEmergencyReports]);
+
   const filteredQueueItems = useMemo(() => {
     let items: IntakeQueueItem[] = [];
     if (activeTab === "all") items = [...appQueueItems, ...smsCallQueueItems, ...manualQueueItems];
@@ -819,6 +874,15 @@ function IntakeContent() {
     }
   };
 
+  const handleLinkAllReports = async (primaryReportId: string, secondaryReportIds: string[]) => {
+    try {
+      await Promise.all(secondaryReportIds.map(secId => linkReportToReport(primaryReportId, secId)));
+      setPageSuccess(`Successfully grouped ${secondaryReportIds.length} duplicate civilian reports.`);
+    } catch (error: any) {
+      setPageError(error.message || "Failed to group some reports.");
+    }
+  };
+
   const openIncidentDatePicker = () => {
     const input = incidentDateInputRef.current;
     if (!input) return;
@@ -1015,6 +1079,7 @@ function IntakeContent() {
                       key={item.id} 
                       item={item} 
                       isSelected={selectedQueueItem?.id === item.id}
+                      duplicateCount={item.channel === "emergency_report" && item.id ? duplicateCounts[item.id] : undefined}
                       onClick={(item) => {
                         setSelectedQueueItem(item);
                         handleOpenQueueItem(item);
@@ -1040,6 +1105,7 @@ function IntakeContent() {
                 onUnlinkFromIncident={handleUnlinkFromIncident}
                 onLinkReportToReport={handleLinkReportToReport}
                 onUnlinkReportFromReport={handleUnlinkReportFromReport}
+                onLinkAllReports={handleLinkAllReports}
               />
             </div>
           </div>

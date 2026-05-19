@@ -33,9 +33,10 @@ interface IntakeListItemProps {
   item: IntakeQueueItem
   isSelected: boolean
   onClick: (item: IntakeQueueItem) => void
+  duplicateCount?: number
 }
 
-export default function IntakeListItem({ item, isSelected, onClick }: IntakeListItemProps) {
+export default function IntakeListItem({ item, isSelected, onClick, duplicateCount }: IntakeListItemProps) {
   return (
     <article
       onClick={() => onClick(item)}
@@ -50,9 +51,16 @@ export default function IntakeListItem({ item, isSelected, onClick }: IntakeList
           <p className="text-sm font-bold text-slate-100 uppercase tracking-tight">
             {item.referenceNumber}
           </p>
-          <p className="mt-1 text-xs font-medium text-slate-300">
-            {item.incidentSubtypeLabel}
-          </p>
+          <div className="flex items-center gap-2 mt-1">
+            <p className="text-xs font-medium text-slate-300">
+              {item.incidentSubtypeLabel}
+            </p>
+            {duplicateCount && duplicateCount > 0 ? (
+              <span className="inline-flex items-center rounded-full bg-orange-500/10 px-1.5 py-0.5 text-[9px] font-black text-orange-400 border border-orange-500/30 animate-pulse">
+                +{duplicateCount} SIMILAR
+              </span>
+            ) : null}
+          </div>
         </div>
         <div className="text-right">
           <span

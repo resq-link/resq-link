@@ -95,6 +95,7 @@ interface IntakeDetailViewProps {
   onUnlinkFromIncident?: (reportId: string, incidentId: string) => Promise<void>
   onLinkReportToReport?: (primaryReportId: string, secondaryReportId: string) => Promise<void>
   onUnlinkReportFromReport?: (secondaryReportId: string) => Promise<void>
+  onLinkAllReports?: (primaryReportId: string, secondaryReportIds: string[]) => Promise<void>
 }
 
 export default function IntakeDetailView({ 
@@ -109,7 +110,8 @@ export default function IntakeDetailView({
   onLinkToIncident,
   onUnlinkFromIncident,
   onLinkReportToReport,
-  onUnlinkReportFromReport
+  onUnlinkReportFromReport,
+  onLinkAllReports
 }: IntakeDetailViewProps) {
   const [isChoosingResponder, setIsChoosingResponder] = useState(false);
   const [responders, setResponders] = useState<any[]>([]);
@@ -578,9 +580,32 @@ export default function IntakeDetailView({
         {/* Potential Duplicate Civilian Reports Alert */}
         {isEmergency && !report?.incidentId && potentialDuplicateReports.length > 0 && (
           <div className="rounded-xl border border-orange-500/40 bg-orange-950/20 p-4 space-y-2 shadow-lg shadow-orange-950/10 border-dashed animate-pulse-slow">
-            <div className="flex items-center gap-2 text-orange-400">
-              <AlertTriangle className="w-4 h-4" />
-              <h4 className="text-xs font-black uppercase tracking-wider">Multiple Reports of Same Incident</h4>
+            <div className="flex items-center justify-between gap-2 border-b border-orange-500/20 pb-1.5">
+              <div className="flex items-center gap-2 text-orange-400">
+                <AlertTriangle className="w-4 h-4" />
+                <h4 className="text-xs font-black uppercase tracking-wider">Multiple Reports of Same Incident</h4>
+              </div>
+              {onLinkAllReports && potentialDuplicateReports.filter(other => !other.primaryReportId).length > 0 && (
+                <button
+                  disabled={isLinking}
+                  onClick={async () => {
+                    setIsLinking(true);
+                    try {
+                      const unlinkedReportIds = potentialDuplicateReports
+                        .filter(other => !other.primaryReportId)
+                        .map(other => other.id!);
+                      await onLinkAllReports(report.id!, unlinkedReportIds);
+                    } catch (err) {
+                      console.error(err);
+                    } finally {
+                      setIsLinking(false);
+                    }
+                  }}
+                  className="px-2.5 py-1 rounded bg-orange-500 hover:bg-orange-600 text-[9px] font-black text-slate-950 uppercase tracking-wider transition-colors shadow-md shadow-orange-950/20"
+                >
+                  {isLinking ? "..." : "Link All"}
+                </button>
+              )}
             </div>
             <p className="text-[11px] text-slate-300 leading-relaxed">
               There {potentialDuplicateReports.length === 1 ? "is 1 other citizen report" : `are ${potentialDuplicateReports.length} other citizen reports`} submitted nearby in the last 30 minutes. 
