@@ -226,6 +226,17 @@ export default function CaseInfoCard({
     });
   };
 
+  const formatResponseTime = (seconds) => {
+    if (seconds == null || seconds < 0) return null;
+    if (seconds < 60) return `${seconds}s`;
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    if (mins < 60) return secs > 0 ? `${mins} min ${secs} sec` : `${mins} min`;
+    const hrs = Math.floor(mins / 60);
+    const remainMins = mins % 60;
+    return remainMins > 0 ? `${hrs} hr ${remainMins} min` : `${hrs} hr`;
+  };
+
   const getIncidentTypeName = (type) => {
     const typeMap = {
       fire: "Fire",
@@ -983,12 +994,74 @@ export default function CaseInfoCard({
           >
             Reported: {formatDate(caseData.createdAt)}
           </Text>
+          {caseData.acceptedAt && (
+            <Text
+              style={{
+                fontFamily: "SpaceGrotesk_400Regular",
+                fontSize: 14,
+                color: colors.textSecondary,
+                marginTop: 4,
+              }}
+            >
+              Accepted: {formatDate(caseData.acceptedAt)}
+            </Text>
+          )}
+          {caseData.touchdownAt && (
+            <Text
+              style={{
+                fontFamily: "SpaceGrotesk_400Regular",
+                fontSize: 14,
+                color: colors.textSecondary,
+                marginTop: 4,
+              }}
+            >
+              Touchdown: {formatDate(caseData.touchdownAt)}
+            </Text>
+          )}
+          {formatResponseTime(caseData.responseTimeSeconds) && (
+            <View
+              style={{
+                marginTop: spacing.md,
+                backgroundColor: colors.surfaceHighlight,
+                borderRadius: radii.md,
+                paddingVertical: spacing.sm,
+                paddingHorizontal: spacing.md,
+                borderWidth: 1,
+                borderColor: colors.success + "40",
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <Text
+                style={{
+                  fontFamily: "SpaceGrotesk_600SemiBold",
+                  fontSize: 12,
+                  color: colors.textMuted,
+                  textTransform: "uppercase",
+                  letterSpacing: 0.8,
+                }}
+              >
+                Response Time
+              </Text>
+              <Text
+                style={{
+                  fontFamily: "SpaceGrotesk_700Bold",
+                  fontSize: 15,
+                  color: colors.success,
+                }}
+              >
+                {formatResponseTime(caseData.responseTimeSeconds)}
+              </Text>
+            </View>
+          )}
           {caseData.updatedAt && (
             <Text
               style={{
                 fontFamily: "SpaceGrotesk_400Regular",
                 fontSize: 14,
                 color: colors.textSecondary,
+                marginTop: 4,
               }}
             >
               Updated: {formatDate(caseData.updatedAt)}
