@@ -176,10 +176,10 @@ export default function ActiveIncidentsPage() {
   }, [recentIncidents]);
 
   const activeQueueItems = useMemo(() => {
-    return [...activeAppQueueItems, ...activeManualQueueItems].sort(
+    return activeManualQueueItems.sort(
       (left, right) => toMillis(right.createdAt) - toMillis(left.createdAt)
     );
-  }, [activeAppQueueItems, activeManualQueueItems]);
+  }, [activeManualQueueItems]);
 
   // Compute duplicate counts for app reports
   const duplicateCounts = useMemo(() => {
@@ -313,13 +313,13 @@ export default function ActiveIncidentsPage() {
   };
 
   const activeCount = activeQueueItems.filter(
-    (i) => i.rawEmergencyReport?.status === "active" || i.rawIncident?.status === "dispatched"
+    (i) => i.rawIncident?.status === "dispatched"
   ).length;
   const enRouteCount = activeQueueItems.filter(
-    (i) => i.rawEmergencyReport?.status === "enroute" || i.rawIncident?.status === "enroute"
+    (i) => i.rawIncident?.status === "enroute"
   ).length;
   const onSceneCount = activeQueueItems.filter(
-    (i) => i.rawEmergencyReport?.status === "on_scene" || i.rawIncident?.status === "on_scene"
+    (i) => i.rawIncident?.status === "on_scene"
   ).length;
 
   return (
