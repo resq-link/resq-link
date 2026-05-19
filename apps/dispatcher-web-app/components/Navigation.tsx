@@ -22,6 +22,7 @@ import {
   ChevronDown,
   LogOut,
   User,
+  ShieldAlert,
 } from "lucide-react";
 
 type NavBadgeKey = "intakeCount" | "pendingFootageCount";
@@ -50,6 +51,7 @@ const navGroups: NavGroup[] = [
     title: "OPERATIONS",
     items: [
       { href: "/intake", label: "Incident Intake", icon: ClipboardList, badgeKey: "intakeCount" as NavBadgeKey },
+      { href: "/incidents", label: "Active Incidents", icon: ShieldAlert },
       { href: "/footage-requests", label: "Footage Requests", icon: Video, badgeKey: "pendingFootageCount" as NavBadgeKey },
     ],
   },
