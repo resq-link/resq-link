@@ -74,7 +74,7 @@ async function seed() {
 
   // 2. Add pending emergency report (within 80 meters, same time)
   const reportRef = await addDoc(collection(db, "emergencies"), {
-    userId: "test-user-123",
+    userId: user.uid,
     incidentType: "medical",
     locationText: "Taft Street close to high school",
     landmark: "High School Entrance",
