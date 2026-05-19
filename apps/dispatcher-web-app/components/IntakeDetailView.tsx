@@ -113,7 +113,7 @@ export default function IntakeDetailView({
   onUnlinkReportFromReport,
   onLinkAllReports
 }: IntakeDetailViewProps) {
-  const [isChoosingResponder, setIsChoosingResponder] = useState(false);
+  const [isElevateModalOpen, setIsElevateModalOpen] = useState(false);
   const [responders, setResponders] = useState<any[]>([]);
   const [selectedResponderId, setSelectedResponderId] = useState("");
   const [isLoadingResponders, setIsLoadingResponders] = useState(false);
@@ -123,7 +123,7 @@ export default function IntakeDetailView({
   const [isLinking, setIsLinking] = useState(false);
 
   useEffect(() => {
-    setIsChoosingResponder(false);
+    setIsElevateModalOpen(false);
     setSelectedResponderId("");
     setResponderError(null);
   }, [item?.id]);
@@ -347,9 +347,9 @@ export default function IntakeDetailView({
     }
   };
 
-  const handleStartRespond = async () => {
+  const handleStartElevate = async () => {
     if (onRespondStart && report) await onRespondStart(report);
-    setIsChoosingResponder(true);
+    setIsElevateModalOpen(true);
     await loadResponders();
   };
 
@@ -363,7 +363,7 @@ export default function IntakeDetailView({
         agency: selected.account.role,
         suggestedAgency: primarySuggestedAgency
       });
-      setIsChoosingResponder(false);
+      setIsElevateModalOpen(false);
     }
   };
 
@@ -393,63 +393,34 @@ export default function IntakeDetailView({
         <div className="flex items-center gap-3">
            {isEmergency && report && (
              <div className="hidden sm:flex items-center gap-2">
-               {!isResponderAssigned && !isChoosingResponder ? (
-                 <button 
-                   onClick={handleStartRespond}
-                   className="h-8 px-3 flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-[10px] font-black text-white transition-all uppercase tracking-widest shadow-lg shadow-emerald-900/20"
-                 >
-                   <Send className="w-3 h-3" />
-                   Assign
-                 </button>
-               ) : isChoosingResponder ? (
-                 <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right-2 duration-200">
-                   <select 
-                     value={selectedResponderId}
-                     onChange={(e) => setSelectedResponderId(e.target.value)}
-                     className="h-8 w-40 bg-slate-900 border border-slate-700 rounded-lg text-[10px] text-slate-200 px-2 outline-none focus:ring-1 focus:ring-emerald-500"
-                   >
-                      {isLoadingResponders ? <option>Loading...</option> : responders.map(r => (
-                        <option key={r.uid} value={r.uid}>{r.account.fullName || r.account.email}</option>
-                      ))}
-                   </select>
-                   <button 
-                     onClick={handleConfirmRespond}
-                     disabled={isLoadingResponders || !selectedResponderId}
-                     className="h-8 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-[10px] font-black text-white uppercase tracking-widest disabled:opacity-50"
-                   >
-                     Confirm
-                   </button>
-                   <button 
-                      onClick={() => setIsChoosingResponder(false)}
-                      className="h-8 px-3 rounded-lg border border-slate-700 hover:bg-slate-800 text-[10px] font-black text-slate-400 uppercase tracking-widest"
-                   >
-                     Cancel
-                   </button>
-                 </div>
-               ) : null}
-               
-               {!isChoosingResponder && (
-                 <>
-                   <button 
-                     onClick={() => onReject?.(report)}
-                     className="h-8 px-3 flex items-center gap-2 rounded-lg border border-red-900/60 bg-red-950/20 hover:bg-red-950/40 text-[10px] font-black text-red-500 transition-all uppercase tracking-widest"
-                   >
-                     <XCircle className="w-3 h-3" />
-                     Reject
-                   </button>
+               {!isResponderAssigned && (
+                  <button 
+                    onClick={handleStartElevate}
+                    className="h-8 px-3 flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-[10px] font-black text-white transition-all uppercase tracking-widest shadow-lg shadow-emerald-900/20"
+                  >
+                    <Send className="w-3 h-3 rotate-45 -translate-y-[0.5px]" />
+                    Elevate
+                  </button>
+                )}
 
-                   {report.touchdownAt && (
-                     <button 
-                       onClick={() => onMoveToHistory?.(report)}
-                       className="h-8 px-3 flex items-center gap-2 rounded-lg border border-emerald-900/60 bg-emerald-950/20 hover:bg-emerald-950/40 text-[10px] font-black text-emerald-400 transition-all uppercase tracking-widest"
-                     >
-                       <History className="w-3 h-3" />
-                       Finalize
-                     </button>
-                   )}
-                 </>
-               )}
-             </div>
+                <button 
+                  onClick={() => onReject?.(report)}
+                  className="h-8 px-3 flex items-center gap-2 rounded-lg border border-red-900/60 bg-red-950/20 hover:bg-red-950/40 text-[10px] font-black text-red-500 transition-all uppercase tracking-widest"
+                >
+                  <XCircle className="w-3 h-3" />
+                  Reject
+                </button>
+
+                {report?.touchdownAt && (
+                  <button 
+                    onClick={() => onMoveToHistory?.(report)}
+                    className="h-8 px-3 flex items-center gap-2 rounded-lg border border-emerald-900/60 bg-emerald-950/20 hover:bg-emerald-950/40 text-[10px] font-black text-emerald-400 transition-all uppercase tracking-widest"
+                  >
+                    <History className="w-3 h-3" />
+                    Finalize
+                  </button>
+                )}
+              </div>
            )}
 
            {onCloseDetail && (
@@ -803,6 +774,107 @@ export default function IntakeDetailView({
              </div>
            </DetailSection>
          )}
+
+      {/* Elevate Modal */}
+      {isElevateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div
+            className="absolute inset-0"
+            onClick={() => setIsElevateModalOpen(false)}
+            aria-hidden="true"
+          />
+          <div className="relative z-10 flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-2xl shadow-black/80 animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-center gap-3.5 border-b border-slate-800/80 bg-slate-950/40 px-6 py-4">
+              <div className="h-9 w-9 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                <Shield className="w-5 h-5 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black text-slate-100 uppercase tracking-wider">
+                  Elevate to Master Incident
+                </h3>
+                <p className="text-[10px] text-slate-400 mt-0.5 font-medium">
+                  Spin up an independent INC case and assign dispatch response.
+                </p>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-5">
+              {/* Incident ID Preview */}
+              <div className="rounded-xl bg-slate-950/60 border border-slate-800/80 p-4 space-y-2">
+                <span className="text-[9px] uppercase tracking-[0.2em] font-black text-slate-500 block">
+                  Generated Incident Case ID
+                </span>
+                <span className="text-lg font-mono font-black text-amber-400 tracking-wider flex items-center gap-2">
+                  INC-${Math.floor(Date.now() / 1000)}
+                  <span className="px-2 py-0.5 rounded text-[8px] font-black bg-amber-500/10 text-amber-400 border border-amber-500/20 uppercase tracking-widest animate-pulse">
+                    Preview
+                  </span>
+                </span>
+                <p className="text-[10px] text-slate-500 leading-normal">
+                  This ID namespace separates client citizen alerts from master operational logs, enabling multiple duplicate reports to group under it.
+                </p>
+              </div>
+
+              {/* Responder Assignment */}
+              <div className="space-y-2">
+                <label className="text-[9px] uppercase tracking-[0.2em] font-black text-slate-500 block">
+                  Select Dispatch Responder / Unit
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedResponderId}
+                    onChange={(e) => setSelectedResponderId(e.target.value)}
+                    className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 px-4 outline-none focus:ring-1 focus:ring-emerald-500/50 appearance-none transition-colors animate-none"
+                  >
+                    {isLoadingResponders ? (
+                      <option>Loading responder units...</option>
+                    ) : responders.length === 0 ? (
+                      <option>No responder units available</option>
+                    ) : (
+                      responders.map((r) => (
+                        <option key={r.uid} value={r.uid}>
+                          {r.account.fullName || r.account.email} ({r.account.role})
+                        </option>
+                      ))
+                    )}
+                  </select>
+                  <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
+                    ▼
+                  </div>
+                </div>
+                {responderError && (
+                  <p className="text-[10px] font-bold text-red-400 mt-1">
+                    {responderError}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end gap-3 border-t border-slate-800/80 bg-slate-950/20 px-6 py-4">
+              <button
+                type="button"
+                onClick={() => setIsElevateModalOpen(false)}
+                className="h-9 px-4 rounded-xl border border-slate-800 hover:bg-slate-800 text-[10px] font-black text-slate-400 uppercase tracking-widest transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isLoadingResponders || !selectedResponderId}
+                onClick={handleConfirmRespond}
+                className="h-9 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-[10px] font-black text-white uppercase tracking-widest shadow-lg shadow-emerald-900/20 transition-all flex items-center gap-2"
+              >
+                <CheckCircle className="w-3.5 h-3.5" />
+                <span>Confirm Elevation</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       </div>
     </div>
   );
