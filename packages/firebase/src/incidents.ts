@@ -320,6 +320,9 @@ const toIncidentRecord = (snapshot: DocumentData): IncidentRecord => {
     createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
     updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : null,
     resolvedAt: data.resolvedAt?.toDate ? data.resolvedAt.toDate() : null,
+    acceptedAt: data.acceptedAt?.toDate ? data.acceptedAt.toDate() : (data.acceptedAt ? new Date(data.acceptedAt) : null),
+    touchdownAt: data.touchdownAt?.toDate ? data.touchdownAt.toDate() : (data.touchdownAt ? new Date(data.touchdownAt) : null),
+    responseTimeSeconds: typeof data.responseTimeSeconds === 'number' ? data.responseTimeSeconds : null,
   };
 };
 
