@@ -134,12 +134,13 @@ service cloud.firestore {
         && isCommandCenter()
         && request.resource.data.commandCenterAdminId == request.auth.uid;
 
-      // Command centers can read and update only their own incidents.
-      allow read: if isSuperAdmin()
-        || (isCommandCenter() && resource.data.commandCenterAdminId == request.auth.uid);
+      // Allow authenticated users to read all incidents
+      allow read: if isAuthenticated();
 
+      // Allow command center or dispatcher to update
       allow update: if isSuperAdmin()
-        || (isCommandCenter() && resource.data.commandCenterAdminId == request.auth.uid);
+        || isCommandCenter()
+        || isDispatcher();
 
       // Deletes are restricted; keep default deny for now.
       allow delete: if false;
