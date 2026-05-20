@@ -118,3 +118,16 @@ body {
     display: none; /* Chrome, Safari and Opera */
   }
 }
+
+/* Animated flow lines for assigned incidents */
+@keyframes dash-flow {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+.flow-line {
+  stroke-dasharray: 6, 6;
+  animation: dash-flow 1.5s linear infinite;
+}
+

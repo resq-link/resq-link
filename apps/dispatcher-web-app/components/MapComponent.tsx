@@ -1,7 +1,7 @@
 'use client'
 
-import { useRef, useEffect, useState } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, useMap, Polygon, GeoJSON } from 'react-leaflet'
+import { useRef, useEffect, useState, Fragment } from 'react'
+import { MapContainer, TileLayer, Marker, Popup, useMap, Polygon, GeoJSON, Polyline } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import {
@@ -31,6 +31,20 @@ interface Incident {
   lng: number
   reportedAt: Date
   responder: string | null
+  dispatcherId?: string | null
+}
+
+// Helper to calculate position along a line segment at fraction t
+const getPointAlongLine = (lat1: number, lng1: number, lat2: number, lng2: number, t: number): [number, number] => {
+  return [lat1 + (lat2 - lat1) * t, lng1 + (lng2 - lng1) * t]
+}
+
+// Helper to calculate CSS rotation angle for arrowhead in degrees
+const getAngle = (lat1: number, lng1: number, lat2: number, lng2: number) => {
+  const dy = lat2 - lat1
+  const dx = lng2 - lng1
+  const angle = (Math.atan2(dy, dx) * 180) / Math.PI
+  return -angle
 }
 
 interface MapComponentProps {
@@ -494,6 +508,72 @@ export default function MapComponent({
             })}
           </>
         )}
+        {/* Connection lines from assigned dispatchers/responders to their incidents */}
+        {dispatcherLocations.length > 0 && incidents.map((incident) => {
+          if (!incident.dispatcherId) return null
+          
+          const dispatcher = dispatcherLocations.find(
+            (d) => d.dispatcherId === incident.dispatcherId
+          )
+          
+          if (!dispatcher) return null
+          
+          if (!dispatcher.latitude || !dispatcher.longitude || !incident.lat || !incident.lng) return null
+
+          const roleColors: Record<string, string> = {
+            BFP: '#dc2626', // red
+            PNP: '#1e40af', // blue
+            MDRRMO: '#059669', // green
+            AMBULANCE: '#ea580c', // orange
+            PCG: '#0284c7', // cyan
+          }
+          const color = roleColors[dispatcher.role] || '#6b7280'
+
+          const responderPos: [number, number] = [dispatcher.latitude, dispatcher.longitude]
+          const incidentPos: [number, number] = [incident.lat, incident.lng]
+
+          // Place the arrowhead at 65% of the distance from dispatcher to incident
+          const arrowPos = getPointAlongLine(dispatcher.latitude, dispatcher.longitude, incident.lat, incident.lng, 0.65)
+          const angle = getAngle(dispatcher.latitude, dispatcher.longitude, incident.lat, incident.lng)
+
+          return (
+            <Fragment key={`assignment-${incident.id}-${dispatcher.dispatcherId}`}>
+              <Polyline
+                positions={[responderPos, incidentPos]}
+                pathOptions={{
+                  color,
+                  weight: 3,
+                  opacity: 0.8,
+                  className: 'flow-line'
+                }}
+              />
+              <Marker
+                position={arrowPos}
+                icon={L.divIcon({
+                  className: 'arrowhead-marker',
+                  html: `
+                    <div style="
+                      transform: rotate(${angle}deg);
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      width: 20px;
+                      height: 20px;
+                    ">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="${color}" style="filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));">
+                        <path d="M8 5v14l11-7z"/>
+                      </svg>
+                    </div>
+                  `,
+                  iconSize: [20, 20],
+                  iconAnchor: [10, 10],
+                })}
+                interactive={false}
+              />
+            </Fragment>
+          )
+        })}
+
         {/* Incident Markers */}
         {incidents.map((incident) => (
           <Marker
