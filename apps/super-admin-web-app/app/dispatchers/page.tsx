@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { getFirebaseAuth, getFirebaseFirestore, collection, getDocs } from '@packages/firebase';
 import type { DispatcherRole } from '@packages/firebase';
-import { Radio, Plus, Loader2 } from 'lucide-react';
+import { Headset, Plus, Loader2 } from 'lucide-react';
 
 const ROLES: { value: DispatcherRole; label: string }[] = [
   { value: 'BFP', label: 'Bureau of Fire Protection' },
@@ -14,13 +14,13 @@ const ROLES: { value: DispatcherRole; label: string }[] = [
   { value: 'PCG', label: 'Philippine Coast Guard' },
 ];
 
-export default function RespondersPage() {
+export default function DispatchersPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<DispatcherRole>('BFP');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [responders, setResponders] = useState<Array<{ id: string; email: string; role: string; active: boolean; designation: string }>>([]);
+  const [dispatchers, setDispatchers] = useState<Array<{ id: string; email: string; role: string; active: boolean; designation: string }>>([]);
   const [fetching, setFetching] = useState(true);
 
   useEffect(() => {
@@ -38,10 +38,10 @@ export default function RespondersPage() {
               designation: data.designation || '',
             };
           })
-          .filter((account) => account.designation.toLowerCase().includes('responder'));
-        setResponders(list);
-      } catch (e) {
-        setMessage({ type: 'error', text: 'Failed to load responders' });
+          .filter((account) => !account.designation.toLowerCase().includes('responder'));
+        setDispatchers(list);
+      } catch {
+        setMessage({ type: 'error', text: 'Failed to load dispatchers' });
       } finally {
         setFetching(false);
       }
@@ -56,7 +56,7 @@ export default function RespondersPage() {
     try {
       const token = await getFirebaseAuth().currentUser?.getIdToken();
       if (!token) throw new Error('Not signed in');
-      const res = await fetch('/api/create-responder', {
+      const res = await fetch('/api/create-dispatcher', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ email, password, role }),
@@ -68,12 +68,11 @@ export default function RespondersPage() {
         if (!res.ok) throw new Error('Server error. Check the console for details.');
       }
       if (!res.ok) throw new Error(data.error || 'Failed to create');
-      const newUid = data.uid;
-      if (!newUid) throw new Error('Server did not return user id');
-      setMessage({ type: 'success', text: `Responder created: ${email}` });
+      if (!data.uid) throw new Error('Server did not return user id');
+      setMessage({ type: 'success', text: `Dispatcher created: ${email}` });
+      setDispatchers((prev) => [...prev, { id: data.uid!, email, role, active: true, designation: 'dispatcher' }]);
       setEmail('');
       setPassword('');
-      setResponders((prev) => [...prev, { id: newUid, email, role, active: true, designation: 'responder' }]);
     } catch (err) {
       setMessage({ type: 'error', text: (err as Error).message });
     } finally {
@@ -86,70 +85,43 @@ export default function RespondersPage() {
       <div className="max-w-4xl">
         <div className="flex items-center gap-3 mb-8">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-600/20 text-primary-400">
-            <Radio size={24} />
+            <Headset size={24} />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-100">Responders</h1>
-            <p className="text-slate-400">Create field responder accounts for mobile case response and resource tracking</p>
+            <h1 className="text-2xl font-bold text-slate-100">Dispatchers</h1>
+            <p className="text-slate-400">Create command-side dispatcher accounts for web coordination</p>
           </div>
         </div>
 
         <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-6 mb-8">
           <h2 className="text-lg font-semibold text-slate-100 mb-4 flex items-center gap-2">
-            <Plus size={20} /> Create Responder
+            <Plus size={20} /> Create Dispatcher
           </h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1">Email</label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-800 bg-slate-900 text-slate-100 rounded-lg focus:ring-2 focus:ring-primary-500"
-              />
+              <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full px-3 py-2 border border-slate-800 bg-slate-900 text-slate-100 rounded-lg focus:ring-2 focus:ring-primary-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1">Password</label>
-              <input
-                type="password"
-                required
-                minLength={6}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-800 bg-slate-900 text-slate-100 rounded-lg focus:ring-2 focus:ring-primary-500"
-              />
+              <input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} className="w-full px-3 py-2 border border-slate-800 bg-slate-900 text-slate-100 rounded-lg focus:ring-2 focus:ring-primary-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1">Role</label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value as DispatcherRole)}
-                className="w-full px-3 py-2 border border-slate-800 bg-slate-900 text-slate-100 rounded-lg focus:ring-2 focus:ring-primary-500"
-              >
-                {ROLES.map((r) => (
-                  <option key={r.value} value={r.value}>{r.label}</option>
-                ))}
+              <select value={role} onChange={(e) => setRole(e.target.value as DispatcherRole)} className="w-full px-3 py-2 border border-slate-800 bg-slate-900 text-slate-100 rounded-lg focus:ring-2 focus:ring-primary-500">
+                {ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
               </select>
             </div>
-            {message && (
-              <p className={`text-sm ${message.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>
-                {message.text}
-              </p>
-            )}
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg font-medium disabled:opacity-50"
-            >
+            {message && <p className={`text-sm ${message.type === 'success' ? 'text-green-400' : 'text-red-400'}`}>{message.text}</p>}
+            <button type="submit" disabled={loading} className="flex items-center gap-2 px-4 py-2 bg-primary-600 hover:bg-primary-500 text-white rounded-lg font-medium disabled:opacity-50">
               {loading ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
-              Create Responder
+              Create Dispatcher
             </button>
           </form>
         </div>
 
         <div>
-          <h2 className="text-lg font-semibold text-slate-100 mb-4">Existing Responders</h2>
+          <h2 className="text-lg font-semibold text-slate-100 mb-4">Existing Dispatchers</h2>
           {fetching ? (
             <p className="text-slate-400">Loading...</p>
           ) : (
@@ -163,15 +135,11 @@ export default function RespondersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {responders.map((d) => (
+                  {dispatchers.map((d) => (
                     <tr key={d.id} className="border-t border-slate-800">
                       <td className="px-4 py-3 text-slate-200">{d.email}</td>
                       <td className="px-4 py-3 text-slate-400">{d.role}</td>
-                      <td className="px-4 py-3">
-                        <span className={d.active ? 'text-green-400' : 'text-slate-500'}>
-                          {d.active ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
+                      <td className="px-4 py-3"><span className={d.active ? 'text-green-400' : 'text-slate-500'}>{d.active ? 'Active' : 'Inactive'}</span></td>
                     </tr>
                   ))}
                 </tbody>

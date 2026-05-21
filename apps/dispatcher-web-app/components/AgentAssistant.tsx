@@ -79,6 +79,8 @@ function summarizeResource(resource: ResourceRecord) {
     teamName: resource.teamName,
     status: resource.status,
     quadrant: resource.quadrant,
+    primaryResponderId: resource.primaryResponderId || resource.assignedResponderId,
+    assignedResponderCount: resource.assignedResponderIds?.length ?? (resource.assignedResponderId ? 1 : 0),
     isActive: resource.isActive,
   }
 }

@@ -11,9 +11,7 @@ export async function POST(request: NextRequest) {
     }
 
     const decoded = await verifyIdToken(token);
-    const uid = decoded.uid;
-
-    const adminCheck = await isAdmin(uid);
+    const adminCheck = await isAdmin(decoded.uid);
     if (!adminCheck) {
       return NextResponse.json({ error: 'Forbidden: Super admin access required' }, { status: 403 });
     }
@@ -29,7 +27,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
     }
 
-    const result = await createDispatcherAccountAdmin({ email, password, role, designation: 'responder' });
+    const result = await createDispatcherAccountAdmin({ email, password, role, designation: 'dispatcher' });
     return NextResponse.json({ success: true, uid: result.uid });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Unknown error';

@@ -8,9 +8,13 @@ import {
   deleteResource,
   OPERATIONAL_QUADRANTS,
   QUADRANT_LABELS,
+  getAllDispatchers,
+  subscribeToDispatcherLocations,
   subscribeToResources,
   subscribeToTeams,
   updateResource,
+  type DispatcherAccount,
+  type DispatcherLocation,
   type OperationalQuadrant,
   type ResourceRecord,
   type ResourceStatus,
@@ -41,6 +45,8 @@ type ResourceFormState = {
   stationLongitude: string
   currentLatitude: string
   currentLongitude: string
+  primaryResponderId: string
+  assignedResponderIds: string[]
   notes: string
 }
 
@@ -52,6 +58,12 @@ const resourceStatuses: ResourceStatus[] = [
   'on_scene',
   'maintenance',
   'offline',
+]
+const defaultOperationalTeams: TeamRecord[] = [
+  { id: 'Whiskey', code: 'Whiskey', label: 'Team Whiskey', isActive: true },
+  { id: 'X-ray', code: 'X-ray', label: 'Team X-ray', isActive: true },
+  { id: 'Yankee', code: 'Yankee', label: 'Team Yankee', isActive: true },
+  { id: 'Zulu', code: 'Zulu', label: 'Team Zulu', isActive: true },
 ]
 
 const emptyForm: ResourceFormState = {
@@ -69,6 +81,8 @@ const emptyForm: ResourceFormState = {
   stationLongitude: '',
   currentLatitude: '',
   currentLongitude: '',
+  primaryResponderId: '',
+  assignedResponderIds: [],
   notes: '',
 }
 
@@ -122,6 +136,19 @@ const getCoordinatesLabel = (resource: ResourceRecord) => {
   return `${source}: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`
 }
 
+const getResponderLabel = (responder?: { uid: string; account: DispatcherAccount }) => {
+  if (!responder) return 'Unbound'
+  return responder.account.fullName || responder.account.email || responder.uid
+}
+
+const isResponderAccount = (responder: { uid: string; account: DispatcherAccount }) =>
+  responder.account.active !== false &&
+  (
+    (responder.account.designation || '').toLowerCase().includes('responder') ||
+    !responder.account.designation ||
+    ['AMBULANCE', 'BFP', 'PNP', 'MDRRMO', 'PCG'].includes(responder.account.role)
+  )
+
 export default function ResourcesPage() {
   const { user } = useAuth()
   const [resources, setResources] = useState<ResourceRecord[]>([])
@@ -131,6 +158,8 @@ export default function ResourcesPage() {
   const [typeFilter, setTypeFilter] = useState<'all' | ResourceType>('all')
   const [formState, setFormState] = useState<ResourceFormState>(emptyForm)
   const [teams, setTeams] = useState<TeamRecord[]>([])
+  const [responders, setResponders] = useState<Array<{ uid: string; account: DispatcherAccount }>>([])
+  const [dispatcherLocations, setDispatcherLocations] = useState<DispatcherLocation[]>([])
   const [editingResource, setEditingResource] = useState<ResourceRecord | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [mapResource, setMapResource] = useState<ResourceRecord | null>(null)
@@ -153,6 +182,33 @@ export default function ResourcesPage() {
     })
 
     return unsubscribe
+  }, [user])
+
+  useEffect(() => {
+    if (!user) {
+      return
+    }
+
+    let isMounted = true
+    getAllDispatchers()
+      .then((accounts) => {
+        if (isMounted) {
+          setResponders(accounts.filter(isResponderAccount))
+        }
+      })
+      .catch((error) => {
+        console.error('Failed to load responders for resource binding:', error)
+        if (isMounted) {
+          setResponders([])
+        }
+      })
+
+    const unsubscribeLocations = subscribeToDispatcherLocations(setDispatcherLocations)
+
+    return () => {
+      isMounted = false
+      unsubscribeLocations()
+    }
   }, [user])
 
   useEffect(() => {
@@ -196,6 +252,57 @@ export default function ResourcesPage() {
       document.removeEventListener('keydown', onKeyDown)
     }
   }, [isAnyModalOpen, isModalOpen, mapResource, isSaving])
+
+  const responderById = useMemo(
+    () => new Map(responders.map((responder) => [responder.uid, responder])),
+    [responders]
+  )
+
+  const liveLocationByResponderId = useMemo(
+    () => new Map(dispatcherLocations.map((location) => [location.dispatcherId, location])),
+    [dispatcherLocations]
+  )
+  const teamOptions = useMemo(() => {
+    const merged = new Map<string, TeamRecord>()
+
+    defaultOperationalTeams.forEach((team) => {
+      merged.set(team.id || team.code, team)
+    })
+
+    responders.forEach((responder) => {
+      const code = responder.account.teamCode?.trim()
+      const label = responder.account.teamLabel?.trim()
+      if (code) {
+        merged.set(code, {
+          id: code,
+          code,
+          label: label || code,
+          isActive: true,
+        })
+      }
+    })
+
+    teams.forEach((team) => {
+      merged.set(team.id || team.code, team)
+    })
+
+    return Array.from(merged.values()).sort((left, right) => left.label.localeCompare(right.label))
+  }, [responders, teams])
+
+  const resolveResourceLocation = (resource: ResourceRecord): ResourceRecord => {
+    const primaryResponderId = resource.primaryResponderId || resource.assignedResponderId || resource.assignedResponderIds?.[0]
+    const liveLocation = primaryResponderId ? liveLocationByResponderId.get(primaryResponderId) : null
+
+    if (!liveLocation) {
+      return resource
+    }
+
+    return {
+      ...resource,
+      currentLatitude: liveLocation.latitude,
+      currentLongitude: liveLocation.longitude,
+    }
+  }
 
   const filteredResources = useMemo(() => {
     const needle = search.trim().toLowerCase()
@@ -248,7 +355,7 @@ export default function ResourcesPage() {
       department: resource.department || '',
       teamId:
         resource.teamId ||
-        teams.find((team) => team.label === resource.teamName || team.code === resource.teamName)?.id ||
+        teamOptions.find((team) => team.label === resource.teamName || team.code === resource.teamName)?.id ||
         '',
       status: resource.status,
       stationName: resource.stationName || '',
@@ -257,6 +364,12 @@ export default function ResourcesPage() {
       stationLongitude: resource.stationLongitude?.toString() || '',
       currentLatitude: resource.currentLatitude?.toString() || '',
       currentLongitude: resource.currentLongitude?.toString() || '',
+      primaryResponderId: resource.primaryResponderId || resource.assignedResponderId || resource.assignedResponderIds?.[0] || '',
+      assignedResponderIds: resource.assignedResponderIds?.length
+        ? resource.assignedResponderIds
+        : resource.assignedResponderId
+          ? [resource.assignedResponderId]
+          : [],
       notes: resource.notes || '',
     })
     setPageError(null)
@@ -274,6 +387,23 @@ export default function ResourcesPage() {
     setFormState((current) => ({ ...current, [field]: value }))
   }
 
+  const toggleCrewResponder = (responderId: string) => {
+    setFormState((current) => {
+      const assignedResponderIds = current.assignedResponderIds.includes(responderId)
+        ? current.assignedResponderIds.filter((id) => id !== responderId)
+        : [...current.assignedResponderIds, responderId]
+      const primaryResponderId = assignedResponderIds.includes(current.primaryResponderId)
+        ? current.primaryResponderId
+        : assignedResponderIds[0] || ''
+
+      return {
+        ...current,
+        assignedResponderIds,
+        primaryResponderId,
+      }
+    })
+  }
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!formState.name.trim()) {
@@ -284,13 +414,17 @@ export default function ResourcesPage() {
       setPageError('Custom type is required when type is set to Other.')
       return
     }
+    if (formState.status === 'available' && !formState.primaryResponderId) {
+      setPageError('Available resources must be bound to a primary responder.')
+      return
+    }
 
     setIsSaving(true)
     setPageError(null)
 
     const selectedTeam =
-      teams.find((team) => team.id === formState.teamId) ||
-      teams.find((team) => team.code === formState.teamId) ||
+      teamOptions.find((team) => team.id === formState.teamId) ||
+      teamOptions.find((team) => team.code === formState.teamId) ||
       null
 
     const payload = {
@@ -309,7 +443,14 @@ export default function ResourcesPage() {
       stationLongitude: toNumberOrNull(formState.stationLongitude),
       currentLatitude: toNumberOrNull(formState.currentLatitude),
       currentLongitude: toNumberOrNull(formState.currentLongitude),
-      assignedResponderId: null,
+      primaryResponderId: formState.primaryResponderId || null,
+      assignedResponderId: formState.primaryResponderId || null,
+      assignedResponderIds: Array.from(
+        new Set([
+          formState.primaryResponderId,
+          ...formState.assignedResponderIds,
+        ].filter(Boolean))
+      ),
       assignedIncidentId: null,
       notes: formState.notes,
       isActive: true,
@@ -488,7 +629,14 @@ export default function ResourcesPage() {
             </div>
           ) : (
             <div className="grid gap-4 xl:grid-cols-2">
-              {filteredResources.map((resource) => (
+              {filteredResources.map((resource) => {
+                const resolvedResource = resolveResourceLocation(resource)
+                const primaryResponderId =
+                  resource.primaryResponderId || resource.assignedResponderId || resource.assignedResponderIds?.[0]
+                const primaryResponder = primaryResponderId ? responderById.get(primaryResponderId) : undefined
+                const primaryResponderOnline = primaryResponderId ? liveLocationByResponderId.has(primaryResponderId) : false
+
+                return (
                 <article
                   key={resource.id}
                   className="rounded-2xl border border-slate-800 bg-slate-950/50 p-5 shadow-lg shadow-black/20"
@@ -512,9 +660,16 @@ export default function ResourcesPage() {
                         <span>Quadrant: {resource.quadrant || 'N/A'}</span>
                         <span>Base: {resource.stationName || 'N/A'}</span>
                       </div>
+                      <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-400">
+                        <span>Primary responder: {getResponderLabel(primaryResponder)}</span>
+                        <span>Crew: {resource.assignedResponderIds?.length || (resource.assignedResponderId ? 1 : 0)}</span>
+                        <span className={primaryResponderOnline ? 'text-emerald-300' : 'text-amber-300'}>
+                          {primaryResponderId ? (primaryResponderOnline ? 'Live tracking online' : 'Tracking waiting for responder') : 'No tracking responder'}
+                        </span>
+                      </div>
                       <div className="flex items-start gap-2 text-sm text-slate-400">
                         <MapPin size={16} className="mt-0.5 shrink-0" />
-                        <span>{getCoordinatesLabel(resource)}</span>
+                        <span>{getCoordinatesLabel(resolvedResource)}</span>
                       </div>
                       {resource.notes && <p className="text-sm text-slate-300">{resource.notes}</p>}
                     </div>
@@ -533,7 +688,7 @@ export default function ResourcesPage() {
                       </select>
                       <button
                         type="button"
-                        onClick={() => setMapResource(resource)}
+                        onClick={() => setMapResource(resolveResourceLocation(resource))}
                         className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition-colors hover:border-slate-500 hover:bg-slate-900"
                       >
                         <MapPin size={16} />
@@ -558,7 +713,7 @@ export default function ResourcesPage() {
                     </div>
                   </div>
                 </article>
-              ))}
+              )})}
             </div>
           )}
         </section>
@@ -677,12 +832,39 @@ export default function ResourcesPage() {
                       className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
                       <option value="">Unassigned</option>
-                      {teams.map((team) => (
-                        <option key={team.id} value={team.id}>
+                      {teamOptions.map((team) => (
+                        <option key={team.id || team.code} value={team.id || team.code}>
                           {team.label}
                         </option>
                       ))}
                     </select>
+                  </div>
+                  <div>
+                    <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Primary Responder</label>
+                    <select
+                      value={formState.primaryResponderId}
+                      onChange={(event) => {
+                        const responderId = event.target.value
+                        setFormState((current) => ({
+                          ...current,
+                          primaryResponderId: responderId,
+                          assignedResponderIds: responderId
+                            ? Array.from(new Set([responderId, ...current.assignedResponderIds]))
+                            : current.assignedResponderIds,
+                        }))
+                      }}
+                      className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    >
+                      <option value="">Unbound</option>
+                      {responders.map((responder) => (
+                        <option key={responder.uid} value={responder.uid}>
+                          {getResponderLabel(responder)} ({responder.account.role})
+                        </option>
+                      ))}
+                    </select>
+                    {formState.status === 'available' && !formState.primaryResponderId && (
+                      <p className="mt-2 text-xs text-amber-300">Required before this resource can be available for live dispatch.</p>
+                    )}
                   </div>
                   <div>
                     <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Quadrant</label>
@@ -698,6 +880,36 @@ export default function ResourcesPage() {
                         </option>
                       ))}
                     </select>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Crew Responders</label>
+                    <div className="mt-2 max-h-36 overflow-y-auto rounded-lg border border-slate-800 bg-slate-950 p-2 custom-scrollbar">
+                      {responders.length === 0 ? (
+                        <p className="px-2 py-3 text-sm text-slate-500">No active responder accounts found.</p>
+                      ) : (
+                        <div className="grid gap-2 md:grid-cols-2">
+                          {responders.map((responder) => {
+                            const isChecked = formState.assignedResponderIds.includes(responder.uid)
+                            const isPrimary = formState.primaryResponderId === responder.uid
+                            return (
+                              <label
+                                key={responder.uid}
+                                className="flex items-center gap-2 rounded-md border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-300"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => toggleCrewResponder(responder.uid)}
+                                  className="rounded border-slate-700 bg-slate-950 text-primary-500"
+                                />
+                                <span className="min-w-0 flex-1 truncate">{getResponderLabel(responder)}</span>
+                                {isPrimary && <span className="text-[10px] font-bold uppercase tracking-widest text-primary-300">Primary</span>}
+                              </label>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="md:col-span-2">
                     <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Base / Station Name</label>
@@ -836,6 +1048,25 @@ export default function ResourcesPage() {
                   <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Team</p>
                     <p className="mt-1 text-sm text-slate-100">{mapResource.teamName || 'Unassigned'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Primary Responder</p>
+                    <p className="mt-1 text-sm text-slate-100">
+                      {getResponderLabel(
+                        responderById.get(
+                          mapResource.primaryResponderId ||
+                            mapResource.assignedResponderId ||
+                            mapResource.assignedResponderIds?.[0] ||
+                            ''
+                        )
+                      )}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Crew</p>
+                    <p className="mt-1 text-sm text-slate-100">
+                      {mapResource.assignedResponderIds?.length || (mapResource.assignedResponderId ? 1 : 0)} responder(s)
+                    </p>
                   </div>
                 </div>
                 <div className="h-[420px] bg-slate-950">
