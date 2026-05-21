@@ -1,54 +1,52 @@
 import React, { useEffect, useRef } from "react";
 import { View, Text, StyleSheet, Animated } from "react-native";
-import { Check, Clock, AlertCircle } from "lucide-react-native";
+import { Check, Clock } from "lucide-react-native";
 import { radii, spacing } from "@/theme";
 
 export default function CaseTimeline({ caseData, colors, formatDate, formatResponseTime }) {
-  // Determine states for each step
   const getStepState = (stepKey) => {
-    const status = caseData.status;
+    const status = String(caseData.status || "").toLowerCase();
     const hasAccepted = !!caseData.acceptedAt;
     const hasTouchdown = !!caseData.touchdownAt;
     const hasPostReport = !!caseData.postIncidentReport?.submittedAt;
+    const isEnRouteOrBeyond =
+      status === "enroute" ||
+      status === "on_scene" ||
+      status === "done" ||
+      status === "resolved" ||
+      hasTouchdown ||
+      hasPostReport;
 
     switch (stepKey) {
       case "reported":
         return { state: "completed", time: caseData.createdAt };
-      
+
       case "accepted":
-        if (hasAccepted) {
-          return { state: "completed", time: caseData.acceptedAt };
-        }
+        if (hasAccepted) return { state: "completed", time: caseData.acceptedAt };
+        if (isEnRouteOrBeyond) return { state: "completed" };
         if (status === "pending" || status === "dispatched" || status === "awaiting_resources") {
           return { state: "active" };
         }
         return { state: "future" };
 
       case "enroute":
-        if (status === "on_scene" || status === "done" || hasTouchdown) {
+        if (status === "on_scene" || status === "done" || status === "resolved" || hasTouchdown || hasPostReport) {
           return { state: "completed" };
         }
-        if (status === "enroute") {
-          return { state: "active" };
-        }
+        if (status === "enroute") return { state: "active" };
         return { state: "future" };
 
       case "touchdown":
-        if (hasTouchdown) {
-          return { state: "completed", time: caseData.touchdownAt };
-        }
-        if (status === "on_scene") {
-          return { state: "active" };
-        }
+        if (hasTouchdown) return { state: "completed", time: caseData.touchdownAt };
+        if (hasPostReport || status === "done" || status === "resolved") return { state: "completed" };
+        if (status === "on_scene") return { state: "active" };
         return { state: "future" };
 
       case "post_report":
         if (hasPostReport) {
           return { state: "completed", time: caseData.postIncidentReport.submittedAt };
         }
-        if (status === "done") {
-          return { state: "active" };
-        }
+        if (status === "done" || status === "resolved") return { state: "active" };
         return { state: "future" };
 
       default:
@@ -56,7 +54,7 @@ export default function CaseTimeline({ caseData, colors, formatDate, formatRespo
     }
   };
 
-  const steps = [
+  const rawSteps = [
     { key: "reported", label: "Incident Reported" },
     { key: "accepted", label: "Case Accepted" },
     { key: "enroute", label: "En Route to Scene" },
@@ -67,12 +65,23 @@ export default function CaseTimeline({ caseData, colors, formatDate, formatRespo
     ...getStepState(step.key),
   }));
 
-  // Pulse animation for the active step
+  const steps = rawSteps.map((step, index) => {
+    const hasCompletedLaterStep = rawSteps
+      .slice(index + 1)
+      .some((laterStep) => laterStep.state === "completed");
+
+    if (step.state !== "completed" && hasCompletedLaterStep) {
+      return { ...step, state: "completed" };
+    }
+
+    return step;
+  });
+
   const pulseAnim = useRef(new Animated.Value(0.4)).current;
 
   useEffect(() => {
-    const hasActiveStep = steps.some((s) => s.state === "active");
-    if (!hasActiveStep) return;
+    const hasActiveStep = steps.some((step) => step.state === "active");
+    if (!hasActiveStep) return undefined;
 
     const pulse = Animated.loop(
       Animated.sequence([
@@ -91,12 +100,12 @@ export default function CaseTimeline({ caseData, colors, formatDate, formatRespo
     pulse.start();
 
     return () => pulse.stop();
-  }, [pulseAnim, caseData.status]);
+  }, [pulseAnim, steps]);
 
   const renderDot = (step) => {
     if (step.state === "completed") {
       return (
-        <View style={[styles.dot, styles.completedDot, { backgroundColor: colors.success }]}>
+        <View style={[styles.dot, styles.completedDot, { backgroundColor: colors.accent }]}>
           <Check size={10} color="#FFFFFF" strokeWidth={3} />
         </View>
       );
@@ -127,7 +136,6 @@ export default function CaseTimeline({ caseData, colors, formatDate, formatRespo
       );
     }
 
-    // Future/Muted
     return <View style={[styles.dot, styles.futureDot, { borderColor: colors.border }]} />;
   };
 
@@ -135,20 +143,18 @@ export default function CaseTimeline({ caseData, colors, formatDate, formatRespo
     <View style={styles.container}>
       {steps.map((step, index) => {
         const isLast = index === steps.length - 1;
-        const lineColors =
+        const lineColor =
           step.state === "completed" && steps[index + 1]?.state === "completed"
-            ? colors.success
+            ? colors.accent
             : colors.border;
 
         return (
           <View key={step.key} style={styles.stepRow}>
-            {/* Left Column: Dot & Line */}
             <View style={styles.leftCol}>
               {renderDot(step)}
-              {!isLast && <View style={[styles.line, { backgroundColor: lineColors }]} />}
+              {!isLast ? <View style={[styles.line, { backgroundColor: lineColor }]} /> : null}
             </View>
 
-            {/* Right Column: Labels & Details */}
             <View style={styles.rightCol}>
               <Text
                 style={[
@@ -172,6 +178,10 @@ export default function CaseTimeline({ caseData, colors, formatDate, formatRespo
                 <Text style={[styles.timeText, { color: colors.textSecondary }]}>
                   {formatDate(step.time)}
                 </Text>
+              ) : step.state === "completed" ? (
+                <Text style={[styles.timeText, { color: colors.textSecondary }]}>
+                  Completed
+                </Text>
               ) : step.state === "active" ? (
                 <Text style={[styles.activeStatusText, { color: colors.accent }]}>
                   In Progress
@@ -180,23 +190,24 @@ export default function CaseTimeline({ caseData, colors, formatDate, formatRespo
                 <Text style={[styles.pendingText, { color: colors.textMuted }]}>Pending</Text>
               )}
 
-              {/* Special Addition: Response time pill for Case Accepted */}
-              {step.key === "accepted" && step.state === "completed" && caseData.responseTimeSeconds != null && (
+              {step.key === "accepted" &&
+              step.state === "completed" &&
+              caseData.responseTimeSeconds != null ? (
                 <View
                   style={[
                     styles.responsePill,
                     {
                       backgroundColor: colors.surfaceHighlight,
-                      borderColor: colors.success + "30",
+                      borderColor: colors.accent + "30",
                     },
                   ]}
                 >
-                  <Clock size={12} color={colors.success} style={{ marginRight: 4 }} />
-                  <Text style={[styles.responseText, { color: colors.success }]}>
+                  <Clock size={12} color={colors.accent} style={styles.responseIcon} />
+                  <Text style={[styles.responseText, { color: colors.accent }]}>
                     {formatResponseTime(caseData.responseTimeSeconds)} response
                   </Text>
                 </View>
-              )}
+              ) : null}
             </View>
           </View>
         );
@@ -289,6 +300,9 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     paddingHorizontal: 8,
     marginTop: 6,
+  },
+  responseIcon: {
+    marginRight: 4,
   },
   responseText: {
     fontFamily: "SpaceGrotesk_600SemiBold",

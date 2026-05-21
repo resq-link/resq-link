@@ -42,7 +42,7 @@ const additionalDetailFields = {
   ],
 };
 
-export default function AdditionalDetailsSection({ caseData, colors, formatDate }) {
+export default function AdditionalDetailsSection({ caseData, colors, formatDate, embedded = false }) {
   const expectedAdditionalFields =
     additionalDetailFields[caseData.incidentCategory] ||
     additionalDetailFields.other_emergency;
@@ -64,7 +64,7 @@ export default function AdditionalDetailsSection({ caseData, colors, formatDate 
     submittedAdditionalFields.length > 0 || extraAdditionalFields.length > 0;
 
   return (
-    <Section title="Additional Details" colors={colors} collapsible={true} defaultExpanded={false}>
+    <Section title="Additional Details" colors={colors} collapsible={true} defaultExpanded={false} embedded={embedded}>
       {hasAdditionalDetails ? (
         <View>
           {caseData.additionalDetailsSubmittedAt && (

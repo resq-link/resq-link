@@ -8,9 +8,8 @@ import {
   Platform,
 } from "react-native";
 import { BlurView } from "expo-blur";
-import { Picker } from "@react-native-picker/picker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Navigation, AlertTriangle, CheckCircle2 } from "lucide-react-native";
+import { ClipboardCheck, Navigation, CheckCircle2 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import CustomButton from "@/components/ui/CustomButton";
 import ErrorAlert from "@/components/feedback/ErrorAlert";
@@ -20,15 +19,15 @@ export default function StickyActionBar({
   caseData,
   onAcceptCase,
   onDeclinePress,
-  onStatusChange,
-  selectedStatus,
   isUpdating,
   showAcceptButton,
-  showStatusDropdown,
   canMarkTouchdown,
   isTouchdownUpdating,
   handleTouchdown,
   touchdownDistanceMeters,
+  canSubmitPostReport,
+  isSubmittingPostReport,
+  onPostReportPress,
   error,
   setError,
 }) {
@@ -52,12 +51,14 @@ export default function StickyActionBar({
     {
       paddingBottom: bottomPadding,
       borderTopColor: colors.border,
-      backgroundColor: resolvedScheme === "dark" ? "rgba(11, 21, 38, 0.85)" : "rgba(255, 255, 255, 0.90)",
+      backgroundColor:
+        resolvedScheme === "dark"
+          ? "rgba(11, 21, 38, 0.85)"
+          : "rgba(255, 255, 255, 0.90)",
     },
   ];
 
   const renderContent = () => {
-    // 1. Pending/Dispatched/Active - Accept & Decline Action
     if (showAcceptButton) {
       return (
         <View style={styles.actionRow}>
@@ -91,76 +92,74 @@ export default function StickyActionBar({
       );
     }
 
-    // 2. En Route / On Scene - Show Touchdown Action & Status Dropdown Picker
-    if (showStatusDropdown || canMarkTouchdown) {
+    if (canMarkTouchdown) {
       return (
         <View style={styles.operationalRow}>
-          {canMarkTouchdown && (
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-                handleTouchdown("manual", touchdownDistanceMeters);
-              }}
-              disabled={isTouchdownUpdating}
-              activeOpacity={0.85}
-              style={[
-                styles.touchdownButton,
-                { backgroundColor: colors.success },
-                isTouchdownUpdating && styles.disabled,
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel="Mark arrival at scene — Touchdown"
-            >
-              <Navigation size={20} color={colors.white} style={styles.buttonIcon} />
-              <Text style={styles.touchdownButtonText}>
-                {isTouchdownUpdating ? "Marking Touchdown..." : "Touchdown"}
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          {showStatusDropdown && (
-            <View style={styles.pickerContainer}>
-              <Text style={[styles.pickerLabel, { color: colors.textSecondary }]}>
-                Update Status
-              </Text>
-              <View style={[styles.pickerShell, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                <Picker
-                  selectedValue={selectedStatus}
-                  onValueChange={(value) => {
-                    Haptics.selectionAsync();
-                    onStatusChange(value);
-                  }}
-                  enabled={!isUpdating}
-                  style={[styles.picker, { color: colors.text }]}
-                  itemStyle={styles.pickerItem}
-                  accessibilityLabel="Select case status"
-                >
-                  <Picker.Item label="En Route" value="enroute" />
-                  <Picker.Item label="On Scene" value="on_scene" />
-                  <Picker.Item label="Done" value="done" />
-                </Picker>
-              </View>
-            </View>
-          )}
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+              handleTouchdown("manual", touchdownDistanceMeters);
+            }}
+            disabled={isTouchdownUpdating}
+            activeOpacity={0.85}
+            style={[
+              styles.touchdownButton,
+              { backgroundColor: colors.accent },
+              isTouchdownUpdating && styles.disabled,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Mark arrival at scene - Touchdown"
+          >
+            <Navigation size={20} color={colors.white} style={styles.buttonIcon} />
+            <Text style={styles.touchdownButtonText}>
+              {isTouchdownUpdating ? "Marking Touchdown..." : "Touchdown"}
+            </Text>
+          </TouchableOpacity>
         </View>
       );
     }
 
-    // 3. Case Done - Completed badge
-    if (caseData.status === "done") {
+    if (canSubmitPostReport) {
+      return (
+        <View style={styles.operationalRow}>
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              onPostReportPress();
+            }}
+            disabled={isSubmittingPostReport}
+            activeOpacity={0.85}
+            style={[
+              styles.postReportButton,
+              { backgroundColor: colors.accent },
+              isSubmittingPostReport && styles.disabled,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Submit post incident report"
+          >
+            <ClipboardCheck size={20} color={colors.white} style={styles.buttonIcon} />
+            <Text style={styles.postReportButtonText}>
+              {isSubmittingPostReport ? "Submitting Post Report..." : "Post Report"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    if (caseData.status === "done" || caseData.status === "resolved") {
       return (
         <View
           style={[
             styles.completedBadge,
             {
               backgroundColor: colors.surfaceHighlight,
-              borderColor: colors.success + "40",
+              borderColor: colors.accent + "40",
             },
           ]}
         >
-          <CheckCircle2 size={18} color={colors.success} style={styles.buttonIcon} />
+          <CheckCircle2 size={18} color={colors.accent} style={styles.buttonIcon} />
           <View>
-            <Text style={[styles.completedText, { color: colors.success }]}>
+            <Text style={[styles.completedText, { color: colors.accent }]}>
               Case Completed
             </Text>
             <Text style={[styles.completedSubtext, { color: colors.textSecondary }]}>
@@ -268,34 +267,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#FFFFFF",
   },
+  postReportButton: {
+    borderRadius: radii.md,
+    paddingVertical: 14,
+    paddingHorizontal: spacing.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+  },
+  postReportButtonText: {
+    fontFamily: "SpaceGrotesk_600SemiBold",
+    fontSize: 16,
+    color: "#FFFFFF",
+  },
   buttonIcon: {
     marginRight: spacing.sm,
-  },
-  pickerContainer: {
-    flexDirection: "column",
-    gap: spacing.xs,
-  },
-  pickerLabel: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
-    fontSize: 12,
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-  },
-  pickerShell: {
-    borderRadius: radii.md,
-    borderWidth: 1,
-    overflow: "hidden",
-    height: Platform.OS === "ios" ? 140 : 54,
-    justifyContent: "center",
-  },
-  picker: {
-    height: Platform.OS === "ios" ? 220 : 54,
-    width: "100%",
-    backgroundColor: "transparent",
-  },
-  pickerItem: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
-    fontSize: 15,
   },
   completedBadge: {
     borderRadius: radii.md,

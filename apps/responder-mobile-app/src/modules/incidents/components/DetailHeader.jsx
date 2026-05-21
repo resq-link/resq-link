@@ -62,15 +62,15 @@ function getCategoryIcon(category, size, color) {
 function getPriorityLabel(priority) {
   switch (priority?.toLowerCase()) {
     case "critical":
-      return "CRITICAL EMERGENCY";
+      return "CRITICAL";
     case "high":
-      return "HIGH PRIORITY";
+      return "HIGH";
     case "medium":
-      return "MEDIUM PRIORITY";
+      return "MEDIUM";
     case "low":
-      return "LOW PRIORITY";
+      return "LOW";
     default:
-      return "STANDARD CASE";
+      return "MEDIUM";
   }
 }
 
@@ -213,16 +213,6 @@ export default function DetailHeader({
         </TouchableOpacity>
 
         <View style={styles.headerInfo}>
-          {/* Badge Row (Priority & Status) */}
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 }}>
-            <View style={[styles.priorityBadge, { backgroundColor: badgeBg, marginBottom: 0 }]}>
-              <Text style={[styles.priorityText, { color: badgeTextColor }]}>
-                {getPriorityLabel(priority)}
-              </Text>
-            </View>
-            {status && <CaseStatusBadge status={status} />}
-          </View>
-
           <View style={styles.titleRow}>
             {getCategoryIcon(incidentCategory, 22, headerTextColor)}
             <Text style={[styles.title, { color: headerTextColor }]} numberOfLines={1}>
@@ -230,11 +220,27 @@ export default function DetailHeader({
             </Text>
           </View>
 
-          <View style={styles.metaRow}>
-            <Clock size={13} color={subTextColor} style={styles.metaIcon} />
-            <Text style={[styles.subtitle, { color: subTextColor }]}>
-              {elapsedText}
-            </Text>
+          <View style={styles.contextRow}>
+            <View style={styles.metaRow}>
+              <Clock size={13} color={subTextColor} style={styles.metaIcon} />
+              <Text style={[styles.subtitle, { color: subTextColor }]} numberOfLines={1}>
+                {elapsedText}
+              </Text>
+            </View>
+            <View style={styles.badgeRow}>
+              <View style={[styles.priorityBadge, { backgroundColor: badgeBg }]}>
+                <Text style={[styles.priorityText, { color: badgeTextColor }]} numberOfLines={1}>
+                  {getPriorityLabel(priority)}
+                </Text>
+              </View>
+              {status && (
+                <CaseStatusBadge
+                  status={status}
+                  style={styles.statusBadge}
+                  textStyle={styles.statusBadgeText}
+                />
+              )}
+            </View>
           </View>
         </View>
       </View>
@@ -267,17 +273,40 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
   },
+  contextRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    rowGap: 6,
+    marginTop: 4,
+  },
+  badgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flexShrink: 1,
+  },
   priorityBadge: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: radii.sm,
-    marginBottom: 4,
+    minHeight: 27,
+    justifyContent: "center",
   },
   priorityText: {
-    fontFamily: "SpaceGrotesk_700Bold",
-    fontSize: 9,
-    letterSpacing: 0.8,
+    fontFamily: "SpaceGrotesk_600SemiBold",
+    fontSize: 11,
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
+  statusBadge: {
+    minHeight: 27,
+    justifyContent: "center",
+  },
+  statusBadgeText: {
+    fontFamily: "SpaceGrotesk_600SemiBold",
+    fontSize: 11,
+    letterSpacing: 0.5,
   },
   titleRow: {
     flexDirection: "row",
@@ -292,7 +321,7 @@ const styles = StyleSheet.create({
   metaRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 2,
+    marginRight: 8,
   },
   metaIcon: {
     marginRight: 4,

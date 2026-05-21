@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, Animated, LayoutAnimation } from "react-n
 import { ChevronDown } from "lucide-react-native";
 import { radii, spacing } from "@/theme";
 
-export default function Section({ title, children, colors, collapsible = false, defaultExpanded = true }) {
+export default function Section({ title, children, colors, collapsible = false, defaultExpanded = true, embedded = false }) {
   const [expanded, setExpanded] = React.useState(defaultExpanded);
   const animatedValue = React.useRef(new Animated.Value(defaultExpanded ? 1 : 0)).current;
 
@@ -27,12 +27,12 @@ export default function Section({ title, children, colors, collapsible = false, 
     return (
       <View
         style={{
-          backgroundColor: colors.surface,
-          borderRadius: radii.lg,
-          padding: spacing.lg,
+          backgroundColor: embedded ? "transparent" : colors.surface,
+          borderRadius: embedded ? 0 : radii.lg,
+          padding: embedded ? 0 : spacing.lg,
           marginBottom: spacing.md,
-          borderWidth: 1,
-          borderColor: colors.border,
+          borderWidth: embedded ? 0 : 1,
+          borderColor: embedded ? "transparent" : colors.border,
           overflow: "hidden",
         }}
       >
@@ -74,12 +74,12 @@ export default function Section({ title, children, colors, collapsible = false, 
   return (
     <View
       style={{
-        backgroundColor: colors.surface,
-        borderRadius: radii.lg,
-        padding: spacing.lg,
+        backgroundColor: embedded ? "transparent" : colors.surface,
+        borderRadius: embedded ? 0 : radii.lg,
+        padding: embedded ? 0 : spacing.lg,
         marginBottom: spacing.md,
-        borderWidth: 1,
-        borderColor: colors.border,
+        borderWidth: embedded ? 0 : 1,
+        borderColor: embedded ? "transparent" : colors.border,
       }}
     >
       <Text
