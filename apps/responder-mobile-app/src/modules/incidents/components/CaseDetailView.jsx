@@ -17,7 +17,6 @@ import {
 import { useFonts } from "expo-font";
 import { getDoc, doc, getFirebaseFirestore, onSnapshot } from "@packages/firebase";
 import CaseInfoCard from "@/modules/incidents/components/CaseInfoCard";
-import DetailHeader from "@/modules/incidents/components/DetailHeader";
 import CaseDetailSkeleton from "@/modules/incidents/components/CaseDetailSkeleton";
 import ErrorAlert from "@/components/feedback/ErrorAlert";
 import { spacing, useResqTheme } from "@/theme";
@@ -97,11 +96,16 @@ export default function CaseDetailView() {
                 : null,
             additionalDetailsRequestedAt: toDateValue(data.additionalDetailsRequestedAt),
             additionalDetailsSubmittedAt: toDateValue(data.additionalDetailsSubmittedAt),
+            acceptedAt: toDateValue(data.acceptedAt),
             touchdownAt: toDateValue(data.touchdownAt),
             touchdownSource: data.touchdownSource || null,
             touchdownDistanceMeters:
               typeof data.touchdownDistanceMeters === "number"
                 ? data.touchdownDistanceMeters
+                : null,
+            responseTimeSeconds:
+              typeof data.responseTimeSeconds === "number"
+                ? data.responseTimeSeconds
                 : null,
             postIncidentReport:
               data.postIncidentReport && typeof data.postIncidentReport === "object"
@@ -218,44 +222,6 @@ export default function CaseDetailView() {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style={statusBarStyle} backgroundColor={colors.background} />
 
-      {caseData ? (
-        <DetailHeader
-          priority={caseData.priority}
-          incidentCategory={caseData.incidentType}
-          createdAt={caseData.createdAt}
-          onBackPress={() => router.back()}
-        />
-      ) : (
-        <View
-          style={{
-            backgroundColor: colors.surface,
-            paddingTop: insets.top + 20,
-            paddingHorizontal: spacing.lg,
-            paddingBottom: spacing.lg,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.border,
-            flexDirection: "row",
-            alignItems: "center",
-          }}
-        >
-          <TouchableOpacity
-            onPress={() => router.back()}
-            style={{ marginRight: 16 }}
-          >
-            <ArrowLeft size={24} color={colors.textSecondary} />
-          </TouchableOpacity>
-          <Text
-            style={{
-              fontFamily: "SpaceGrotesk_700Bold",
-              fontSize: 18,
-              color: colors.text,
-            }}
-          >
-            Case Details
-          </Text>
-        </View>
-      )}
-
       {error && (
         <View style={{ padding: spacing.lg }}>
           <ErrorAlert message={error} onDismiss={() => setError("")} />
@@ -267,6 +233,7 @@ export default function CaseDetailView() {
           case={caseData}
           reporterInfo={reporterInfo}
           onStatusUpdate={() => {}}
+          onBackPress={() => router.back()}
         />
       )}
     </View>

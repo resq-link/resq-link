@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
-import { Navigation2 } from "lucide-react-native";
+import { Check, MapPin, Navigation, Navigation2 } from "lucide-react-native";
 import Section from "./Section";
 import { radii, spacing } from "@/theme";
 
@@ -17,6 +17,21 @@ const getIncidentTypeName = (type) => {
   return typeMap[type] || "Emergency";
 };
 
+const formatElapsed = (from, to = new Date()) => {
+  if (!from) return "";
+
+  const start = new Date(from);
+  const end = new Date(to);
+  const diffSeconds = Math.max(0, Math.floor((end.getTime() - start.getTime()) / 1000));
+  const hours = Math.floor(diffSeconds / 3600);
+  const minutes = Math.floor((diffSeconds % 3600) / 60);
+  const seconds = diffSeconds % 60;
+
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
+};
+
 export default function CaseMapSection({
   caseData,
   hasPinnedLocation,
@@ -24,15 +39,90 @@ export default function CaseMapSection({
   locationError,
   mapRegion,
   touchdownDistanceMeters,
-  canMarkTouchdown,
-  isTouchdownUpdating,
-  handleTouchdown,
+  displayLocationText,
   handleOpenNavigation,
   formatDate,
-  setIsPostReportModalVisible,
-  setError,
   colors,
 }) {
+  const [now, setNow] = useState(new Date());
+  const status = String(caseData.status || "").toLowerCase();
+  const hasTouchdown = !!caseData.touchdownAt;
+  const hasPostReport = !!caseData.postIncidentReport?.submittedAt;
+  const isResolved = status === "done" || status === "resolved" || hasPostReport;
+  const isEnRouteOrBeyond =
+    status === "enroute" ||
+    status === "on_scene" ||
+    isResolved ||
+    hasTouchdown;
+  const acceptedTime = caseData.acceptedAt || (isEnRouteOrBeyond ? caseData.createdAt : null);
+  const touchdownComplete = hasTouchdown || status === "on_scene" || isResolved;
+  const enRouteActive = !!acceptedTime && !touchdownComplete && isEnRouteOrBeyond;
+
+  useEffect(() => {
+    if (!enRouteActive) return undefined;
+
+    const interval = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, [enRouteActive]);
+
+  const progressSteps = useMemo(
+    () => [
+      {
+        key: "accepted",
+        label: "Accepted",
+        detail: acceptedTime ? "Case accepted" : "Waiting",
+        state: acceptedTime ? "completed" : "active",
+        icon: Check,
+      },
+      {
+        key: "enroute",
+        label: "En Route",
+        detail: enRouteActive
+          ? `${formatElapsed(acceptedTime, now)} en route`
+          : touchdownComplete
+            ? "Travel complete"
+            : "Pending",
+        state: touchdownComplete ? "completed" : enRouteActive ? "active" : "future",
+        icon: Navigation,
+      },
+      {
+        key: "touchdown",
+        label: "Touchdown",
+        detail: hasTouchdown
+          ? formatDate(caseData.touchdownAt)
+          : touchdownComplete
+            ? "Arrived"
+            : "Pending",
+        state: touchdownComplete ? "completed" : "future",
+        icon: MapPin,
+      },
+    ],
+    [
+      acceptedTime,
+      caseData.touchdownAt,
+      enRouteActive,
+      formatDate,
+      hasTouchdown,
+      now,
+      touchdownComplete,
+    ]
+  );
+
+  const renderProgressIcon = (step) => {
+    const Icon = step.icon;
+    const isCompleted = step.state === "completed";
+    const isActive = step.state === "active";
+    const iconBg = isCompleted || isActive ? colors.accent : colors.surfaceHighlight;
+    const iconColor = isCompleted || isActive ? "#FFFFFF" : colors.textMuted;
+    const borderColor = isCompleted || isActive ? colors.accent : colors.border;
+
+    return (
+      <View style={[styles.progressIcon, { backgroundColor: iconBg, borderColor }]}>
+        <Icon size={15} color={iconColor} strokeWidth={2.5} />
+      </View>
+    );
+  };
+
   return (
     <Section title="Location & Map" colors={colors}>
       {hasPinnedLocation && (
@@ -53,13 +143,12 @@ export default function CaseMapSection({
                 longitude: caseData.longitude,
               }}
               title={getIncidentTypeName(caseData.incidentCategory)}
-              description={caseData.locationText || "Pinned incident location"}
+              description={displayLocationText || "Pinned incident location"}
               pinColor={colors.accent}
             />
             {responderLocation && (
               <Marker
                 coordinate={responderLocation}
-                title="Your current location"
                 pinColor={colors.info}
               />
             )}
@@ -77,6 +166,51 @@ export default function CaseMapSection({
         </View>
       )}
 
+      <View style={[styles.progressShell, { borderColor: colors.border, backgroundColor: colors.surfaceHighlight }]}>
+        <View style={styles.progressLineWrap} pointerEvents="none">
+          <View style={[styles.progressLine, { backgroundColor: colors.border }]} />
+          <View
+            style={[
+              styles.progressLineFill,
+              {
+                backgroundColor: colors.accent,
+                width: touchdownComplete ? "100%" : acceptedTime ? "50%" : "0%",
+              },
+            ]}
+          />
+        </View>
+        {progressSteps.map((step) => (
+          <View key={step.key} style={styles.progressStep}>
+            {renderProgressIcon(step)}
+            <Text
+              style={[
+                styles.progressLabel,
+                {
+                  color:
+                    step.state === "active"
+                      ? colors.accent
+                      : step.state === "completed"
+                        ? colors.text
+                        : colors.textMuted,
+                },
+              ]}
+              numberOfLines={1}
+            >
+              {step.label}
+            </Text>
+            <Text
+              style={[
+                styles.progressDetail,
+                { color: step.state === "active" ? colors.accent : colors.textSecondary },
+              ]}
+              numberOfLines={2}
+            >
+              {step.detail}
+            </Text>
+          </View>
+        ))}
+      </View>
+
       <View style={{ marginTop: hasPinnedLocation ? spacing.md : 0 }}>
         <Text
           style={{
@@ -85,7 +219,7 @@ export default function CaseMapSection({
             color: colors.text,
           }}
         >
-          {caseData.locationText || "Location not available"}
+          {displayLocationText || "Location not available"}
         </Text>
 
         {caseData.landmark && (
@@ -126,26 +260,6 @@ export default function CaseMapSection({
           </View>
         )}
 
-        {hasPinnedLocation && (
-          <Text
-            style={{
-              fontFamily: "SpaceGrotesk_400Regular",
-              fontSize: 12,
-              color: colors.textMuted,
-              marginTop: 8,
-            }}
-          >
-            Coordinates: {caseData.latitude.toFixed(6)}, {caseData.longitude.toFixed(6)}
-          </Text>
-        )}
-
-        {responderLocation ? (
-          <Text style={[styles.currentLocationText, { color: colors.info }]}>
-            Your location: {responderLocation.latitude.toFixed(6)},{" "}
-            {responderLocation.longitude.toFixed(6)}
-          </Text>
-        ) : null}
-
         {locationError ? (
           <Text style={[styles.locationErrorText, { color: colors.warning }]}>{locationError}</Text>
         ) : null}
@@ -154,45 +268,6 @@ export default function CaseMapSection({
           <Text style={[styles.touchdownDistanceText, { color: colors.textSecondary }]}>
             Distance to pinned location: {touchdownDistanceMeters.toFixed(1)} m
           </Text>
-        ) : null}
-
-        {caseData.touchdownAt ? (
-          <View>
-            <Text style={[styles.touchdownTimeText, { color: colors.success }]}>
-              Touchdown: {formatDate(caseData.touchdownAt)}
-            </Text>
-            {caseData.postIncidentReport?.submittedAt ? (
-              <Text style={[styles.postReportSubmittedText, { color: colors.success }]}>
-                Post report sent: {formatDate(caseData.postIncidentReport.submittedAt)}
-              </Text>
-            ) : (
-              <TouchableOpacity
-                onPress={() => {
-                  setError("");
-                  setIsPostReportModalVisible(true);
-                }}
-                activeOpacity={0.85}
-                style={[styles.postReportButton, { backgroundColor: colors.accent }]}
-              >
-                <Text style={styles.postReportButtonText}>Post Report</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        ) : canMarkTouchdown ? (
-          <TouchableOpacity
-            onPress={() => handleTouchdown("manual", touchdownDistanceMeters)}
-            disabled={isTouchdownUpdating}
-            activeOpacity={0.85}
-            style={[
-              styles.touchdownButton,
-              { backgroundColor: colors.success },
-              isTouchdownUpdating && styles.disabledButton,
-            ]}
-          >
-            <Text style={styles.touchdownButtonText}>
-              {isTouchdownUpdating ? "Marking Touchdown..." : "Touchdown"}
-            </Text>
-          </TouchableOpacity>
         ) : null}
       </View>
     </Section>
@@ -210,10 +285,54 @@ const styles = StyleSheet.create({
   map: {
     flex: 1,
   },
-  currentLocationText: {
+  progressShell: {
+    marginTop: spacing.md,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
+    flexDirection: "row",
+    position: "relative",
+  },
+  progressLineWrap: {
+    position: "absolute",
+    top: spacing.md + 15,
+    left: "16.5%",
+    right: "16.5%",
+    height: 2,
+  },
+  progressLine: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  progressLineFill: {
+    height: 2,
+  },
+  progressStep: {
+    flex: 1,
+    alignItems: "center",
+    minWidth: 0,
+  },
+  progressIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 7,
+    zIndex: 2,
+  },
+  progressLabel: {
+    fontFamily: "SpaceGrotesk_700Bold",
+    fontSize: 11,
+    textAlign: "center",
+  },
+  progressDetail: {
     fontFamily: "SpaceGrotesk_400Regular",
-    fontSize: 12,
-    marginTop: 6,
+    fontSize: 10,
+    lineHeight: 13,
+    marginTop: 2,
+    textAlign: "center",
   },
   locationErrorText: {
     fontFamily: "SpaceGrotesk_400Regular",
@@ -244,42 +363,5 @@ const styles = StyleSheet.create({
     fontFamily: "SpaceGrotesk_400Regular",
     fontSize: 12,
     marginTop: spacing.sm,
-  },
-  touchdownTimeText: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
-    fontSize: 13,
-    marginTop: spacing.sm,
-  },
-  postReportSubmittedText: {
-    fontFamily: "SpaceGrotesk_400Regular",
-    fontSize: 12,
-    marginTop: spacing.sm,
-  },
-  postReportButton: {
-    marginTop: spacing.md,
-    borderRadius: radii.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    alignItems: "center",
-  },
-  postReportButtonText: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
-    fontSize: 14,
-    color: "#ffffff",
-  },
-  touchdownButton: {
-    marginTop: spacing.md,
-    borderRadius: radii.md,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    alignItems: "center",
-  },
-  touchdownButtonText: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
-    fontSize: 14,
-    color: "#ffffff",
-  },
-  disabledButton: {
-    opacity: 0.55,
   },
 });

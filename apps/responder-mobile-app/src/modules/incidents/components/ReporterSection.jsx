@@ -4,11 +4,11 @@ import { Phone, Mail } from "lucide-react-native";
 import Section from "./Section";
 import { radii, spacing } from "@/theme";
 
-export default function ReporterSection({ reporterInfo, colors, handleMakeCall, handleSendEmail }) {
+export default function ReporterSection({ reporterInfo, colors, handleMakeCall, handleSendEmail, embedded = false }) {
   if (!reporterInfo) return null;
 
   return (
-    <Section title="Reporter" colors={colors} collapsible={true} defaultExpanded={false}>
+    <Section title="Reporter" colors={colors} collapsible={true} defaultExpanded={false} embedded={embedded}>
       <Text
         style={{
           fontFamily: "SpaceGrotesk_400Regular",
