@@ -30,6 +30,8 @@ import PriorityBadge from "./PriorityBadge";
 import CustomButton from "@/components/ui/CustomButton";
 import ErrorAlert from "@/components/feedback/ErrorAlert";
 import StickyActionBar from "./StickyActionBar";
+import PostReportModal from "./PostReportModal";
+import DeclineModal from "./DeclineModal";
 import { Phone, Mail, Navigation2, ChevronDown } from "lucide-react-native";
 import { radii, spacing, useResqTheme } from "@/theme";
 
@@ -1268,160 +1270,34 @@ export default function CaseInfoCard({
         </View>
       </Modal>
 
-      <Modal
+      <DeclineModal
         visible={isDeclineModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
-          if (!isUpdating) {
-            setIsDeclineModalVisible(false);
-          }
+        onClose={() => {
+          setIsDeclineModalVisible(false);
+          setDeclineReason("");
+          setError("");
         }}
-      >
-        <View style={styles.reasonModalContainer}>
-          <View style={styles.reasonModalContent}>
-            <Text style={styles.reasonModalTitle}>Decline Case</Text>
-            <Text style={styles.reasonModalDescription}>
-              Add the reason so dispatch can reassign the case properly.
-            </Text>
-            <TextInput
-              value={declineReason}
-              onChangeText={setDeclineReason}
-              placeholder="Reason for decline"
-              placeholderTextColor={colors.textMuted}
-              multiline
-              editable={!isUpdating}
-              style={styles.reasonInput}
-            />
-            {error ? (
-              <Text style={styles.reasonError}>{error}</Text>
-            ) : null}
-            <View style={styles.reasonActions}>
-              <TouchableOpacity
-                onPress={() => {
-                  setIsDeclineModalVisible(false);
-                  setDeclineReason("");
-                  setError("");
-                }}
-                disabled={isUpdating}
-                style={styles.reasonCancelButton}
-              >
-                <Text style={styles.reasonCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleDeclineCase}
-                disabled={isUpdating || !declineReason.trim()}
-                style={[
-                  styles.reasonSubmitButton,
-                  (isUpdating || !declineReason.trim()) && styles.disabledButton,
-                ]}
-              >
-                <Text style={styles.reasonSubmitText}>
-                  {isUpdating ? "Declining..." : "Submit Decline"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        onSubmit={handleDeclineCase}
+        isSubmitting={isUpdating}
+        reason={declineReason}
+        setReason={setDeclineReason}
+        error={error}
+        colors={colors}
+      />
 
-      <Modal
+      <PostReportModal
         visible={isPostReportModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
-          if (!isSubmittingPostReport) setIsPostReportModalVisible(false);
+        onClose={() => {
+          setIsPostReportModalVisible(false);
+          setError("");
         }}
-      >
-        <View style={styles.reasonModalContainer}>
-          <View style={styles.reasonModalContent}>
-            <Text style={styles.reasonModalTitle}>Post Report</Text>
-            <Text style={styles.reasonModalDescription}>
-              Add any available details from the scene. Fields can be left blank.
-            </Text>
-            <TextInput
-              value={postReportForm.reasonForIncident}
-              onChangeText={(value) =>
-                setPostReportForm((current) => ({ ...current, reasonForIncident: value }))
-              }
-              placeholder="Reason for incident"
-              placeholderTextColor={colors.textMuted}
-              editable={!isSubmittingPostReport}
-              style={styles.postReportInput}
-            />
-            <TextInput
-              value={postReportForm.notes}
-              onChangeText={(value) =>
-                setPostReportForm((current) => ({ ...current, notes: value }))
-              }
-              placeholder="Notes"
-              placeholderTextColor={colors.textMuted}
-              multiline
-              editable={!isSubmittingPostReport}
-              style={[styles.postReportInput, styles.postReportNotesInput]}
-            />
-            <TextInput
-              value={postReportForm.peopleInvolved}
-              onChangeText={(value) =>
-                setPostReportForm((current) => ({
-                  ...current,
-                  peopleInvolved: value.replace(/[^0-9]/g, ""),
-                }))
-              }
-              placeholder="Number of people involved"
-              placeholderTextColor={colors.textMuted}
-              keyboardType="number-pad"
-              editable={!isSubmittingPostReport}
-              style={styles.postReportInput}
-            />
-            <TextInput
-              value={postReportForm.peopleStatus}
-              onChangeText={(value) =>
-                setPostReportForm((current) => ({ ...current, peopleStatus: value }))
-              }
-              placeholder="Status of people involved"
-              placeholderTextColor={colors.textMuted}
-              editable={!isSubmittingPostReport}
-              style={styles.postReportInput}
-            />
-            <TextInput
-              value={postReportForm.hospital}
-              onChangeText={(value) =>
-                setPostReportForm((current) => ({ ...current, hospital: value }))
-              }
-              placeholder="Hospital"
-              placeholderTextColor={colors.textMuted}
-              editable={!isSubmittingPostReport}
-              style={styles.postReportInput}
-            />
-            {error ? <Text style={styles.reasonError}>{error}</Text> : null}
-            <View style={styles.reasonActions}>
-              <TouchableOpacity
-                onPress={() => {
-                  setIsPostReportModalVisible(false);
-                  setError("");
-                }}
-                disabled={isSubmittingPostReport}
-                style={styles.reasonCancelButton}
-              >
-                <Text style={styles.reasonCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleSubmitPostReport}
-                disabled={isSubmittingPostReport}
-                style={[
-                  styles.reasonSubmitButton,
-                  isSubmittingPostReport && styles.disabledButton,
-                ]}
-              >
-                <Text style={styles.reasonSubmitText}>
-                  {isSubmittingPostReport ? "Submitting..." : "Submit Report"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        onSubmit={handleSubmitPostReport}
+        isSubmitting={isSubmittingPostReport}
+        form={postReportForm}
+        setForm={setPostReportForm}
+        error={error}
+        colors={colors}
+      />
       </ScrollView>
 
       <StickyActionBar
