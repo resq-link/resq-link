@@ -18,7 +18,7 @@ import { useFonts } from "expo-font";
 import { getDoc, doc, getFirebaseFirestore, onSnapshot } from "@packages/firebase";
 import CaseInfoCard from "@/modules/incidents/components/CaseInfoCard";
 import DetailHeader from "@/modules/incidents/components/DetailHeader";
-import LoadingScreen from "@/components/ui/LoadingScreen";
+import CaseDetailSkeleton from "@/modules/incidents/components/CaseDetailSkeleton";
 import ErrorAlert from "@/components/feedback/ErrorAlert";
 import { spacing, useResqTheme } from "@/theme";
 
@@ -149,12 +149,7 @@ export default function CaseDetailView() {
   if (!fontsLoaded) return null;
 
   if (loading) {
-    return (
-      <LoadingScreen
-        title="Loading case details..."
-        subtitle="Please wait"
-      />
-    );
+    return <CaseDetailSkeleton />;
   }
 
   if (error && !caseData) {
