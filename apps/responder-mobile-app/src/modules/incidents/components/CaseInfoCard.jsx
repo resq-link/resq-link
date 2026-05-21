@@ -10,6 +10,7 @@ import {
   TextInput,
   Linking,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import { Picker } from "@react-native-picker/picker";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
@@ -26,6 +27,7 @@ import CaseStatusBadge from "./CaseStatusBadge";
 import PriorityBadge from "./PriorityBadge";
 import CustomButton from "@/components/ui/CustomButton";
 import ErrorAlert from "@/components/feedback/ErrorAlert";
+import StickyActionBar from "./StickyActionBar";
 import { radii, spacing, useResqTheme } from "@/theme";
 
 const Section = ({ title, children, colors }) => (
@@ -118,6 +120,7 @@ export default function CaseInfoCard({
   onStatusUpdate,
 }) {
   const { colors } = useResqTheme();
+  const insets = useSafeAreaInsets();
 
   const [imageModalVisible, setImageModalVisible] = React.useState(false);
   const [selectedStatus, setSelectedStatus] = React.useState(caseData.status);
@@ -675,9 +678,19 @@ export default function CaseInfoCard({
     }
   };
 
+  const bottomPadding = Math.max(insets.bottom, spacing.md);
+  const scrollPaddingBottom = showAcceptButton
+    ? bottomPadding + 85
+    : showStatusDropdown || canMarkTouchdown
+      ? bottomPadding + 145
+      : caseData.status === "done"
+        ? bottomPadding + 95
+        : bottomPadding + spacing.lg;
+
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={{ padding: spacing.lg }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={true}>
+        <View style={{ padding: spacing.lg, paddingBottom: scrollPaddingBottom }}>
         <View
           style={{
             backgroundColor: colors.surface,
@@ -1071,109 +1084,7 @@ export default function CaseInfoCard({
           )}
         </Section>
 
-        {isAssignedResponder && (
-          <View
-            style={{
-              backgroundColor: colors.surface,
-              borderRadius: radii.lg,
-              padding: spacing.lg,
-              marginBottom: spacing.md,
-              borderWidth: 1,
-              borderColor: colors.border,
-            }}
-          >
-            {error && (
-              <View style={{ marginBottom: spacing.md }}>
-                <ErrorAlert message={error} onDismiss={() => setError("")} />
-              </View>
-            )}
 
-            {showAcceptButton && (
-              <View style={styles.pendingActions}>
-                <CustomButton
-                  title="Accept Case"
-                  onPress={handleAcceptCase}
-                  disabled={isUpdating}
-                  variant="primary"
-                />
-                <TouchableOpacity
-                  onPress={() => {
-                    setError("");
-                    setIsDeclineModalVisible(true);
-                  }}
-                  disabled={isUpdating}
-                  style={[
-                    styles.declineButton,
-                    isUpdating && styles.disabledButton,
-                  ]}
-                >
-                  <Text style={styles.declineButtonText}>Decline Case</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {showStatusDropdown && (
-              <View style={{ marginTop: spacing.md }}>
-                <Text
-                  style={{
-                    fontFamily: "SpaceGrotesk_600SemiBold",
-                    fontSize: 14,
-                    color: colors.text,
-                    marginBottom: spacing.md,
-                  }}
-                >
-                  Update Status
-                </Text>
-                <View style={styles.pickerShell}>
-                  <Picker
-                    selectedValue={selectedStatus}
-                    onValueChange={handleStatusChange}
-                    enabled={!isUpdating}
-                    style={styles.picker}
-                    itemStyle={styles.pickerItem}
-                  >
-                    <Picker.Item label="En Route" value="enroute" />
-                    <Picker.Item label="On Scene" value="on_scene" />
-                    <Picker.Item label="Done" value="done" />
-                  </Picker>
-                </View>
-              </View>
-            )}
-
-            {caseData.status === "done" && (
-              <View
-                style={{
-                  backgroundColor: colors.surfaceHighlight,
-                  borderRadius: radii.md,
-                  padding: spacing.md,
-                  alignItems: "center",
-                  borderWidth: 1,
-                  borderColor: colors.success + "40",
-                }}
-              >
-                <Text
-                  style={{
-                    fontFamily: "SpaceGrotesk_600SemiBold",
-                    fontSize: 14,
-                    color: colors.success,
-                  }}
-                >
-                  Case Completed
-                </Text>
-                <Text
-                  style={{
-                    fontFamily: "SpaceGrotesk_400Regular",
-                    fontSize: 12,
-                    color: colors.textSecondary,
-                    marginTop: 4,
-                  }}
-                >
-                  This case cannot be modified.
-                </Text>
-              </View>
-            )}
-          </View>
-        )}
       </View>
 
       <Modal
@@ -1368,6 +1279,27 @@ export default function CaseInfoCard({
           </View>
         </View>
       </Modal>
-    </ScrollView>
+      </ScrollView>
+
+      <StickyActionBar
+        caseData={caseData}
+        onAcceptCase={handleAcceptCase}
+        onDeclinePress={() => {
+          setError("");
+          setIsDeclineModalVisible(true);
+        }}
+        onStatusChange={handleStatusChange}
+        selectedStatus={selectedStatus}
+        isUpdating={isUpdating}
+        showAcceptButton={showAcceptButton}
+        showStatusDropdown={showStatusDropdown}
+        canMarkTouchdown={canMarkTouchdown}
+        isTouchdownUpdating={isTouchdownUpdating}
+        handleTouchdown={handleTouchdown}
+        touchdownDistanceMeters={touchdownDistanceMeters}
+        error={error}
+        setError={setError}
+      />
+    </View>
   );
 }
