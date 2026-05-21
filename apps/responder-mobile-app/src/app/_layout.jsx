@@ -21,6 +21,7 @@ import {
 } from "@expo-google-fonts/space-grotesk";
 import useUserStore from "@/store/userStore";
 import { ResqThemeProvider } from "@/theme";
+import ResponderMessagingWidget from "@/modules/messaging/components/ResponderMessagingWidget";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -86,6 +87,7 @@ export default function RootLayout() {
                 headerShown: false,
               }}
             />
+            <ResponderMessagingWidget />
           </View>
         </GestureHandlerRootView>
       </ResqThemeProvider>

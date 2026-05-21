@@ -136,6 +136,8 @@ export interface IncidentDispatchRecord {
   resourceName: string;
   resourceType: ResourceType;
   resourceCode?: string | null;
+  primaryResponderId?: string | null;
+  assignedResponderIds?: string[];
   teamId?: string | null;
   teamName?: string | null;
   status: 'assigned';
@@ -369,6 +371,12 @@ const toDispatchRecord = (
   resourceName: resource.name,
   resourceType: resource.type,
   resourceCode: resource.resourceCode || null,
+  primaryResponderId: resource.primaryResponderId || resource.assignedResponderId || null,
+  assignedResponderIds: Array.isArray(resource.assignedResponderIds)
+    ? resource.assignedResponderIds
+    : resource.assignedResponderId
+      ? [resource.assignedResponderId]
+      : [],
   teamId: teamId || null,
   teamName: teamName || null,
   status: 'assigned',
@@ -383,6 +391,7 @@ const inferAgencyCodeForResource = (resource: Pick<ResourceRecord, 'agency' | 't
   if (haystack.includes('coast') || haystack.includes('pcg')) return 'PCG';
   if (haystack.includes('hospital') || haystack.includes('tcpgh')) return 'TCPGH';
   if (haystack.includes('health') || haystack.includes('cho')) return 'CHO';
+  if (resource.type === 'AMBULANCE') return 'TCPGH';
   if (haystack.includes('rescue') || haystack.includes('mdrrmo')) return 'RESCUE_1111';
   if (haystack.includes('lingkod') || haystack.includes('tflc')) return 'TFLC';
   if (haystack.includes('psso') || haystack.includes('tctmg') || haystack.includes('traffic')) return 'PSSO_TCTMG';
@@ -392,6 +401,45 @@ const inferAgencyCodeForResource = (resource: Pick<ResourceRecord, 'agency' | 't
 };
 
 const isResourceAvailable = (status: ResourceStatus) => status === 'available';
+
+const normalizeResponderIds = (resource: Pick<ResourceRecord, 'primaryResponderId' | 'assignedResponderId' | 'assignedResponderIds'>): string[] => {
+  const ids = [
+    resource.primaryResponderId,
+    resource.assignedResponderId,
+    ...(Array.isArray(resource.assignedResponderIds) ? resource.assignedResponderIds : []),
+  ];
+  return Array.from(new Set(ids.map((id) => id?.trim()).filter((id): id is string => Boolean(id))));
+};
+
+const isAgencyResponderProfile = (profile: Record<string, unknown>): boolean => {
+  const designation = typeof profile.designation === 'string' ? profile.designation.trim().toLowerCase() : '';
+  const role = typeof profile.role === 'string' ? profile.role.trim().toUpperCase() : '';
+  return (
+    designation.includes('responder') ||
+    ['AMBULANCE', 'BFP', 'PNP', 'MDRRMO', 'PCG'].includes(role)
+  );
+};
+
+async function assertResourceHasActiveResponder(resource: ResourceRecord): Promise<string[]> {
+  const responderIds = normalizeResponderIds(resource);
+  const primaryResponderId = resource.primaryResponderId || resource.assignedResponderId || responderIds[0] || null;
+
+  if (!primaryResponderId || responderIds.length === 0) {
+    throw new Error(`Resource "${resource.name}" must be bound to an active responder before dispatch.`);
+  }
+
+  const primaryResponderSnapshot = await getDoc(doc(getFirebaseFirestore(), 'dispatchers', primaryResponderId));
+  if (!primaryResponderSnapshot.exists()) {
+    throw new Error(`Primary responder for "${resource.name}" was not found.`);
+  }
+
+  const primaryResponder = primaryResponderSnapshot.data();
+  if (primaryResponder.active === false || !isAgencyResponderProfile(primaryResponder)) {
+    throw new Error(`Primary responder for "${resource.name}" must be an active responder or agency account.`);
+  }
+
+  return responderIds;
+}
 
 export const incidentAgencyCatalog = agencyCatalog;
 
@@ -676,6 +724,12 @@ export async function dispatchIncidentResources(
         stationLongitude: data.stationLongitude ?? null,
         currentLatitude: data.currentLatitude ?? null,
         currentLongitude: data.currentLongitude ?? null,
+        primaryResponderId: data.primaryResponderId || data.assignedResponderId || null,
+        assignedResponderIds: Array.isArray(data.assignedResponderIds)
+          ? data.assignedResponderIds.filter((id: unknown): id is string => typeof id === 'string' && id.trim().length > 0)
+          : data.assignedResponderId
+            ? [data.assignedResponderId]
+            : [],
         assignedResponderId: data.assignedResponderId || null,
         assignedIncidentId: data.assignedIncidentId || null,
         notes: data.notes || null,
@@ -696,12 +750,15 @@ export async function dispatchIncidentResources(
   const missingAgencies = incident.assignedAgencies.filter((agency) => !resourceAgencyCodes.includes(agency));
   const requiredResourceTypes = getExpectedResourceTypesForAgencies(incident.assignedAgencies);
   const selectedTypes = Array.from(new Set(resources.map(({ resource }) => resource.type)));
+  const missingResourceTypes = requiredResourceTypes.filter((type) => !selectedTypes.includes(type));
   const hasTypeCoverage =
     requiredResourceTypes.length === 0 ||
-    requiredResourceTypes.every((type) => selectedTypes.includes(type));
+    missingResourceTypes.length === 0;
 
   if (missingAgencies.length > 0 && hasTypeCoverage === false) {
-    throw new Error('Selected resources do not fully cover the mandatory agency recommendation.');
+    throw new Error(
+      `Selected resources do not fully cover the mandatory agency recommendation. Missing: ${missingAgencies.map(getAgencyLabel).join(', ')} / ${missingResourceTypes.join(', ')}.`
+    );
   }
 
   const unavailable = resources.find(({ resource }) => !isResourceAvailable(resource.status));
@@ -709,8 +766,11 @@ export async function dispatchIncidentResources(
     throw new Error(`Resource "${unavailable.resource.name}" is not available.`);
   }
 
+  const boundResponderIds = Array.from(
+    new Set((await Promise.all(resources.map(({ resource }) => assertResourceHasActiveResponder(resource)))).flat())
+  );
   const existingIds = incident.assignedResourceIds || [];
-  const mergedResourceIds = Array.from(new Set([...existingIds, ...normalizedIds]));
+  const mergedResourceIds = Array.from(new Set([...existingIds, ...normalizedIds, ...boundResponderIds]));
   const batch = writeBatch(getFirebaseFirestore());
   const dispatchesRef = collection(getFirebaseFirestore(), 'incidentDispatches');
   const timestamp = Timestamp.now();
@@ -744,6 +804,46 @@ export async function dispatchIncidentResources(
     updatedAt: timestamp,
   });
 
+  await batch.commit();
+}
+
+export async function deleteIncident(incidentId: string): Promise<void> {
+  const currentUser = ensureAuthenticated();
+  const db = getFirebaseFirestore();
+  const incidentRef = doc(db, 'incidents', incidentId);
+  const incidentSnapshot = await getDoc(incidentRef);
+
+  if (!incidentSnapshot.exists()) {
+    return;
+  }
+
+  const incident = toIncidentRecord(incidentSnapshot);
+  if (incident.commandCenterAdminId !== currentUser.uid) {
+    throw new Error('Only the command center admin assigned to the incident can remove it.');
+  }
+
+  const batch = writeBatch(db);
+  const resourcesSnapshot = await getDocs(
+    query(collection(db, 'resources'), where('assignedIncidentId', '==', incidentId))
+  );
+  const dispatchesSnapshot = await getDocs(
+    query(collection(db, 'incidentDispatches'), where('incidentId', '==', incidentId))
+  );
+  const timestamp = Timestamp.now();
+
+  resourcesSnapshot.forEach((resourceDoc) => {
+    batch.update(resourceDoc.ref, {
+      status: 'available',
+      assignedIncidentId: null,
+      updatedAt: timestamp,
+    });
+  });
+
+  dispatchesSnapshot.forEach((dispatchDoc) => {
+    batch.delete(dispatchDoc.ref);
+  });
+
+  batch.delete(incidentRef);
   await batch.commit();
 }
 
@@ -832,10 +932,14 @@ export function getIncidentPriorityTone(priority: IncidentPriority): string {
 }
 
 export function getIncidentResourceMatch(
-  resource: Pick<ResourceRecord, 'agency' | 'department' | 'type' | 'status'>,
+  resource: Pick<ResourceRecord, 'agency' | 'department' | 'type' | 'status' | 'primaryResponderId' | 'assignedResponderId' | 'assignedResponderIds'>,
   rule: IncidentTypeRule
 ): boolean {
   if (!isResourceAvailable(resource.status)) {
+    return false;
+  }
+
+  if (normalizeResponderIds(resource).length === 0) {
     return false;
   }
 
@@ -1183,6 +1287,31 @@ async function propagateIncidentUpdatesToReports(incidentId: string, updates: an
   }
 }
 
+async function updateResourcesForIncidentStatus(
+  incidentId: string,
+  status: ResourceStatus,
+  options?: { clearAssignment?: boolean }
+) {
+  try {
+    const db = getFirebaseFirestore();
+    const q = query(collection(db, 'resources'), where('assignedIncidentId', '==', incidentId));
+    const snap = await getDocs(q);
+    const timestamp = Timestamp.now();
+    const updates: Record<string, unknown> = {
+      status,
+      updatedAt: timestamp,
+    };
+
+    if (options?.clearAssignment) {
+      updates.assignedIncidentId = null;
+    }
+
+    await Promise.all(snap.docs.map((resourceDoc) => updateDoc(resourceDoc.ref, updates)));
+  } catch (error) {
+    console.error('Error updating resources for incident status:', error);
+  }
+}
+
 export async function acceptIncident(incidentId: string): Promise<IncidentRecord> {
   const currentUser = ensureAuthenticated();
   const db = getFirebaseFirestore();
@@ -1199,6 +1328,7 @@ export async function acceptIncident(incidentId: string): Promise<IncidentRecord
   const updateData = { status: 'enroute' as IncidentStatus, acceptedAt, updatedAt: Timestamp.now() };
   await updateDoc(incidentRef, updateData);
   await propagateIncidentUpdatesToReports(incidentId, updateData);
+  await updateResourcesForIncidentStatus(incidentId, 'en_route');
   
   const updatedSnap = await getDoc(incidentRef);
   return updatedSnap.data() as IncidentRecord;
@@ -1244,6 +1374,7 @@ export async function markIncidentTouchdown(
   
   await updateDoc(incidentRef, updateData);
   await propagateIncidentUpdatesToReports(incidentId, updateData);
+  await updateResourcesForIncidentStatus(incidentId, 'on_scene');
   
   const updatedSnap = await getDoc(incidentRef);
   return updatedSnap.data() as IncidentRecord;
@@ -1319,6 +1450,11 @@ export async function updateIncidentCaseStatus(
   
   await updateDoc(incidentRef, updateData);
   await propagateIncidentUpdatesToReports(incidentId, updateData);
+  await updateResourcesForIncidentStatus(
+    incidentId,
+    finalStatus === 'enroute' ? 'en_route' : finalStatus === 'on_scene' ? 'on_scene' : 'available',
+    { clearAssignment: finalStatus === 'resolved' }
+  );
   
   const updatedSnap = await getDoc(incidentRef);
   return updatedSnap.data() as IncidentRecord;

@@ -10,6 +10,7 @@ import {
   assignDispatcherToEmergency,
   assignResponderToEmergency,
   createIncident,
+  deleteIncident,
   dispatchIncidentResources,
   elevateEmergencyToIncident,
   getAgencyLabel,
@@ -447,11 +448,13 @@ function IntakeContent() {
   const [barangayGeojson, setBarangayGeojson] =
     useState<BarangayFeatureCollection | null>(null);
   const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([]);
+  const [selectedExistingResourceIds, setSelectedExistingResourceIds] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<"all" | "app" | "sms" | "manual">("all");
   const [selectedQueueItem, setSelectedQueueItem] = useState<IntakeQueueItem | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUpdatingExistingIncident, setIsUpdatingExistingIncident] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
   const [pageSuccess, setPageSuccess] = useState<string | null>(null);
   const [isLoadingResources, setIsLoadingResources] = useState(true);
@@ -514,6 +517,10 @@ function IntakeContent() {
     setSelectedResourceIds([]);
   }, [formState.incidentSubtypeId]);
 
+  useEffect(() => {
+    setSelectedExistingResourceIds([]);
+  }, [selectedQueueItem?.id]);
+
 
 
   const matchingResources = useMemo(() => {
@@ -535,6 +542,27 @@ function IntakeContent() {
       ),
     [matchingResources, selectedResourceIds],
   );
+
+  const selectedExistingIncident = selectedQueueItem?.rawIncident || null;
+  const selectedExistingRule = useMemo<IncidentTypeRule | null>(
+    () =>
+      selectedExistingIncident
+        ? incidentRules.find((rule) => rule.id === selectedExistingIncident.incidentSubtypeId) || null
+        : null,
+    [incidentRules, selectedExistingIncident],
+  );
+
+  const matchingResourcesForExistingIncident = useMemo(() => {
+    if (!selectedExistingRule) {
+      return [];
+    }
+
+    return sortResourcesByName(
+      resources.filter((resource) =>
+        getIncidentResourceMatch(resource, selectedExistingRule),
+      ),
+    );
+  }, [resources, selectedExistingRule]);
 
   const activeIncidentCount = useMemo(
     () =>
@@ -940,6 +968,14 @@ function IntakeContent() {
     );
   };
 
+  const toggleExistingResourceSelection = (resourceId: string) => {
+    setSelectedExistingResourceIds((current) =>
+      current.includes(resourceId)
+        ? current.filter((value) => value !== resourceId)
+        : [...current, resourceId],
+    );
+  };
+
   const resetForm = () => {
     const now = new Date();
     setFormState({
@@ -1012,9 +1048,17 @@ function IntakeContent() {
     };
 
     try {
-      const incident = await createIncident(payload);
+      let incident: IncidentRecord | null = null;
+      incident = await createIncident(payload);
       if (incident.id && selectedResourceIds.length > 0) {
-        await dispatchIncidentResources(incident.id, selectedResourceIds);
+        try {
+          await dispatchIncidentResources(incident.id, selectedResourceIds);
+        } catch (dispatchError) {
+          await deleteIncident(incident.id).catch((rollbackError: unknown) => {
+            console.error("Failed to roll back incident after dispatch error:", rollbackError);
+          });
+          throw dispatchError;
+        }
       }
 
       setPageSuccess(
@@ -1028,6 +1072,58 @@ function IntakeContent() {
       setPageError(error.message || "Failed to save incident.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDispatchExistingIncident = async () => {
+    if (!selectedExistingIncident?.id) {
+      return;
+    }
+    if (selectedExistingResourceIds.length === 0) {
+      setPageError("Select at least one available resource for this incident.");
+      return;
+    }
+
+    setIsUpdatingExistingIncident(true);
+    setPageError(null);
+    setPageSuccess(null);
+
+    try {
+      await dispatchIncidentResources(selectedExistingIncident.id, selectedExistingResourceIds);
+      setPageSuccess(`${selectedExistingIncident.referenceNumber} dispatched successfully.`);
+      setSelectedExistingResourceIds([]);
+    } catch (error: any) {
+      setPageError(error.message || "Failed to dispatch resources.");
+    } finally {
+      setIsUpdatingExistingIncident(false);
+    }
+  };
+
+  const handleDeleteExistingIncident = async () => {
+    if (!selectedExistingIncident?.id) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Remove ${selectedExistingIncident.referenceNumber} from intake? This will also release any linked resources.`,
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setIsUpdatingExistingIncident(true);
+    setPageError(null);
+    setPageSuccess(null);
+
+    try {
+      await deleteIncident(selectedExistingIncident.id);
+      setPageSuccess(`${selectedExistingIncident.referenceNumber} removed from intake.`);
+      setSelectedQueueItem(null);
+      setSelectedExistingResourceIds([]);
+    } catch (error: any) {
+      setPageError(error.message || "Failed to remove incident.");
+    } finally {
+      setIsUpdatingExistingIncident(false);
     }
   };
 
@@ -1133,21 +1229,107 @@ function IntakeContent() {
 
             {/* Right Panel: Detail View */}
             <div className={`${selectedQueueItem ? "flex" : "hidden lg:flex"} flex-1 flex-col min-h-0 p-4 lg:p-6 bg-slate-950/10 overflow-hidden`}>
-              <IntakeDetailView 
-                item={selectedQueueItem} 
-                recentIncidents={recentIncidents}
-                allCivilianReports={appEmergencyReports}
-                onCloseDetail={() => setSelectedQueueItem(null)}
-                onRespondStart={handleRespondStartForAppReport}
-                onRespond={handleRespondToAppReport}
-                onReject={handleRejectAppReport}
-                onMoveToHistory={handleMoveAppReportToHistory}
-                onLinkToIncident={handleLinkToIncident}
-                onUnlinkFromIncident={handleUnlinkFromIncident}
-                onLinkReportToReport={handleLinkReportToReport}
-                onUnlinkReportFromReport={handleUnlinkReportFromReport}
-                onLinkAllReports={handleLinkAllReports}
-              />
+              {(pageError || pageSuccess) && !isFormModalOpen ? (
+                <div
+                  className={`mb-3 shrink-0 rounded-lg px-4 py-3 text-sm ${
+                    pageError
+                      ? "border border-red-900/60 bg-red-950/40 text-red-200"
+                      : "border border-emerald-900/60 bg-emerald-950/40 text-emerald-200"
+                  }`}
+                >
+                  {pageError || pageSuccess}
+                </div>
+              ) : null}
+
+              {selectedExistingIncident?.status === "awaiting_resources" ? (
+                <section className="mb-3 shrink-0 rounded-xl border border-amber-900/50 bg-amber-950/20 p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-xs font-black uppercase tracking-[0.2em] text-amber-200">
+                        Awaiting Dispatch
+                      </h3>
+                      <p className="mt-1 text-xs text-amber-100/70">
+                        Add the required live resources, or remove this intake entry.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleDeleteExistingIncident}
+                      disabled={isUpdatingExistingIncident}
+                      className="h-8 rounded-lg border border-red-500/40 px-3 text-[10px] font-black uppercase tracking-wider text-red-200 transition-colors hover:border-red-400 hover:bg-red-950/40 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Remove
+                    </button>
+                  </div>
+
+                  <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
+                        Available Matching Resources
+                      </p>
+                      <div className="mt-2 max-h-28 overflow-y-auto rounded-lg border border-slate-800 bg-slate-950/70 p-2 custom-scrollbar">
+                        {isLoadingResources ? (
+                          <p className="text-xs text-slate-500">Loading resources...</p>
+                        ) : matchingResourcesForExistingIncident.length === 0 ? (
+                          <p className="text-xs text-slate-500">
+                            No available resource currently matches this incident routing.
+                          </p>
+                        ) : (
+                          <div className="grid gap-1.5 md:grid-cols-2">
+                            {matchingResourcesForExistingIncident.map((resource) => (
+                              <label
+                                key={resource.id}
+                                className="flex min-w-0 cursor-pointer items-center gap-2 rounded border border-slate-800 bg-slate-900 px-2 py-1.5 hover:border-primary-500/50"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={selectedExistingResourceIds.includes(resource.id || "")}
+                                  onChange={() => resource.id && toggleExistingResourceSelection(resource.id)}
+                                  className="rounded border-slate-700 bg-slate-950 text-primary-500"
+                                />
+                                <span className="truncate text-[10px] font-medium text-slate-300">
+                                  {resource.name}
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleDispatchExistingIncident}
+                      disabled={
+                        isUpdatingExistingIncident ||
+                        selectedExistingResourceIds.length === 0 ||
+                        matchingResourcesForExistingIncident.length === 0
+                      }
+                      className="h-9 rounded-lg bg-primary-600 px-4 text-[10px] font-black uppercase tracking-wider text-white transition-colors hover:bg-primary-500 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isUpdatingExistingIncident ? "Updating..." : "Dispatch"}
+                    </button>
+                  </div>
+                </section>
+              ) : null}
+
+              <div className="min-h-0 flex-1">
+                <IntakeDetailView
+                  item={selectedQueueItem}
+                  recentIncidents={recentIncidents}
+                  allCivilianReports={appEmergencyReports}
+                  onCloseDetail={() => setSelectedQueueItem(null)}
+                  onRespondStart={handleRespondStartForAppReport}
+                  onRespond={handleRespondToAppReport}
+                  onReject={handleRejectAppReport}
+                  onMoveToHistory={handleMoveAppReportToHistory}
+                  onLinkToIncident={handleLinkToIncident}
+                  onUnlinkFromIncident={handleUnlinkFromIncident}
+                  onLinkReportToReport={handleLinkReportToReport}
+                  onUnlinkReportFromReport={handleUnlinkReportFromReport}
+                  onLinkAllReports={handleLinkAllReports}
+                />
+              </div>
             </div>
           </div>
         </div>

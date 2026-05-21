@@ -2,10 +2,11 @@
 
 import ProtectedRoute from '@/components/ProtectedRoute';
 import Link from 'next/link';
-import { Users, Radio, Building2, Shield } from 'lucide-react';
+import { Users, Radio, Building2, Shield, Headset } from 'lucide-react';
 
 const cards = [
-  { href: '/responders', label: 'Responders', icon: Radio, desc: 'Create and manage responder (dispatcher) accounts' },
+  { href: '/dispatchers', label: 'Dispatchers', icon: Headset, desc: 'Create and manage command-side dispatcher accounts' },
+  { href: '/responders', label: 'Responders', icon: Radio, desc: 'Create and manage field responder accounts' },
   { href: '/civilians', label: 'Civilians', icon: Users, desc: 'Create and manage civilian user accounts' },
   { href: '/command-centers', label: 'Command Centers', icon: Building2, desc: 'Create and manage command center accounts' },
 ];
@@ -20,11 +21,11 @@ export default function DashboardPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-slate-100">Super Admin Dashboard</h1>
-            <p className="text-slate-400">Manage accounts for responders, civilians, and command centers</p>
+            <p className="text-slate-400">Manage accounts for dispatchers, responders, civilians, and command centers</p>
           </div>
         </div>
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {cards.map((card) => {
             const Icon = card.icon;
             return (

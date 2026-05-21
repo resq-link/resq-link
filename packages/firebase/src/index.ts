@@ -140,9 +140,25 @@ export {
   type TeamRecord,
 } from './teams';
 
+// Operational messaging
+export {
+  createDirectChat,
+  createGroupChat,
+  getMessagingParticipants,
+  sendChatMessage,
+  subscribeToChatMessages,
+  subscribeToChatThreads,
+  type ChatMessageRecord,
+  type ChatParticipant,
+  type ChatParticipantRole,
+  type ChatThreadRecord,
+  type ChatThreadType,
+} from './messaging';
+
 // Export incident management functions
 export {
   createIncident,
+  deleteIncident,
   dispatchIncidentResources,
   saveIncidentTypeRule,
   fetchIncidentTypeRules,

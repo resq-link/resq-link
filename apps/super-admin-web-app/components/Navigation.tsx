@@ -3,10 +3,11 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAdminAuth } from '@/contexts/AdminAuthContext';
-import { LayoutDashboard, Users, Radio, Building2, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Radio, Building2, LogOut, Headset } from 'lucide-react';
 
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/dispatchers', label: 'Dispatchers', icon: Headset },
   { href: '/responders', label: 'Responders', icon: Radio },
   { href: '/civilians', label: 'Civilians', icon: Users },
   { href: '/command-centers', label: 'Command Centers', icon: Building2 },

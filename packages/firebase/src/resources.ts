@@ -50,6 +50,8 @@ export interface ResourceRecord {
   stationLongitude?: number | null;
   currentLatitude?: number | null;
   currentLongitude?: number | null;
+  primaryResponderId?: string | null;
+  assignedResponderIds?: string[];
   assignedResponderId?: string | null;
   assignedIncidentId?: string | null;
   notes?: string | null;
@@ -77,6 +79,12 @@ const convertFirestoreDoc = (snapshot: DocumentData): ResourceRecord => {
     stationLongitude: data.stationLongitude ?? null,
     currentLatitude: data.currentLatitude ?? null,
     currentLongitude: data.currentLongitude ?? null,
+    primaryResponderId: data.primaryResponderId || data.assignedResponderId || null,
+    assignedResponderIds: Array.isArray(data.assignedResponderIds)
+      ? data.assignedResponderIds.filter((id: unknown): id is string => typeof id === 'string' && id.trim().length > 0)
+      : data.assignedResponderId
+        ? [data.assignedResponderId]
+        : [],
     assignedResponderId: data.assignedResponderId || null,
     assignedIncidentId: data.assignedIncidentId || null,
     notes: data.notes || null,
@@ -106,29 +114,89 @@ const normalizeNullableNumber = (value?: number | null): number | null => {
   return value;
 };
 
+const normalizeResponderIds = (ids?: string[] | null): string[] =>
+  Array.from(new Set((ids || []).map((id) => id.trim()).filter(Boolean)));
+
+const normalizeResourceResponderBinding = (
+  resource: Pick<ResourceRecord, 'primaryResponderId' | 'assignedResponderId' | 'assignedResponderIds'>
+) => {
+  const assignedResponderIds = normalizeResponderIds(resource.assignedResponderIds);
+  const primaryResponderId =
+    normalizeNullableString(resource.primaryResponderId) ||
+    normalizeNullableString(resource.assignedResponderId) ||
+    assignedResponderIds[0] ||
+    null;
+  const crewIds = primaryResponderId
+    ? Array.from(new Set([primaryResponderId, ...assignedResponderIds]))
+    : assignedResponderIds;
+
+  return {
+    primaryResponderId,
+    assignedResponderId: primaryResponderId,
+    assignedResponderIds: crewIds,
+  };
+};
+
+const isAgencyResponderProfile = (profile: Record<string, unknown>): boolean => {
+  const designation = typeof profile.designation === 'string' ? profile.designation.trim().toLowerCase() : '';
+  const role = typeof profile.role === 'string' ? profile.role.trim().toUpperCase() : '';
+  return (
+    designation.includes('responder') ||
+    ['AMBULANCE', 'BFP', 'PNP', 'MDRRMO', 'PCG'].includes(role)
+  );
+};
+
+async function ensureDispatchableResponderBinding(
+  status: ResourceStatus | undefined,
+  binding: ReturnType<typeof normalizeResourceResponderBinding>
+) {
+  if (status !== 'available') {
+    return;
+  }
+
+  if (!binding.primaryResponderId || binding.assignedResponderIds.length === 0) {
+    throw new Error('Available resources must be bound to at least one active responder.');
+  }
+
+  const responderSnapshot = await getDoc(doc(getFirebaseFirestore(), 'dispatchers', binding.primaryResponderId));
+  if (!responderSnapshot.exists()) {
+    throw new Error('Primary responder was not found.');
+  }
+
+  const responder = responderSnapshot.data();
+  if (responder.active === false || !isAgencyResponderProfile(responder)) {
+    throw new Error('Primary responder must be an active responder or agency account.');
+  }
+}
+
 const normalizeResourceInput = (
   resource: Omit<ResourceRecord, 'id' | 'createdAt' | 'updatedAt'>
-) => ({
-  name: resource.name.trim(),
-  resourceCode: normalizeNullableString(resource.resourceCode),
-  type: resource.type,
-  customType: resource.type === 'OTHER' ? normalizeNullableString(resource.customType) : null,
-  agency: normalizeNullableString(resource.agency),
-  department: normalizeNullableString(resource.department),
-  teamId: normalizeNullableString(resource.teamId),
-  teamName: normalizeNullableString(resource.teamName),
-  status: resource.status,
-  stationName: normalizeNullableString(resource.stationName),
-  quadrant: normalizeQuadrant(resource.quadrant),
-  stationLatitude: normalizeNullableNumber(resource.stationLatitude),
-  stationLongitude: normalizeNullableNumber(resource.stationLongitude),
-  currentLatitude: normalizeNullableNumber(resource.currentLatitude),
-  currentLongitude: normalizeNullableNumber(resource.currentLongitude),
-  assignedResponderId: normalizeNullableString(resource.assignedResponderId),
-  assignedIncidentId: normalizeNullableString(resource.assignedIncidentId),
-  notes: normalizeNullableString(resource.notes),
-  isActive: resource.isActive !== false,
-});
+) => {
+  const binding = normalizeResourceResponderBinding(resource);
+  return {
+    name: resource.name.trim(),
+    resourceCode: normalizeNullableString(resource.resourceCode),
+    type: resource.type,
+    customType: resource.type === 'OTHER' ? normalizeNullableString(resource.customType) : null,
+    agency: normalizeNullableString(resource.agency),
+    department: normalizeNullableString(resource.department),
+    teamId: normalizeNullableString(resource.teamId),
+    teamName: normalizeNullableString(resource.teamName),
+    status: resource.status,
+    stationName: normalizeNullableString(resource.stationName),
+    quadrant: normalizeQuadrant(resource.quadrant),
+    stationLatitude: normalizeNullableNumber(resource.stationLatitude),
+    stationLongitude: normalizeNullableNumber(resource.stationLongitude),
+    currentLatitude: normalizeNullableNumber(resource.currentLatitude),
+    currentLongitude: normalizeNullableNumber(resource.currentLongitude),
+    primaryResponderId: binding.primaryResponderId,
+    assignedResponderId: binding.assignedResponderId,
+    assignedResponderIds: binding.assignedResponderIds,
+    assignedIncidentId: normalizeNullableString(resource.assignedIncidentId),
+    notes: normalizeNullableString(resource.notes),
+    isActive: resource.isActive !== false,
+  };
+};
 
 export async function createResource(
   resource: Omit<ResourceRecord, 'id' | 'createdAt' | 'updatedAt'>
@@ -140,8 +208,15 @@ export async function createResource(
     }
 
     const resourcesRef = collection(getFirebaseFirestore(), 'resources');
+    const normalized = normalizeResourceInput(resource);
+    await ensureDispatchableResponderBinding(normalized.status, {
+      primaryResponderId: normalized.primaryResponderId,
+      assignedResponderId: normalized.assignedResponderId,
+      assignedResponderIds: normalized.assignedResponderIds,
+    });
+
     const payload = {
-      ...normalizeResourceInput(resource),
+      ...normalized,
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     };
@@ -188,7 +263,24 @@ export async function updateResource(
     if (updates.stationLongitude !== undefined) normalizedUpdates.stationLongitude = normalizeNullableNumber(updates.stationLongitude);
     if (updates.currentLatitude !== undefined) normalizedUpdates.currentLatitude = normalizeNullableNumber(updates.currentLatitude);
     if (updates.currentLongitude !== undefined) normalizedUpdates.currentLongitude = normalizeNullableNumber(updates.currentLongitude);
-    if (updates.assignedResponderId !== undefined) normalizedUpdates.assignedResponderId = normalizeNullableString(updates.assignedResponderId);
+    if (
+      updates.primaryResponderId !== undefined ||
+      updates.assignedResponderId !== undefined ||
+      updates.assignedResponderIds !== undefined
+    ) {
+      const existingData = existing.data();
+      const binding = normalizeResourceResponderBinding({
+        primaryResponderId:
+          updates.primaryResponderId !== undefined ? updates.primaryResponderId : existingData.primaryResponderId,
+        assignedResponderId:
+          updates.assignedResponderId !== undefined ? updates.assignedResponderId : existingData.assignedResponderId,
+        assignedResponderIds:
+          updates.assignedResponderIds !== undefined ? updates.assignedResponderIds : existingData.assignedResponderIds,
+      });
+      normalizedUpdates.primaryResponderId = binding.primaryResponderId;
+      normalizedUpdates.assignedResponderId = binding.assignedResponderId;
+      normalizedUpdates.assignedResponderIds = binding.assignedResponderIds;
+    }
     if (updates.assignedIncidentId !== undefined) normalizedUpdates.assignedIncidentId = normalizeNullableString(updates.assignedIncidentId);
     if (updates.notes !== undefined) normalizedUpdates.notes = normalizeNullableString(updates.notes);
     if (updates.isActive !== undefined) normalizedUpdates.isActive = updates.isActive;
@@ -198,6 +290,16 @@ export async function updateResource(
     if (updates.type !== undefined && updates.type !== 'OTHER') {
       normalizedUpdates.customType = null;
     }
+
+    const binding = normalizeResourceResponderBinding({
+      primaryResponderId: normalizedUpdates.primaryResponderId as string | null | undefined ?? existing.data().primaryResponderId,
+      assignedResponderId: normalizedUpdates.assignedResponderId as string | null | undefined ?? existing.data().assignedResponderId,
+      assignedResponderIds: normalizedUpdates.assignedResponderIds as string[] | undefined ?? existing.data().assignedResponderIds,
+    });
+    await ensureDispatchableResponderBinding(
+      (normalizedUpdates.status as ResourceStatus | undefined) || existing.data().status,
+      binding
+    );
 
     normalizedUpdates.updatedAt = Timestamp.now();
 
