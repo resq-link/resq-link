@@ -11,6 +11,7 @@ import { BlurView } from "expo-blur";
 import { Picker } from "@react-native-picker/picker";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Navigation, AlertTriangle, CheckCircle2 } from "lucide-react-native";
+import * as Haptics from "expo-haptics";
 import CustomButton from "@/components/ui/CustomButton";
 import ErrorAlert from "@/components/feedback/ErrorAlert";
 import { radii, spacing, useResqTheme } from "@/theme";
@@ -63,18 +64,26 @@ export default function StickyActionBar({
           <View style={{ flex: 1 }}>
             <CustomButton
               title={isUpdating ? "Accepting..." : "Accept Case"}
-              onPress={onAcceptCase}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                onAcceptCase();
+              }}
               disabled={isUpdating}
               variant="primary"
               style={styles.acceptBtn}
+              accessibilityLabel="Accept this emergency case"
+              accessibilityRole="button"
             />
           </View>
           <TouchableOpacity
-            onPress={onDeclinePress}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              onDeclinePress();
+            }}
             disabled={isUpdating}
             style={[styles.declineBtn, isUpdating && styles.disabled]}
             accessibilityRole="button"
-            accessibilityLabel="Decline Case"
+            accessibilityLabel="Decline this emergency case"
           >
             <Text style={[styles.declineBtnText, { color: colors.error }]}>Decline</Text>
           </TouchableOpacity>
@@ -88,7 +97,10 @@ export default function StickyActionBar({
         <View style={styles.operationalRow}>
           {canMarkTouchdown && (
             <TouchableOpacity
-              onPress={() => handleTouchdown("manual", touchdownDistanceMeters)}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                handleTouchdown("manual", touchdownDistanceMeters);
+              }}
               disabled={isTouchdownUpdating}
               activeOpacity={0.85}
               style={[
@@ -97,7 +109,7 @@ export default function StickyActionBar({
                 isTouchdownUpdating && styles.disabled,
               ]}
               accessibilityRole="button"
-              accessibilityLabel="Mark Touchdown"
+              accessibilityLabel="Mark arrival at scene — Touchdown"
             >
               <Navigation size={20} color={colors.white} style={styles.buttonIcon} />
               <Text style={styles.touchdownButtonText}>
@@ -114,10 +126,14 @@ export default function StickyActionBar({
               <View style={[styles.pickerShell, { backgroundColor: colors.background, borderColor: colors.border }]}>
                 <Picker
                   selectedValue={selectedStatus}
-                  onValueChange={onStatusChange}
+                  onValueChange={(value) => {
+                    Haptics.selectionAsync();
+                    onStatusChange(value);
+                  }}
                   enabled={!isUpdating}
                   style={[styles.picker, { color: colors.text }]}
                   itemStyle={styles.pickerItem}
+                  accessibilityLabel="Select case status"
                 >
                   <Picker.Item label="En Route" value="enroute" />
                   <Picker.Item label="On Scene" value="on_scene" />
