@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text } from "react-native";
 import { useResqTheme } from "@/theme";
 
-export default function CaseStatusBadge({ status }) {
+export default function CaseStatusBadge({ status, style, textStyle }) {
   const { colors } = useResqTheme();
 
   const getStatusConfig = () => {
@@ -34,23 +34,29 @@ export default function CaseStatusBadge({ status }) {
 
   return (
     <View
-      style={{
-        backgroundColor: colors.surfaceHighlight,
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: 6,
-        borderWidth: 1,
-        borderColor: config.color + "40",
-      }}
+      style={[
+        {
+          backgroundColor: colors.surfaceHighlight,
+          paddingHorizontal: 10,
+          paddingVertical: 5,
+          borderRadius: 6,
+          borderWidth: 1,
+          borderColor: config.color + "40",
+        },
+        style,
+      ]}
     >
       <Text
-        style={{
-          fontFamily: "SpaceGrotesk_600SemiBold",
-          fontSize: 11,
-          color: config.color,
-          textTransform: "uppercase",
-          letterSpacing: 0.5,
-        }}
+        style={[
+          {
+            fontFamily: "SpaceGrotesk_600SemiBold",
+            fontSize: 11,
+            color: config.color,
+            textTransform: "uppercase",
+            letterSpacing: 0.5,
+          },
+          textStyle,
+        ]}
       >
         {config.text}
       </Text>

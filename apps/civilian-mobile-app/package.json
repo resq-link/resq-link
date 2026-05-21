@@ -61,7 +61,7 @@
     "expo-three": "^2.2.1",
     "expo-updates": "~29.0.16",
     "expo-video": "~3.0.11",
-    "expo-web-browser": "~15.0.6",
+    "expo-web-browser": "~15.0.11",
     "html-to-image": "^1.11.13",
     "lodash": "^4.17.21",
     "lucide-react-native": "^0.525.0",

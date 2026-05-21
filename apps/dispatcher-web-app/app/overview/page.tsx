@@ -3,9 +3,10 @@
 import { useMemo, useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import ProtectedRoute from '@/components/ProtectedRoute'
-import { subscribeToEmergencyReports, type EmergencyReport } from '@packages/firebase'
+import { subscribeToEmergencyReports, subscribeToDispatcherLocations, type EmergencyReport, type DispatcherLocation } from '@packages/firebase'
 import CommandBar from '@/components/CommandBar'
 import { Activity, ShieldCheck, Clock, Search, Filter } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
 
 const MapComponent = dynamic(() => import('@/components/MapComponent'), { ssr: false })
 
@@ -19,6 +20,7 @@ type MapIncident = {
   lng: number
   reportedAt: Date
   responder: string | null
+  dispatcherId?: string | null
 }
 
 const getIncidentTypeName = (incidentType: string): string => {
@@ -48,6 +50,7 @@ const convertToMapIncident = (report: EmergencyReport): MapIncident => {
       ? (report.createdAt as any).toDate()
       : new Date(report.createdAt || Date.now()),
     responder: report.responder || null,
+    dispatcherId: report.dispatcherId || null,
   }
 }
 
@@ -97,14 +100,37 @@ const StatBar = ({ label, count, percentage, color = 'bg-slate-600' }: { label: 
 
 export default function OverviewPage() {
   const [reports, setReports] = useState<EmergencyReport[]>([])
+  const [dispatcherLocations, setDispatcherLocations] = useState<DispatcherLocation[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [reportFilter, setReportFilter] = useState<'all' | 'critical' | 'medical' | 'fire'>('all')
   const [isActionLoading, setIsActionLoading] = useState<string | null>(null)
   const [timelineRange, setTimelineRange] = useState<'today' | 'week' | 'month' | 'year'>('today')
+  const { user } = useAuth()
   const chartWidth = 640
   const chartHeight = 180
   const chartPadding = 24
   const seriesColors = ['#34d399', '#60a5fa', '#fbbf24']
+
+  useEffect(() => {
+    if (!user) return
+
+    const unsubscribe = subscribeToDispatcherLocations(
+      (locations: DispatcherLocation[]) => {
+        const validLocations = locations.filter(
+          (loc) =>
+            loc.latitude != null &&
+            loc.longitude != null &&
+            loc.latitude !== 0 &&
+            loc.longitude !== 0 &&
+            !isNaN(loc.latitude) &&
+            !isNaN(loc.longitude)
+        )
+        setDispatcherLocations(validLocations)
+      }
+    )
+
+    return () => unsubscribe()
+  }, [user])
 
   useEffect(() => {
     const unsubscribe = subscribeToEmergencyReports(
@@ -375,6 +401,7 @@ export default function OverviewPage() {
                 ) : (
                   <MapComponent
                     incidents={incidentsWithCoords.filter((incident) => incident.status !== 'resolved')}
+                    dispatcherLocations={dispatcherLocations}
                     selectedIncident={null}
                     onIncidentSelect={() => undefined}
                   />

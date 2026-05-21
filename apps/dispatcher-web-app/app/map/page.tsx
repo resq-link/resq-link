@@ -42,6 +42,7 @@ const convertToMapIncident = (report: EmergencyReport) => {
       ? (report.createdAt as any).toDate()
       : new Date(report.createdAt || Date.now()),
     responder: report.responder || null,
+    dispatcherId: report.dispatcherId || null,
   }
 }
 

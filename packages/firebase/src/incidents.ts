@@ -1277,6 +1277,7 @@ async function propagateIncidentUpdatesToReports(incidentId: string, updates: an
     if (updates.touchdownAt) reportUpdates.touchdownAt = updates.touchdownAt;
     if (updates.responseTimeSeconds) reportUpdates.responseTimeSeconds = updates.responseTimeSeconds;
     if (updates.postIncidentReport) reportUpdates.postIncidentReport = updates.postIncidentReport;
+    if (updates.resolvedAt) reportUpdates.resolvedAt = updates.resolvedAt;
     
     snap.forEach((docSnap) => {
       updatePromises.push(updateDoc(docSnap.ref, reportUpdates));
@@ -1401,6 +1402,7 @@ export async function submitPostIncidentReportForIncident(
     throw new Error('Only an assigned responder can submit a post report');
   }
   
+  const resolvedAt = Timestamp.now();
   const updateData = {
     postIncidentReport: {
       reasonForIncident: postReport.reasonForIncident?.trim() || null,
@@ -1408,10 +1410,13 @@ export async function submitPostIncidentReportForIncident(
       peopleInvolved: typeof postReport.peopleInvolved === 'number' ? postReport.peopleInvolved : null,
       peopleStatus: postReport.peopleStatus?.trim() || null,
       hospital: postReport.hospital?.trim() || null,
-      submittedAt: Timestamp.now(),
+      submittedAt: resolvedAt,
       submittedByDispatcherId: currentUser.uid,
       submittedByName: currentUser.displayName || currentUser.email || currentUser.uid,
     },
+    status: 'resolved' as IncidentStatus,
+    resolutionStatus: 'resolved' as ResolutionStatus,
+    resolvedAt,
     updatedAt: Timestamp.now(),
   };
   

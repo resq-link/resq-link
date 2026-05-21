@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,93 +6,37 @@ import {
   TouchableOpacity,
   Modal,
   StyleSheet,
-  Platform,
-  TextInput,
   Linking,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image } from "expo-image";
-import { Picker } from "@react-native-picker/picker";
-import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import * as Location from "expo-location";
+import { BlurView } from "expo-blur";
+import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
+import {
+  ArrowLeft,
+  Check,
+  MapPin,
+  Navigation,
+  Navigation2,
+} from "lucide-react-native";
 import {
   acceptIncidentCase as acceptCase,
   declineIncidentCase as declineCase,
   markIncidentCaseTouchdown as markCaseTouchdown,
   submitIncidentPostReport as submitPostIncidentReport,
-  updateIncidentStatus as updateCaseStatus,
 } from "@/services/incidentService";
 import useUserStore from "@/store/userStore";
+
+import PostReportModal from "./PostReportModal";
+import DeclineModal from "./DeclineModal";
+import CaseTimeline from "./CaseTimeline";
+import Section from "./Section";
+import AdditionalDetailsSection from "./AdditionalDetailsSection";
+import ReporterSection from "./ReporterSection";
 import CaseStatusBadge from "./CaseStatusBadge";
-import PriorityBadge from "./PriorityBadge";
-import CustomButton from "@/components/ui/CustomButton";
 import ErrorAlert from "@/components/feedback/ErrorAlert";
 import { radii, spacing, useResqTheme } from "@/theme";
-
-const Section = ({ title, children, colors }) => (
-  <View
-    style={{
-      backgroundColor: colors.surface,
-      borderRadius: radii.lg,
-      padding: spacing.lg,
-      marginBottom: spacing.md,
-      borderWidth: 1,
-      borderColor: colors.border,
-    }}
-  >
-    <Text
-      style={{
-        fontFamily: "SpaceGrotesk_600SemiBold",
-        fontSize: 14,
-        color: colors.textSecondary,
-        marginBottom: spacing.md,
-        textTransform: "uppercase",
-        letterSpacing: 0.8,
-      }}
-    >
-      {title}
-    </Text>
-    {children}
-  </View>
-);
-
-const additionalDetailFields = {
-  fire: [
-    { key: "fireScale", label: "Fire scale / affected area" },
-    { key: "structureInvolved", label: "Structure or property involved" },
-    { key: "trappedOrInjured", label: "People trapped or injured" },
-    { key: "fireSource", label: "Source of fire if known" },
-  ],
-  medical: [
-    { key: "patientCondition", label: "Patient condition" },
-    { key: "breathingStatus", label: "Conscious / breathing status" },
-    { key: "patientAge", label: "Age or estimated age" },
-    { key: "firstAidNeeds", label: "Immediate first-aid needs" },
-  ],
-  vehicular_accident: [
-    { key: "vehiclesInvolved", label: "Vehicles involved" },
-    { key: "injuredPersons", label: "Number of injured persons" },
-    { key: "roadObstruction", label: "Road obstruction status" },
-    { key: "collisionCause", label: "Collision type / cause if known" },
-  ],
-  police_emergency: [
-    { key: "threatNature", label: "Nature of threat" },
-    { key: "suspectPresence", label: "Suspect presence or description" },
-    { key: "weaponsInvolved", label: "Weapons involved" },
-    { key: "safetyRisk", label: "Immediate safety risk" },
-  ],
-  electrical_powerline_hazard: [
-    { key: "hazardType", label: "Type of utility hazard" },
-    { key: "liveWireStatus", label: "Live wire / spark / outage status" },
-    { key: "affectedArea", label: "Affected homes or road area" },
-    { key: "visibleDamage", label: "Visible damage details" },
-  ],
-  other_emergency: [
-    { key: "incidentSummary", label: "Incident-specific summary" },
-    { key: "whoIsAffected", label: "Who is affected" },
-    { key: "hazardLevel", label: "Current hazard level" },
-    { key: "supportNeeded", label: "Support needed on scene" },
-  ],
-};
 
 const TOUCHDOWN_RADIUS_METERS = 10;
 
@@ -112,36 +56,118 @@ const getDistanceMeters = (from, to) => {
   return earthRadiusMeters * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
+const getIncidentTypeName = (type) => {
+  const typeMap = {
+    fire: "Fire",
+    medical: "Medical Emergency",
+    vehicular_accident: "Vehicular Accident",
+    police_emergency: "Police Emergency",
+    electrical_powerline_hazard: "Electrical / Powerline Hazard",
+    other_emergency: "Other Emergency",
+  };
+  return typeMap[type] || "Emergency";
+};
+
+const getPriorityLabel = (priority) => {
+  switch (priority?.toLowerCase()) {
+    case "critical":
+      return "Critical";
+    case "high":
+      return "High";
+    case "medium":
+      return "Medium";
+    case "low":
+      return "Low";
+    default:
+      return "Medium";
+  }
+};
+
+const getPriorityColor = (priority, colors) => {
+  switch (priority?.toLowerCase()) {
+    case "critical":
+      return colors.priorityCritical;
+    case "high":
+      return colors.priorityHigh;
+    case "medium":
+      return colors.priorityMedium;
+    case "low":
+      return colors.priorityLow;
+    default:
+      return colors.priorityMedium;
+  }
+};
+
+const formatStreetLevelAddress = (address) => {
+  if (!address) return null;
+
+  const streetParts = [
+    address.name,
+    address.streetNumber,
+    address.street,
+  ]
+    .filter(Boolean)
+    .map((part) => String(part).trim())
+    .filter(Boolean);
+  const streetLine = [...new Set(streetParts)]
+    .join(" ")
+    .trim();
+
+  const parts = [
+    streetLine || null,
+    address.district,
+    address.subregion,
+    address.city,
+  ].filter(Boolean);
+
+  const uniqueParts = [...new Set(parts)];
+  return uniqueParts.length > 0 ? uniqueParts.join(", ") : null;
+};
+
+const formatElapsed = (from, to = new Date()) => {
+  if (!from) return "";
+
+  const start = new Date(from);
+  const end = new Date(to);
+  const diffSeconds = Math.max(0, Math.floor((end.getTime() - start.getTime()) / 1000));
+  const hours = Math.floor(diffSeconds / 3600);
+  const minutes = Math.floor((diffSeconds % 3600) / 60);
+  const seconds = diffSeconds % 60;
+
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
+};
+
 export default function CaseInfoCard({
   case: caseData,
   reporterInfo,
   onStatusUpdate,
+  onBackPress,
 }) {
-  const { colors } = useResqTheme();
+  const { colors, resolvedScheme } = useResqTheme();
+  const insets = useSafeAreaInsets();
 
-  const [imageModalVisible, setImageModalVisible] = React.useState(false);
-  const [selectedStatus, setSelectedStatus] = React.useState(caseData.status);
-  const [isUpdating, setIsUpdating] = React.useState(false);
-  const [isDeclineModalVisible, setIsDeclineModalVisible] = React.useState(false);
-  const [declineReason, setDeclineReason] = React.useState("");
-  const [responderLocation, setResponderLocation] = React.useState(null);
-  const [locationError, setLocationError] = React.useState("");
-  const [isTouchdownUpdating, setIsTouchdownUpdating] = React.useState(false);
-  const [isPostReportModalVisible, setIsPostReportModalVisible] = React.useState(false);
-  const [isSubmittingPostReport, setIsSubmittingPostReport] = React.useState(false);
-  const [postReportForm, setPostReportForm] = React.useState({
+  const [imageModalVisible, setImageModalVisible] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeclineModalVisible, setIsDeclineModalVisible] = useState(false);
+  const [declineReason, setDeclineReason] = useState("");
+  const [responderLocation, setResponderLocation] = useState(null);
+  const [streetLevelLocation, setStreetLevelLocation] = useState("");
+  const [locationError, setLocationError] = useState("");
+  const [now, setNow] = useState(new Date());
+  const [isTouchdownUpdating, setIsTouchdownUpdating] = useState(false);
+  const [isPostReportModalVisible, setIsPostReportModalVisible] = useState(false);
+  const [isSubmittingPostReport, setIsSubmittingPostReport] = useState(false);
+  const [postReportForm, setPostReportForm] = useState({
     reasonForIncident: "",
     notes: "",
     peopleInvolved: "",
     peopleStatus: "",
     hospital: "",
   });
-  const [error, setError] = React.useState("");
+  const [error, setError] = useState("");
   const { user } = useUserStore();
-
-  React.useEffect(() => {
-    setSelectedStatus(caseData.status);
-  }, [caseData.status]);
 
   const handleAcceptCase = async () => {
     if (!caseData.id) {
@@ -183,27 +209,6 @@ export default function CaseInfoCard({
     }
   };
 
-  const handleStatusChange = async (newStatus) => {
-    if (!caseData.id) return;
-    if (newStatus === caseData.status) return;
-    if (caseData.status === "done") {
-      setError("Cannot update case status once it is marked as done");
-      return;
-    }
-    try {
-      setIsUpdating(true);
-      setError("");
-      await updateCaseStatus(caseData.id, newStatus);
-      setSelectedStatus(newStatus);
-      onStatusUpdate?.();
-    } catch (err) {
-      setError(err.message || "Failed to update case status");
-      setSelectedStatus(caseData.status);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
   const isAssignedResponder =
     user && caseData.assignedResourceIds && caseData.assignedResourceIds.includes(user.uid);
   const showAcceptButton =
@@ -212,14 +217,6 @@ export default function CaseInfoCard({
       caseData.status === "dispatched" ||
       caseData.status === "awaiting_resources" ||
       caseData.status === "active");
-  const showStatusDropdown =
-    isAssignedResponder &&
-    caseData.status !== "pending" &&
-    caseData.status !== "dispatched" &&
-    caseData.status !== "awaiting_resources" &&
-    caseData.status !== "active" &&
-    caseData.status !== "done";
-
   const formatDate = (dateString) => {
     if (!dateString) return "Unknown";
     const date = new Date(dateString);
@@ -243,16 +240,35 @@ export default function CaseInfoCard({
     return remainMins > 0 ? `${hrs} hr ${remainMins} min` : `${hrs} hr`;
   };
 
-  const getIncidentTypeName = (type) => {
-    const typeMap = {
-      fire: "Fire",
-      medical: "Medical Emergency",
-      vehicular_accident: "Vehicular Accident",
-      police_emergency: "Police Emergency",
-      electrical_powerline_hazard: "Electrical / Powerline Hazard",
-      other_emergency: "Other Emergency",
-    };
-    return typeMap[type] || "Emergency";
+  const handleMakeCall = async (phoneNumber) => {
+    if (!phoneNumber) return;
+    const cleanPhone = phoneNumber.replace(/[^\d+]/g, "");
+    const url = `tel:${cleanPhone}`;
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        setError("Your device does not support phone calls");
+      }
+    } catch (err) {
+      setError("Failed to open dialer");
+    }
+  };
+
+  const handleSendEmail = async (emailAddress) => {
+    if (!emailAddress) return;
+    const url = `mailto:${emailAddress}`;
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        setError("Your device does not support sending emails");
+      }
+    } catch (err) {
+      setError("Failed to open email client");
+    }
   };
 
   const hasPinnedLocation =
@@ -260,22 +276,7 @@ export default function CaseInfoCard({
     caseData.longitude != null &&
     caseData.latitude !== 0 &&
     caseData.longitude !== 0;
-  const expectedAdditionalFields =
-    additionalDetailFields[caseData.incidentCategory] ||
-    additionalDetailFields.other_emergency;
-  const additionalDetails = caseData.additionalDetails || {};
-  const submittedAdditionalFields = expectedAdditionalFields.filter((field) =>
-    String(additionalDetails[field.key] || "").trim()
-  );
-  const extraAdditionalFields = Object.entries(additionalDetails)
-    .filter(
-      ([key, value]) =>
-        String(value || "").trim() &&
-        !expectedAdditionalFields.some((field) => field.key === key)
-    )
-    .map(([key, value]) => ({ key, label: key, value }));
-  const hasAdditionalDetails =
-    submittedAdditionalFields.length > 0 || extraAdditionalFields.length > 0;
+
   const touchdownDistanceMeters =
     hasPinnedLocation && responderLocation
       ? getDistanceMeters(responderLocation, {
@@ -283,13 +284,32 @@ export default function CaseInfoCard({
           longitude: caseData.longitude,
         })
       : null;
-  const isWithinTouchdownRadius =
-    touchdownDistanceMeters != null &&
-    touchdownDistanceMeters <= TOUCHDOWN_RADIUS_METERS;
+
   const canMarkTouchdown =
     isAssignedResponder &&
     !caseData.touchdownAt &&
     (caseData.status === "enroute" || caseData.status === "on_scene");
+  const canSubmitPostReport =
+    isAssignedResponder &&
+    !!caseData.touchdownAt &&
+    !caseData.postIncidentReport?.submittedAt &&
+    caseData.status !== "done" &&
+    caseData.status !== "resolved";
+  const displayLocationText = streetLevelLocation || caseData.locationText;
+  const status = String(caseData.status || "").toLowerCase();
+  const hasTouchdown = !!caseData.touchdownAt;
+  const hasPostReport = !!caseData.postIncidentReport?.submittedAt;
+  const isResolved = status === "done" || status === "resolved" || hasPostReport;
+  const isEnRouteOrBeyond =
+    status === "enroute" ||
+    status === "on_scene" ||
+    isResolved ||
+    hasTouchdown;
+  const acceptedTime = caseData.acceptedAt || (isEnRouteOrBeyond ? caseData.createdAt : null);
+  const touchdownComplete = hasTouchdown || status === "on_scene" || isResolved;
+  const enRouteActive = !!acceptedTime && !touchdownComplete && isEnRouteOrBeyond;
+  const priorityColor = getPriorityColor(caseData.priority, colors);
+
   const mapRegion =
     hasPinnedLocation && responderLocation
       ? {
@@ -313,7 +333,7 @@ export default function CaseInfoCard({
           }
         : null;
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!hasPinnedLocation) return;
 
     let isMounted = true;
@@ -346,6 +366,43 @@ export default function CaseInfoCard({
     };
   }, [hasPinnedLocation, caseData.id]);
 
+  useEffect(() => {
+    if (!hasPinnedLocation) {
+      setStreetLevelLocation("");
+      return;
+    }
+
+    let isMounted = true;
+    const loadStreetLevelLocation = async () => {
+      try {
+        const addresses = await Location.reverseGeocodeAsync({
+          latitude: caseData.latitude,
+          longitude: caseData.longitude,
+        });
+        const streetAddress = formatStreetLevelAddress(addresses[0]);
+        if (isMounted) {
+          setStreetLevelLocation(streetAddress || "");
+        }
+      } catch {
+        if (isMounted) {
+          setStreetLevelLocation("");
+        }
+      }
+    };
+
+    loadStreetLevelLocation();
+    return () => {
+      isMounted = false;
+    };
+  }, [hasPinnedLocation, caseData.id, caseData.latitude, caseData.longitude]);
+
+  useEffect(() => {
+    if (!enRouteActive) return undefined;
+
+    const interval = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, [enRouteActive]);
+
   const handleTouchdown = async (source = "manual", distanceMeters = null) => {
     if (!caseData.id || !canMarkTouchdown || isTouchdownUpdating) return;
 
@@ -360,281 +417,6 @@ export default function CaseInfoCard({
       setIsTouchdownUpdating(false);
     }
   };
-
-
-  const styles = useMemo(
-    () =>
-      StyleSheet.create({
-        mapShell: {
-          height: 220,
-          width: "100%",
-          borderRadius: radii.md,
-          overflow: "hidden",
-          borderWidth: 1,
-          borderColor: colors.border,
-          backgroundColor: colors.background,
-        },
-        map: {
-          flex: 1,
-        },
-        detailRow: {
-          backgroundColor: colors.background,
-          borderRadius: radii.md,
-          borderWidth: 1,
-          borderColor: colors.border,
-          padding: spacing.md,
-          marginBottom: spacing.sm,
-        },
-        detailLabel: {
-          fontFamily: "SpaceGrotesk_600SemiBold",
-          fontSize: 12,
-          color: colors.textMuted,
-          textTransform: "uppercase",
-          letterSpacing: 0.8,
-          marginBottom: 6,
-        },
-        detailValue: {
-          fontFamily: "SpaceGrotesk_400Regular",
-          fontSize: 15,
-          color: colors.text,
-          lineHeight: 22,
-        },
-        currentLocationText: {
-          fontFamily: "SpaceGrotesk_400Regular",
-          fontSize: 12,
-          color: colors.info,
-          marginTop: 6,
-        },
-        locationErrorText: {
-          fontFamily: "SpaceGrotesk_400Regular",
-          fontSize: 12,
-          color: colors.warning,
-          marginTop: spacing.sm,
-        },
-        navigationButton: {
-          marginTop: spacing.md,
-          borderRadius: radii.md,
-          backgroundColor: colors.info,
-          paddingVertical: spacing.md,
-          paddingHorizontal: spacing.lg,
-          alignItems: "center",
-        },
-        navigationButtonText: {
-          fontFamily: "SpaceGrotesk_600SemiBold",
-          fontSize: 14,
-          color: colors.white,
-        },
-        touchdownDistanceText: {
-          fontFamily: "SpaceGrotesk_400Regular",
-          fontSize: 12,
-          color: colors.textSecondary,
-          marginTop: spacing.sm,
-        },
-        touchdownTimeText: {
-          fontFamily: "SpaceGrotesk_600SemiBold",
-          fontSize: 13,
-          color: colors.success,
-          marginTop: spacing.sm,
-        },
-        touchdownButton: {
-          marginTop: spacing.md,
-          borderRadius: radii.md,
-          backgroundColor: colors.success,
-          paddingVertical: spacing.md,
-          paddingHorizontal: spacing.lg,
-          alignItems: "center",
-        },
-        touchdownButtonText: {
-          fontFamily: "SpaceGrotesk_600SemiBold",
-          fontSize: 14,
-          color: colors.white,
-        },
-        postReportButton: {
-          marginTop: spacing.md,
-          borderRadius: radii.md,
-          backgroundColor: colors.accent,
-          paddingVertical: spacing.md,
-          paddingHorizontal: spacing.lg,
-          alignItems: "center",
-        },
-        postReportButtonText: {
-          fontFamily: "SpaceGrotesk_600SemiBold",
-          fontSize: 14,
-          color: colors.white,
-        },
-        postReportSubmittedText: {
-          fontFamily: "SpaceGrotesk_400Regular",
-          fontSize: 12,
-          color: colors.success,
-          marginTop: spacing.sm,
-        },
-        postReportInput: {
-          borderRadius: radii.md,
-          borderWidth: 1,
-          borderColor: colors.border,
-          backgroundColor: colors.background,
-          color: colors.text,
-          padding: spacing.md,
-          marginBottom: spacing.sm,
-          fontFamily: "SpaceGrotesk_400Regular",
-          fontSize: 15,
-        },
-        postReportNotesInput: {
-          minHeight: 96,
-          textAlignVertical: "top",
-        },
-        pendingActions: {
-          gap: spacing.md,
-        },
-        declineButton: {
-          alignSelf: "center",
-          minWidth: 150,
-          borderRadius: radii.md,
-          borderWidth: 1,
-          borderColor: colors.error,
-          paddingHorizontal: spacing.lg,
-          paddingVertical: spacing.sm,
-          alignItems: "center",
-        },
-        declineButtonText: {
-          fontFamily: "SpaceGrotesk_600SemiBold",
-          fontSize: 13,
-          color: colors.error,
-        },
-        disabledButton: {
-          opacity: 0.55,
-        },
-        reasonModalContainer: {
-          flex: 1,
-          backgroundColor: "rgba(0,0,0,0.75)",
-          justifyContent: "center",
-          padding: spacing.lg,
-        },
-        reasonModalContent: {
-          backgroundColor: colors.surface,
-          borderRadius: radii.lg,
-          borderWidth: 1,
-          borderColor: colors.border,
-          padding: spacing.lg,
-        },
-        reasonModalTitle: {
-          fontFamily: "SpaceGrotesk_700Bold",
-          fontSize: 20,
-          color: colors.text,
-          marginBottom: spacing.sm,
-        },
-        reasonModalDescription: {
-          fontFamily: "SpaceGrotesk_400Regular",
-          fontSize: 14,
-          color: colors.textSecondary,
-          lineHeight: 20,
-          marginBottom: spacing.md,
-        },
-        reasonInput: {
-          minHeight: 120,
-          borderRadius: radii.md,
-          borderWidth: 1,
-          borderColor: colors.border,
-          backgroundColor: colors.background,
-          color: colors.text,
-          padding: spacing.md,
-          textAlignVertical: "top",
-          fontFamily: "SpaceGrotesk_400Regular",
-          fontSize: 15,
-          lineHeight: 22,
-        },
-        reasonError: {
-          marginTop: spacing.sm,
-          fontFamily: "SpaceGrotesk_400Regular",
-          fontSize: 13,
-          color: colors.error,
-        },
-        reasonActions: {
-          marginTop: spacing.lg,
-          flexDirection: "row",
-          justifyContent: "flex-end",
-          gap: spacing.sm,
-        },
-        reasonCancelButton: {
-          borderRadius: radii.md,
-          borderWidth: 1,
-          borderColor: colors.border,
-          paddingHorizontal: spacing.lg,
-          paddingVertical: spacing.md,
-        },
-        reasonCancelText: {
-          fontFamily: "SpaceGrotesk_600SemiBold",
-          fontSize: 14,
-          color: colors.textSecondary,
-        },
-        reasonSubmitButton: {
-          borderRadius: radii.md,
-          backgroundColor: colors.error,
-          paddingHorizontal: spacing.lg,
-          paddingVertical: spacing.md,
-        },
-        reasonSubmitText: {
-          fontFamily: "SpaceGrotesk_600SemiBold",
-          fontSize: 14,
-          color: colors.white,
-        },
-        modalContainer: {
-          flex: 1,
-          backgroundColor: "rgba(0,0,0,0.95)",
-          justifyContent: "center",
-          alignItems: "center",
-        },
-        modalBackdrop: {
-          flex: 1,
-          width: "100%",
-          justifyContent: "center",
-          alignItems: "center",
-        },
-        modalContent: {
-          width: "90%",
-          height: "80%",
-          position: "relative",
-        },
-        fullImage: {
-          width: "100%",
-          height: "80%",
-          resizeMode: "contain",
-        },
-        closeButton: {
-          position: "absolute",
-          top: 40,
-          right: 20,
-          backgroundColor: "rgba(255,255,255,0.15)",
-          width: 44,
-          height: 44,
-          borderRadius: 22,
-          justifyContent: "center",
-          alignItems: "center",
-          zIndex: 10,
-        },
-        picker: {
-          height: Platform.OS === "ios" ? 220 : 56,
-          width: "100%",
-          color: colors.text,
-          backgroundColor: "transparent",
-        },
-        pickerShell: {
-          backgroundColor: colors.background,
-          borderRadius: radii.md,
-          borderWidth: 1,
-          borderColor: colors.border,
-          overflow: "hidden",
-          height: Platform.OS === "ios" ? 140 : 60,
-          justifyContent: "center",
-        },
-        pickerItem: {
-          color: colors.text,
-          fontFamily: "SpaceGrotesk_600SemiBold",
-          fontSize: 16,
-        },
-      }),
-    [colors]
-  );
 
   const handleOpenNavigation = async () => {
     if (!hasPinnedLocation) return;
@@ -675,699 +457,746 @@ export default function CaseInfoCard({
     }
   };
 
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        modalContainer: {
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,0.95)",
+          justifyContent: "center",
+          alignItems: "center",
+        },
+        modalBackdrop: {
+          flex: 1,
+          width: "100%",
+          justifyContent: "center",
+          alignItems: "center",
+        },
+        modalContent: {
+          width: "90%",
+          height: "80%",
+          position: "relative",
+        },
+        fullImage: {
+          width: "100%",
+          height: "80%",
+          resizeMode: "contain",
+        },
+        closeButton: {
+          position: "absolute",
+          top: 40,
+          right: 20,
+          backgroundColor: "rgba(255,255,255,0.15)",
+          width: 44,
+          height: 44,
+          borderRadius: 22,
+          justifyContent: "center",
+          alignItems: "center",
+          zIndex: 10,
+        },
+        mapStage: {
+          height: Math.max(360, insets.top + 330),
+          backgroundColor: colors.surface,
+        },
+        map: {
+          flex: 1,
+        },
+        mapFallback: {
+          flex: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: colors.surfaceHighlight,
+          paddingHorizontal: spacing.xl,
+        },
+        mapFallbackText: {
+          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontSize: 15,
+          color: colors.textSecondary,
+          textAlign: "center",
+        },
+        mapOverlayTop: {
+          position: "absolute",
+          top: insets.top + spacing.sm,
+          left: spacing.lg,
+          right: spacing.lg,
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+        },
+        floatingIconButton: {
+          width: 44,
+          height: 44,
+          borderRadius: 22,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: colors.surface,
+          borderWidth: 1,
+          borderColor: colors.border,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.18,
+          shadowRadius: 10,
+          elevation: 6,
+        },
+        detailsSheet: {
+          marginTop: -34,
+          marginHorizontal: 0,
+          padding: spacing.lg,
+          paddingBottom: spacing.md,
+          borderTopLeftRadius: 28,
+          borderTopRightRadius: 28,
+          borderBottomLeftRadius: 0,
+          borderBottomRightRadius: 0,
+          backgroundColor: colors.background,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.12,
+          shadowRadius: 18,
+          elevation: 12,
+        },
+        sheetHandle: {
+          alignSelf: "center",
+          width: 44,
+          height: 5,
+          borderRadius: 99,
+          backgroundColor: colors.border,
+          marginBottom: spacing.md,
+        },
+        caseTitleRow: {
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: spacing.md,
+        },
+        caseTitle: {
+          flex: 1,
+          fontFamily: "SpaceGrotesk_700Bold",
+          fontSize: 24,
+          color: colors.text,
+        },
+        titleAddress: {
+          fontFamily: "SpaceGrotesk_400Regular",
+          fontSize: 14,
+          lineHeight: 20,
+          color: colors.textSecondary,
+          marginTop: 6,
+        },
+        badgeRow: {
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: spacing.sm,
+          marginTop: spacing.md,
+        },
+        priorityBadge: {
+          backgroundColor: priorityColor + "18",
+          borderColor: priorityColor + "45",
+          borderWidth: 1,
+          borderRadius: radii.sm,
+          paddingVertical: 5,
+          paddingHorizontal: 10,
+        },
+        priorityBadgeText: {
+          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontSize: 11,
+          color: priorityColor,
+          textTransform: "uppercase",
+          letterSpacing: 0.5,
+        },
+        locationBlock: {
+          marginTop: spacing.sm,
+        },
+        locationSubtext: {
+          fontFamily: "SpaceGrotesk_400Regular",
+          fontSize: 13,
+          color: colors.textSecondary,
+          marginTop: 5,
+          lineHeight: 18,
+        },
+        peoplePill: {
+          alignSelf: "flex-start",
+          backgroundColor: colors.surfaceHighlight,
+          borderRadius: radii.sm,
+          paddingVertical: 4,
+          paddingHorizontal: 9,
+          marginTop: spacing.sm,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        peoplePillText: {
+          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontSize: 12,
+          color: colors.textSecondary,
+        },
+        progressShell: {
+          marginTop: spacing.md,
+          paddingVertical: spacing.md,
+          flexDirection: "row",
+          position: "relative",
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+        },
+        progressLineWrap: {
+          position: "absolute",
+          top: spacing.md + 15,
+          left: "16.5%",
+          right: "16.5%",
+          height: 2,
+        },
+        progressLine: {
+          ...StyleSheet.absoluteFillObject,
+          backgroundColor: colors.border,
+        },
+        progressLineFill: {
+          height: 2,
+          backgroundColor: colors.accent,
+        },
+        progressStep: {
+          flex: 1,
+          alignItems: "center",
+          minWidth: 0,
+        },
+        progressIcon: {
+          width: 30,
+          height: 30,
+          borderRadius: 15,
+          borderWidth: 1,
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: 7,
+          zIndex: 2,
+        },
+        progressLabel: {
+          fontFamily: "SpaceGrotesk_700Bold",
+          fontSize: 11,
+          textAlign: "center",
+        },
+        progressDetail: {
+          fontFamily: "SpaceGrotesk_400Regular",
+          fontSize: 10,
+          lineHeight: 13,
+          marginTop: 2,
+          textAlign: "center",
+        },
+        actionPanel: {
+          position: "absolute",
+          left: spacing.lg,
+          right: spacing.lg,
+          bottom: Math.max(insets.bottom, spacing.md),
+          zIndex: 30,
+        },
+        actionRow: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: spacing.md,
+        },
+        primaryActionButton: {
+          flex: 1,
+          minHeight: 52,
+          borderRadius: 999,
+          alignItems: "center",
+          justifyContent: "center",
+          flexDirection: "row",
+          paddingHorizontal: spacing.md,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.18,
+          shadowRadius: 18,
+          elevation: 16,
+        },
+        primaryActionText: {
+          fontFamily: "SpaceGrotesk_700Bold",
+          fontSize: 15,
+          color: "#FFFFFF",
+        },
+        secondaryActionButton: {
+          minHeight: 52,
+          minWidth: 96,
+          borderRadius: 999,
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: spacing.md,
+          borderWidth: 1,
+          borderColor: colors.error + "45",
+          backgroundColor: colors.background,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.12,
+          shadowRadius: 16,
+          elevation: 12,
+        },
+        secondaryActionText: {
+          fontFamily: "SpaceGrotesk_700Bold",
+          fontSize: 14,
+          color: colors.error,
+        },
+        actionIcon: {
+          marginRight: spacing.sm,
+        },
+        actionDisabled: {
+          opacity: 0.55,
+        },
+        completedPanel: {
+          flexDirection: "row",
+          alignItems: "center",
+          borderRadius: 999,
+          borderWidth: 1,
+          borderColor: colors.accent + "88",
+          backgroundColor: resolvedScheme === "dark" ? "rgba(26, 143, 104, 0.78)" : "rgba(240, 253, 250, 0.94)",
+          paddingVertical: spacing.sm,
+          paddingHorizontal: spacing.lg,
+          minHeight: 58,
+          overflow: "hidden",
+          shadowColor: colors.accent,
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.22,
+          shadowRadius: 18,
+          elevation: 14,
+        },
+        completedText: {
+          fontFamily: "SpaceGrotesk_700Bold",
+          fontSize: 15,
+          color: colors.accent,
+        },
+        completedSubtext: {
+          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontSize: 12,
+          color: colors.text,
+          marginTop: 2,
+        },
+        sheetError: {
+          marginBottom: spacing.sm,
+        },
+        contentStack: {
+          marginTop: spacing.md,
+          paddingTop: spacing.md,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+        },
+      }),
+    [colors, insets.top, priorityColor, resolvedScheme]
+  );
+
+  const bottomPadding = Math.max(insets.bottom, spacing.md);
+  const scrollPaddingBottom = bottomPadding + 76;
+  const progressSteps = [
+    {
+      key: "accepted",
+      label: "Accepted",
+      detail: acceptedTime ? "Case accepted" : "Waiting",
+      state: acceptedTime ? "completed" : "active",
+      icon: Check,
+    },
+    {
+      key: "enroute",
+      label: "En Route",
+      detail: enRouteActive
+        ? `${formatElapsed(acceptedTime, now)} en route`
+        : touchdownComplete
+          ? "Travel complete"
+          : "Pending",
+      state: touchdownComplete ? "completed" : enRouteActive ? "active" : "future",
+      icon: Navigation,
+    },
+    {
+      key: "touchdown",
+      label: "Touchdown",
+      detail: hasTouchdown
+        ? formatDate(caseData.touchdownAt)
+        : touchdownComplete
+          ? "Arrived"
+          : "Pending",
+      state: touchdownComplete ? "completed" : "future",
+      icon: MapPin,
+    },
+  ];
+
+  const renderProgressIcon = (step) => {
+    const Icon = step.icon;
+    const isCompleted = step.state === "completed";
+    const isActive = step.state === "active";
+    const iconBg = isCompleted || isActive ? colors.accent : colors.surfaceHighlight;
+    const iconColor = isCompleted || isActive ? "#FFFFFF" : colors.textMuted;
+    const borderColor = isCompleted || isActive ? colors.accent : colors.border;
+
+    return (
+      <View style={[styles.progressIcon, { backgroundColor: iconBg, borderColor }]}>
+        <Icon size={15} color={iconColor} strokeWidth={2.5} />
+      </View>
+    );
+  };
+
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: colors.background }}>
-      <View style={{ padding: spacing.lg }}>
-        <View
-          style={{
-            backgroundColor: colors.surface,
-            borderRadius: radii.lg,
-            padding: spacing.lg,
-            marginBottom: spacing.md,
-            borderWidth: 1,
-            borderColor: colors.border,
-          }}
-        >
-          <Text
-            style={{
-              fontFamily: "SpaceGrotesk_700Bold",
-              fontSize: 22,
-              color: colors.text,
-              marginBottom: spacing.md,
-              letterSpacing: -0.3,
-            }}
-          >
-            {getIncidentTypeName(caseData.incidentCategory)}
-          </Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <CaseStatusBadge status={caseData.status} />
-            <PriorityBadge priority={caseData.priority || "medium"} />
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+        <View style={styles.mapStage}>
+          {hasPinnedLocation ? (
+            <MapView
+              provider={PROVIDER_GOOGLE}
+              style={styles.map}
+              region={mapRegion}
+              scrollEnabled={true}
+              zoomEnabled={true}
+              pitchEnabled={true}
+              rotateEnabled={true}
+              accessibilityLabel="Interactive map showing responder and incident locations"
+            >
+              <Marker
+                coordinate={{
+                  latitude: caseData.latitude,
+                  longitude: caseData.longitude,
+                }}
+                title={getIncidentTypeName(caseData.incidentType)}
+                description={displayLocationText || "Pinned incident location"}
+                pinColor={colors.accent}
+              />
+              {responderLocation && (
+                <Marker
+                  coordinate={responderLocation}
+                  pinColor={colors.info}
+                />
+              )}
+            </MapView>
+          ) : (
+            <View style={styles.mapFallback}>
+              <MapPin size={28} color={colors.textMuted} />
+              <Text style={styles.mapFallbackText}>Pinned map location is not available.</Text>
+            </View>
+          )}
+
+          <View style={styles.mapOverlayTop}>
+            <TouchableOpacity
+              onPress={onBackPress}
+              style={styles.floatingIconButton}
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+            >
+              <ArrowLeft size={22} color={colors.text} />
+            </TouchableOpacity>
+            {hasPinnedLocation ? (
+              <TouchableOpacity
+                onPress={handleOpenNavigation}
+                style={styles.floatingIconButton}
+                accessibilityRole="button"
+                accessibilityLabel="Open Google Maps navigation"
+              >
+                <Navigation2 size={21} color={colors.info} />
+              </TouchableOpacity>
+            ) : null}
           </View>
         </View>
 
-        {hasPinnedLocation && (
-          <Section title="Pinned Location" colors={colors}>
-            <View style={styles.mapShell}>
-              <MapView
-                provider={PROVIDER_GOOGLE}
-                style={styles.map}
-                region={mapRegion}
-                scrollEnabled={false}
-                zoomEnabled={false}
-                pitchEnabled={false}
-                rotateEnabled={false}
-              >
-                <Marker
-                  coordinate={{
-                    latitude: caseData.latitude,
-                    longitude: caseData.longitude,
-                  }}
-                  title={getIncidentTypeName(caseData.incidentCategory)}
-                  description={caseData.locationText || "Pinned incident location"}
-                  pinColor={colors.accent}
-                />
-                {responderLocation && (
-                  <Marker
-                    coordinate={responderLocation}
-                    title="Your current location"
-                    pinColor={colors.info}
-                  />
-                )}
-              </MapView>
+        <View style={[styles.detailsSheet, { paddingBottom: scrollPaddingBottom }]}>
+          <View style={styles.sheetHandle} />
+
+          <View style={styles.caseTitleRow}>
+            <Text style={styles.caseTitle} numberOfLines={2}>
+              {getIncidentTypeName(caseData.incidentType)}
+            </Text>
+            <MapPin size={24} color={colors.info} />
+          </View>
+          <Text style={styles.titleAddress} numberOfLines={2}>
+            {displayLocationText || "Location not available"}
+          </Text>
+
+          <View style={styles.badgeRow}>
+            <View style={styles.priorityBadge}>
+              <Text style={styles.priorityBadgeText}>{getPriorityLabel(caseData.priority)}</Text>
             </View>
-            <Text
-              style={{
-                fontFamily: "SpaceGrotesk_400Regular",
-                fontSize: 13,
-                color: colors.textSecondary,
-                marginTop: spacing.md,
-              }}
-            >
-              {caseData.locationText || "Pinned incident location"}
-            </Text>
-            <Text
-              style={{
-                fontFamily: "SpaceGrotesk_400Regular",
-                fontSize: 12,
-                color: colors.textMuted,
-                marginTop: 6,
-              }}
-            >
-              {caseData.latitude.toFixed(6)}, {caseData.longitude.toFixed(6)}
-            </Text>
-            {responderLocation ? (
-              <Text style={styles.currentLocationText}>
-                Your location: {responderLocation.latitude.toFixed(6)},{" "}
-                {responderLocation.longitude.toFixed(6)}
-              </Text>
+            <CaseStatusBadge status={caseData.status} />
+          </View>
+
+          <View style={styles.locationBlock}>
+            {caseData.landmark ? (
+              <Text style={styles.locationSubtext}>Nearest landmark: {caseData.landmark}</Text>
             ) : null}
             {locationError ? (
-              <Text style={styles.locationErrorText}>{locationError}</Text>
+              <Text style={[styles.locationSubtext, { color: colors.warning }]}>{locationError}</Text>
             ) : null}
             {touchdownDistanceMeters != null && !caseData.touchdownAt ? (
-              <Text style={styles.touchdownDistanceText}>
+              <Text style={styles.locationSubtext}>
                 Distance to pinned location: {touchdownDistanceMeters.toFixed(1)} m
               </Text>
             ) : null}
-            {caseData.touchdownAt ? (
-              <View>
-                <Text style={styles.touchdownTimeText}>
-                  Touchdown: {formatDate(caseData.touchdownAt)}
-                </Text>
-                {caseData.postIncidentReport?.submittedAt ? (
-                  <Text style={styles.postReportSubmittedText}>
-                    Post report sent: {formatDate(caseData.postIncidentReport.submittedAt)}
-                  </Text>
-                ) : (
-                  <TouchableOpacity
-                    onPress={() => {
-                      setError("");
-                      setIsPostReportModalVisible(true);
-                    }}
-                    activeOpacity={0.85}
-                    style={styles.postReportButton}
-                  >
-                    <Text style={styles.postReportButtonText}>Post Report</Text>
-                  </TouchableOpacity>
-                )}
+            {caseData.peopleInvolved != null ? (
+              <View style={styles.peoplePill}>
+                <Text style={styles.peoplePillText}>People involved: {caseData.peopleInvolved}</Text>
               </View>
-            ) : canMarkTouchdown ? (
-              <TouchableOpacity
-                onPress={() => handleTouchdown("manual", touchdownDistanceMeters)}
-                disabled={isTouchdownUpdating}
-                activeOpacity={0.85}
-                style={[
-                  styles.touchdownButton,
-                  isTouchdownUpdating && styles.disabledButton,
-                ]}
-              >
-                <Text style={styles.touchdownButtonText}>
-                  {isTouchdownUpdating ? "Marking Touchdown..." : "Touchdown"}
-                </Text>
-              </TouchableOpacity>
             ) : null}
-            <TouchableOpacity
-              onPress={handleOpenNavigation}
-              activeOpacity={0.85}
-              style={styles.navigationButton}
-            >
-              <Text style={styles.navigationButtonText}>
-                Open Google Maps Navigation
-              </Text>
-            </TouchableOpacity>
-          </Section>
-        )}
-
-        {caseData.description && (
-          <Section title="Description" colors={colors}>
-            <Text
-              style={{
-                fontFamily: "SpaceGrotesk_400Regular",
-                fontSize: 15,
-                color: colors.textSecondary,
-                lineHeight: 22,
-              }}
-            >
-              {caseData.description}
-            </Text>
-          </Section>
-        )}
-
-        {caseData.imageUrl && (
-          <Section title="Photo" colors={colors}>
-            <TouchableOpacity
-              onPress={() => setImageModalVisible(true)}
-              style={{ borderRadius: radii.md, overflow: "hidden" }}
-            >
-              <Image
-                source={{ uri: caseData.imageUrl }}
-                style={{
-                  width: "100%",
-                  height: 200,
-                  borderRadius: radii.md,
-                }}
-                contentFit="cover"
-                transition={200}
-              />
-            </TouchableOpacity>
-          </Section>
-        )}
-
-        <Section title="Location" colors={colors}>
-          <Text
-            style={{
-              fontFamily: "SpaceGrotesk_400Regular",
-              fontSize: 15,
-              color: colors.text,
-            }}
-          >
-            {caseData.locationText || "Location not available"}
-          </Text>
-          {caseData.landmark && (
-            <Text
-              style={{
-                fontFamily: "SpaceGrotesk_400Regular",
-                fontSize: 14,
-                color: colors.textSecondary,
-                marginTop: 6,
-              }}
-            >
-              Nearest landmark: {caseData.landmark}
-            </Text>
-          )}
-          {caseData.peopleInvolved != null && (
-            <Text
-              style={{
-                fontFamily: "SpaceGrotesk_400Regular",
-                fontSize: 14,
-                color: colors.textSecondary,
-                marginTop: 6,
-              }}
-            >
-              People involved: {caseData.peopleInvolved}
-            </Text>
-          )}
-          {caseData.latitude != null && caseData.longitude != null && (
-            <Text
-              style={{
-                fontFamily: "SpaceGrotesk_400Regular",
-                fontSize: 12,
-                color: colors.textMuted,
-                marginTop: 6,
-              }}
-            >
-              {caseData.latitude.toFixed(6)}, {caseData.longitude.toFixed(6)}
-            </Text>
-          )}
-        </Section>
-
-        <Section title="Additional Details" colors={colors}>
-          {hasAdditionalDetails ? (
-            <View>
-              {caseData.additionalDetailsSubmittedAt && (
-                <Text
-                  style={{
-                    fontFamily: "SpaceGrotesk_400Regular",
-                    fontSize: 12,
-                    color: colors.success,
-                    marginBottom: spacing.md,
-                  }}
-                >
-                  Updated: {formatDate(caseData.additionalDetailsSubmittedAt)}
-                </Text>
-              )}
-              {submittedAdditionalFields.map((field) => (
-                <View key={field.key} style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>{field.label}</Text>
-                  <Text style={styles.detailValue}>
-                    {additionalDetails[field.key]}
-                  </Text>
-                </View>
-              ))}
-              {extraAdditionalFields.map((field) => (
-                <View key={field.key} style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>{field.label}</Text>
-                  <Text style={styles.detailValue}>{field.value}</Text>
-                </View>
-              ))}
-            </View>
-          ) : (
-            <Text
-              style={{
-                fontFamily: "SpaceGrotesk_400Regular",
-                fontSize: 14,
-                color: colors.textSecondary,
-                lineHeight: 20,
-              }}
-            >
-              {caseData.additionalDetailsRequestedAt
-                ? "Waiting for the civilian to send additional details."
-                : "No additional details have been requested yet."}
-            </Text>
-          )}
-        </Section>
-
-        {reporterInfo && (
-          <Section title="Reporter" colors={colors}>
-            <Text
-              style={{
-                fontFamily: "SpaceGrotesk_400Regular",
-                fontSize: 15,
-                color: colors.text,
-                marginBottom: 4,
-              }}
-            >
-              {reporterInfo.fullName || reporterInfo.name || "Not available"}
-            </Text>
-            {reporterInfo.phone && (
-              <Text
-                style={{
-                  fontFamily: "SpaceGrotesk_400Regular",
-                  fontSize: 14,
-                  color: colors.textSecondary,
-                  marginBottom: 2,
-                }}
-              >
-                {reporterInfo.phone}
-              </Text>
-            )}
-            {reporterInfo.email && (
-              <Text
-                style={{
-                  fontFamily: "SpaceGrotesk_400Regular",
-                  fontSize: 14,
-                  color: colors.textSecondary,
-                }}
-              >
-                {reporterInfo.email}
-              </Text>
-            )}
-          </Section>
-        )}
-
-        <Section title="Timestamps" colors={colors}>
-          <Text
-            style={{
-              fontFamily: "SpaceGrotesk_400Regular",
-              fontSize: 14,
-              color: colors.textSecondary,
-              marginBottom: 4,
-            }}
-          >
-            Reported: {formatDate(caseData.createdAt)}
-          </Text>
-          {caseData.acceptedAt && (
-            <Text
-              style={{
-                fontFamily: "SpaceGrotesk_400Regular",
-                fontSize: 14,
-                color: colors.textSecondary,
-                marginTop: 4,
-              }}
-            >
-              Accepted: {formatDate(caseData.acceptedAt)}
-            </Text>
-          )}
-          {caseData.touchdownAt && (
-            <Text
-              style={{
-                fontFamily: "SpaceGrotesk_400Regular",
-                fontSize: 14,
-                color: colors.textSecondary,
-                marginTop: 4,
-              }}
-            >
-              Touchdown: {formatDate(caseData.touchdownAt)}
-            </Text>
-          )}
-          {formatResponseTime(caseData.responseTimeSeconds) && (
-            <View
-              style={{
-                marginTop: spacing.md,
-                backgroundColor: colors.surfaceHighlight,
-                borderRadius: radii.md,
-                paddingVertical: spacing.sm,
-                paddingHorizontal: spacing.md,
-                borderWidth: 1,
-                borderColor: colors.success + "40",
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              <Text
-                style={{
-                  fontFamily: "SpaceGrotesk_600SemiBold",
-                  fontSize: 12,
-                  color: colors.textMuted,
-                  textTransform: "uppercase",
-                  letterSpacing: 0.8,
-                }}
-              >
-                Response Time
-              </Text>
-              <Text
-                style={{
-                  fontFamily: "SpaceGrotesk_700Bold",
-                  fontSize: 15,
-                  color: colors.success,
-                }}
-              >
-                {formatResponseTime(caseData.responseTimeSeconds)}
-              </Text>
-            </View>
-          )}
-          {caseData.updatedAt && (
-            <Text
-              style={{
-                fontFamily: "SpaceGrotesk_400Regular",
-                fontSize: 14,
-                color: colors.textSecondary,
-                marginTop: 4,
-              }}
-            >
-              Updated: {formatDate(caseData.updatedAt)}
-            </Text>
-          )}
-        </Section>
-
-        {isAssignedResponder && (
-          <View
-            style={{
-              backgroundColor: colors.surface,
-              borderRadius: radii.lg,
-              padding: spacing.lg,
-              marginBottom: spacing.md,
-              borderWidth: 1,
-              borderColor: colors.border,
-            }}
-          >
-            {error && (
-              <View style={{ marginBottom: spacing.md }}>
-                <ErrorAlert message={error} onDismiss={() => setError("")} />
-              </View>
-            )}
-
-            {showAcceptButton && (
-              <View style={styles.pendingActions}>
-                <CustomButton
-                  title="Accept Case"
-                  onPress={handleAcceptCase}
-                  disabled={isUpdating}
-                  variant="primary"
-                />
-                <TouchableOpacity
-                  onPress={() => {
-                    setError("");
-                    setIsDeclineModalVisible(true);
-                  }}
-                  disabled={isUpdating}
-                  style={[
-                    styles.declineButton,
-                    isUpdating && styles.disabledButton,
-                  ]}
-                >
-                  <Text style={styles.declineButtonText}>Decline Case</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {showStatusDropdown && (
-              <View style={{ marginTop: spacing.md }}>
-                <Text
-                  style={{
-                    fontFamily: "SpaceGrotesk_600SemiBold",
-                    fontSize: 14,
-                    color: colors.text,
-                    marginBottom: spacing.md,
-                  }}
-                >
-                  Update Status
-                </Text>
-                <View style={styles.pickerShell}>
-                  <Picker
-                    selectedValue={selectedStatus}
-                    onValueChange={handleStatusChange}
-                    enabled={!isUpdating}
-                    style={styles.picker}
-                    itemStyle={styles.pickerItem}
-                  >
-                    <Picker.Item label="En Route" value="enroute" />
-                    <Picker.Item label="On Scene" value="on_scene" />
-                    <Picker.Item label="Done" value="done" />
-                  </Picker>
-                </View>
-              </View>
-            )}
-
-            {caseData.status === "done" && (
-              <View
-                style={{
-                  backgroundColor: colors.surfaceHighlight,
-                  borderRadius: radii.md,
-                  padding: spacing.md,
-                  alignItems: "center",
-                  borderWidth: 1,
-                  borderColor: colors.success + "40",
-                }}
-              >
-                <Text
-                  style={{
-                    fontFamily: "SpaceGrotesk_600SemiBold",
-                    fontSize: 14,
-                    color: colors.success,
-                  }}
-                >
-                  Case Completed
-                </Text>
-                <Text
-                  style={{
-                    fontFamily: "SpaceGrotesk_400Regular",
-                    fontSize: 12,
-                    color: colors.textSecondary,
-                    marginTop: 4,
-                  }}
-                >
-                  This case cannot be modified.
-                </Text>
-              </View>
-            )}
           </View>
-        )}
+
+          <View style={styles.progressShell}>
+            <View style={styles.progressLineWrap} pointerEvents="none">
+              <View style={styles.progressLine} />
+              <View
+                style={[
+                  styles.progressLineFill,
+                  { width: touchdownComplete ? "100%" : acceptedTime ? "50%" : "0%" },
+                ]}
+              />
+            </View>
+            {progressSteps.map((step) => (
+              <View key={step.key} style={styles.progressStep}>
+                {renderProgressIcon(step)}
+                <Text
+                  style={[
+                    styles.progressLabel,
+                    {
+                      color:
+                        step.state === "active"
+                          ? colors.accent
+                          : step.state === "completed"
+                            ? colors.text
+                            : colors.textMuted,
+                    },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {step.label}
+                </Text>
+                <Text
+                  style={[
+                    styles.progressDetail,
+                    { color: step.state === "active" ? colors.accent : colors.textSecondary },
+                  ]}
+                  numberOfLines={2}
+                >
+                  {step.detail}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.contentStack}>
+            {caseData.description && (
+              <Section title="Description" colors={colors} embedded={true}>
+                <Text
+                  style={{
+                    fontFamily: "SpaceGrotesk_400Regular",
+                    fontSize: 15,
+                    color: colors.textSecondary,
+                    lineHeight: 22,
+                  }}
+                >
+                  {caseData.description}
+                </Text>
+              </Section>
+            )}
+
+            {caseData.imageUrl && (
+              <Section title="Photo" colors={colors} embedded={true}>
+                <TouchableOpacity
+                  onPress={() => setImageModalVisible(true)}
+                  style={{ borderRadius: radii.md, overflow: "hidden" }}
+                  accessibilityRole="imagebutton"
+                  accessibilityLabel="View full-size incident photo"
+                  accessibilityHint="Double tap to open full-screen image viewer"
+                >
+                  <Image
+                    source={{ uri: caseData.imageUrl }}
+                    style={{
+                      width: "100%",
+                      height: 200,
+                      borderRadius: radii.md,
+                    }}
+                    contentFit="cover"
+                    transition={200}
+                    accessibilityLabel="Incident photo uploaded by civilian"
+                  />
+                </TouchableOpacity>
+              </Section>
+            )}
+
+            <AdditionalDetailsSection
+              caseData={caseData}
+              colors={colors}
+              formatDate={formatDate}
+              embedded={true}
+            />
+
+            <ReporterSection
+              reporterInfo={reporterInfo}
+              colors={colors}
+              handleMakeCall={handleMakeCall}
+              handleSendEmail={handleSendEmail}
+              embedded={true}
+            />
+
+            <Section title="Timeline" colors={colors} collapsible={true} defaultExpanded={false} embedded={true}>
+              <CaseTimeline
+                caseData={caseData}
+                colors={colors}
+                formatDate={formatDate}
+                formatResponseTime={formatResponseTime}
+              />
+            </Section>
+          </View>
+
+        </View>
+
+        <Modal
+          visible={imageModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setImageModalVisible(false)}
+        >
+          <View style={styles.modalContainer}>
+            <TouchableOpacity
+              style={styles.modalBackdrop}
+              activeOpacity={1}
+              onPress={() => setImageModalVisible(false)}
+            >
+              <View style={styles.modalContent}>
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setImageModalVisible(false)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Close full-screen photo viewer"
+                >
+                  <Text
+                    style={{
+                      fontSize: 24,
+                      color: colors.white,
+                      fontFamily: "SpaceGrotesk_400Regular",
+                    }}
+                  >
+                    ×
+                  </Text>
+                </TouchableOpacity>
+                <Image
+                  source={{ uri: caseData.imageUrl }}
+                  style={styles.fullImage}
+                  contentFit="contain"
+                  transition={200}
+                />
+              </View>
+            </TouchableOpacity>
+          </View>
+        </Modal>
+
+        <DeclineModal
+          visible={isDeclineModalVisible}
+          onClose={() => {
+            setIsDeclineModalVisible(false);
+            setDeclineReason("");
+            setError("");
+          }}
+          onSubmit={handleDeclineCase}
+          isSubmitting={isUpdating}
+          reason={declineReason}
+          setReason={setDeclineReason}
+          error={error}
+          colors={colors}
+        />
+
+        <PostReportModal
+          visible={isPostReportModalVisible}
+          onClose={() => {
+            setIsPostReportModalVisible(false);
+            setError("");
+          }}
+          onSubmit={handleSubmitPostReport}
+          isSubmitting={isSubmittingPostReport}
+          form={postReportForm}
+          setForm={setPostReportForm}
+          error={error}
+          colors={colors}
+        />
+      </ScrollView>
+
+      <View style={styles.actionPanel}>
+        {error ? (
+          <View style={styles.sheetError}>
+            <ErrorAlert message={error} onDismiss={() => setError("")} />
+          </View>
+        ) : null}
+
+        {showAcceptButton ? (
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              onPress={handleAcceptCase}
+              disabled={isUpdating}
+              activeOpacity={0.85}
+              style={[
+                styles.primaryActionButton,
+                { backgroundColor: colors.accent },
+                isUpdating && styles.actionDisabled,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Accept this emergency case"
+            >
+              <Check size={19} color="#FFFFFF" style={styles.actionIcon} />
+              <Text style={styles.primaryActionText}>
+                {isUpdating ? "Accepting..." : "Accept Case"}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => {
+                setError("");
+                setIsDeclineModalVisible(true);
+              }}
+              disabled={isUpdating}
+              activeOpacity={0.85}
+              style={[styles.secondaryActionButton, isUpdating && styles.actionDisabled]}
+              accessibilityRole="button"
+              accessibilityLabel="Decline this emergency case"
+            >
+              <Text style={styles.secondaryActionText}>Decline</Text>
+            </TouchableOpacity>
+          </View>
+        ) : canMarkTouchdown ? (
+          <TouchableOpacity
+            onPress={() => handleTouchdown("manual", touchdownDistanceMeters)}
+            disabled={isTouchdownUpdating}
+            activeOpacity={0.85}
+            style={[
+              styles.primaryActionButton,
+              { backgroundColor: colors.accent },
+              isTouchdownUpdating && styles.actionDisabled,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Mark arrival at scene - Touchdown"
+          >
+            <Navigation size={20} color="#FFFFFF" style={styles.actionIcon} />
+            <Text style={styles.primaryActionText}>
+              {isTouchdownUpdating ? "Marking Touchdown..." : "Touchdown"}
+            </Text>
+          </TouchableOpacity>
+        ) : canSubmitPostReport ? (
+          <TouchableOpacity
+            onPress={() => {
+              setError("");
+              setIsPostReportModalVisible(true);
+            }}
+            disabled={isSubmittingPostReport}
+            activeOpacity={0.85}
+            style={[
+              styles.primaryActionButton,
+              { backgroundColor: colors.accent },
+              isSubmittingPostReport && styles.actionDisabled,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Submit post incident report"
+          >
+            <Check size={19} color="#FFFFFF" style={styles.actionIcon} />
+            <Text style={styles.primaryActionText}>
+              {isSubmittingPostReport ? "Submitting..." : "Post Report"}
+            </Text>
+          </TouchableOpacity>
+        ) : caseData.status === "done" || caseData.status === "resolved" ? (
+          <BlurView
+            intensity={80}
+            tint={resolvedScheme === "dark" ? "dark" : "light"}
+            style={styles.completedPanel}
+          >
+            <Check size={20} color={colors.accent} style={styles.actionIcon} />
+            <View>
+              <Text style={styles.completedText}>Case Completed</Text>
+              <Text style={styles.completedSubtext}>This case is finalized.</Text>
+            </View>
+          </BlurView>
+        ) : null}
       </View>
 
-      <Modal
-        visible={imageModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setImageModalVisible(false)}
-      >
-        <View style={styles.modalContainer}>
-          <TouchableOpacity
-            style={styles.modalBackdrop}
-            activeOpacity={1}
-            onPress={() => setImageModalVisible(false)}
-          >
-            <View style={styles.modalContent}>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setImageModalVisible(false)}
-              >
-                <Text
-                  style={{
-                    fontSize: 24,
-                    color: colors.white,
-                    fontFamily: "SpaceGrotesk_400Regular",
-                  }}
-                >
-                  ×
-                </Text>
-              </TouchableOpacity>
-              <Image
-                source={{ uri: caseData.imageUrl }}
-                style={styles.fullImage}
-                contentFit="contain"
-                transition={200}
-              />
-            </View>
-          </TouchableOpacity>
-        </View>
-      </Modal>
-
-      <Modal
-        visible={isDeclineModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
-          if (!isUpdating) {
-            setIsDeclineModalVisible(false);
-          }
-        }}
-      >
-        <View style={styles.reasonModalContainer}>
-          <View style={styles.reasonModalContent}>
-            <Text style={styles.reasonModalTitle}>Decline Case</Text>
-            <Text style={styles.reasonModalDescription}>
-              Add the reason so dispatch can reassign the case properly.
-            </Text>
-            <TextInput
-              value={declineReason}
-              onChangeText={setDeclineReason}
-              placeholder="Reason for decline"
-              placeholderTextColor={colors.textMuted}
-              multiline
-              editable={!isUpdating}
-              style={styles.reasonInput}
-            />
-            {error ? (
-              <Text style={styles.reasonError}>{error}</Text>
-            ) : null}
-            <View style={styles.reasonActions}>
-              <TouchableOpacity
-                onPress={() => {
-                  setIsDeclineModalVisible(false);
-                  setDeclineReason("");
-                  setError("");
-                }}
-                disabled={isUpdating}
-                style={styles.reasonCancelButton}
-              >
-                <Text style={styles.reasonCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleDeclineCase}
-                disabled={isUpdating || !declineReason.trim()}
-                style={[
-                  styles.reasonSubmitButton,
-                  (isUpdating || !declineReason.trim()) && styles.disabledButton,
-                ]}
-              >
-                <Text style={styles.reasonSubmitText}>
-                  {isUpdating ? "Declining..." : "Submit Decline"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      <Modal
-        visible={isPostReportModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => {
-          if (!isSubmittingPostReport) setIsPostReportModalVisible(false);
-        }}
-      >
-        <View style={styles.reasonModalContainer}>
-          <View style={styles.reasonModalContent}>
-            <Text style={styles.reasonModalTitle}>Post Report</Text>
-            <Text style={styles.reasonModalDescription}>
-              Add any available details from the scene. Fields can be left blank.
-            </Text>
-            <TextInput
-              value={postReportForm.reasonForIncident}
-              onChangeText={(value) =>
-                setPostReportForm((current) => ({ ...current, reasonForIncident: value }))
-              }
-              placeholder="Reason for incident"
-              placeholderTextColor={colors.textMuted}
-              editable={!isSubmittingPostReport}
-              style={styles.postReportInput}
-            />
-            <TextInput
-              value={postReportForm.notes}
-              onChangeText={(value) =>
-                setPostReportForm((current) => ({ ...current, notes: value }))
-              }
-              placeholder="Notes"
-              placeholderTextColor={colors.textMuted}
-              multiline
-              editable={!isSubmittingPostReport}
-              style={[styles.postReportInput, styles.postReportNotesInput]}
-            />
-            <TextInput
-              value={postReportForm.peopleInvolved}
-              onChangeText={(value) =>
-                setPostReportForm((current) => ({
-                  ...current,
-                  peopleInvolved: value.replace(/[^0-9]/g, ""),
-                }))
-              }
-              placeholder="Number of people involved"
-              placeholderTextColor={colors.textMuted}
-              keyboardType="number-pad"
-              editable={!isSubmittingPostReport}
-              style={styles.postReportInput}
-            />
-            <TextInput
-              value={postReportForm.peopleStatus}
-              onChangeText={(value) =>
-                setPostReportForm((current) => ({ ...current, peopleStatus: value }))
-              }
-              placeholder="Status of people involved"
-              placeholderTextColor={colors.textMuted}
-              editable={!isSubmittingPostReport}
-              style={styles.postReportInput}
-            />
-            <TextInput
-              value={postReportForm.hospital}
-              onChangeText={(value) =>
-                setPostReportForm((current) => ({ ...current, hospital: value }))
-              }
-              placeholder="Hospital"
-              placeholderTextColor={colors.textMuted}
-              editable={!isSubmittingPostReport}
-              style={styles.postReportInput}
-            />
-            {error ? <Text style={styles.reasonError}>{error}</Text> : null}
-            <View style={styles.reasonActions}>
-              <TouchableOpacity
-                onPress={() => {
-                  setIsPostReportModalVisible(false);
-                  setError("");
-                }}
-                disabled={isSubmittingPostReport}
-                style={styles.reasonCancelButton}
-              >
-                <Text style={styles.reasonCancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleSubmitPostReport}
-                disabled={isSubmittingPostReport}
-                style={[
-                  styles.reasonSubmitButton,
-                  isSubmittingPostReport && styles.disabledButton,
-                ]}
-              >
-                <Text style={styles.reasonSubmitText}>
-                  {isSubmittingPostReport ? "Submitting..." : "Submit Report"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-    </ScrollView>
+    </View>
   );
 }
