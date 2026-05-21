@@ -20,6 +20,7 @@ import {
   Clock,
 } from "lucide-react-native";
 import { radii, spacing, useResqTheme } from "@/theme";
+import CaseStatusBadge from "./CaseStatusBadge";
 
 // Format helper for elapsed time
 function formatElapsedTime(createdAt) {
@@ -73,9 +74,23 @@ function getPriorityLabel(priority) {
   }
 }
 
+// Incident Type Name Mapper
+function getIncidentTypeName(type) {
+  const typeMap = {
+    fire: "Fire",
+    medical: "Medical Emergency",
+    vehicular_accident: "Vehicular Accident",
+    police_emergency: "Police Emergency",
+    electrical_powerline_hazard: "Electrical / Powerline Hazard",
+    other_emergency: "Other Emergency",
+  };
+  return typeMap[type] || "Emergency";
+}
+
 export default function DetailHeader({
   priority = "medium",
   incidentCategory = "other",
+  status,
   createdAt,
   onBackPress,
 }) {
@@ -198,17 +213,20 @@ export default function DetailHeader({
         </TouchableOpacity>
 
         <View style={styles.headerInfo}>
-          {/* Priority indicator badge */}
-          <View style={[styles.priorityBadge, { backgroundColor: badgeBg }]}>
-            <Text style={[styles.priorityText, { color: badgeTextColor }]}>
-              {getPriorityLabel(priority)}
-            </Text>
+          {/* Badge Row (Priority & Status) */}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 }}>
+            <View style={[styles.priorityBadge, { backgroundColor: badgeBg, marginBottom: 0 }]}>
+              <Text style={[styles.priorityText, { color: badgeTextColor }]}>
+                {getPriorityLabel(priority)}
+              </Text>
+            </View>
+            {status && <CaseStatusBadge status={status} />}
           </View>
 
           <View style={styles.titleRow}>
             {getCategoryIcon(incidentCategory, 22, headerTextColor)}
             <Text style={[styles.title, { color: headerTextColor }]} numberOfLines={1}>
-              Case Details
+              {getIncidentTypeName(incidentCategory)}
             </Text>
           </View>
 

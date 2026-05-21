@@ -19,8 +19,7 @@ import {
   updateIncidentStatus as updateCaseStatus,
 } from "@/services/incidentService";
 import useUserStore from "@/store/userStore";
-import CaseStatusBadge from "./CaseStatusBadge";
-import PriorityBadge from "./PriorityBadge";
+
 import StickyActionBar from "./StickyActionBar";
 import PostReportModal from "./PostReportModal";
 import DeclineModal from "./DeclineModal";
@@ -407,34 +406,6 @@ export default function CaseInfoCard({
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={true}>
         <View style={{ padding: spacing.lg, paddingBottom: scrollPaddingBottom }}>
-          <View
-            style={{
-              backgroundColor: colors.surface,
-              borderRadius: radii.lg,
-              padding: spacing.lg,
-              marginBottom: spacing.md,
-              borderWidth: 1,
-              borderColor: colors.border,
-            }}
-          >
-            <Text
-              accessibilityRole="header"
-              style={{
-                fontFamily: "SpaceGrotesk_700Bold",
-                fontSize: 22,
-                color: colors.text,
-                marginBottom: spacing.md,
-                letterSpacing: -0.3,
-              }}
-            >
-              {getIncidentTypeName(caseData.incidentCategory)}
-            </Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <CaseStatusBadge status={caseData.status} />
-              <PriorityBadge priority={caseData.priority || "medium"} />
-            </View>
-          </View>
-
           <CaseMapSection
             caseData={caseData}
             hasPinnedLocation={hasPinnedLocation}

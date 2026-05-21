@@ -222,6 +222,7 @@ export default function CaseDetailView() {
         <DetailHeader
           priority={caseData.priority}
           incidentCategory={caseData.incidentType}
+          status={caseData.status}
           createdAt={caseData.createdAt}
           onBackPress={() => router.back()}
         />
