@@ -17,6 +17,7 @@ import {
 import { useFonts } from "expo-font";
 import { getDoc, doc, getFirebaseFirestore, onSnapshot } from "@packages/firebase";
 import CaseInfoCard from "@/modules/incidents/components/CaseInfoCard";
+import DetailHeader from "@/modules/incidents/components/DetailHeader";
 import LoadingScreen from "@/components/ui/LoadingScreen";
 import ErrorAlert from "@/components/feedback/ErrorAlert";
 import { spacing, useResqTheme } from "@/theme";
@@ -222,34 +223,43 @@ export default function CaseDetailView() {
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar style={statusBarStyle} backgroundColor={colors.background} />
 
-      <View
-        style={{
-          backgroundColor: colors.surface,
-          paddingTop: insets.top + 20,
-          paddingHorizontal: spacing.lg,
-          paddingBottom: spacing.lg,
-          borderBottomWidth: 1,
-          borderBottomColor: colors.border,
-          flexDirection: "row",
-          alignItems: "center",
-        }}
-      >
-        <TouchableOpacity
-          onPress={() => router.back()}
-          style={{ marginRight: 16 }}
-        >
-          <ArrowLeft size={24} color={colors.textSecondary} />
-        </TouchableOpacity>
-        <Text
+      {caseData ? (
+        <DetailHeader
+          priority={caseData.priority}
+          incidentCategory={caseData.incidentType}
+          createdAt={caseData.createdAt}
+          onBackPress={() => router.back()}
+        />
+      ) : (
+        <View
           style={{
-            fontFamily: "SpaceGrotesk_700Bold",
-            fontSize: 18,
-            color: colors.text,
+            backgroundColor: colors.surface,
+            paddingTop: insets.top + 20,
+            paddingHorizontal: spacing.lg,
+            paddingBottom: spacing.lg,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border,
+            flexDirection: "row",
+            alignItems: "center",
           }}
         >
-          Case Details
-        </Text>
-      </View>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={{ marginRight: 16 }}
+          >
+            <ArrowLeft size={24} color={colors.textSecondary} />
+          </TouchableOpacity>
+          <Text
+            style={{
+              fontFamily: "SpaceGrotesk_700Bold",
+              fontSize: 18,
+              color: colors.text,
+            }}
+          >
+            Case Details
+          </Text>
+        </View>
+      )}
 
       {error && (
         <View style={{ padding: spacing.lg }}>
