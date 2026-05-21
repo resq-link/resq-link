@@ -9,6 +9,8 @@ import {
   Platform,
   TextInput,
   Linking,
+  Animated,
+  LayoutAnimation,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image } from "expo-image";
@@ -28,35 +30,99 @@ import PriorityBadge from "./PriorityBadge";
 import CustomButton from "@/components/ui/CustomButton";
 import ErrorAlert from "@/components/feedback/ErrorAlert";
 import StickyActionBar from "./StickyActionBar";
-import { Phone, Mail, Navigation2 } from "lucide-react-native";
+import { Phone, Mail, Navigation2, ChevronDown } from "lucide-react-native";
 import { radii, spacing, useResqTheme } from "@/theme";
 
-const Section = ({ title, children, colors }) => (
-  <View
-    style={{
-      backgroundColor: colors.surface,
-      borderRadius: radii.lg,
-      padding: spacing.lg,
-      marginBottom: spacing.md,
-      borderWidth: 1,
-      borderColor: colors.border,
-    }}
-  >
-    <Text
+const Section = ({ title, children, colors, collapsible = false, defaultExpanded = true }) => {
+  const [expanded, setExpanded] = React.useState(defaultExpanded);
+  const animatedValue = React.useRef(new Animated.Value(defaultExpanded ? 1 : 0)).current;
+
+  const toggleExpand = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    const nextValue = !expanded;
+    setExpanded(nextValue);
+    Animated.timing(animatedValue, {
+      toValue: nextValue ? 1 : 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const rotateChevron = animatedValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0deg", "180deg"],
+  });
+
+  if (collapsible) {
+    return (
+      <View
+        style={{
+          backgroundColor: colors.surface,
+          borderRadius: radii.lg,
+          padding: spacing.lg,
+          marginBottom: spacing.md,
+          borderWidth: 1,
+          borderColor: colors.border,
+          overflow: "hidden",
+        }}
+      >
+        <TouchableOpacity
+          onPress={toggleExpand}
+          activeOpacity={0.7}
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: expanded ? spacing.md : 0,
+          }}
+        >
+          <Text
+            style={{
+              fontFamily: "SpaceGrotesk_600SemiBold",
+              fontSize: 14,
+              color: colors.textSecondary,
+              textTransform: "uppercase",
+              letterSpacing: 0.8,
+            }}
+          >
+            {title}
+          </Text>
+          <Animated.View style={{ transform: [{ rotate: rotateChevron }] }}>
+            <ChevronDown size={18} color={colors.textSecondary} />
+          </Animated.View>
+        </TouchableOpacity>
+        {expanded && <View style={{ marginTop: spacing.sm }}>{children}</View>}
+      </View>
+    );
+  }
+
+  return (
+    <View
       style={{
-        fontFamily: "SpaceGrotesk_600SemiBold",
-        fontSize: 14,
-        color: colors.textSecondary,
+        backgroundColor: colors.surface,
+        borderRadius: radii.lg,
+        padding: spacing.lg,
         marginBottom: spacing.md,
-        textTransform: "uppercase",
-        letterSpacing: 0.8,
+        borderWidth: 1,
+        borderColor: colors.border,
       }}
     >
-      {title}
-    </Text>
-    {children}
-  </View>
-);
+      <Text
+        style={{
+          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontSize: 14,
+          color: colors.textSecondary,
+          marginBottom: spacing.md,
+          textTransform: "uppercase",
+          letterSpacing: 0.8,
+        }}
+      >
+        {title}
+      </Text>
+      {children}
+    </View>
+  );
+};
 
 const additionalDetailFields = {
   fire: [
@@ -989,7 +1055,7 @@ export default function CaseInfoCard({
           )}
         </Section>
 
-        <Section title="Additional Details" colors={colors}>
+        <Section title="Additional Details" colors={colors} collapsible={true} defaultExpanded={false}>
           {hasAdditionalDetails ? (
             <View>
               {caseData.additionalDetailsSubmittedAt && (
@@ -1036,7 +1102,7 @@ export default function CaseInfoCard({
         </Section>
 
         {reporterInfo && (
-          <Section title="Reporter" colors={colors}>
+          <Section title="Reporter" colors={colors} collapsible={true} defaultExpanded={false}>
             <Text
               style={{
                 fontFamily: "SpaceGrotesk_400Regular",
@@ -1076,7 +1142,7 @@ export default function CaseInfoCard({
           </Section>
         )}
 
-        <Section title="Timestamps" colors={colors}>
+        <Section title="Timestamps" colors={colors} collapsible={true} defaultExpanded={false}>
           <Text
             style={{
               fontFamily: "SpaceGrotesk_400Regular",
