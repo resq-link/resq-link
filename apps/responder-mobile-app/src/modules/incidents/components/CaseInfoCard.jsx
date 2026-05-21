@@ -28,7 +28,7 @@ import PriorityBadge from "./PriorityBadge";
 import CustomButton from "@/components/ui/CustomButton";
 import ErrorAlert from "@/components/feedback/ErrorAlert";
 import StickyActionBar from "./StickyActionBar";
-import { Phone, Mail } from "lucide-react-native";
+import { Phone, Mail, Navigation2 } from "lucide-react-native";
 import { radii, spacing, useResqTheme } from "@/theme";
 
 const Section = ({ title, children, colors }) => (
@@ -422,7 +422,7 @@ export default function CaseInfoCard({
           color: colors.text,
         },
         mapShell: {
-          height: 220,
+          height: 280,
           width: "100%",
           borderRadius: radii.md,
           overflow: "hidden",
@@ -479,6 +479,27 @@ export default function CaseInfoCard({
           fontFamily: "SpaceGrotesk_600SemiBold",
           fontSize: 14,
           color: colors.white,
+        },
+        mapFab: {
+          position: "absolute",
+          bottom: spacing.md,
+          right: spacing.md,
+          flexDirection: "row",
+          alignItems: "center",
+          backgroundColor: colors.info,
+          borderRadius: radii.lg,
+          paddingVertical: 8,
+          paddingHorizontal: 14,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.35,
+          shadowRadius: 4,
+          elevation: 6,
+        },
+        mapFabText: {
+          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontSize: 13,
+          color: "#fff",
         },
         touchdownDistanceText: {
           fontFamily: "SpaceGrotesk_400Regular",
@@ -778,10 +799,10 @@ export default function CaseInfoCard({
                 provider={PROVIDER_GOOGLE}
                 style={styles.map}
                 region={mapRegion}
-                scrollEnabled={false}
-                zoomEnabled={false}
-                pitchEnabled={false}
-                rotateEnabled={false}
+                scrollEnabled={true}
+                zoomEnabled={true}
+                pitchEnabled={true}
+                rotateEnabled={true}
               >
                 <Marker
                   coordinate={{
@@ -800,6 +821,16 @@ export default function CaseInfoCard({
                   />
                 )}
               </MapView>
+              <TouchableOpacity
+                style={styles.mapFab}
+                onPress={handleOpenNavigation}
+                activeOpacity={0.85}
+                accessibilityLabel="Open Google Maps navigation"
+                accessibilityRole="button"
+              >
+                <Navigation2 size={15} color="#fff" style={{ marginRight: 5 }} />
+                <Text style={styles.mapFabText}>Navigate</Text>
+              </TouchableOpacity>
             </View>
             <Text
               style={{
@@ -872,15 +903,6 @@ export default function CaseInfoCard({
                 </Text>
               </TouchableOpacity>
             ) : null}
-            <TouchableOpacity
-              onPress={handleOpenNavigation}
-              activeOpacity={0.85}
-              style={styles.navigationButton}
-            >
-              <Text style={styles.navigationButtonText}>
-                Open Google Maps Navigation
-              </Text>
-            </TouchableOpacity>
           </Section>
         )}
 
