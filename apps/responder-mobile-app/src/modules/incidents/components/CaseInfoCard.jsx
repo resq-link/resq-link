@@ -28,6 +28,7 @@ import PriorityBadge from "./PriorityBadge";
 import CustomButton from "@/components/ui/CustomButton";
 import ErrorAlert from "@/components/feedback/ErrorAlert";
 import StickyActionBar from "./StickyActionBar";
+import { Phone, Mail } from "lucide-react-native";
 import { radii, spacing, useResqTheme } from "@/theme";
 
 const Section = ({ title, children, colors }) => (
@@ -246,6 +247,37 @@ export default function CaseInfoCard({
     return remainMins > 0 ? `${hrs} hr ${remainMins} min` : `${hrs} hr`;
   };
 
+  const handleMakeCall = async (phoneNumber) => {
+    if (!phoneNumber) return;
+    const cleanPhone = phoneNumber.replace(/[^\d+]/g, "");
+    const url = `tel:${cleanPhone}`;
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        setError("Your device does not support phone calls");
+      }
+    } catch (err) {
+      setError("Failed to open dialer");
+    }
+  };
+
+  const handleSendEmail = async (emailAddress) => {
+    if (!emailAddress) return;
+    const url = `mailto:${emailAddress}`;
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        setError("Your device does not support sending emails");
+      }
+    } catch (err) {
+      setError("Failed to open email client");
+    }
+  };
+
   const getIncidentTypeName = (type) => {
     const typeMap = {
       fire: "Fire",
@@ -368,6 +400,27 @@ export default function CaseInfoCard({
   const styles = useMemo(
     () =>
       StyleSheet.create({
+        contactRow: {
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: spacing.sm,
+          marginTop: spacing.sm,
+        },
+        contactChip: {
+          flexDirection: "row",
+          alignItems: "center",
+          backgroundColor: colors.surfaceHighlight,
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderRadius: radii.md,
+          paddingVertical: spacing.sm,
+          paddingHorizontal: spacing.md,
+        },
+        contactChipText: {
+          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontSize: 13,
+          color: colors.text,
+        },
         mapShell: {
           height: 220,
           width: "100%",
@@ -972,29 +1025,32 @@ export default function CaseInfoCard({
             >
               {reporterInfo.fullName || reporterInfo.name || "Not available"}
             </Text>
-            {reporterInfo.phone && (
-              <Text
-                style={{
-                  fontFamily: "SpaceGrotesk_400Regular",
-                  fontSize: 14,
-                  color: colors.textSecondary,
-                  marginBottom: 2,
-                }}
-              >
-                {reporterInfo.phone}
-              </Text>
-            )}
-            {reporterInfo.email && (
-              <Text
-                style={{
-                  fontFamily: "SpaceGrotesk_400Regular",
-                  fontSize: 14,
-                  color: colors.textSecondary,
-                }}
-              >
-                {reporterInfo.email}
-              </Text>
-            )}
+            <View style={styles.contactRow}>
+              {reporterInfo.phone && (
+                <TouchableOpacity
+                  style={styles.contactChip}
+                  onPress={() => handleMakeCall(reporterInfo.phone)}
+                  activeOpacity={0.7}
+                  accessibilityLabel={`Call reporter at ${reporterInfo.phone}`}
+                  accessibilityRole="button"
+                >
+                  <Phone size={16} color={colors.accent} style={{ marginRight: 6 }} />
+                  <Text style={styles.contactChipText}>{reporterInfo.phone}</Text>
+                </TouchableOpacity>
+              )}
+              {reporterInfo.email && (
+                <TouchableOpacity
+                  style={styles.contactChip}
+                  onPress={() => handleSendEmail(reporterInfo.email)}
+                  activeOpacity={0.7}
+                  accessibilityLabel={`Email reporter at ${reporterInfo.email}`}
+                  accessibilityRole="button"
+                >
+                  <Mail size={16} color={colors.accent} style={{ marginRight: 6 }} />
+                  <Text style={styles.contactChipText}>{reporterInfo.email}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
           </Section>
         )}
 
