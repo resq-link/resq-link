@@ -78,8 +78,13 @@ const Section = ({ title, children, colors, collapsible = false, defaultExpanded
             alignItems: "center",
             marginBottom: expanded ? spacing.md : 0,
           }}
+          accessibilityRole="button"
+          accessibilityLabel={`${title} section`}
+          accessibilityHint={expanded ? "Double tap to collapse this section" : "Double tap to expand this section"}
+          accessibilityState={{ expanded }}
         >
           <Text
+            accessibilityRole="header"
             style={{
               fontFamily: "SpaceGrotesk_600SemiBold",
               fontSize: 14,
@@ -111,6 +116,7 @@ const Section = ({ title, children, colors, collapsible = false, defaultExpanded
       }}
     >
       <Text
+        accessibilityRole="header"
         style={{
           fontFamily: "SpaceGrotesk_600SemiBold",
           fontSize: 14,
@@ -845,6 +851,7 @@ export default function CaseInfoCard({
           }}
         >
           <Text
+            accessibilityRole="header"
             style={{
               fontFamily: "SpaceGrotesk_700Bold",
               fontSize: 22,
@@ -999,6 +1006,8 @@ export default function CaseInfoCard({
                     }}
                     activeOpacity={0.85}
                     style={styles.postReportButton}
+                    accessibilityRole="button"
+                    accessibilityLabel="Write post-incident report"
                   >
                     <Text style={styles.postReportButtonText}>Post Report</Text>
                   </TouchableOpacity>
@@ -1013,6 +1022,9 @@ export default function CaseInfoCard({
                   styles.touchdownButton,
                   isTouchdownUpdating && styles.disabledButton,
                 ]}
+                accessibilityRole="button"
+                accessibilityLabel="Mark arrival at scene — Touchdown"
+                accessibilityState={{ disabled: isTouchdownUpdating }}
               >
                 <Text style={styles.touchdownButtonText}>
                   {isTouchdownUpdating ? "Marking Touchdown..." : "Touchdown"}
@@ -1042,6 +1054,9 @@ export default function CaseInfoCard({
             <TouchableOpacity
               onPress={() => setImageModalVisible(true)}
               style={{ borderRadius: radii.md, overflow: "hidden" }}
+              accessibilityRole="imagebutton"
+              accessibilityLabel="View full-size incident photo"
+              accessibilityHint="Double tap to open full-screen image viewer"
             >
               <Image
                 source={{ uri: caseData.imageUrl }}
@@ -1052,6 +1067,7 @@ export default function CaseInfoCard({
                 }}
                 contentFit="cover"
                 transition={200}
+                accessibilityLabel="Incident photo uploaded by civilian"
               />
             </TouchableOpacity>
           </Section>
@@ -1172,6 +1188,8 @@ export default function CaseInfoCard({
               <TouchableOpacity
                 style={styles.closeButton}
                 onPress={() => setImageModalVisible(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Close full-screen photo viewer"
               >
                 <Text
                   style={{

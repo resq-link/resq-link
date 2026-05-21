@@ -42,7 +42,7 @@ export default function PostReportModal({
             <View style={[styles.header, { borderBottomColor: colors.border }]}>
               <View style={styles.headerTitleRow}>
                 <ClipboardList size={22} color={colors.accent} style={{ marginRight: 8 }} />
-                <Text style={[styles.modalTitle, { color: colors.text }]}>Post Incident Report</Text>
+                <Text accessibilityRole="header" style={[styles.modalTitle, { color: colors.text }]}>Post Incident Report</Text>
               </View>
               <TouchableOpacity
                 onPress={onClose}
@@ -70,7 +70,7 @@ export default function PostReportModal({
               <View style={[styles.groupContainer, { backgroundColor: colors.background, borderColor: colors.border }]}>
                 <View style={styles.groupHeader}>
                   <ClipboardList size={16} color={colors.textSecondary} style={{ marginRight: 6 }} />
-                  <Text style={[styles.groupTitle, { color: colors.textSecondary }]}>Incident Outcome</Text>
+                  <Text accessibilityRole="header" style={[styles.groupTitle, { color: colors.textSecondary }]}>Incident Outcome</Text>
                 </View>
 
                 {/* Field 1: Reason for incident */}
@@ -84,6 +84,8 @@ export default function PostReportModal({
                     placeholder="e.g. Kitchen cooking mishap, electrical outage"
                     placeholderTextColor={colors.textMuted}
                     editable={!isSubmitting}
+                    accessibilityLabel="Reason for incident"
+                    accessibilityHint="Enter the primary cause or source of the emergency"
                     style={[
                       styles.input,
                       {
@@ -111,6 +113,8 @@ export default function PostReportModal({
                     multiline
                     numberOfLines={4}
                     editable={!isSubmitting}
+                    accessibilityLabel="Scene observations and notes"
+                    accessibilityHint="Describe observations regarding site conditions, hazards, or actions taken"
                     style={[
                       styles.input,
                       styles.textArea,
@@ -131,7 +135,7 @@ export default function PostReportModal({
               <View style={[styles.groupContainer, { backgroundColor: colors.background, borderColor: colors.border }]}>
                 <View style={styles.groupHeader}>
                   <Users size={16} color={colors.textSecondary} style={{ marginRight: 6 }} />
-                  <Text style={[styles.groupTitle, { color: colors.textSecondary }]}>Casualties & Impact</Text>
+                  <Text accessibilityRole="header" style={[styles.groupTitle, { color: colors.textSecondary }]}>Casualties & Impact</Text>
                 </View>
 
                 {/* Field 3: Number of people involved */}
@@ -149,6 +153,8 @@ export default function PostReportModal({
                     placeholderTextColor={colors.textMuted}
                     keyboardType="number-pad"
                     editable={!isSubmitting}
+                    accessibilityLabel="Number of people involved"
+                    accessibilityHint="Enter the total count of affected civilian or responders"
                     style={[
                       styles.input,
                       {
@@ -174,6 +180,8 @@ export default function PostReportModal({
                     placeholder="e.g. Stable, conscious, minor burns treated"
                     placeholderTextColor={colors.textMuted}
                     editable={!isSubmitting}
+                    accessibilityLabel="Civilian status and injuries"
+                    accessibilityHint="Enter the current health state of all patients or individuals on scene"
                     style={[
                       styles.input,
                       {
@@ -199,6 +207,8 @@ export default function PostReportModal({
                     placeholder="e.g. City General Hospital, Emergency Wing"
                     placeholderTextColor={colors.textMuted}
                     editable={!isSubmitting}
+                    accessibilityLabel="Transported hospital name"
+                    accessibilityHint="Optional. Name the hospital or clinic where individuals were evacuated"
                     style={[
                       styles.input,
                       {
@@ -223,6 +233,8 @@ export default function PostReportModal({
                 onPress={onClose}
                 disabled={isSubmitting}
                 style={[styles.cancelButton, { borderColor: colors.border }]}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel report submission"
               >
                 <Text style={[styles.cancelButtonText, { color: colors.textSecondary }]}>Cancel</Text>
               </TouchableOpacity>
@@ -234,6 +246,9 @@ export default function PostReportModal({
                   { backgroundColor: colors.accent },
                   isSubmitting && styles.disabledButton,
                 ]}
+                accessibilityRole="button"
+                accessibilityLabel="Submit report"
+                accessibilityState={{ disabled: isSubmitting }}
               >
                 <Text style={styles.submitButtonText}>
                   {isSubmitting ? "Submitting..." : "Submit Report"}

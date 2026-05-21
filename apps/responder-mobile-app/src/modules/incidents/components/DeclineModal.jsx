@@ -40,7 +40,7 @@ export default function DeclineModal({
             {/* Header */}
             <View style={styles.header}>
               <AlertTriangle size={24} color={colors.error} style={{ marginRight: 8 }} />
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Decline Case</Text>
+              <Text accessibilityRole="header" style={[styles.modalTitle, { color: colors.text }]}>Decline Case</Text>
             </View>
 
             <Text style={[styles.modalDescription, { color: colors.textSecondary }]}>
@@ -58,6 +58,8 @@ export default function DeclineModal({
                 multiline
                 numberOfLines={4}
                 editable={!isSubmitting}
+                accessibilityLabel="Reason for declining response"
+                accessibilityHint="Explain why you cannot respond to this emergency incident"
                 style={[
                   styles.reasonInput,
                   {
@@ -77,6 +79,8 @@ export default function DeclineModal({
                 onPress={onClose}
                 disabled={isSubmitting}
                 style={[styles.reasonCancelButton, { borderColor: colors.border }]}
+                accessibilityRole="button"
+                accessibilityLabel="Cancel decline"
               >
                 <Text style={[styles.reasonCancelText, { color: colors.textSecondary }]}>Cancel</Text>
               </TouchableOpacity>
@@ -88,6 +92,9 @@ export default function DeclineModal({
                   { backgroundColor: colors.error },
                   (isSubmitting || !reason.trim()) && styles.disabledButton,
                 ]}
+                accessibilityRole="button"
+                accessibilityLabel="Submit decline case reason"
+                accessibilityState={{ disabled: isSubmitting || !reason.trim() }}
               >
                 <Text style={styles.reasonSubmitText}>
                   {isSubmitting ? "Declining..." : "Submit Decline"}
