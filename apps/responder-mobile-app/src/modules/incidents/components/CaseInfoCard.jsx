@@ -858,8 +858,8 @@ export default function CaseInfoCard({
           </View>
         </View>
 
-        {hasPinnedLocation && (
-          <Section title="Pinned Location" colors={colors}>
+        <Section title="Location & Map" colors={colors}>
+          {hasPinnedLocation && (
             <View style={styles.mapShell}>
               <MapView
                 provider={PROVIDER_GOOGLE}
@@ -898,40 +898,87 @@ export default function CaseInfoCard({
                 <Text style={styles.mapFabText}>Navigate</Text>
               </TouchableOpacity>
             </View>
+          )}
+
+          <View style={{ marginTop: hasPinnedLocation ? spacing.md : 0 }}>
             <Text
               style={{
-                fontFamily: "SpaceGrotesk_400Regular",
-                fontSize: 13,
-                color: colors.textSecondary,
-                marginTop: spacing.md,
+                fontFamily: "SpaceGrotesk_600SemiBold",
+                fontSize: 15,
+                color: colors.text,
               }}
             >
-              {caseData.locationText || "Pinned incident location"}
+              {caseData.locationText || "Location not available"}
             </Text>
-            <Text
-              style={{
-                fontFamily: "SpaceGrotesk_400Regular",
-                fontSize: 12,
-                color: colors.textMuted,
-                marginTop: 6,
-              }}
-            >
-              {caseData.latitude.toFixed(6)}, {caseData.longitude.toFixed(6)}
-            </Text>
+
+            {caseData.landmark && (
+              <Text
+                style={{
+                  fontFamily: "SpaceGrotesk_400Regular",
+                  fontSize: 14,
+                  color: colors.textSecondary,
+                  marginTop: 4,
+                }}
+              >
+                Nearest landmark: {caseData.landmark}
+              </Text>
+            )}
+
+            {caseData.peopleInvolved != null && (
+              <View
+                style={{
+                  alignSelf: "flex-start",
+                  backgroundColor: colors.surfaceHighlight,
+                  borderRadius: radii.sm,
+                  paddingVertical: 3,
+                  paddingHorizontal: 8,
+                  marginTop: 8,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <Text
+                  style={{
+                    fontFamily: "SpaceGrotesk_600SemiBold",
+                    fontSize: 12,
+                    color: colors.textSecondary,
+                  }}
+                >
+                  People involved: {caseData.peopleInvolved}
+                </Text>
+              </View>
+            )}
+
+            {hasPinnedLocation && (
+              <Text
+                style={{
+                  fontFamily: "SpaceGrotesk_400Regular",
+                  fontSize: 12,
+                  color: colors.textMuted,
+                  marginTop: 8,
+                }}
+              >
+                Coordinates: {caseData.latitude.toFixed(6)}, {caseData.longitude.toFixed(6)}
+              </Text>
+            )}
+
             {responderLocation ? (
               <Text style={styles.currentLocationText}>
                 Your location: {responderLocation.latitude.toFixed(6)},{" "}
                 {responderLocation.longitude.toFixed(6)}
               </Text>
             ) : null}
+
             {locationError ? (
               <Text style={styles.locationErrorText}>{locationError}</Text>
             ) : null}
+
             {touchdownDistanceMeters != null && !caseData.touchdownAt ? (
               <Text style={styles.touchdownDistanceText}>
                 Distance to pinned location: {touchdownDistanceMeters.toFixed(1)} m
               </Text>
             ) : null}
+
             {caseData.touchdownAt ? (
               <View>
                 <Text style={styles.touchdownTimeText}>
@@ -969,8 +1016,8 @@ export default function CaseInfoCard({
                 </Text>
               </TouchableOpacity>
             ) : null}
-          </Section>
-        )}
+          </View>
+        </Section>
 
         {caseData.description && (
           <Section title="Description" colors={colors}>
@@ -1006,54 +1053,6 @@ export default function CaseInfoCard({
             </TouchableOpacity>
           </Section>
         )}
-
-        <Section title="Location" colors={colors}>
-          <Text
-            style={{
-              fontFamily: "SpaceGrotesk_400Regular",
-              fontSize: 15,
-              color: colors.text,
-            }}
-          >
-            {caseData.locationText || "Location not available"}
-          </Text>
-          {caseData.landmark && (
-            <Text
-              style={{
-                fontFamily: "SpaceGrotesk_400Regular",
-                fontSize: 14,
-                color: colors.textSecondary,
-                marginTop: 6,
-              }}
-            >
-              Nearest landmark: {caseData.landmark}
-            </Text>
-          )}
-          {caseData.peopleInvolved != null && (
-            <Text
-              style={{
-                fontFamily: "SpaceGrotesk_400Regular",
-                fontSize: 14,
-                color: colors.textSecondary,
-                marginTop: 6,
-              }}
-            >
-              People involved: {caseData.peopleInvolved}
-            </Text>
-          )}
-          {caseData.latitude != null && caseData.longitude != null && (
-            <Text
-              style={{
-                fontFamily: "SpaceGrotesk_400Regular",
-                fontSize: 12,
-                color: colors.textMuted,
-                marginTop: 6,
-              }}
-            >
-              {caseData.latitude.toFixed(6)}, {caseData.longitude.toFixed(6)}
-            </Text>
-          )}
-        </Section>
 
         <Section title="Additional Details" colors={colors} collapsible={true} defaultExpanded={false}>
           {hasAdditionalDetails ? (
