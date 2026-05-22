@@ -13,11 +13,13 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "seed:incident-types": "ts-node scripts/seed-incident-type-rules.ts",
+    "seed:civilians": "ts-node scripts/create-civilian-users.ts",
     "prepare": "npm run build"
   },
   "dependencies": {
     "firebase": "^12.11.0",
-    "firebase-admin": "^13.0.0"
+    "firebase-admin": "^10.3.0",
+    "yn": "^4.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
@@ -27,6 +29,21 @@
   },
   "peerDependencies": {
     "react": "^18.0.0 || ^19.0.0"
+  },
+  "overrides": {
+    "protobufjs": "6.11.6",
+    "@grpc/proto-loader": {
+      "protobufjs": "6.11.6"
+    },
+    "proto3-json-serializer": {
+      "protobufjs": "6.11.6"
+    },
+    "google-gax": {
+      "protobufjs": "6.11.6",
+      "@grpc/proto-loader": {
+        "protobufjs": "6.11.6"
+      }
+    }
   },
   "private": true
 }

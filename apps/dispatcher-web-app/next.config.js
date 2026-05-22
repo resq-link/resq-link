@@ -6,7 +6,7 @@ const nextConfig = {
   outputFileTracingRoot: path.join(__dirname, "../.."),
   serverExternalPackages: ["firebase-admin"],
   // React Strict Mode double-invokes mount/layout effects in development.
-  // With react-leaflet v4 + Next 15 (React 18), this can trigger duplicate
+  // With react-leaflet + Next 15, this can trigger duplicate
   // Leaflet initialization on the same container ("Map container is already initialized").
   reactStrictMode: false,
   transpilePackages: ["@packages/firebase", "lucide-react"],

@@ -97,9 +97,9 @@ npx ts-node scripts/create-dispatcher-accounts.ts
 npx ts-node scripts/create-command-center.ts
 ```
 
-**Create User Account (Interactive):**
+**Create Civilian Mobile App Users:**
 ```bash
-npx ts-node scripts/create-user-account.ts
+npx ts-node scripts/create-civilian-users.ts
 ```
 
 #### Method B: Using Code in Your Apps

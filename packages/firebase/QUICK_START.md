@@ -81,17 +81,13 @@ This creates:
 - ✅ Quezon City Command Center (`quezon@commandcenter.ph`)
 - ✅ Makati Command Center (`makati@commandcenter.ph`)
 
-#### Create User Account (Interactive)
+#### Create Civilian Mobile App Users
 
 ```bash
-npx ts-node scripts/create-user-account.ts
+npx ts-node scripts/create-civilian-users.ts
 ```
 
-Follow the prompts:
-1. Enter phone number (E.164 format: `+1234567890`)
-2. Enter full name
-3. Enter address
-4. Enter verification code from SMS
+Creates test logins for the civilian app (`civilian@rescue.ph` / `Civilian2024!`, etc.).
 
 ### Option B: Using Code in Your Apps
 

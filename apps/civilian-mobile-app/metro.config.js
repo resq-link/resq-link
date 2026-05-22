@@ -9,11 +9,17 @@ const {
   VIRTUAL_ROOT_UNRESOLVED,
 } = require("./__create/handle-resolve-request-error");
 
-const packagesFirebase = path.resolve(__dirname, "..", "..", "packages", "firebase");
+const monorepoRoot = path.resolve(__dirname, "..", "..");
+const packagesFirebase = path.resolve(monorepoRoot, "packages", "firebase");
 
-const reactNativeRoot = path.dirname(
-  require.resolve("react-native/package.json", { paths: [__dirname] }),
-);
+const resolveMonorepoPackage = (name) =>
+  path.dirname(
+    require.resolve(`${name}/package.json`, {
+      paths: [monorepoRoot, __dirname],
+    }),
+  );
+
+const reactNativeRoot = resolveMonorepoPackage("react-native");
 const RN_TEXT_INPUT_IMPL = path.join(
   reactNativeRoot,
   "Libraries/Components/TextInput/TextInput.js",
@@ -91,15 +97,10 @@ config.resolver = {
   extraNodeModules: {
     ...config.resolver?.extraNodeModules,
     "@packages/firebase": packagesFirebase,
-    expo: path.resolve(__dirname, "node_modules", "expo"),
-    "react-native": path.resolve(__dirname, "node_modules", "react-native"),
-    "expo/virtual/env": path.resolve(
-      __dirname,
-      "node_modules",
-      "expo",
-      "virtual",
-      "env",
-    ),
+    expo: resolveMonorepoPackage("expo"),
+    "react-native": reactNativeRoot,
+    "expo-router": resolveMonorepoPackage("expo-router"),
+    "expo/virtual/env": path.join(resolveMonorepoPackage("expo"), "virtual", "env"),
   },
 };
 

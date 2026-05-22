@@ -84,21 +84,21 @@ npx ts-node scripts/create-command-center.ts
 
 ---
 
-### 3. Create User Account
+### 3. Create Civilian Mobile App Users (automatic — like responders)
 
-Interactive script to create a user account with phone authentication.
+**Use this** for batch seeding. No prompts. Same style as `create-standard-dispatchers-admin.ts`.
 
 ```bash
-npx ts-node scripts/create-user-account.ts
+npx ts-node scripts/create-civilian-users.ts
 ```
 
-**Process:**
-1. Enter phone number (E.164 format: +1234567890)
-2. Enter full name
-3. Enter address
-4. Verification code sent via SMS
-5. Enter the 6-digit code
-6. Account created
+**Login on civilian app (email + password):**
+
+| Email | Password |
+|-------|----------|
+| `civilian@rescue.ph` | `Civilian2024!` |
+| `maria.santos@rescue.ph` | `Civilian2024!` |
+| `juan.delacruz@rescue.ph` | `Civilian2024!` |
 
 ---
 
@@ -139,8 +139,8 @@ npx ts-node scripts/create-dispatcher-accounts.ts
 # Create all command centers
 npx ts-node scripts/create-command-center.ts
 
-# Create user (interactive)
-npx ts-node scripts/create-user-account.ts
+# Civilian mobile app (email/password login)
+npx ts-node scripts/create-civilian-users.ts
 ```
 
 ---
@@ -154,14 +154,6 @@ npx ts-node scripts/create-user-account.ts
 ### "Email already in use"
 - The account already exists
 - Script will skip and continue
-
-### "Invalid phone number"
-- Phone must be in E.164 format: `+[country code][number]`
-- Example: `+1234567890` (US), `+639123456789` (Philippines)
-
-### "Code expired"
-- Verification codes expire after a few minutes
-- Run the script again to get a new code
 
 ---
 

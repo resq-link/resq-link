@@ -182,9 +182,9 @@ const user = await signInCommandCenter(
 ## Complete Example Scripts
 
 See the `scripts/` folder for ready-to-use scripts:
-- `create-user-account.ts` - User account creation
-- `create-dispatcher-accounts.ts` - All dispatcher types
-- `create-command-center.ts` - Command center creation
+- `create-civilian-users.ts` - Civilian mobile app accounts (automatic)
+- `create-standard-dispatchers-admin.ts` - Responder/dispatcher accounts
+- `create-command-center.ts` - Command center accounts
 
 ---
 
