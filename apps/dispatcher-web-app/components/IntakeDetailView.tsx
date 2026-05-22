@@ -9,8 +9,10 @@ import {
   type IncidentRecord, 
   getAllDispatchers,
   getSuggestedAgenciesForEmergencyType,
+  subscribeToResources,
   subscribeToDispatcherLocations,
   type DispatcherLocation,
+  type ResourceRecord,
   query,
   collection,
   where,
@@ -92,6 +94,22 @@ const formatResponseTime = (seconds: number | null | undefined) => {
   return `${secs} sec`;
 };
 
+const getResponderResource = (resources: ResourceRecord[], responderId: string) =>
+  resources.find((resource) => {
+    const ids = [
+      resource.primaryResponderId,
+      resource.assignedResponderId,
+      ...(Array.isArray(resource.assignedResponderIds) ? resource.assignedResponderIds : []),
+    ];
+    return resource.status === "available" && ids.includes(responderId);
+  }) || null;
+
+const isSuggestedResourceForAgencies = (resource: ResourceRecord | null, agencies: string[]) => {
+  if (!resource) return false;
+  const haystack = `${resource.type} ${resource.agency || ""} ${resource.department || ""}`.toUpperCase();
+  return agencies.some((agency) => haystack.includes(agency));
+};
+
 interface IntakeDetailViewProps {
   item: any | null // IntakeQueueItem
   recentIncidents?: IncidentRecord[]
@@ -137,6 +155,12 @@ export default function IntakeDetailView({
   const [responderLocation, setResponderLocation] = useState<DispatcherLocation | null>(null);
   const [associatedReports, setAssociatedReports] = useState<EmergencyReport[]>([]);
   const [isLinking, setIsLinking] = useState(false);
+  const [resources, setResources] = useState<ResourceRecord[]>([]);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToResources(setResources);
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     setIsElevateModalOpen(false);
@@ -342,6 +366,29 @@ export default function IntakeDetailView({
 
   const suggestedAgencies = isEmergency ? getSuggestedAgenciesForEmergencyType(report?.incidentType) : [];
   const primarySuggestedAgency = suggestedAgencies[0] || null;
+  const reportQuadrant = (report as any)?.quadrant || null;
+  const hasLocalSuggestedAppResource = Boolean(
+    reportQuadrant &&
+      resources.some(
+        (resource) =>
+          resource.quadrant === reportQuadrant &&
+          isSuggestedResourceForAgencies(resource, suggestedAgencies),
+      ),
+  );
+
+  const getResponderFallbackLabel = (responder: any) => {
+    const resource = getResponderResource(resources, responder.uid);
+    if (
+      !reportQuadrant ||
+      hasLocalSuggestedAppResource ||
+      !isSuggestedResourceForAgencies(resource, suggestedAgencies) ||
+      resource?.quadrant === reportQuadrant
+    ) {
+      return "";
+    }
+
+    return ` - Nearby fallback${resource?.quadrant ? `: ${resource.quadrant}` : ""}`;
+  };
 
   const expectedAdditionalFields = isEmergency ? getExpectedAdditionalFields(report?.incidentType) : [];
 
@@ -353,7 +400,25 @@ export default function IntakeDetailView({
     try {
       const accounts = await getAllDispatchers();
       const responderPool = accounts.filter((entry) => (entry.account.designation || "").toLowerCase().includes("responder"));
-      const finalPool = responderPool.length > 0 ? responderPool : accounts;
+      const reportSuggestedAgencies = report ? getSuggestedAgenciesForEmergencyType(report.incidentType) : [];
+      const finalPool = [...(responderPool.length > 0 ? responderPool : accounts)].sort((left, right) => {
+        const leftResource = getResponderResource(resources, left.uid);
+        const rightResource = getResponderResource(resources, right.uid);
+        const leftSuggested = reportSuggestedAgencies.includes(left.account.role) || isSuggestedResourceForAgencies(leftResource, reportSuggestedAgencies);
+        const rightSuggested = reportSuggestedAgencies.includes(right.account.role) || isSuggestedResourceForAgencies(rightResource, reportSuggestedAgencies);
+        const leftLocal = Boolean(reportQuadrant && leftResource?.quadrant === reportQuadrant);
+        const rightLocal = Boolean(reportQuadrant && rightResource?.quadrant === reportQuadrant);
+        const rank = (suggested: boolean, local: boolean) => {
+          if (suggested && local) return 0;
+          if (suggested) return 1;
+          if (local) return 2;
+          return 3;
+        };
+        const leftRank = rank(leftSuggested, leftLocal);
+        const rightRank = rank(rightSuggested, rightLocal);
+        if (leftRank !== rightRank) return leftRank - rightRank;
+        return (left.account.fullName || left.account.email || left.uid).localeCompare(right.account.fullName || right.account.email || right.uid);
+      });
       setResponders(finalPool);
       if (finalPool.length > 0) setSelectedResponderId(finalPool[0].uid);
     } catch (error: any) {
@@ -929,6 +994,11 @@ export default function IntakeDetailView({
                 <label className="text-[9px] uppercase tracking-[0.2em] font-black text-slate-500 block">
                   Select Dispatch Responder / Unit
                 </label>
+                {!hasLocalSuggestedAppResource && reportQuadrant ? (
+                  <p className="text-[10px] font-bold text-amber-300">
+                    No suggested available resource is bound in this report quadrant; nearby fallback units are included.
+                  </p>
+                ) : null}
                 <div className="relative">
                   <select
                     value={selectedResponderId}
@@ -942,7 +1012,7 @@ export default function IntakeDetailView({
                     ) : (
                       responders.map((r) => (
                         <option key={r.uid} value={r.uid}>
-                          {r.account.fullName || r.account.email} ({r.account.role})
+                          {r.account.fullName || r.account.email} ({r.account.role}){getResponderFallbackLabel(r) || (suggestedAgencies.includes(r.account.role) ? " - Suggested" : "")}
                         </option>
                       ))
                     )}

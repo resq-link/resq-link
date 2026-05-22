@@ -159,6 +159,45 @@ service cloud.firestore {
       allow create, update, delete: if isAuthenticated() && (isCommandCenter() || isDispatcher() || isSuperAdmin());
     }
 
+    // Incident/report voice call requests. Mobile civilians create their own
+    // ringing sessions; command center/dispatchers can observe and answer them.
+    match /callSessions/{sessionId} {
+      function isCallOwner() {
+        return isAuthenticated() && resource.data.callerUserId == request.auth.uid;
+      }
+
+      function isNewCallOwner() {
+        return isAuthenticated() && request.resource.data.callerUserId == request.auth.uid;
+      }
+
+      function isAssignedResponder() {
+        return isAuthenticated() && (
+          resource.data.responderUserId == request.auth.uid ||
+          resource.data.assignedResponderId == request.auth.uid
+        );
+      }
+
+      allow create: if isNewCallOwner()
+        && request.resource.data.status == 'ringing'
+        && request.resource.data.callerRole == 'civilian'
+        && request.resource.data.channelName == ('incident_' + request.resource.data.incidentId)
+        && request.resource.data.keys().hasAll([
+          'incidentId',
+          'channelName',
+          'callerUserId',
+          'callerRole',
+          'status',
+          'createdAt',
+          'updatedAt'
+        ]);
+
+      allow read: if isAuthenticated();
+
+      allow update: if isAuthenticated();
+
+      allow delete: if isCommandCenter() || isSuperAdmin();
+    }
+
     // Teams collection - shared operational team definitions
     match /teams/{teamId} {
       allow read: if isAuthenticated();

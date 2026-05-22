@@ -15,6 +15,7 @@ import {
   elevateEmergencyToIncident,
   getAgencyLabel,
   getIncidentResourceMatch,
+  isIncidentResourceSuggested,
   getSuggestedAgenciesForEmergencyType,
   markEmergencyReportViewed,
   moveEmergencyReportToHistory,
@@ -389,8 +390,102 @@ const toQueueItemFromEmergency = (report: EmergencyReport): IntakeQueueItem => {
   };
 };
 
-const sortResourcesByName = (resources: ResourceRecord[]) =>
-  [...resources].sort((left, right) => left.name.localeCompare(right.name));
+const hasLocalSuggestedResource = (
+  resources: ResourceRecord[],
+  rule: IncidentTypeRule,
+  incidentQuadrant?: OperationalQuadrant | null,
+) =>
+  Boolean(incidentQuadrant) &&
+  resources.some(
+    (resource) =>
+      resource.quadrant === incidentQuadrant &&
+      isIncidentResourceSuggested(resource, rule),
+  );
+
+const getResourceFallbackLabel = (
+  resource: ResourceRecord,
+  rule: IncidentTypeRule,
+  incidentQuadrant?: OperationalQuadrant | null,
+) => {
+  if (!incidentQuadrant || resource.quadrant === incidentQuadrant) {
+    return null;
+  }
+
+  return isIncidentResourceSuggested(resource, rule)
+    ? `Nearby fallback${resource.quadrant ? `: ${QUADRANT_LABELS[resource.quadrant]}` : ""}`
+    : null;
+};
+
+const calculateDistanceMeters = (
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+) => {
+  const radiusMeters = 6371e3;
+  const phi1 = (lat1 * Math.PI) / 180;
+  const phi2 = (lat2 * Math.PI) / 180;
+  const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
+  const deltaLambda = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+    Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+  return radiusMeters * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
+const getResourceDistanceMeters = (
+  resource: ResourceRecord,
+  incidentLatitude?: number | null,
+  incidentLongitude?: number | null,
+) => {
+  const resourceLatitude = resource.currentLatitude ?? resource.stationLatitude;
+  const resourceLongitude = resource.currentLongitude ?? resource.stationLongitude;
+  if (
+    incidentLatitude == null ||
+    incidentLongitude == null ||
+    resourceLatitude == null ||
+    resourceLongitude == null
+  ) {
+    return Number.POSITIVE_INFINITY;
+  }
+
+  return calculateDistanceMeters(
+    incidentLatitude,
+    incidentLongitude,
+    resourceLatitude,
+    resourceLongitude,
+  );
+};
+
+const sortResourcesByDispatchPriority = (
+  resources: ResourceRecord[],
+  rule: IncidentTypeRule,
+  incidentQuadrant?: OperationalQuadrant | null,
+  incidentLatitude?: number | null,
+  incidentLongitude?: number | null,
+) =>
+  [...resources].sort((left, right) => {
+    const leftSuggested = isIncidentResourceSuggested(left, rule);
+    const rightSuggested = isIncidentResourceSuggested(right, rule);
+    const leftLocal = Boolean(incidentQuadrant && left.quadrant === incidentQuadrant);
+    const rightLocal = Boolean(incidentQuadrant && right.quadrant === incidentQuadrant);
+    const rank = (suggested: boolean, local: boolean) => {
+      if (suggested && local) return 0;
+      if (suggested) return 1;
+      if (local) return 2;
+      return 3;
+    };
+
+    const leftRank = rank(leftSuggested, leftLocal);
+    const rightRank = rank(rightSuggested, rightLocal);
+    if (leftRank !== rightRank) return leftRank - rightRank;
+
+    const leftDistance = getResourceDistanceMeters(left, incidentLatitude, incidentLongitude);
+    const rightDistance = getResourceDistanceMeters(right, incidentLatitude, incidentLongitude);
+    if (leftDistance !== rightDistance) return leftDistance - rightDistance;
+
+    return left.name.localeCompare(right.name);
+  });
 
 const appSources: IncidentSource[] = ["civilian_app"];
 const smsCallSources: IncidentSource[] = ["sms", "call"];
@@ -528,12 +623,46 @@ function IntakeContent() {
       return [];
     }
 
-    return sortResourcesByName(
+    return sortResourcesByDispatchPriority(
       resources.filter((resource) =>
         getIncidentResourceMatch(resource, selectedRule),
       ),
+      selectedRule,
+      formState.quadrant || null,
+      toNumberOrNull(formState.latitude),
+      toNumberOrNull(formState.longitude),
     );
-  }, [resources, selectedRule]);
+  }, [formState.latitude, formState.longitude, formState.quadrant, resources, selectedRule]);
+
+  const hasLocalSuggestedResourceForNewIncident = useMemo(
+    () =>
+      selectedRule
+        ? hasLocalSuggestedResource(
+            matchingResources,
+            selectedRule,
+            formState.quadrant || null,
+          )
+        : false,
+    [formState.quadrant, matchingResources, selectedRule],
+  );
+
+  const hasNearbySuggestedFallbackForNewIncident = useMemo(
+    () =>
+      Boolean(
+        selectedRule &&
+          formState.quadrant &&
+          !hasLocalSuggestedResourceForNewIncident &&
+          matchingResources.some((resource) =>
+            Boolean(getResourceFallbackLabel(resource, selectedRule, formState.quadrant || null)),
+          ),
+      ),
+    [
+      formState.quadrant,
+      hasLocalSuggestedResourceForNewIncident,
+      matchingResources,
+      selectedRule,
+    ],
+  );
 
   const selectedResources = useMemo(
     () =>
@@ -557,12 +686,56 @@ function IntakeContent() {
       return [];
     }
 
-    return sortResourcesByName(
+    return sortResourcesByDispatchPriority(
       resources.filter((resource) =>
         getIncidentResourceMatch(resource, selectedExistingRule),
       ),
+      selectedExistingRule,
+      selectedExistingIncident?.quadrant || null,
+      selectedExistingIncident?.latitude ?? null,
+      selectedExistingIncident?.longitude ?? null,
     );
-  }, [resources, selectedExistingRule]);
+  }, [resources, selectedExistingIncident, selectedExistingRule]);
+
+  const hasLocalSuggestedResourceForExistingIncident = useMemo(
+    () =>
+      selectedExistingRule
+        ? hasLocalSuggestedResource(
+            matchingResourcesForExistingIncident,
+            selectedExistingRule,
+            selectedExistingIncident?.quadrant || null,
+          )
+        : false,
+    [
+      matchingResourcesForExistingIncident,
+      selectedExistingIncident?.quadrant,
+      selectedExistingRule,
+    ],
+  );
+
+  const hasNearbySuggestedFallbackForExistingIncident = useMemo(
+    () =>
+      Boolean(
+        selectedExistingRule &&
+          selectedExistingIncident?.quadrant &&
+          !hasLocalSuggestedResourceForExistingIncident &&
+          matchingResourcesForExistingIncident.some((resource) =>
+            Boolean(
+              getResourceFallbackLabel(
+                resource,
+                selectedExistingRule,
+                selectedExistingIncident.quadrant,
+              ),
+            ),
+          ),
+      ),
+    [
+      hasLocalSuggestedResourceForExistingIncident,
+      matchingResourcesForExistingIncident,
+      selectedExistingIncident?.quadrant,
+      selectedExistingRule,
+    ],
+  );
 
   const activeIncidentCount = useMemo(
     () =>
@@ -602,7 +775,7 @@ function IntakeContent() {
   );
 
   const awaitingResourcesCount = useMemo(() => 
-    recentIncidents.filter(i => i.status === "awaiting_resources").length,
+    recentIncidents.filter(i => i.status === "awaiting_resources" || i.status === "liaison_pending").length,
     [recentIncidents]
   );
 
@@ -1241,7 +1414,7 @@ function IntakeContent() {
                 </div>
               ) : null}
 
-              {selectedExistingIncident?.status === "awaiting_resources" ? (
+              {selectedExistingIncident?.status === "awaiting_resources" || selectedExistingIncident?.status === "liaison_pending" ? (
                 <section className="mb-3 shrink-0 rounded-xl border border-amber-900/50 bg-amber-950/20 p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
@@ -1249,8 +1422,13 @@ function IntakeContent() {
                         Awaiting Dispatch
                       </h3>
                       <p className="mt-1 text-xs text-amber-100/70">
-                        Add the required live resources, or remove this intake entry.
+                        Select any available live resource. Suggested resources are listed first.
                       </p>
+                      {hasNearbySuggestedFallbackForExistingIncident ? (
+                        <p className="mt-1 text-xs font-semibold text-amber-100">
+                          No suggested resource is available in {selectedExistingIncident?.quadrant ? QUADRANT_LABELS[selectedExistingIncident.quadrant] : "this quadrant"}; nearby quadrant fallback options are available.
+                        </p>
+                      ) : null}
                     </div>
                     <button
                       type="button"
@@ -1265,14 +1443,14 @@ function IntakeContent() {
                   <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
-                        Available Matching Resources
+                        Available Resources
                       </p>
                       <div className="mt-2 max-h-28 overflow-y-auto rounded-lg border border-slate-800 bg-slate-950/70 p-2 custom-scrollbar">
                         {isLoadingResources ? (
                           <p className="text-xs text-slate-500">Loading resources...</p>
                         ) : matchingResourcesForExistingIncident.length === 0 ? (
                           <p className="text-xs text-slate-500">
-                            No available resource currently matches this incident routing.
+                            No available resource is currently ready for dispatch.
                           </p>
                         ) : (
                           <div className="grid gap-1.5 md:grid-cols-2">
@@ -1290,6 +1468,17 @@ function IntakeContent() {
                                 <span className="truncate text-[10px] font-medium text-slate-300">
                                   {resource.name}
                                 </span>
+                                {selectedExistingRule ? (
+                                  getResourceFallbackLabel(resource, selectedExistingRule, selectedExistingIncident?.quadrant || null) ? (
+                                    <span className="ml-auto shrink-0 rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-amber-200">
+                                      {getResourceFallbackLabel(resource, selectedExistingRule, selectedExistingIncident?.quadrant || null)}
+                                    </span>
+                                  ) : isIncidentResourceSuggested(resource, selectedExistingRule) ? (
+                                    <span className="ml-auto shrink-0 rounded border border-primary-500/30 bg-primary-500/10 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-primary-200">
+                                      Suggested
+                                    </span>
+                                  ) : null
+                                ) : null}
                               </label>
                             ))}
                           </div>
@@ -1725,7 +1914,7 @@ function IntakeContent() {
                         <p className="text-xs text-slate-500 italic">Select subtype to view routing.</p>
                       ) : (
                         <div className="space-y-2">
-                          <p className="text-xs text-slate-300">Agencies: <span className="text-primary-400 font-bold">{selectedRule.recommendedAgencies.join(", ")}</span></p>
+                          <p className="text-xs text-slate-300">Suggested agencies: <span className="text-primary-400 font-bold">{selectedRule.recommendedAgencies.join(", ")}</span></p>
                           <p className="text-xs text-slate-300">Priority: <span className="text-amber-400 uppercase font-black">{selectedRule.priority}</span></p>
                         </div>
                       )}
@@ -1733,6 +1922,11 @@ function IntakeContent() {
                     
                     <section className="rounded-lg border border-slate-800 bg-slate-950/40 p-4">
                        <h3 className="text-xs font-bold text-slate-100 uppercase tracking-widest mb-3">Live Dispatch</h3>
+                       {hasNearbySuggestedFallbackForNewIncident ? (
+                         <p className="mb-2 text-xs font-semibold text-amber-200">
+                           No suggested resource is available in {formState.quadrant ? QUADRANT_LABELS[formState.quadrant] : "this quadrant"}; nearby quadrant fallback options are shown.
+                         </p>
+                       ) : null}
                        {isLoadingResources ? (
                          <div className="flex items-center gap-2 text-xs text-slate-500">
                            <div className="w-3 h-3 border-2 border-primary-500 border-t-transparent animate-spin rounded-full"></div>
@@ -1748,7 +1942,18 @@ function IntakeContent() {
                                   onChange={() => r.id && toggleResourceSelection(r.id)}
                                   className="rounded border-slate-700 bg-slate-950 text-primary-500"
                                 />
-                                <span className="text-[10px] font-medium text-slate-300 truncate">{r.name}</span>
+                                <span className="min-w-0 flex-1 truncate text-[10px] font-medium text-slate-300">{r.name}</span>
+                                {selectedRule ? (
+                                  getResourceFallbackLabel(r, selectedRule, formState.quadrant || null) ? (
+                                    <span className="shrink-0 rounded border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-amber-200">
+                                      {getResourceFallbackLabel(r, selectedRule, formState.quadrant || null)}
+                                    </span>
+                                  ) : isIncidentResourceSuggested(r, selectedRule) ? (
+                                    <span className="shrink-0 rounded border border-primary-500/30 bg-primary-500/10 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-primary-200">
+                                      Suggested
+                                    </span>
+                                  ) : null
+                                ) : null}
                               </label>
                             ))}
                          </div>

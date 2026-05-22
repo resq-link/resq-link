@@ -11,7 +11,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.tuguegarao.resqlink",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSMicrophoneUsageDescription": "Allow RESQ-Link to use your microphone for emergency voice calls."
       }
     },
     "android": {
@@ -81,8 +82,6 @@
       "apiUrl": "http://localhost:4000",
       "uiMode": false
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    }
+    "runtimeVersion": "1.0.0"
   }
 }

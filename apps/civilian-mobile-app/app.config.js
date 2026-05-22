@@ -57,6 +57,9 @@ module.exports = ({ config }) => {
         messagingSenderId: getEnv('FIREBASE_MESSAGING_SENDER_ID'),
         appId: getEnv('FIREBASE_APP_ID'),
       },
+      agora: {
+        appId: getEnv('AGORA_APP_ID'),
+      },
     },
   };
 };

@@ -616,7 +616,7 @@ export async function createIncident(input: CreateIncidentInput): Promise<Incide
 
   const incidentsRef = collection(getFirebaseFirestore(), 'incidents');
   const createdAt = Timestamp.now();
-  const initialStatus: IncidentStatus = rule.requiresExternalAgency ? 'liaison_pending' : 'awaiting_resources';
+  const initialStatus: IncidentStatus = 'awaiting_resources';
   const referenceNumber = `INC-${Date.now()}`;
 
   const payload: Omit<IncidentRecord, 'id' | 'createdAt' | 'updatedAt'> & {
@@ -644,7 +644,7 @@ export async function createIncident(input: CreateIncidentInput): Promise<Incide
     notes: normalizeNullableString(input.notes),
     requiresExternalAgency: rule.requiresExternalAgency,
     recommendedAgencies: rule.recommendedAgencies,
-    assignedAgencies: rule.recommendedAgencies,
+    assignedAgencies: [],
     assignedResourceIds: [],
     teamId: normalizeNullableString(input.teamId),
     // Team assignment is derived from the selected "teamOnDuty" only.
@@ -694,11 +694,6 @@ export async function dispatchIncidentResources(
     throw new Error('Only the command center admin assigned to the incident can dispatch resources.');
   }
 
-  const rule = await resolveIncidentTypeRuleById(incident.incidentSubtypeId);
-  if (!rule) {
-    throw new Error('Incident rule no longer exists.');
-  }
-
   const resources = await Promise.all(
     normalizedIds.map(async (resourceId) => {
       const resourceSnapshot = await getDoc(doc(getFirebaseFirestore(), 'resources', resourceId));
@@ -741,36 +736,18 @@ export async function dispatchIncidentResources(
     })
   );
 
-  const resourceAgencyCodes = Array.from(new Set(resources.map(({ resource }) => inferAgencyCodeForResource(resource))));
-  const invalidAgency = resourceAgencyCodes.find((agency) => !incident.assignedAgencies.includes(agency));
-  if (invalidAgency) {
-    throw new Error(`Selected resource does not match the mandatory agency routing: ${getAgencyLabel(invalidAgency)}.`);
-  }
-
-  const missingAgencies = incident.assignedAgencies.filter((agency) => !resourceAgencyCodes.includes(agency));
-  const requiredResourceTypes = getExpectedResourceTypesForAgencies(incident.assignedAgencies);
-  const selectedTypes = Array.from(new Set(resources.map(({ resource }) => resource.type)));
-  const missingResourceTypes = requiredResourceTypes.filter((type) => !selectedTypes.includes(type));
-  const hasTypeCoverage =
-    requiredResourceTypes.length === 0 ||
-    missingResourceTypes.length === 0;
-
-  if (missingAgencies.length > 0 && hasTypeCoverage === false) {
-    throw new Error(
-      `Selected resources do not fully cover the mandatory agency recommendation. Missing: ${missingAgencies.map(getAgencyLabel).join(', ')} / ${missingResourceTypes.join(', ')}.`
-    );
-  }
-
   const unavailable = resources.find(({ resource }) => !isResourceAvailable(resource.status));
   if (unavailable) {
     throw new Error(`Resource "${unavailable.resource.name}" is not available.`);
   }
 
+  const resourceAgencyCodes = Array.from(new Set(resources.map(({ resource }) => inferAgencyCodeForResource(resource))));
   const boundResponderIds = Array.from(
     new Set((await Promise.all(resources.map(({ resource }) => assertResourceHasActiveResponder(resource)))).flat())
   );
   const existingIds = incident.assignedResourceIds || [];
   const mergedResourceIds = Array.from(new Set([...existingIds, ...normalizedIds, ...boundResponderIds]));
+  const assignedAgencies = Array.from(new Set([...(incident.assignedAgencies || []), ...resourceAgencyCodes]));
   const batch = writeBatch(getFirebaseFirestore());
   const dispatchesRef = collection(getFirebaseFirestore(), 'incidentDispatches');
   const timestamp = Timestamp.now();
@@ -798,7 +775,7 @@ export async function dispatchIncidentResources(
   });
 
   batch.update(incidentRef, {
-    assignedAgencies: rule.recommendedAgencies,
+    assignedAgencies,
     assignedResourceIds: mergedResourceIds,
     status: 'dispatched',
     updatedAt: timestamp,
@@ -943,12 +920,19 @@ export function getIncidentResourceMatch(
     return false;
   }
 
-  const inferredAgency = inferAgencyCodeForResource(resource);
-  if (rule.recommendedAgencies.includes(inferredAgency)) {
-    return true;
+  return true;
+}
+
+export function isIncidentResourceSuggested(
+  resource: Pick<ResourceRecord, 'agency' | 'department' | 'type' | 'status' | 'primaryResponderId' | 'assignedResponderId' | 'assignedResponderIds'>,
+  rule: IncidentTypeRule
+): boolean {
+  if (!getIncidentResourceMatch(resource, rule)) {
+    return false;
   }
 
-  return rule.suggestedResourceTypes.includes(resource.type);
+  const inferredAgency = inferAgencyCodeForResource(resource);
+  return rule.recommendedAgencies.includes(inferredAgency) || rule.suggestedResourceTypes.includes(resource.type);
 }
 
 export function validateIncidentAgencyRouting(

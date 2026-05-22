@@ -65,6 +65,7 @@ export default function RootLayout() {
             <Stack.Screen name="emergency-form" />
             <Stack.Screen name="footage-request" />
             <Stack.Screen name="emergency-confirmation" />
+            <Stack.Screen name="calling" />
             <Stack.Screen name="responder-map" />
             <Stack.Screen name="appearance" />
             <Stack.Screen name="notifications" />

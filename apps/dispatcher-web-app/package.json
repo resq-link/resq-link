@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@packages/firebase": "file:../../packages/firebase",
+    "agora-rtc-sdk-ng": "^4.24.3",
+    "agora-token": "^2.0.5",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.562.0",
     "next": "^15.5.14",

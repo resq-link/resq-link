@@ -5,12 +5,13 @@ import {
   ScrollView,
   Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { CheckCircle2, Radio } from "lucide-react-native";
+import { CheckCircle2, Mic, MicOff, PhoneOff, Radio, Volume2 } from "lucide-react-native";
 import {
   Inter_400Regular,
   Inter_600SemiBold,
@@ -20,9 +21,15 @@ import { useFonts } from "expo-font";
 import CustomButton from "../components/CustomButton";
 import { useAppTheme } from "@/utils/useAppTheme";
 import {
+  endIncidentCallSession,
+  failIncidentCallSession,
+  markIncidentCallConnected,
+  startIncidentCallSession,
+  subscribeToIncidentCallSessions,
   subscribeToEmergencyReport,
   submitEmergencyAdditionalDetails,
 } from "@packages/firebase";
+import { useAgoraVoiceCall } from "@/hooks/useAgoraVoiceCall";
 
 const getExpectedAdditionalFields = (incidentType) => {
   const fieldMap = {
@@ -89,6 +96,9 @@ export default function EmergencyConfirmationScreen() {
   const [isSubmittingDetails, setIsSubmittingDetails] = useState(false);
   const [detailError, setDetailError] = useState("");
   const [detailValues, setDetailValues] = useState({});
+  const [callSession, setCallSession] = useState(null);
+  const [callError, setCallError] = useState("");
+  const voiceCall = useAgoraVoiceCall();
   const channelWave = useRef(new Animated.Value(0)).current;
   const ringPulseA = useRef(new Animated.Value(0)).current;
   const ringPulseB = useRef(new Animated.Value(0)).current;
@@ -157,6 +167,25 @@ export default function EmergencyConfirmationScreen() {
     return unsubscribe;
   }, [reportId]);
 
+  useEffect(() => {
+    if (!report?.incidentId) {
+      setCallSession(null);
+      return;
+    }
+
+    const unsubscribe = subscribeToIncidentCallSessions(report.incidentId, (sessions) => {
+      const ownUserId = report.userId;
+      const activeSession = sessions.find(
+        (session) =>
+          session.callerUserId === ownUserId &&
+          ["ringing", "accepted", "connected"].includes(session.status)
+      );
+      setCallSession(activeSession || null);
+    });
+
+    return unsubscribe;
+  }, [report?.incidentId, report?.userId]);
+
   const expectedFields = useMemo(
     () => getExpectedAdditionalFields(report?.incidentType || "other_emergency"),
     [report?.incidentType],
@@ -210,7 +239,49 @@ export default function EmergencyConfirmationScreen() {
     }
   };
 
+  const handleStartCall = async () => {
+    const callIncidentId = report?.incidentId || (reportId ? `report_${reportId}` : "");
+    if (!callIncidentId) {
+      setCallError("Report ID is missing.");
+      return;
+    }
+
+    setCallError("");
+    try {
+      const session = await startIncidentCallSession({
+        incidentId: callIncidentId,
+        responderUserId: report.assignedResponderId || null,
+        assignedResponderId: report.assignedResponderId || null,
+      });
+      setCallSession(session);
+      await voiceCall.join({
+        incidentId: session.incidentId,
+        channelName: session.channelName,
+        onRemoteJoined: () => markIncidentCallConnected(session.id).catch(console.error),
+        onError: (error) => {
+          if (session.id) {
+            failIncidentCallSession(session.id, error?.message).catch(console.error);
+          }
+        },
+      });
+    } catch (error) {
+      setCallError(error?.message || "Voice call failed. Your report remains submitted.");
+    }
+  };
+
+  const handleEndCall = async () => {
+    const sessionId = callSession?.id;
+    await voiceCall.leave();
+    if (sessionId) {
+      await endIncidentCallSession(sessionId).catch(console.error);
+    }
+    setCallSession(null);
+  };
+
   const ACCENT = "#9AFF55";
+  const canStartVoiceCall = Boolean(report?.incidentId || reportId);
+  const activeCallStatus = callSession?.status || voiceCall.phase;
+  const callIsLinkedToIncident = Boolean(report?.incidentId);
 
   const hubScale = channelWave.interpolate({
     inputRange: [0, 0.5, 1],
@@ -559,6 +630,111 @@ export default function EmergencyConfirmationScreen() {
               </Text>
             </View>
           ) : null}
+
+          <View
+            style={{
+              marginTop: 16,
+              paddingTop: 16,
+              borderTopWidth: 1,
+              borderTopColor: colors.border,
+            }}
+          >
+            <Text
+              style={{
+                fontFamily: "Inter_700Bold",
+                fontSize: 16,
+                color: colors.text,
+                marginBottom: 8,
+              }}
+            >
+              Incident voice call
+            </Text>
+            <Text
+              style={{
+                fontFamily: "Inter_400Regular",
+                fontSize: 13,
+                color: colors.textSecondary,
+                lineHeight: 19,
+                marginBottom: 12,
+              }}
+            >
+              {canStartVoiceCall
+                ? activeCallStatus === "connected"
+                  ? "Connected to the incident voice channel."
+                  : callSession
+                    ? "Calling the command center..."
+                    : callIsLinkedToIncident
+                      ? "Call the assigned responder for this incident."
+                      : "Notify the command center from this report."
+                : "Available after the report is submitted."}
+            </Text>
+
+            {callError || voiceCall.error ? (
+              <Text
+                style={{
+                  fontFamily: "Inter_400Regular",
+                  fontSize: 13,
+                  color: "#FF8A8A",
+                  marginBottom: 12,
+                }}
+              >
+                {callError || voiceCall.error} The report stays submitted as fallback.
+              </Text>
+            ) : null}
+
+            {callSession ? (
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <TouchableOpacity
+                  onPress={voiceCall.toggleMute}
+                  style={{
+                    flex: 1,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    paddingVertical: 12,
+                    alignItems: "center",
+                    backgroundColor: colors.background,
+                  }}
+                >
+                  {voiceCall.muted ? <MicOff size={18} color={colors.text} /> : <Mic size={18} color={colors.text} />}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={voiceCall.toggleSpeaker}
+                  style={{
+                    flex: 1,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    paddingVertical: 12,
+                    alignItems: "center",
+                    backgroundColor: colors.background,
+                  }}
+                >
+                  <Volume2 size={18} color={voiceCall.speakerEnabled ? ACCENT : colors.textSecondary} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleEndCall}
+                  style={{
+                    flex: 1,
+                    borderRadius: 12,
+                    paddingVertical: 12,
+                    alignItems: "center",
+                    backgroundColor: "#FF3B30",
+                  }}
+                >
+                  <PhoneOff size={18} color="#FFFFFF" />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <CustomButton
+                title={voiceCall.phase === "joining" ? "Joining..." : "Start Voice Call"}
+                onPress={handleStartCall}
+                variant="primary"
+                buttonVariant="login"
+                disabled={!canStartVoiceCall || voiceCall.phase === "joining"}
+              />
+            )}
+          </View>
         </View>
       </ScrollView>
     </View>
