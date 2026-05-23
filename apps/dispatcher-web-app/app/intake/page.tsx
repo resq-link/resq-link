@@ -368,7 +368,7 @@ const emergencyReportSyncKey = (report: EmergencyReport): string =>
     report.priority ?? "",
     report.assignedResponderId ?? "",
     report.responder ?? "",
-    String(report.updatedAt?.seconds ?? report.updatedAt ?? ""),
+    String(toMillis(report.updatedAt)),
   ].join("|");
 
 /** Keep selection in sync with Firestore; alert ack must not replace operational status labels. */
@@ -525,7 +525,7 @@ function IntakeContent() {
         return;
       }
       setSelectedQueueItem((prev) =>
-        prev?.id === selectedId
+        prev && prev.id === selectedId
           ? refreshQueueItemFromEmergencyReport(prev, fresh)
           : prev,
       );
@@ -539,7 +539,7 @@ function IntakeContent() {
     const prevIncident = selectedQueueItem.rawIncident;
     if (
       prevIncident?.status === freshIncident.status &&
-      prevIncident?.updatedAt?.seconds === freshIncident.updatedAt?.seconds
+      toMillis(prevIncident?.updatedAt) === toMillis(freshIncident.updatedAt)
     ) {
       return;
     }
@@ -828,7 +828,7 @@ function IntakeContent() {
       const updated = await acknowledgeReport(report.id, currentDispatcherLabel);
       if (!updated?.id) return;
       setSelectedQueueItem((prev) =>
-        prev?.id === updated.id
+        prev && prev.id === updated.id
           ? refreshQueueItemFromEmergencyReport(prev, updated)
           : prev,
       );
