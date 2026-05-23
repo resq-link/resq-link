@@ -66,7 +66,6 @@ theme/
 ├── palettes/
 │   ├── colors.js
 │   ├── dashboardPalette.js
-│   ├── loginPalette.js
 └── themes/
     ├── dashboardTheme.js
     └── mapTheme.js

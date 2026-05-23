@@ -19,7 +19,13 @@ import { getFirebaseAuth, getFirebaseFirestore } from './config';
 import { normalizeQuadrant, type OperationalQuadrant } from './quadrants';
 import type { ResourceRecord, ResourceStatus, ResourceType } from './resources';
 import { type DispatcherRole } from './auth';
+import {
+  getIncidentPriorityTone as getPriorityTone,
+  normalizePriorityFromRecord,
+  type IncidentPriority,
+} from './priority';
 
+export type { IncidentPriority };
 export type IncidentSource = 'civilian_app' | 'call' | 'sms' | 'walk_in' | 'radio' | 'manual';
 export type IncidentCategory =
   | 'fire'
@@ -29,7 +35,6 @@ export type IncidentCategory =
   | 'utility'
   | 'community'
   | 'other';
-export type IncidentPriority = 'low' | 'medium' | 'high' | 'critical';
 export type IncidentStatus =
   | 'new'
   | 'awaiting_resources'
@@ -80,6 +85,15 @@ export interface IncidentRecord {
   incidentSubtypeId: string;
   incidentSubtypeLabel: string;
   priority: IncidentPriority;
+  priorityLevel?: IncidentPriority;
+  alertAcknowledged?: boolean;
+  acknowledgedAt?: Date | Timestamp | null;
+  acknowledgedBy?: string | null;
+  acknowledgedByDispatcherId?: string | null;
+  escalationLevel?: number;
+  lastAlertAt?: Date | Timestamp | null;
+  supervisorNotifiedAt?: Date | Timestamp | null;
+  autoEscalatedAt?: Date | Timestamp | null;
   locationText: string;
   landmark?: string | null;
   quadrant?: OperationalQuadrant | null;
@@ -295,7 +309,26 @@ const toIncidentRecord = (snapshot: DocumentData): IncidentRecord => {
     incidentCategory: data.incidentCategory || 'other',
     incidentSubtypeId: data.incidentSubtypeId || '',
     incidentSubtypeLabel: data.incidentSubtypeLabel || '',
-    priority: data.priority || 'medium',
+    priority: normalizePriorityFromRecord(
+      data,
+      data.incidentCategory,
+      data.description
+    ),
+    priorityLevel: normalizePriorityFromRecord(
+      data,
+      data.incidentCategory,
+      data.description
+    ),
+    alertAcknowledged: Boolean(data.alertAcknowledged),
+    acknowledgedAt: data.acknowledgedAt?.toDate ? data.acknowledgedAt.toDate() : null,
+    acknowledgedBy: data.acknowledgedBy || null,
+    acknowledgedByDispatcherId: data.acknowledgedByDispatcherId || null,
+    escalationLevel: typeof data.escalationLevel === 'number' ? data.escalationLevel : 0,
+    lastAlertAt: data.lastAlertAt?.toDate ? data.lastAlertAt.toDate() : null,
+    supervisorNotifiedAt: data.supervisorNotifiedAt?.toDate
+      ? data.supervisorNotifiedAt.toDate()
+      : null,
+    autoEscalatedAt: data.autoEscalatedAt?.toDate ? data.autoEscalatedAt.toDate() : null,
     locationText: data.locationText || '',
     landmark: data.landmark || null,
     quadrant: normalizeQuadrant(data.quadrant),
@@ -919,16 +952,7 @@ export function formatIncidentStatus(status: IncidentStatus): string {
 }
 
 export function getIncidentPriorityTone(priority: IncidentPriority): string {
-  switch (priority) {
-    case 'critical':
-      return 'text-red-300';
-    case 'high':
-      return 'text-amber-300';
-    case 'medium':
-      return 'text-blue-300';
-    default:
-      return 'text-slate-300';
-  }
+  return getPriorityTone(priority);
 }
 
 export function getIncidentResourceMatch(

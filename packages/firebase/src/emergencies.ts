@@ -18,6 +18,34 @@ import {
 } from 'firebase/firestore';
 import { getFirebaseFirestore, getFirebaseAuth } from './config';
 import type { DispatcherRole } from './auth';
+import {
+  normalizePriorityFromRecord,
+  resolvePriorityForIncidentType,
+  type IncidentPriority,
+} from './priority';
+import {
+  firebaseDebug,
+  firebaseWarnOnce,
+  isFirestoreMissingIndexError,
+} from './logger';
+
+/** After first missing-index error, skip composite queries for this session. */
+let userEmergenciesCompositeIndexAvailable: boolean | null = null;
+
+function getCreatedAtMillis(date: Date | Timestamp | undefined): number {
+  if (!date) return 0;
+  if (date instanceof Date) return date.getTime();
+  if (typeof date === 'object' && 'toDate' in date) {
+    return (date as Timestamp).toDate().getTime();
+  }
+  return 0;
+}
+
+function sortByCreatedAtDesc<T extends { createdAt?: Date | Timestamp }>(items: T[]): T[] {
+  return [...items].sort(
+    (a, b) => getCreatedAtMillis(b.createdAt) - getCreatedAtMillis(a.createdAt)
+  );
+}
 
 // Emergency Report Types
 export interface EmergencyReport {
@@ -40,7 +68,17 @@ export interface EmergencyReport {
   incidentId?: string | null; // Associated master incident (if any)
   primaryReportId?: string | null; // Primary report this is grouped under (report-to-report grouping)
   status: 'pending' | 'linked' | 'enroute' | 'on_scene' | 'done' | 'active' | 'resolved'; // Support both old and new statuses for backward compatibility
-  priority?: 'low' | 'medium' | 'high' | 'critical';
+  priority?: IncidentPriority;
+  /** Legacy alias — always mirrored to `priority` on write */
+  priorityLevel?: IncidentPriority;
+  alertAcknowledged?: boolean;
+  acknowledgedAt?: Date | Timestamp | null;
+  acknowledgedBy?: string | null;
+  acknowledgedByDispatcherId?: string | null;
+  escalationLevel?: number;
+  lastAlertAt?: Date | Timestamp | null;
+  supervisorNotifiedAt?: Date | Timestamp | null;
+  autoEscalatedAt?: Date | Timestamp | null;
   createdAt?: Date | Timestamp;
   updatedAt?: Date | Timestamp;
   responder?: string | null;
@@ -101,7 +139,40 @@ export const convertFirestoreDoc = (doc: DocumentData): EmergencyReport => {
     incidentId: data.incidentId || data.incident_id || null,
     primaryReportId: data.primaryReportId || null,
     status: data.status || 'pending',
-    priority: data.priority || getDefaultPriority(data.incidentType || data.incident_type),
+    priority: normalizePriorityFromRecord(
+      data,
+      data.incidentType || data.incident_type,
+      data.description
+    ),
+    priorityLevel: normalizePriorityFromRecord(
+      data,
+      data.incidentType || data.incident_type,
+      data.description
+    ),
+    alertAcknowledged: Boolean(data.alertAcknowledged),
+    acknowledgedAt: data.acknowledgedAt?.toDate
+      ? data.acknowledgedAt.toDate()
+      : data.acknowledged_at?.toDate
+      ? data.acknowledged_at.toDate()
+      : null,
+    acknowledgedBy: data.acknowledgedBy || data.acknowledged_by || null,
+    acknowledgedByDispatcherId:
+      data.acknowledgedByDispatcherId || data.acknowledged_by_dispatcher_id || null,
+    escalationLevel:
+      typeof data.escalationLevel === 'number'
+        ? data.escalationLevel
+        : typeof data.escalation_level === 'number'
+        ? data.escalation_level
+        : 0,
+    lastAlertAt: data.lastAlertAt?.toDate
+      ? data.lastAlertAt.toDate()
+      : data.last_alert_at?.toDate
+      ? data.last_alert_at.toDate()
+      : null,
+    supervisorNotifiedAt: data.supervisorNotifiedAt?.toDate
+      ? data.supervisorNotifiedAt.toDate()
+      : null,
+    autoEscalatedAt: data.autoEscalatedAt?.toDate ? data.autoEscalatedAt.toDate() : null,
     createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : (data.created_at?.toDate ? data.created_at.toDate() : new Date()),
     updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : (data.updated_at?.toDate ? data.updated_at.toDate() : null),
     responder: data.responder || null,
@@ -164,26 +235,6 @@ export const convertFirestoreDoc = (doc: DocumentData): EmergencyReport => {
   };
 };
 
-// Get default priority based on incident type
-const getDefaultPriority = (incidentType: string): 'low' | 'medium' | 'high' | 'critical' => {
-  switch (incidentType) {
-    case 'fire':
-      return 'critical';
-    case 'medical':
-      return 'high';
-    case 'police_emergency':
-      return 'high';
-    case 'vehicular_accident':
-      return 'high';
-    case 'electrical_powerline_hazard':
-      return 'high';
-    case 'other_emergency':
-      return 'medium';
-    default:
-      return 'medium';
-  }
-};
-
 export function getSuggestedAgenciesForEmergencyType(
   incidentType: EmergencyReport['incidentType']
 ): DispatcherRole[] {
@@ -234,7 +285,20 @@ export async function submitEmergencyReport(report: Omit<EmergencyReport, 'id' |
       imageUrl: report.imageUrl || null,
       incidentId: report.incidentId || null,
       status: report.status || 'pending',
-      priority: report.priority || getDefaultPriority(report.incidentType),
+      priority:
+        report.priority ||
+        resolvePriorityForIncidentType(report.incidentType, {
+          description: report.description,
+        }),
+      priorityLevel:
+        report.priorityLevel ||
+        report.priority ||
+        resolvePriorityForIncidentType(report.incidentType, {
+          description: report.description,
+        }),
+      alertAcknowledged: false,
+      escalationLevel: 0,
+      lastAlertAt: Timestamp.now(),
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
       responder: report.responder || null,
@@ -294,8 +358,24 @@ export async function getUserEmergencyReports(userId: string, limitCount: number
     const targetUserId = userId || currentUser.uid;
     
     const reportsRef = collection(getFirebaseFirestore(), 'emergencies');
-    
-    // Try query with orderBy first, if it fails due to missing index, fall back to simpler query
+
+    const fetchEqualityOnly = async () => {
+      const q = query(
+        reportsRef,
+        where('userId', '==', targetUserId),
+        limit(limitCount * 2)
+      );
+      const querySnapshot = await getDocs(q);
+      return sortByCreatedAtDesc(querySnapshot.docs.map(convertFirestoreDoc)).slice(
+        0,
+        limitCount
+      );
+    };
+
+    if (userEmergenciesCompositeIndexAvailable === false) {
+      return fetchEqualityOnly();
+    }
+
     try {
       const q = query(
         reportsRef,
@@ -304,33 +384,16 @@ export async function getUserEmergencyReports(userId: string, limitCount: number
         limit(limitCount)
       );
       const querySnapshot = await getDocs(q);
+      userEmergenciesCompositeIndexAvailable = true;
       return querySnapshot.docs.map(convertFirestoreDoc);
-    } catch (indexError: any) {
-      // If composite index is missing, use simpler query and sort in memory
-      if (indexError.code === 'failed-precondition' || indexError.message?.includes('index')) {
-        console.warn('Composite index not found, using alternative query method');
-        const q = query(
-          reportsRef,
-          where('userId', '==', targetUserId),
-          limit(limitCount * 2) // Get more to account for sorting
+    } catch (indexError: unknown) {
+      if (isFirestoreMissingIndexError(indexError)) {
+        userEmergenciesCompositeIndexAvailable = false;
+        firebaseWarnOnce(
+          'emergencies-userId-createdAt-index',
+          'Composite index missing for emergencies (userId + createdAt). Using in-memory sort. Deploy packages/firebase/firestore.indexes.json.'
         );
-        const querySnapshot = await getDocs(q);
-        const reports = querySnapshot.docs.map(convertFirestoreDoc);
-        // Sort in memory by createdAt descending
-        reports.sort((a, b) => {
-          const getTime = (date: Date | Timestamp | undefined): number => {
-            if (!date) return 0;
-            if (date instanceof Date) return date.getTime();
-            if (date && typeof date === 'object' && 'toDate' in date) {
-              return (date as Timestamp).toDate().getTime();
-            }
-            return 0;
-          };
-          const dateA = getTime(a.createdAt);
-          const dateB = getTime(b.createdAt);
-          return dateB - dateA;
-        });
-        return reports.slice(0, limitCount);
+        return fetchEqualityOnly();
       }
       throw indexError;
     }
@@ -381,11 +444,20 @@ export async function getActiveEmergencyReports(limitCount: number = 100): Promi
   }
 }
 
+export type EmergencyReportsSnapshotMeta = {
+  addedIds: string[];
+  modifiedIds: string[];
+  removedIds: string[];
+  /** True when this snapshot is from local cache (may precede server by seconds). */
+  fromCache: boolean;
+  hasPendingWrites: boolean;
+};
+
 /**
  * Subscribe to real-time updates of all emergency reports
  */
 export function subscribeToEmergencyReports(
-  callback: (reports: EmergencyReport[]) => void,
+  callback: (reports: EmergencyReport[], meta?: EmergencyReportsSnapshotMeta) => void,
   options?: {
     statusFilter?: 'pending' | 'active' | 'resolved' | 'all';
     limitCount?: number;
@@ -416,29 +488,18 @@ export function subscribeToEmergencyReports(
 
     const q = query(reportsRef, ...constraints);
 
-    // Helper function to get timestamp from createdAt
-    const getTime = (date: Date | Timestamp | undefined): number => {
-      if (!date) return 0;
-      if (date instanceof Date) return date.getTime();
-      if (date && typeof date === 'object' && 'toDate' in date) {
-        return (date as Timestamp).toDate().getTime();
-      }
-      return 0;
-    };
-
     const unsubscribe = onSnapshot(
       q,
       (snapshot: QuerySnapshot) => {
-        console.log(`[subscribeToEmergencyReports] Snapshot received: ${snapshot.docs.length} documents`);
+        firebaseDebug(
+          `[subscribeToEmergencyReports] Snapshot received: ${snapshot.docs.length} documents`
+        );
         let reports = snapshot.docs.map(convertFirestoreDoc);
-        console.log(`[subscribeToEmergencyReports] Converted ${reports.length} reports`);
-        
-        // Sort by createdAt descending (newest first) - in memory to avoid index requirement
-        reports.sort((a, b) => {
-          const timeA = getTime(a.createdAt);
-          const timeB = getTime(b.createdAt);
-          return timeB - timeA; // Descending order
-        });
+        firebaseDebug(
+          `[subscribeToEmergencyReports] Converted ${reports.length} reports`
+        );
+
+        reports = sortByCreatedAtDesc(reports);
         
         // Filter by status in callback if needed (avoids composite index requirement)
         if (options?.statusFilter && options.statusFilter !== 'all') {
@@ -454,8 +515,21 @@ export function subscribeToEmergencyReports(
           reports = reports.slice(0, options.limitCount);
         }
         
-        console.log(`[subscribeToEmergencyReports] Calling callback with ${reports.length} reports`);
-        callback(reports);
+        const meta: EmergencyReportsSnapshotMeta = {
+          addedIds: snapshot.docChanges().filter((c) => c.type === 'added').map((c) => c.doc.id),
+          modifiedIds: snapshot
+            .docChanges()
+            .filter((c) => c.type === 'modified')
+            .map((c) => c.doc.id),
+          removedIds: snapshot.docChanges().filter((c) => c.type === 'removed').map((c) => c.doc.id),
+          fromCache: snapshot.metadata.fromCache,
+          hasPendingWrites: snapshot.metadata.hasPendingWrites,
+        };
+
+        firebaseDebug(
+          `[subscribeToEmergencyReports] Calling callback with ${reports.length} reports`
+        );
+        callback(reports, meta);
       },
       (error) => {
         console.error('Error in emergency reports subscription:', error);
@@ -463,7 +537,13 @@ export function subscribeToEmergencyReports(
         console.error('Error message:', error.message);
         console.error('Full error:', error);
         // Still call callback with empty array to show loading is done
-        callback([]);
+        callback([], {
+          addedIds: [],
+          modifiedIds: [],
+          removedIds: [],
+          fromCache: false,
+          hasPendingWrites: false,
+        });
       }
     );
 
@@ -676,11 +756,18 @@ export async function markEmergencyReportViewed(
     }
 
     const reportRef = doc(getFirebaseFirestore(), 'emergencies', reportId);
+    const label = dispatcherName.trim() || currentUser.email || currentUser.uid;
+    const now = Timestamp.now();
     await updateDoc(reportRef, {
       viewedByDispatcherId: currentUser.uid,
-      viewedByName: dispatcherName.trim() || currentUser.email || currentUser.uid,
-      viewedAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
+      viewedByName: label,
+      viewedAt: now,
+      alertAcknowledged: true,
+      acknowledgedAt: now,
+      acknowledgedBy: label,
+      acknowledgedByDispatcherId: currentUser.uid,
+      lastAlertAt: now,
+      updatedAt: now,
     });
 
     const updatedDocSnap = await getDoc(reportRef);
@@ -1143,30 +1230,17 @@ export function subscribeToDispatcherAssignedEmergencies(
     
     const q = query(reportsRef, ...constraints);
 
-    // Helper function to get timestamp from createdAt
-    const getTime = (date: Date | Timestamp | undefined): number => {
-      if (!date) return 0;
-      if (date instanceof Date) return date.getTime();
-      if (date && typeof date === 'object' && 'toDate' in date) {
-        return (date as Timestamp).toDate().getTime();
-      }
-      return 0;
-    };
-
     const unsubscribe = onSnapshot(
       q,
       (snapshot: QuerySnapshot) => {
-        console.log(`[subscribeToDispatcherAssignedEmergencies] Snapshot received: ${snapshot.docs.length} documents for dispatcher ${dispatcherId}`);
-        let reports = snapshot.docs.map(convertFirestoreDoc);
-        
-        // Sort by createdAt descending (newest first)
-        reports.sort((a, b) => {
-          const timeA = getTime(a.createdAt);
-          const timeB = getTime(b.createdAt);
-          return timeB - timeA; // Descending order
-        });
-        
-        console.log(`[subscribeToDispatcherAssignedEmergencies] Calling callback with ${reports.length} reports`);
+        firebaseDebug(
+          `[subscribeToDispatcherAssignedEmergencies] Snapshot received: ${snapshot.docs.length} documents for dispatcher ${dispatcherId}`
+        );
+        let reports = sortByCreatedAtDesc(snapshot.docs.map(convertFirestoreDoc));
+
+        firebaseDebug(
+          `[subscribeToDispatcherAssignedEmergencies] Calling callback with ${reports.length} reports`
+        );
         callback(reports);
       },
       (error) => {

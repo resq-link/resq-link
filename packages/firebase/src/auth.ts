@@ -10,6 +10,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { getFirebaseAuth, getFirebaseFirestore } from './config';
+import { firebaseInfo } from './logger';
 
 // Dispatcher roles
 export type DispatcherRole = 'BFP' | 'PNP' | 'MDRRMO' | 'AMBULANCE' | 'PCG';
@@ -349,6 +350,7 @@ export async function signInCivilian(
       updatedAt: profileData.updatedAt,
     };
 
+    firebaseInfo('User authenticated');
     return { user, profile };
   } catch (error: any) {
     const wrapped = new Error(`Failed to sign in: ${error.message}`) as Error & {

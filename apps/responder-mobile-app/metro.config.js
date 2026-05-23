@@ -1,15 +1,7 @@
 const { getDefaultConfig } = require('expo/metro-config');
 const path = require('node:path');
 
-const monorepoRoot = path.resolve(__dirname, '..', '..');
-const packagesFirebase = path.resolve(monorepoRoot, 'packages', 'firebase');
-
-const resolveMonorepoPackage = (name) =>
-  path.dirname(
-    require.resolve(`${name}/package.json`, {
-      paths: [monorepoRoot, __dirname],
-    }),
-  );
+const packagesFirebase = path.resolve(__dirname, '..', '..', 'packages', 'firebase');
 
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
@@ -30,13 +22,15 @@ config.resolver = {
   extraNodeModules: {
     ...config.resolver?.extraNodeModules,
     '@packages/firebase': packagesFirebase,
-    '@react-native-async-storage/async-storage': path.join(
-      resolveMonorepoPackage('@react-native-async-storage/async-storage'),
+    '@react-native-async-storage/async-storage': path.resolve(
+      __dirname,
+      'node_modules',
+      '@react-native-async-storage',
+      'async-storage',
     ),
-    expo: resolveMonorepoPackage('expo'),
-    'react-native': resolveMonorepoPackage('react-native'),
-    'expo-router': resolveMonorepoPackage('expo-router'),
-    'expo/virtual/env': path.join(resolveMonorepoPackage('expo'), 'virtual', 'env'),
+    expo: path.resolve(__dirname, 'node_modules', 'expo'),
+    'react-native': path.resolve(__dirname, 'node_modules', 'react-native'),
+    'expo/virtual/env': path.resolve(__dirname, 'node_modules', 'expo', 'virtual', 'env'),
   },
   resolveRequest: (context, moduleName, platform) => {
     // Use web polyfill for react-native-maps on web platform

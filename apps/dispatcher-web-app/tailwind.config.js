@@ -4,6 +4,7 @@ module.exports = {
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
     './app/**/*.{js,ts,jsx,tsx,mdx}',
+    '../../packages/firebase/src/incidentStatusVisual.ts',
   ],
   theme: {
     extend: {
@@ -48,5 +49,18 @@ module.exports = {
     },
   },
   plugins: [],
+  safelist: [
+    'incident-status-dot-pulse',
+    'bg-orange-400',
+    'bg-red-400',
+    'bg-blue-400',
+    'bg-green-400',
+    'bg-slate-400',
+    'text-orange-400',
+    'text-red-400',
+    'text-blue-400',
+    'text-green-400',
+    'text-slate-400',
+  ],
 }
 

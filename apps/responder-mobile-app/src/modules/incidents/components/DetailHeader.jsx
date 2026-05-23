@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  Animated,
   Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -107,29 +106,6 @@ export default function DetailHeader({
     return () => clearInterval(interval);
   }, [createdAt]);
 
-  // Pulse animation for Critical Urgency
-  const pulseAnim = useRef(new Animated.Value(0.85)).current;
-  useEffect(() => {
-    if (priority?.toLowerCase() === "critical") {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.0,
-            duration: 1200,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 0.85,
-            duration: 1200,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    } else {
-      pulseAnim.setValue(1.0);
-    }
-  }, [priority, pulseAnim]);
-
   // Configure background gradient colors based on priority & resolvedScheme
   const getGradientColors = () => {
     const isDark = resolvedScheme === "dark";
@@ -184,14 +160,12 @@ export default function DetailHeader({
 
   return (
     <View style={[styles.outerContainer, { backgroundColor: colors.surface }]}>
-      <Animated.View style={[StyleSheet.absoluteFill, { opacity: pulseAnim }]}>
-        <LinearGradient
-          colors={gradientColors}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-      </Animated.View>
+      <LinearGradient
+        colors={gradientColors}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
 
       <View
         style={[

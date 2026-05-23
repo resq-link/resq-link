@@ -376,7 +376,7 @@ export default function MapPage() {
                             incident.priority === 'critical'
                               ? 'bg-red-500/10 text-red-200'
                               : incident.priority === 'high'
-                              ? 'bg-orange-500/10 text-orange-200'
+                              ? 'bg-violet-500/10 text-violet-200'
                               : 'bg-yellow-500/10 text-yellow-200'
                           }`}
                         >

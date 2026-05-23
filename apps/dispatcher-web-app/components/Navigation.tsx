@@ -8,6 +8,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { subscribeToFootageRequests, subscribeToEmergencyReports } from "@packages/firebase";
 import AgentAssistant from "@/components/AgentAssistant";
 import OperationalChatWidget from "@/components/OperationalChatWidget";
+import AlarmControl from "@/components/AlarmControl";
+import { usePriorityAlerts } from "@/contexts/PriorityAlertContext";
 import {
   LayoutDashboard,
   Globe,
@@ -302,6 +304,7 @@ export default function Navigation({ children }: NavigationProps) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [pendingFootageCount, setPendingFootageCount] = useState(0);
   const [intakeCount, setIntakeCount] = useState(0);
+  const { unacknowledgedCriticalCount } = usePriorityAlerts();
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -349,7 +352,12 @@ export default function Navigation({ children }: NavigationProps) {
     const unsub = subscribeToEmergencyReports((reports) => {
       // Calculate unassigned/pending emergencies needing triage
       const awaitingTriage = reports.filter(
-        (r) => r.status !== 'done' && r.status !== 'resolved' && !r.viewedByName
+        (r) =>
+          r.status !== 'done' &&
+          r.status !== 'resolved' &&
+          !r.alertAcknowledged &&
+          !r.acknowledgedBy &&
+          !r.viewedByName
       ).length;
       setIntakeCount(awaitingTriage);
     }, { limitCount: 200 }); // get a healthy pool to accurately calculate metrics
@@ -442,6 +450,14 @@ export default function Navigation({ children }: NavigationProps) {
             <Menu size={22} />
           </button>
           <BrandBlock compact onNavigate={() => setMobileMenuOpen(false)} />
+          <div className="flex items-center gap-2">
+            {unacknowledgedCriticalCount > 0 ? (
+              <span className="rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-black text-white">
+                {unacknowledgedCriticalCount} CRIT
+              </span>
+            ) : null}
+            <AlarmControl />
+          </div>
           <div className="flex w-10 justify-end">
             {user && (
               <button

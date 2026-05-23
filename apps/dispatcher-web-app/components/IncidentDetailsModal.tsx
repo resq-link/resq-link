@@ -53,7 +53,7 @@ export default function IncidentDetailsModal({
       case 'critical':
         return 'bg-red-500/10 text-red-200 border-red-500/30'
       case 'high':
-        return 'bg-orange-500/10 text-orange-200 border-orange-500/30'
+        return 'bg-violet-500/10 text-violet-200 border-violet-500/30'
       case 'medium':
         return 'bg-yellow-500/10 text-yellow-200 border-yellow-500/30'
       case 'low':

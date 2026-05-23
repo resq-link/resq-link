@@ -9,6 +9,8 @@ import {
   QUADRANT_COLORS,
   QUADRANT_LABELS,
   type DispatcherLocation,
+  getPriorityMapColor,
+  normalizePriority,
 } from '@packages/firebase'
 
 // Fix for default marker icons in Next.js
@@ -118,17 +120,17 @@ export default function MapComponent({
   const mapZoom = centerLocation ? 15 : (userLocation ? 14 : defaultZoom) // Zoom in more for selected incident
 
   const getMarkerColor = (priority: string, status: string) => {
-    if (status === 'pending') return '#eab308' // yellow
-    if (priority === 'critical') return '#dc2626' // red
-    if (priority === 'high') return '#ea580c' // orange
-    if (priority === 'medium') return '#f59e0b' // amber
-    return '#10b981' // green
+    const level = normalizePriority(priority)
+    if (status === 'pending' && level === 'low') return '#eab308'
+    return getPriorityMapColor(level)
   }
 
   const createCustomIcon = (priority: string, status: string) => {
     const color = getMarkerColor(priority, status)
+    const level = normalizePriority(priority)
+    const flashClass = level === 'critical' ? 'priority-marker-critical' : ''
     return L.divIcon({
-      className: 'custom-marker',
+      className: `custom-marker ${flashClass}`,
       html: `
         <div style="
           background-color: ${color};
@@ -138,7 +140,7 @@ export default function MapComponent({
           transform: rotate(-45deg);
           border: 3px solid white;
           box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        ">
+        " class="${flashClass}">
           <div style="
             transform: rotate(45deg);
             width: 100%;
@@ -598,7 +600,7 @@ export default function MapComponent({
                       incident.priority === 'critical'
                         ? 'bg-red-100 text-red-800'
                         : incident.priority === 'high'
-                        ? 'bg-orange-100 text-orange-800'
+                        ? 'bg-violet-100 text-violet-800'
                         : 'bg-yellow-100 text-yellow-800'
                     }`}
                   >

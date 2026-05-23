@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -20,6 +20,7 @@ import { useFonts } from "expo-font";
 import useUserStore from "@/utils/userStore";
 import { UI_MODE, mockData } from "@/utils/api";
 import { getUserEmergencyReports } from "@packages/firebase";
+import StatusBadge from "@/components/badges/StatusBadge";
 import { useAppTheme } from "@/utils/useAppTheme";
 
 const getIncidentEmoji = (type) => {
@@ -61,9 +62,13 @@ export default function HistoryScreen() {
     Inter_700Bold,
   });
 
+  const userId = user?.uid || user?.id;
+
   useEffect(() => {
-    fetchReports();
-  }, [user]);
+    if (userId) {
+      fetchReports();
+    }
+  }, [userId]);
 
   const fetchReports = async () => {
     if (!user) return;
@@ -120,41 +125,6 @@ export default function HistoryScreen() {
   if (!fontsLoaded) {
     return null;
   }
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "pending":
-        return "#FF9500";
-      case "responding":
-        return "#007AFF";
-      case "resolved":
-        return "#9AFF55";
-      default:
-        return "#9A9A9A";
-    }
-  };
-
-  const getStatusBadgeStyle = (status) => {
-    const normalizedStatus = (status || "").toLowerCase();
-    if (!isLight) {
-      const color = getStatusColor(normalizedStatus);
-      return {
-        backgroundColor: color + "20",
-        textColor: color,
-      };
-    }
-
-    switch (normalizedStatus) {
-      case "pending":
-        return { backgroundColor: "#FFF4E5", textColor: "#B35A00" };
-      case "responding":
-        return { backgroundColor: "#E8F0FF", textColor: "#0B57D0" };
-      case "resolved":
-        return { backgroundColor: "#E8F7ED", textColor: "#1E7A35" };
-      default:
-        return { backgroundColor: "#EEEEF2", textColor: "#616168" };
-    }
-  };
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -240,9 +210,7 @@ export default function HistoryScreen() {
           </View>
         ) : (
           <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            {reports.map((report, index) => {
-              const badgeStyle = getStatusBadgeStyle(report.status);
-              return (
+            {reports.map((report, index) => (
                 <View
                   key={report.id}
                   style={[
@@ -276,24 +244,7 @@ export default function HistoryScreen() {
                         </Text>
                       </View>
                     </View>
-                    <View
-                      style={{
-                        backgroundColor: badgeStyle.backgroundColor,
-                        paddingHorizontal: 12,
-                        paddingVertical: 6,
-                        borderRadius: 8,
-                      }}
-                    >
-                      <Text
-                        style={{
-                          fontFamily: "Inter_600SemiBold",
-                          fontSize: 12,
-                          color: badgeStyle.textColor,
-                        }}
-                      >
-                        {report.status.toUpperCase()}
-                      </Text>
-                    </View>
+                    <StatusBadge status={report.status} />
                   </View>
 
                   <Text
@@ -319,8 +270,7 @@ export default function HistoryScreen() {
                     </Text>
                   )}
                 </View>
-              );
-            })}
+            ))}
           </View>
         )}
       </ScrollView>

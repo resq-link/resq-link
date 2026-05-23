@@ -19,6 +19,8 @@
     "postcss": "8.5.10"
   },
   "overrides": {
+    "expo-location": "~19.0.6",
+    "react-native-safe-area-context": "~5.6.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "postcss": "8.5.10",

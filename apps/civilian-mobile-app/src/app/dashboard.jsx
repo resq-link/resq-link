@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -28,6 +28,7 @@ import { useFonts } from "expo-font";
 import useUserStore from "../utils/userStore";
 import { UI_MODE, mockData } from "../utils/api";
 import { getUserEmergencyReports, getAllEmergencyReports } from "@packages/firebase";
+import StatusBadge from "../components/badges/StatusBadge";
 import { useAppTheme } from "@/utils/useAppTheme";
 
 const getIncidentEmoji = (type) => {
@@ -94,12 +95,14 @@ export default function DashboardScreen() {
     Inter_700Bold,
   });
 
+  const userId = user?.uid || user?.id;
+
   useEffect(() => {
-    if (user) {
+    if (userId) {
       fetchUserLocation();
       fetchRecentReports();
     }
-  }, [user]);
+  }, [userId]);
 
   useEffect(() => {
     if (userLocation) {
@@ -227,69 +230,6 @@ export default function DashboardScreen() {
   if (!fontsLoaded) {
     return null;
   }
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "pending":
-        return "#FF9500";
-      case "active":
-      case "enroute":
-      case "responding":
-        return "#007AFF";
-      case "resolved":
-      case "done":
-        return "#9AFF55";
-      default:
-        return "#9A9A9A";
-    }
-  };
-
-  const getStatusLabel = (status) => {
-    const normalizedStatus = (status || "").toLowerCase();
-    switch (status) {
-      case "pending":
-        return "PENDING";
-      case "active":
-        return "ACTIVE";
-      case "enroute":
-        return "EN ROUTE";
-      case "on_scene":
-        return "ON SCENE";
-      case "responding":
-        return "RESPONDING";
-      case "resolved":
-      case "done":
-        return "RESOLVED";
-      default:
-        return normalizedStatus ? normalizedStatus.toUpperCase() : "UNKNOWN";
-    }
-  };
-
-  const getStatusBadgeStyle = (status) => {
-    const normalizedStatus = (status || "").toLowerCase();
-    if (!isLight) {
-      const color = getStatusColor(normalizedStatus);
-      return {
-        backgroundColor: color + "20",
-        textColor: color,
-      };
-    }
-
-    switch (normalizedStatus) {
-      case "pending":
-        return { backgroundColor: "#FFF4E5", textColor: "#B35A00" };
-      case "active":
-      case "enroute":
-      case "responding":
-      case "on_scene":
-        return { backgroundColor: "#E8F0FF", textColor: "#0B57D0" };
-      case "resolved":
-      case "done":
-        return { backgroundColor: "#E8F7ED", textColor: "#1E7A35" };
-      default:
-        return { backgroundColor: "#EEEEF2", textColor: "#616168" };
-    }
-  };
 
   const formatDate = (date) => {
     if (!date) return "Unknown";
@@ -655,9 +595,7 @@ export default function DashboardScreen() {
               </Text>
             </View>
           ) : (
-            recentReports.slice(0, 3).map((report) => {
-              const badgeStyle = getStatusBadgeStyle(report.status);
-              return (
+            recentReports.slice(0, 3).map((report) => (
               <TouchableOpacity
                 key={report.id}
                 onPress={() => router.push("/(tabs)/history")}
@@ -749,31 +687,12 @@ export default function DashboardScreen() {
                           {formatDate(report.createdAt)}
                         </Text>
                       </View>
-                      <View
-                        style={{
-                          backgroundColor: badgeStyle.backgroundColor,
-                          paddingHorizontal: 10,
-                          paddingVertical: 5,
-                          borderRadius: 8,
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontFamily: "Inter_600SemiBold",
-                            fontSize: 10,
-                            color: badgeStyle.textColor,
-                            letterSpacing: 0.5,
-                          }}
-                        >
-                          {getStatusLabel(report.status)}
-                        </Text>
-                      </View>
+                      <StatusBadge status={report.status} />
                     </View>
                   </View>
                 </View>
               </TouchableOpacity>
-              );
-            })
+            ))
           )}
         </View>
 
@@ -848,9 +767,7 @@ export default function DashboardScreen() {
               </Text>
             </View>
           ) : (
-            nearbyReports.map((report) => {
-              const badgeStyle = getStatusBadgeStyle(report.status);
-              return (
+            nearbyReports.map((report) => (
               <TouchableOpacity
                 key={report.id}
                 activeOpacity={0.8}
@@ -941,31 +858,12 @@ export default function DashboardScreen() {
                           {formatDate(report.createdAt)}
                         </Text>
                       </View>
-                      <View
-                        style={{
-                          backgroundColor: badgeStyle.backgroundColor,
-                          paddingHorizontal: 10,
-                          paddingVertical: 5,
-                          borderRadius: 8,
-                        }}
-                      >
-                        <Text
-                          style={{
-                            fontFamily: "Inter_600SemiBold",
-                            fontSize: 10,
-                            color: badgeStyle.textColor,
-                            letterSpacing: 0.5,
-                          }}
-                        >
-                          {getStatusLabel(report.status)}
-                        </Text>
-                      </View>
+                      <StatusBadge status={report.status} />
                     </View>
                   </View>
                 </View>
               </TouchableOpacity>
-              );
-            })
+            ))
           )}
         </View>
       </ScrollView>

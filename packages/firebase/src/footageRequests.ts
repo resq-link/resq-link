@@ -14,6 +14,12 @@ import {
   getDocs,
 } from 'firebase/firestore';
 import { getFirebaseFirestore, getFirebaseAuth } from './config';
+import {
+  firebaseWarnOnce,
+  isFirestoreMissingIndexError,
+} from './logger';
+
+let userFootageCompositeIndexAvailable: boolean | null = null;
 
 export const FOOTAGE_PURPOSE_KEYS = [
   'investigation',
@@ -181,6 +187,18 @@ export async function getUserFootageRequests(
 
   const col = collection(getFirebaseFirestore(), 'footageRequests');
 
+  const fetchEqualityOnly = async () => {
+    const q = query(col, where('userId', '==', targetUserId), limit(limitCount * 2));
+    const snap = await getDocs(q);
+    const list = snap.docs.map(convertDoc);
+    list.sort((a, b) => getTime(b.createdAt) - getTime(a.createdAt));
+    return list.slice(0, limitCount);
+  };
+
+  if (userFootageCompositeIndexAvailable === false) {
+    return fetchEqualityOnly();
+  }
+
   try {
     const q = query(
       col,
@@ -189,17 +207,16 @@ export async function getUserFootageRequests(
       limit(limitCount)
     );
     const snap = await getDocs(q);
+    userFootageCompositeIndexAvailable = true;
     return snap.docs.map(convertDoc);
-  } catch (indexError: any) {
-    if (
-      indexError.code === 'failed-precondition' ||
-      indexError.message?.includes('index')
-    ) {
-      const q = query(col, where('userId', '==', targetUserId), limit(limitCount * 2));
-      const snap = await getDocs(q);
-      const list = snap.docs.map(convertDoc);
-      list.sort((a, b) => getTime(b.createdAt) - getTime(a.createdAt));
-      return list.slice(0, limitCount);
+  } catch (indexError: unknown) {
+    if (isFirestoreMissingIndexError(indexError)) {
+      userFootageCompositeIndexAvailable = false;
+      firebaseWarnOnce(
+        'footageRequests-userId-createdAt-index',
+        'Composite index missing for footageRequests (userId + createdAt). Using in-memory sort. Deploy packages/firebase/firestore.indexes.json.'
+      );
+      return fetchEqualityOnly();
     }
     throw indexError;
   }

@@ -51,37 +51,12 @@ function getResponderAgencyLabel(role: DispatcherRole): string {
   }
 }
 
-const formatStatus = (status: IncidentRecord["status"]) =>
-  status
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (character) => character.toUpperCase());
-
 const toMillis = (val: any): number => {
   if (!val) return 0;
   if (val instanceof Date) return val.getTime();
   if (typeof val === "object" && "toDate" in val) return val.toDate().getTime();
   if (typeof val === "number") return val;
   return new Date(val).getTime();
-};
-
-const emergencyStatusTone: Record<string, string> = {
-  pending: "border-amber-500/30 bg-amber-500/10 text-amber-200",
-  active: "border-blue-500/30 bg-blue-500/10 text-blue-200",
-  enroute: "border-indigo-500/30 bg-indigo-500/10 text-indigo-200",
-  on_scene: "border-violet-500/30 bg-violet-500/10 text-violet-200",
-  done: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
-  resolved: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
-};
-
-const statusTone: Record<IncidentRecord["status"], string> = {
-  new: "border-slate-600 bg-slate-800/80 text-slate-200",
-  awaiting_resources: "border-amber-500/30 bg-amber-500/10 text-amber-200",
-  liaison_pending: "border-cyan-500/30 bg-cyan-500/10 text-cyan-200",
-  dispatched: "border-blue-500/30 bg-blue-500/10 text-blue-200",
-  enroute: "border-indigo-500/30 bg-indigo-500/10 text-indigo-200",
-  on_scene: "border-violet-500/30 bg-violet-500/10 text-violet-200",
-  resolved: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
-  unresolved: "border-red-500/30 bg-red-500/10 text-red-200",
 };
 
 function toQueueItemFromEmergency(report: EmergencyReport): IntakeQueueItem {
@@ -97,11 +72,6 @@ function toQueueItemFromEmergency(report: EmergencyReport): IntakeQueueItem {
     incidentSubtypeLabel: getEmergencyIncidentTypeName(report.incidentType),
     locationText: report.locationText,
     priority: report.priority || "medium",
-    statusLabel: formatStatus(
-      report.status === "done" ? "resolved" : (report.status as IncidentRecord["status"]),
-    ),
-    statusToneClass:
-      emergencyStatusTone[report.status] || "border-slate-600 bg-slate-800/80 text-slate-200",
     quadrantLabel: null,
     teamOnDutyLabel: null,
     incidentDateLabel: null,
@@ -123,8 +93,6 @@ const toQueueItemFromIncident = (incident: IncidentRecord): IntakeQueueItem => (
   incidentSubtypeLabel: incident.incidentSubtypeLabel,
   locationText: incident.locationText,
   priority: incident.priority,
-  statusLabel: formatStatus(incident.status),
-  statusToneClass: statusTone[incident.status] || "border-slate-600 bg-slate-800/80 text-slate-200",
   quadrantLabel: incident.quadrant ? QUADRANT_LABELS[incident.quadrant] : null,
   teamOnDutyLabel: incident.teamOnDuty ?? null,
   incidentDateLabel: incident.incidentDate ?? null,

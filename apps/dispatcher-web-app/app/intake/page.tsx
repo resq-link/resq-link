@@ -16,7 +16,6 @@ import {
   getAgencyLabel,
   getIncidentResourceMatch,
   getSuggestedAgenciesForEmergencyType,
-  markEmergencyReportViewed,
   moveEmergencyReportToHistory,
   BARANGAY_QUADRANT_MAPPING,
   OPERATIONAL_QUADRANTS,
@@ -41,8 +40,16 @@ import {
   type OperationalQuadrant,
   type ResourceRecord,
   type TeamOnDuty,
+  comparePriority,
+  normalizePriority,
+  updateEmergencyPriority,
+  type IncidentPriority,
 } from "@packages/firebase";
-import IntakeListItem, { type IntakeQueueItem } from "@/components/IntakeListItem";
+import { usePriorityAlerts } from "@/contexts/PriorityAlertContext";
+import IntakeListItem, {
+  IntakePriorityBadge,
+  type IntakeQueueItem,
+} from "@/components/IntakeListItem";
 import IntakeDetailView from "@/components/IntakeDetailView";
 import { 
   Plus,
@@ -129,33 +136,6 @@ const sourceOptions: { value: IncidentSource; label: string }[] = [
   { value: "civilian_app", label: "Civilian App" },
 ];
 
-const statusTone: Record<IncidentRecord["status"], string> = {
-  new: "border-slate-600 bg-slate-800/80 text-slate-200",
-  awaiting_resources: "border-amber-500/30 bg-amber-500/10 text-amber-200",
-  liaison_pending: "border-cyan-500/30 bg-cyan-500/10 text-cyan-200",
-  dispatched: "border-blue-500/30 bg-blue-500/10 text-blue-200",
-  enroute: "border-indigo-500/30 bg-indigo-500/10 text-indigo-200",
-  on_scene: "border-violet-500/30 bg-violet-500/10 text-violet-200",
-  resolved: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
-  unresolved: "border-red-500/30 bg-red-500/10 text-red-200",
-};
-
-const emergencyStatusTone: Record<string, string> = {
-  pending: "border-amber-500/30 bg-amber-500/10 text-amber-200",
-  active: "border-blue-500/30 bg-blue-500/10 text-blue-200",
-  enroute: "border-indigo-500/30 bg-indigo-500/10 text-indigo-200",
-  on_scene: "border-violet-500/30 bg-violet-500/10 text-violet-200",
-  done: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
-  resolved: "border-emerald-500/30 bg-emerald-500/10 text-emerald-200",
-};
-
-const priorityTone: Record<IncidentRecord["priority"], string> = {
-  low: "text-slate-300",
-  medium: "text-blue-300",
-  high: "text-amber-300",
-  critical: "text-red-300",
-};
-
 const teamOnDutyOptions: TeamOnDuty[] = ["Whiskey", "X-ray", "Yankee", "Zulu"];
 
 const TIME_ZONE = "Asia/Manila";
@@ -208,11 +188,6 @@ function getResponderAgencyLabel(role: DispatcherRole): string {
       return role;
   }
 }
-
-const formatStatus = (status: IncidentRecord["status"]) =>
-  status
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (character) => character.toUpperCase());
 
 const toNumberOrNull = (value: string) => {
   const trimmed = value.trim();
@@ -344,8 +319,6 @@ const toQueueItemFromIncident = (incident: IncidentRecord): IntakeQueueItem => (
   incidentSubtypeLabel: incident.incidentSubtypeLabel,
   locationText: incident.locationText,
   priority: incident.priority,
-  statusLabel: formatStatus(incident.status),
-  statusToneClass: statusTone[incident.status],
   quadrantLabel: incident.quadrant ? QUADRANT_LABELS[incident.quadrant] : null,
   teamOnDutyLabel: incident.teamOnDuty ?? null,
   incidentDateLabel: incident.incidentDate ?? null,
@@ -370,11 +343,6 @@ const toQueueItemFromEmergency = (report: EmergencyReport): IntakeQueueItem => {
     incidentSubtypeLabel: getEmergencyIncidentTypeName(report.incidentType),
     locationText: report.locationText,
     priority: report.priority || "medium",
-    statusLabel: formatStatus(
-      report.status === "done" ? "resolved" : (report.status as IncidentRecord["status"]),
-    ),
-    statusToneClass:
-      emergencyStatusTone[report.status] || "border-slate-600 bg-slate-800/80 text-slate-200",
     quadrantLabel: null,
     teamOnDutyLabel: null,
     incidentDateLabel: null,
@@ -387,6 +355,29 @@ const toQueueItemFromEmergency = (report: EmergencyReport): IntakeQueueItem => {
     rawEmergencyReport: report,
     rawIncident: null,
   };
+};
+
+/** Fields that affect queue/detail presentation — used to avoid redundant selected-item updates. */
+const emergencyReportSyncKey = (report: EmergencyReport): string =>
+  [
+    report.status,
+    report.incidentId ?? "",
+    report.alertAcknowledged ? "1" : "0",
+    report.acknowledgedBy ?? "",
+    report.viewedByName ?? "",
+    report.priority ?? "",
+    report.assignedResponderId ?? "",
+    report.responder ?? "",
+    String(report.updatedAt?.seconds ?? report.updatedAt ?? ""),
+  ].join("|");
+
+/** Keep selection in sync with Firestore; alert ack must not replace operational status labels. */
+const refreshQueueItemFromEmergencyReport = (
+  item: IntakeQueueItem,
+  report: EmergencyReport,
+): IntakeQueueItem => {
+  const refreshed = toQueueItemFromEmergency(report);
+  return { ...refreshed, id: item.id };
 };
 
 const sortResourcesByName = (resources: ResourceRecord[]) =>
@@ -408,6 +399,7 @@ function formatIncidentDateForDisplay(date: string | null | undefined): string {
 
 function IntakeContent() {
   const { user } = useAuth();
+  const { acknowledgeReport } = usePriorityAlerts();
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -521,7 +513,47 @@ function IntakeContent() {
     setSelectedExistingResourceIds([]);
   }, [selectedQueueItem?.id]);
 
+  useEffect(() => {
+    const selectedId = selectedQueueItem?.id;
+    if (!selectedId || !selectedQueueItem) return;
 
+    if (selectedQueueItem.channel === "emergency_report") {
+      const fresh = appEmergencyReports.find((report) => report.id === selectedId);
+      if (!fresh) return;
+      const prevReport = selectedQueueItem.rawEmergencyReport;
+      if (prevReport && emergencyReportSyncKey(fresh) === emergencyReportSyncKey(prevReport)) {
+        return;
+      }
+      setSelectedQueueItem((prev) =>
+        prev?.id === selectedId
+          ? refreshQueueItemFromEmergencyReport(prev, fresh)
+          : prev,
+      );
+      return;
+    }
+
+    const incidentId = selectedQueueItem.rawIncident?.id;
+    if (!incidentId) return;
+    const freshIncident = recentIncidents.find((incident) => incident.id === incidentId);
+    if (!freshIncident) return;
+    const prevIncident = selectedQueueItem.rawIncident;
+    if (
+      prevIncident?.status === freshIncident.status &&
+      prevIncident?.updatedAt?.seconds === freshIncident.updatedAt?.seconds
+    ) {
+      return;
+    }
+    setSelectedQueueItem((prev) =>
+      prev?.rawIncident?.id === incidentId
+        ? toQueueItemFromIncident(freshIncident)
+        : prev,
+    );
+  }, [
+    appEmergencyReports,
+    recentIncidents,
+    selectedQueueItem?.id,
+    selectedQueueItem?.channel,
+  ]);
 
   const matchingResources = useMemo(() => {
     if (!selectedRule) {
@@ -576,7 +608,14 @@ function IntakeContent() {
       appEmergencyReports
         .filter((report) => report.status !== "done" && report.status !== "resolved" && !report.primaryReportId)
         .map(toQueueItemFromEmergency)
-        .sort((left, right) => toMillis(right.createdAt) - toMillis(left.createdAt)),
+        .sort((left, right) => {
+          const rank = comparePriority(
+            normalizePriority(left.priority),
+            normalizePriority(right.priority)
+          );
+          if (rank !== 0) return rank;
+          return toMillis(right.createdAt) - toMillis(left.createdAt);
+        }),
     [appEmergencyReports],
   );
 
@@ -701,6 +740,11 @@ function IntakeContent() {
     else if (activeTab === "manual") items = manualQueueItems;
 
     items.sort((a, b) => {
+      const rank = comparePriority(
+        normalizePriority(a.priority),
+        normalizePriority(b.priority)
+      );
+      if (rank !== 0) return rank;
       const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : (a.createdAt as any)?.toDate?.()?.getTime() || 0;
       const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : (b.createdAt as any)?.toDate?.()?.getTime() || 0;
       return dateB - dateA;
@@ -751,21 +795,67 @@ function IntakeContent() {
   };
 
   const handleOpenQueueItem = async (item: IntakeQueueItem) => {
-    if (item.channel !== "emergency_report" || !item.rawEmergencyReport) {
+    if (item.channel !== "emergency_report" || !item.rawEmergencyReport?.id) {
       return;
     }
 
-    if (!item.rawEmergencyReport.id) return;
+    const report = item.rawEmergencyReport;
+    if (report.alertAcknowledged || report.acknowledgedBy) {
+      return;
+    }
 
     try {
-      const updated = await markEmergencyReportViewed(
-        item.rawEmergencyReport.id,
+      const updated = await acknowledgeReport(
+        report.id!,
         currentDispatcherLabel,
       );
-      // Update the selected item with the viewed status
-      setSelectedQueueItem(prev => (prev && prev.id === updated.id) ? { ...prev, rawEmergencyReport: updated, statusLabel: "Viewed", statusToneClass: "border-sky-800 text-sky-400 bg-sky-950/40" } as IntakeQueueItem : prev);
+      if (!updated?.id) return;
+      setSelectedQueueItem((prev) =>
+        prev && prev.id === updated.id
+          ? refreshQueueItemFromEmergencyReport(prev, updated)
+          : prev,
+      );
     } catch (error: any) {
-      console.error("Failed to mark report as viewed:", error);
+      console.error("Failed to acknowledge report:", error);
+    }
+  };
+
+  const handleAcknowledgeSelectedAlert = async () => {
+    const report = selectedQueueItem?.rawEmergencyReport;
+    if (!report?.id) return;
+
+    try {
+      const updated = await acknowledgeReport(report.id, currentDispatcherLabel);
+      if (!updated?.id) return;
+      setSelectedQueueItem((prev) =>
+        prev?.id === updated.id
+          ? refreshQueueItemFromEmergencyReport(prev, updated)
+          : prev,
+      );
+    } catch (error: any) {
+      console.error("Failed to acknowledge report:", error);
+      setPageError(error.message || "Failed to acknowledge alert.");
+    }
+  };
+
+  const handlePriorityOverride = async (
+    reportId: string,
+    priority: IncidentPriority
+  ) => {
+    try {
+      const updated = await updateEmergencyPriority(reportId, priority);
+      if (!updated?.id) return;
+      setSelectedQueueItem((prev) =>
+        prev?.rawEmergencyReport?.id === reportId
+          ? ({
+              ...prev,
+              priority: normalizePriority(updated.priority),
+              rawEmergencyReport: updated,
+            } as IntakeQueueItem)
+          : prev
+      );
+    } catch (error: any) {
+      console.error("Failed to update priority:", error);
     }
   };
 
@@ -817,13 +907,8 @@ function IntakeContent() {
 
       setSelectedQueueItem((prev) =>
         prev && prev.id === report.id
-          ? ({
-              ...prev,
-              rawEmergencyReport: updatedReport,
-              statusLabel: "En Route",
-              statusToneClass: "border-emerald-800 text-emerald-400 bg-emerald-950/40",
-            } as IntakeQueueItem)
-          : prev
+          ? refreshQueueItemFromEmergencyReport(prev, updatedReport)
+          : prev,
       );
 
       setPageSuccess(
@@ -843,7 +928,11 @@ function IntakeContent() {
 
     try {
       const updated = await requestEmergencyAdditionalDetails(report.id);
-      setSelectedQueueItem(prev => (prev && prev.id === report.id) ? { ...prev, rawEmergencyReport: updated } as IntakeQueueItem : prev);
+      setSelectedQueueItem((prev) =>
+        prev && prev.id === report.id
+          ? refreshQueueItemFromEmergencyReport(prev, updated)
+          : prev,
+      );
       setPageSuccess(
         `Report ${report.id.slice(-6).toUpperCase()} is now waiting for additional civilian details.`,
       );
@@ -880,16 +969,11 @@ function IntakeContent() {
       // Update selected queue item in real-time so that UI status updates
       setSelectedQueueItem((prev) => {
         if (prev && prev.id === reportId && prev.rawEmergencyReport) {
-          return {
-            ...prev,
-            rawEmergencyReport: {
-              ...prev.rawEmergencyReport,
-              incidentId: incidentId,
-              status: "linked",
-            },
-            statusLabel: "Linked",
-            statusToneClass: "border-sky-800 text-sky-400 bg-sky-950/40",
-          };
+          return refreshQueueItemFromEmergencyReport(prev, {
+            ...prev.rawEmergencyReport,
+            incidentId,
+            status: "linked",
+          });
         }
         return prev;
       });
@@ -908,16 +992,11 @@ function IntakeContent() {
       // Update selected queue item in real-time
       setSelectedQueueItem((prev) => {
         if (prev && prev.id === reportId && prev.rawEmergencyReport) {
-          return {
-            ...prev,
-            rawEmergencyReport: {
-              ...prev.rawEmergencyReport,
-              incidentId: null,
-              status: "pending",
-            },
-            statusLabel: "Pending",
-            statusToneClass: "border-amber-800 text-amber-400 bg-amber-950/40",
-          };
+          return refreshQueueItemFromEmergencyReport(prev, {
+            ...prev.rawEmergencyReport,
+            incidentId: null,
+            status: "pending",
+          });
         }
         return prev;
       });
@@ -1311,6 +1390,50 @@ function IntakeContent() {
                     </button>
                   </div>
                 </section>
+              ) : null}
+
+              {selectedQueueItem?.channel === "emergency_report" &&
+              selectedQueueItem.rawEmergencyReport?.id ? (
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-800 bg-slate-900/60 px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <IntakePriorityBadge priority={selectedQueueItem.priority} size="md" />
+                    {selectedQueueItem.rawEmergencyReport.acknowledgedBy ? (
+                      <span className="text-[10px] text-slate-400">
+                        Ack by {selectedQueueItem.rawEmergencyReport.acknowledgedBy}
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                      Override priority
+                    </label>
+                    <select
+                      value={normalizePriority(selectedQueueItem.priority)}
+                      onChange={(e) =>
+                        handlePriorityOverride(
+                          selectedQueueItem.rawEmergencyReport!.id!,
+                          e.target.value as IncidentPriority
+                        )
+                      }
+                      className="h-8 rounded-lg border border-slate-700 bg-slate-950 px-2 text-xs text-slate-200"
+                    >
+                      <option value="critical">Critical</option>
+                      <option value="high">High</option>
+                      <option value="medium">Medium</option>
+                      <option value="low">Low</option>
+                    </select>
+                    {!selectedQueueItem.rawEmergencyReport.alertAcknowledged &&
+                    !selectedQueueItem.rawEmergencyReport.acknowledgedBy ? (
+                      <button
+                        type="button"
+                        onClick={() => void handleAcknowledgeSelectedAlert()}
+                        className="h-8 rounded-lg bg-red-600 px-3 text-[10px] font-black uppercase tracking-wider text-white hover:bg-red-500"
+                      >
+                        Acknowledge Alert
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
               ) : null}
 
               <div className="min-h-0 flex-1">

@@ -163,10 +163,26 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
 };
 
 const cacheDir = path.join(__dirname, "caches");
+const metroCacheRoot = path.join(cacheDir, ".metro-cache");
+
+// Avoid "Unable to deserialize cloned data" from a stale/corrupt disk cache (common on Windows).
+// Set METRO_PERSIST_CACHE=1 to keep the on-disk cache between restarts.
+if (process.env.NODE_ENV !== "production" && process.env.METRO_PERSIST_CACHE !== "1") {
+  try {
+    fs.rmSync(metroCacheRoot, { recursive: true, force: true });
+  } catch {
+    /* ignore */
+  }
+}
+try {
+  fs.mkdirSync(cacheDir, { recursive: true });
+} catch {
+  /* ignore */
+}
 
 config.cacheStores = () => [
   new FileStore({
-    root: path.join(cacheDir, ".metro-cache"),
+    root: metroCacheRoot,
   }),
 ];
 config.resetCache = false;
@@ -183,7 +199,15 @@ config.reporter = {
     ];
     for (const errorType of reportableErrors) {
       if (event.type === errorType) {
-        reportErrorToRemote({ error: event.error }).catch((reportError) => {
+        if (errorType === "cache_read_error") {
+          try {
+            fs.rmSync(cacheDir, { recursive: true, force: true });
+            fs.mkdirSync(cacheDir, { recursive: true });
+          } catch {
+            // no-op
+          }
+        }
+        reportErrorToRemote({ error: event.error }).catch(() => {
           // no-op
         });
       }

@@ -5,6 +5,8 @@ import StatusBadge from './StatusBadge'
 import AssignDispatcherModal from './AssignDispatcherModal'
 import IncidentDetailsModal from './IncidentDetailsModal'
 import { Clock3, MapPin } from 'lucide-react'
+import PriorityBadge from '@/components/PriorityBadge'
+import { normalizePriority } from '@packages/firebase'
 
 interface Incident {
   id: string
@@ -29,21 +31,6 @@ interface IncidentCardProps {
 export default function IncidentCard({ incident, onUpdate }: IncidentCardProps) {
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'critical':
-        return 'bg-red-500/10 text-red-200 border-red-500/30'
-      case 'high':
-        return 'bg-orange-500/10 text-orange-200 border-orange-500/30'
-      case 'medium':
-        return 'bg-yellow-500/10 text-yellow-200 border-yellow-500/30'
-      case 'low':
-        return 'bg-emerald-500/10 text-emerald-200 border-emerald-500/30'
-      default:
-        return 'bg-slate-800 text-slate-200 border-slate-700'
-    }
-  }
-
   const getTimeAgo = (date: Date) => {
     const minutes = Math.floor((Date.now() - date.getTime()) / 60000)
     if (minutes < 1) return 'Just now'
@@ -71,25 +58,18 @@ export default function IncidentCard({ incident, onUpdate }: IncidentCardProps) 
     return 'Pending'
   }
 
-  const urgencyClass =
-    incident.priority === 'critical' || incident.priority === 'high'
-      ? 'border-red-500/40 shadow-[0_0_0_1px_rgba(239,68,68,0.15)]'
-      : 'border-slate-800'
+  const priority = normalizePriority(incident.priority)
 
   return (
     <article
-      className={`rounded-xl border bg-slate-900/70 p-4 shadow-black/20 transition-all hover:-translate-y-0.5 hover:shadow-lg ${urgencyClass}`}
+      className="rounded-xl border border-slate-800 bg-slate-900/70 p-4 shadow-black/20 transition-all hover:-translate-y-0.5 hover:bg-slate-900/90"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <h3 className="truncate text-lg font-semibold text-slate-100">{incident.type}</h3>
             <StatusBadge status={incident.status} />
-            <span
-              className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${getPriorityColor(incident.priority)}`}
-            >
-              {incident.priority.toUpperCase()}
-            </span>
+            <PriorityBadge priority={priority} size="md" />
             {!incident.dispatcherId && (
               <span className="rounded-full border border-rose-500/30 bg-rose-500/10 px-2.5 py-1 text-[11px] font-semibold text-rose-200">
                 Needs Assignment

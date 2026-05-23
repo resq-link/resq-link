@@ -3,7 +3,8 @@ import { Space_Grotesk } from 'next/font/google'
 import './globals.css'
 import Navigation from '@/components/Navigation'
 import { AuthProvider } from '@/contexts/AuthContext'
-import { AlarmProvider } from '@/contexts/AlarmContext'
+import { PriorityAlertProvider } from '@/contexts/PriorityAlertContext'
+import CriticalAlertModal from '@/components/CriticalAlertModal'
 
 const spaceGrotesk = Space_Grotesk({ subsets: ['latin'] })
 
@@ -24,13 +25,14 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${spaceGrotesk.className} antialiased`} suppressHydrationWarning>
         <AuthProvider>
-          <AlarmProvider>
+          <PriorityAlertProvider>
+            <CriticalAlertModal />
             <Navigation>
               <main className="page-enter min-h-0 flex flex-col h-full">
                 {children}
               </main>
             </Navigation>
-          </AlarmProvider>
+          </PriorityAlertProvider>
         </AuthProvider>
       </body>
     </html>

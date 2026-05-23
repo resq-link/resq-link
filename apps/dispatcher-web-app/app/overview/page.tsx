@@ -3,7 +3,16 @@
 import { useMemo, useState, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import ProtectedRoute from '@/components/ProtectedRoute'
-import { subscribeToEmergencyReports, subscribeToDispatcherLocations, type EmergencyReport, type DispatcherLocation } from '@packages/firebase'
+import {
+  subscribeToEmergencyReports,
+  subscribeToDispatcherLocations,
+  comparePriority,
+  normalizePriority,
+  applyEmergencyEscalationStep,
+  updateEmergencyPriority,
+  type EmergencyReport,
+  type DispatcherLocation,
+} from '@packages/firebase'
 import CommandBar from '@/components/CommandBar'
 import { Activity, ShieldCheck, Clock, Search, Filter } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
@@ -176,7 +185,7 @@ export default function OverviewPage() {
     const total = Math.max(1, reports.length)
     return [
       { label: 'Critical', count: buckets.critical, percentage: (buckets.critical / total) * 100, color: 'bg-red-500' },
-      { label: 'High', count: buckets.high, percentage: (buckets.high / total) * 100, color: 'bg-orange-500' },
+      { label: 'High', count: buckets.high, percentage: (buckets.high / total) * 100, color: 'bg-violet-500' },
       { label: 'Medium', count: buckets.medium, percentage: (buckets.medium / total) * 100, color: 'bg-amber-500' },
       { label: 'Low', count: buckets.low, percentage: (buckets.low / total) * 100, color: 'bg-emerald-500' },
     ]
@@ -248,12 +257,8 @@ export default function OverviewPage() {
         const { moveEmergencyReportToHistory } = await import('@packages/firebase')
         await moveEmergencyReportToHistory(id)
       } else if (action === 'escalate') {
-        const { updateDoc, doc, getFirebaseFirestore, Timestamp } = await import('@packages/firebase')
-        const db = getFirebaseFirestore()
-        await updateDoc(doc(db, 'emergencies', id), {
-          priority: 'critical',
-          updatedAt: Timestamp.now()
-        })
+        await updateEmergencyPriority(id, 'critical')
+        await applyEmergencyEscalationStep(id, 2)
       }
     } catch (error) {
       console.error(`Failed to ${action}:`, error)
@@ -491,7 +496,7 @@ export default function OverviewPage() {
                   recentIncidents.slice(0, 5).map((incident) => {
                     const priorityColor = 
                       incident.priority === 'critical' ? 'bg-red-500' :
-                      incident.priority === 'high' ? 'bg-orange-500' :
+                      incident.priority === 'high' ? 'bg-violet-500' :
                       incident.priority === 'medium' ? 'bg-amber-500' :
                       'bg-emerald-500';
 

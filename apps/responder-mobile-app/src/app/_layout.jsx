@@ -22,6 +22,7 @@ import {
 import useUserStore from "@/store/userStore";
 import { ResqThemeProvider } from "@/theme";
 import ResponderMessagingWidget from "@/modules/messaging/components/ResponderMessagingWidget";
+import PriorityAlertProvider from "@/providers/PriorityAlertProvider";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -80,6 +81,7 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <ResqThemeProvider>
+        <PriorityAlertProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <View style={{ flex: 1 }}>
             <Stack
@@ -90,6 +92,7 @@ export default function RootLayout() {
             <ResponderMessagingWidget />
           </View>
         </GestureHandlerRootView>
+        </PriorityAlertProvider>
       </ResqThemeProvider>
     </QueryClientProvider>
   );

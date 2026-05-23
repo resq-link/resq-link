@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/query/queryKeys";
 import { subscribeAssignedIncidents } from "@/services/incidentService";
+import { comparePriority, normalizePriority } from "@packages/firebase";
 
 const ASSIGNED_OPTS = { statusFilter: "all", limitCount: 100 };
 
@@ -49,7 +50,16 @@ export function useAssignedEmergencies(uid, options = {}) {
     staleTime: Infinity,
   });
 
-  const cases = query.data ?? [];
+  const cases = [...(query.data ?? [])].sort((a, b) => {
+    const rank = comparePriority(
+      normalizePriority(a.priority),
+      normalizePriority(b.priority)
+    );
+    if (rank !== 0) return rank;
+    const aTime = a.createdAt?.toDate?.()?.getTime?.() ?? new Date(a.createdAt || 0).getTime();
+    const bTime = b.createdAt?.toDate?.()?.getTime?.() ?? new Date(b.createdAt || 0).getTime();
+    return bTime - aTime;
+  });
 
   return {
     ...query,

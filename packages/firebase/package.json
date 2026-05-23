@@ -14,6 +14,7 @@
     "dev": "tsc --watch",
     "seed:incident-types": "ts-node scripts/seed-incident-type-rules.ts",
     "seed:civilians": "ts-node scripts/create-civilian-users.ts",
+    "deploy:indexes": "firebase deploy --only firestore:indexes",
     "prepare": "npm run build"
   },
   "dependencies": {

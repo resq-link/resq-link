@@ -3,6 +3,7 @@ import { getAuth, initializeAuth, type Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { getDatabase, Database } from 'firebase/database';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
+import { firebaseDebug, firebaseInfo } from './logger';
 
 const isPlaceholder = (value: string | undefined | null): boolean => {
   if (!value) return true;
@@ -182,21 +183,27 @@ function ensureFirebaseApp(): FirebaseApp {
 
   const firebaseConfig = getFirebaseOptions();
 
-  console.log('🔧 Firebase Config Check:');
-  console.log('  - API Key:', firebaseConfig.apiKey ? `${firebaseConfig.apiKey.substring(0, 10)}...` : 'MISSING');
-  console.log('  - Auth Domain:', firebaseConfig.authDomain || 'MISSING');
-  console.log('  - Project ID:', firebaseConfig.projectId || 'MISSING');
-  console.log('  - App ID:', firebaseConfig.appId ? `${firebaseConfig.appId.substring(0, 10)}...` : 'MISSING');
+  firebaseDebug('Firebase Config Check:');
+  firebaseDebug(
+    '  - API Key:',
+    firebaseConfig.apiKey ? `${firebaseConfig.apiKey.substring(0, 10)}...` : 'MISSING'
+  );
+  firebaseDebug('  - Auth Domain:', firebaseConfig.authDomain || 'MISSING');
+  firebaseDebug('  - Project ID:', firebaseConfig.projectId || 'MISSING');
+  firebaseDebug(
+    '  - App ID:',
+    firebaseConfig.appId ? `${firebaseConfig.appId.substring(0, 10)}...` : 'MISSING'
+  );
 
   if (!isConfigValid(firebaseConfig)) {
-    console.error('❌ Firebase config is missing or incomplete!');
+    console.error('Firebase config is missing or incomplete!');
     throw new Error('Firebase configuration is missing or incomplete. Please check app.json or .env file.');
   }
 
   try {
-    console.log('🚀 Initializing Firebase...');
+    firebaseDebug('Initializing Firebase...');
     _app = initializeApp(firebaseConfig);
-    console.log('✅ Firebase initialized successfully');
+    firebaseInfo('Firebase initialized');
     return _app;
   } catch (error: any) {
     console.error('❌ Firebase initialization error:', error.message);

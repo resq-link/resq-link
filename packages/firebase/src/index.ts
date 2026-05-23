@@ -46,6 +46,7 @@ export {
   getAllEmergencyReports,
   getActiveEmergencyReports,
   subscribeToEmergencyReports,
+  type EmergencyReportsSnapshotMeta,
   subscribeToActiveEmergencyReports,
   subscribeToEmergencyReport,
   assignDispatcherToEmergency,
@@ -68,6 +69,57 @@ export {
 } from './emergencies';
 
 export { getSuggestedAgenciesForEmergencyType } from './emergencies';
+
+// Incident prioritization (visual + sound coding, escalation)
+export {
+  PRIORITY_LEVELS,
+  PRIORITY_RANK,
+  PRIORITY_VISUAL,
+  INCIDENT_TYPE_PRIORITY_MAP,
+  ESCALATION_THRESHOLDS_MS,
+  MAX_ESCALATION_LEVEL,
+  normalizePriority,
+  normalizePriorityFromRecord,
+  comparePriority,
+  sortByPriority,
+  isHighPriority,
+  requiresForcedAlert,
+  requiresAcknowledgmentUI,
+  requiresRepeatingAlert,
+  resolvePriorityForIncidentType,
+  getDefaultPriorityForIncidentType,
+  getPriorityBadgeLabel,
+  getPriorityMapColor,
+  getEscalationPhase,
+  getNextEscalationLevel,
+  type PriorityVisualTokens,
+  type EscalationPhase,
+  type AlertAcknowledgmentFields,
+} from './priority';
+
+export {
+  INCIDENT_STATUS_VISUAL,
+  normalizeOperationalStatus,
+  getIncidentStatusVisual,
+  getIncidentStatusLabel,
+  getIncidentStatusColors,
+  getIncidentStatusTailwindTextClass,
+  getIncidentStatusTailwindDotClass,
+  shouldPulseIncidentStatus,
+  INCIDENT_STATUS_DOT_PULSE,
+  type OperationalIncidentStatus,
+  type IncidentStatusVisualToken,
+  type StatusColorSet,
+} from './incidentStatusVisual';
+
+export {
+  acknowledgeEmergencyAlert,
+  updateEmergencyPriority,
+  applyEmergencyEscalationStep,
+  isAlertAcknowledged,
+  shouldPlayPriorityAlert,
+  type EscalationUpdateResult,
+} from './alertAcknowledgment';
 
 // Footage requests (CCTV / evidence)
 export {

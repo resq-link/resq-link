@@ -4,10 +4,12 @@ import useUserStore from "@/store/userStore";
 import { acceptIncidentCase } from "@/services/incidentService";
 import CaseStatusBadge from "./CaseStatusBadge";
 import PriorityBadge from "./PriorityBadge";
+import { normalizePriority } from "@packages/firebase";
 import { radii, spacing, useResqTheme } from "@/theme";
 
 export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
   const { colors } = useResqTheme();
+  const priority = normalizePriority(caseData.priority);
   const [isAccepting, setIsAccepting] = useState(false);
   const { user } = useUserStore();
 
@@ -65,8 +67,13 @@ export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
         borderRadius: radii.lg,
         padding: spacing.lg,
         marginBottom: spacing.md,
-        borderWidth: 1,
-        borderColor: colors.border,
+        borderWidth: priority === "critical" ? 2 : 1,
+        borderColor:
+          priority === "critical"
+            ? colors.priorityCritical
+            : priority === "high"
+            ? colors.priorityHigh
+            : colors.border,
       }}
     >
       <View
@@ -91,7 +98,7 @@ export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
           </Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             <CaseStatusBadge status={caseData.status} />
-            <PriorityBadge priority={caseData.priority || "medium"} />
+            <PriorityBadge priority={priority} />
           </View>
         </View>
       </View>

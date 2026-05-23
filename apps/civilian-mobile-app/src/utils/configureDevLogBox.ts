@@ -7,9 +7,7 @@ export function configureDevLogBox(): void {
   if (!__DEV__) return;
 
   LogBox.ignoreLogs([
-    // packages/firebase emergencies.ts: intentional fallback when Firestore composite index is missing.
-    "Composite index not found, using alternative query method",
-
+    // Harmless Metro / Expo dev noise (add patterns as needed)
   ]);
 }
 

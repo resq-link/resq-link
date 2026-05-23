@@ -38,6 +38,3 @@ export {
   dashboardConstants,
   dashboardPalette,
 } from "./palettes/dashboardPalette";
-
-/** Login screen standalone palette keys (mostly duplicated in tokens; exported for isolated login styling). */
-export { loginPalette } from "./palettes/loginPalette";

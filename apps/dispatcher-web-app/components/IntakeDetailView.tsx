@@ -4,9 +4,9 @@ import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
-import { 
-  type EmergencyReport, 
-  type IncidentRecord, 
+import {
+  type EmergencyReport,
+  type IncidentRecord,
   getAllDispatchers,
   getSuggestedAgenciesForEmergencyType,
   subscribeToDispatcherLocations,
@@ -18,7 +18,9 @@ import {
   getFirebaseFirestore,
   convertFirestoreDoc,
 } from "@packages/firebase";
-import { 
+import IncidentStatusIndicator from "@/components/IncidentStatusIndicator";
+import { getQueueItemOperationalStatus } from "@/components/IntakeListItem";
+import {
   Calendar, 
   Clock, 
   MapPin, 
@@ -427,9 +429,7 @@ export default function IntakeDetailView({
             <h2 className="text-sm font-black text-slate-100 tracking-tight uppercase">
               {item.referenceNumber}
             </h2>
-            <span className={`px-2 py-0.5 rounded-full border text-[10px] font-black uppercase tracking-widest ${item.statusToneClass} shadow-lg shadow-black/20`}>
-              {item.statusLabel}
-            </span>
+            <IncidentStatusIndicator status={getQueueItemOperationalStatus(item)} size="md" />
             {isResponderAssigned && (
               <span className={`px-2 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-widest ${responderHasAccepted ? 'border-sky-800 text-sky-400 bg-sky-950/40' : 'border-amber-800 text-amber-400 bg-amber-950/40'}`}>
                 {responderStatusLabel}
