@@ -50,7 +50,7 @@ const priorityCopy: Record<
 }
 
 export default function CriticalAlertModal() {
-  const { pendingAlertReport, dismissAlertModal, acknowledgeReport } = usePriorityAlerts()
+  const { pendingAlertReport, acknowledgeReport } = usePriorityAlerts()
   const { user } = useAuth()
 
   if (!pendingAlertReport?.id) return null
@@ -125,20 +125,13 @@ export default function CriticalAlertModal() {
           ) : null}
         </div>
 
-        <div className="mt-6 flex flex-wrap gap-3">
+        <div className="mt-6">
           <button
             type="button"
             onClick={() => acknowledgeReport(pendingAlertReport.id as string, dispatcherName)}
-            className={`flex-1 rounded-lg px-4 py-3 text-sm font-bold uppercase tracking-wider text-white transition ${copy.ackClass}`}
+            className={`w-full rounded-lg px-4 py-3 text-sm font-bold uppercase tracking-wider text-white transition ${copy.ackClass}`}
           >
             Acknowledge Alert
-          </button>
-          <button
-            type="button"
-            onClick={dismissAlertModal}
-            className="rounded-lg border border-slate-600 px-4 py-3 text-sm font-medium text-slate-300 hover:bg-slate-800"
-          >
-            View later
           </button>
         </div>
       </div>

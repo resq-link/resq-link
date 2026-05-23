@@ -41,9 +41,6 @@ type PriorityAlertContextType = {
   pendingAlertReport: EmergencyReport | null
   /** @deprecated Use pendingAlertReport */
   criticalModalReport: EmergencyReport | null
-  dismissAlertModal: () => void
-  /** @deprecated Use dismissAlertModal */
-  dismissCriticalModal: () => void
   acknowledgeReport: (reportId: string, dispatcherName: string) => Promise<EmergencyReport>
   unacknowledgedAlertCount: number
   /** @deprecated Use unacknowledgedAlertCount */
@@ -341,14 +338,6 @@ export function PriorityAlertProvider({ children }: { children: ReactNode }) {
     [reports, isReportAcknowledged]
   )
 
-  const dismissAlertModal = useCallback(() => {
-    if (pendingAlertReport?.id) {
-      dismissedModalIdsRef.current.add(pendingAlertReport.id as string)
-    }
-    pendingAlertReportRef.current = null
-    setPendingAlertReport(null)
-  }, [pendingAlertReport])
-
   const acknowledgeReport = useCallback(
     async (reportId: string, dispatcherName: string) => {
       locallyAcknowledgedRef.current.add(reportId)
@@ -373,8 +362,6 @@ export function PriorityAlertProvider({ children }: { children: ReactNode }) {
       setIsAlarmMuted,
       pendingAlertReport,
       criticalModalReport: pendingAlertReport,
-      dismissAlertModal,
-      dismissCriticalModal: dismissAlertModal,
       acknowledgeReport,
       unacknowledgedAlertCount,
       unacknowledgedCriticalCount: unacknowledgedAlertCount,
@@ -382,7 +369,6 @@ export function PriorityAlertProvider({ children }: { children: ReactNode }) {
     [
       isAlarmMuted,
       pendingAlertReport,
-      dismissAlertModal,
       acknowledgeReport,
       unacknowledgedAlertCount,
     ]
