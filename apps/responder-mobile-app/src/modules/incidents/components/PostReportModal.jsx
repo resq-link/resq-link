@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   View,
   Text,
@@ -10,8 +10,99 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
-import { X, ClipboardList, Users } from "lucide-react-native";
+import {
+  AlertTriangle,
+  Building2,
+  CheckCircle2,
+  ClipboardList,
+  Minus,
+  Plus,
+  Users,
+  X,
+} from "lucide-react-native";
 import { radii, spacing } from "@/theme";
+
+const causePresets = [
+  "Accidental",
+  "Electrical",
+  "Medical",
+  "Vehicular",
+  "Weather-related",
+  "Under investigation",
+];
+
+const statusPresets = [
+  "No injuries",
+  "Stable",
+  "Minor injuries",
+  "Critical",
+  "Transported",
+];
+
+const notePresets = [
+  "Scene secured",
+  "Hazards controlled",
+  "Area turned over",
+  "Further monitoring needed",
+];
+
+const hospitalPresets = [
+  "No transport",
+  "TCPGH",
+  "City Health Office",
+  "Private clinic",
+];
+
+const getPeopleCount = (value) => {
+  const parsed = Number.parseInt(value || "0", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+};
+
+const appendNote = (current, note) => {
+  const trimmed = current.trim();
+  if (!trimmed) return note;
+  if (trimmed.toLowerCase().includes(note.toLowerCase())) return current;
+  return `${trimmed}\n${note}`;
+};
+
+function QuickChip({ label, selected, onPress, colors, disabled }) {
+  return (
+    <TouchableOpacity
+      onPress={onPress}
+      disabled={disabled}
+      activeOpacity={0.82}
+      style={[
+        styles.quickChip,
+        {
+          backgroundColor: selected ? colors.accent : colors.surfaceHighlight,
+          borderColor: selected ? colors.accent : colors.border,
+        },
+        disabled && styles.disabledButton,
+      ]}
+      accessibilityRole="button"
+      accessibilityState={{ selected, disabled }}
+    >
+      <Text
+        style={[
+          styles.quickChipText,
+          { color: selected ? "#FFFFFF" : colors.textSecondary },
+        ]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+function FieldLabel({ label, hint, colors }) {
+  return (
+    <View style={styles.fieldLabelRow}>
+      <Text style={[styles.fieldLabel, { color: colors.text }]}>{label}</Text>
+      {hint ? <Text style={[styles.fieldHint, { color: colors.textMuted }]}>{hint}</Text> : null}
+    </View>
+  );
+}
 
 export default function PostReportModal({
   visible,
@@ -23,6 +114,25 @@ export default function PostReportModal({
   error,
   colors,
 }) {
+  const peopleCount = getPeopleCount(form.peopleInvolved);
+  const hasTransport = Boolean(form.hospital?.trim()) && form.hospital !== "No transport";
+  const completionItems = useMemo(
+    () => [
+      Boolean(form.reasonForIncident?.trim()),
+      Boolean(form.peopleStatus?.trim()),
+      Boolean(form.notes?.trim()),
+    ],
+    [form.reasonForIncident, form.peopleStatus, form.notes]
+  );
+  const completedCount = completionItems.filter(Boolean).length;
+
+  const updatePeopleCount = (nextCount) => {
+    setForm((current) => ({
+      ...current,
+      peopleInvolved: String(Math.max(0, nextCount)),
+    }));
+  };
+
   return (
     <Modal
       visible={visible}
@@ -37,12 +147,22 @@ export default function PostReportModal({
         style={styles.keyboardView}
       >
         <View style={styles.modalContainer}>
-          <View style={[styles.modalContent, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            {/* Header */}
-            <View style={[styles.header, { borderBottomColor: colors.border }]}>
-              <View style={styles.headerTitleRow}>
-                <ClipboardList size={22} color={colors.accent} style={{ marginRight: 8 }} />
-                <Text accessibilityRole="header" style={[styles.modalTitle, { color: colors.text }]}>Post Incident Report</Text>
+          <View style={[styles.modalContent, { backgroundColor: colors.background }]}>
+            <View style={styles.sheetHandle} />
+
+            <View style={styles.header}>
+              <View style={styles.headerCopy}>
+                <View style={[styles.headerIcon, { backgroundColor: colors.accent + "1F" }]}>
+                  <ClipboardList size={20} color={colors.accent} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text accessibilityRole="header" style={[styles.modalTitle, { color: colors.text }]}>
+                    Post Report
+                  </Text>
+                  <Text style={[styles.modalDescription, { color: colors.textSecondary }]}>
+                    Final scene outcome and handover notes.
+                  </Text>
+                </View>
               </View>
               <TouchableOpacity
                 onPress={onClose}
@@ -55,92 +175,140 @@ export default function PostReportModal({
               </TouchableOpacity>
             </View>
 
-            {/* Scrollable Form Content */}
+            <View style={[styles.progressStrip, { backgroundColor: colors.surfaceHighlight }]}>
+              <View style={styles.progressCopy}>
+                <CheckCircle2 size={16} color={colors.accent} />
+                <Text style={[styles.progressText, { color: colors.textSecondary }]}>
+                  {completedCount}/3 key details filled
+                </Text>
+              </View>
+              <View style={[styles.progressTrack, { backgroundColor: colors.border }]}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    {
+                      width: `${Math.max(12, (completedCount / 3) * 100)}%`,
+                      backgroundColor: colors.accent,
+                    },
+                  ]}
+                />
+              </View>
+            </View>
+
             <ScrollView
               style={styles.formScroll}
               contentContainerStyle={styles.formScrollContent}
               keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={true}
+              showsVerticalScrollIndicator={false}
             >
-              <Text style={[styles.modalDescription, { color: colors.textSecondary }]}>
-                Please fill in the incident outcome details below. These fields are reference points for dispatch and can be left blank.
-              </Text>
-
-              {/* SECTION 1: Incident details */}
-              <View style={[styles.groupContainer, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                <View style={styles.groupHeader}>
-                  <ClipboardList size={16} color={colors.textSecondary} style={{ marginRight: 6 }} />
-                  <Text accessibilityRole="header" style={[styles.groupTitle, { color: colors.textSecondary }]}>Incident Outcome</Text>
-                </View>
-
-                {/* Field 1: Reason for incident */}
-                <View style={styles.fieldContainer}>
-                  <Text style={[styles.fieldLabel, { color: colors.text }]}>Reason for Incident</Text>
-                  <TextInput
-                    value={form.reasonForIncident}
-                    onChangeText={(value) =>
-                      setForm((current) => ({ ...current, reasonForIncident: value }))
-                    }
-                    placeholder="e.g. Kitchen cooking mishap, electrical outage"
-                    placeholderTextColor={colors.textMuted}
-                    editable={!isSubmitting}
-                    accessibilityLabel="Reason for incident"
-                    accessibilityHint="Enter the primary cause or source of the emergency"
-                    style={[
-                      styles.input,
-                      {
-                        backgroundColor: colors.surface,
-                        borderColor: colors.border,
-                        color: colors.text,
-                      },
-                    ]}
-                  />
-                  <Text style={[styles.helperText, { color: colors.textMuted }]}>
-                    The primary cause or source of the emergency.
-                  </Text>
-                </View>
-
-                {/* Field 2: Notes */}
-                <View style={styles.fieldContainer}>
-                  <Text style={[styles.fieldLabel, { color: colors.text }]}>Scene Observations & Notes</Text>
-                  <TextInput
-                    value={form.notes}
-                    onChangeText={(value) =>
-                      setForm((current) => ({ ...current, notes: value }))
-                    }
-                    placeholder="Describe scene state, hazard controls, or actions taken..."
-                    placeholderTextColor={colors.textMuted}
-                    multiline
-                    numberOfLines={4}
-                    editable={!isSubmitting}
-                    accessibilityLabel="Scene observations and notes"
-                    accessibilityHint="Describe observations regarding site conditions, hazards, or actions taken"
-                    style={[
-                      styles.input,
-                      styles.textArea,
-                      {
-                        backgroundColor: colors.surface,
-                        borderColor: colors.border,
-                        color: colors.text,
-                      },
-                    ]}
-                  />
-                  <Text style={[styles.helperText, { color: colors.textMuted }]}>
-                    Any secondary observations or remarks regarding the site.
-                  </Text>
-                </View>
+              <View style={styles.sectionHeader}>
+                <AlertTriangle size={17} color={colors.accent} />
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                  Incident Outcome
+                </Text>
               </View>
 
-              {/* SECTION 2: Impact & Casualties */}
-              <View style={[styles.groupContainer, { backgroundColor: colors.background, borderColor: colors.border }]}>
-                <View style={styles.groupHeader}>
-                  <Users size={16} color={colors.textSecondary} style={{ marginRight: 6 }} />
-                  <Text accessibilityRole="header" style={[styles.groupTitle, { color: colors.textSecondary }]}>Casualties & Impact</Text>
+              <View style={styles.fieldContainer}>
+                <FieldLabel label="Reason / Cause" hint="Tap a preset or type details" colors={colors} />
+                <View style={styles.chipWrap}>
+                  {causePresets.map((preset) => (
+                    <QuickChip
+                      key={preset}
+                      label={preset}
+                      selected={form.reasonForIncident === preset}
+                      onPress={() =>
+                        setForm((current) => ({ ...current, reasonForIncident: preset }))
+                      }
+                      colors={colors}
+                      disabled={isSubmitting}
+                    />
+                  ))}
                 </View>
+                <TextInput
+                  value={form.reasonForIncident}
+                  onChangeText={(value) =>
+                    setForm((current) => ({ ...current, reasonForIncident: value }))
+                  }
+                  placeholder="Primary cause or source of the emergency"
+                  placeholderTextColor={colors.textMuted}
+                  editable={!isSubmitting}
+                  accessibilityLabel="Reason for incident"
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.border,
+                      color: colors.text,
+                    },
+                  ]}
+                />
+              </View>
 
-                {/* Field 3: Number of people involved */}
-                <View style={styles.fieldContainer}>
-                  <Text style={[styles.fieldLabel, { color: colors.text }]}>Number of People Involved</Text>
+              <View style={styles.fieldContainer}>
+                <FieldLabel label="Scene Notes" hint="Actions, hazards, handover" colors={colors} />
+                <View style={styles.chipWrap}>
+                  {notePresets.map((preset) => (
+                    <QuickChip
+                      key={preset}
+                      label={preset}
+                      selected={form.notes?.toLowerCase().includes(preset.toLowerCase())}
+                      onPress={() =>
+                        setForm((current) => ({
+                          ...current,
+                          notes: appendNote(current.notes || "", preset),
+                        }))
+                      }
+                      colors={colors}
+                      disabled={isSubmitting}
+                    />
+                  ))}
+                </View>
+                <TextInput
+                  value={form.notes}
+                  onChangeText={(value) => setForm((current) => ({ ...current, notes: value }))}
+                  placeholder="Describe scene state, hazard controls, actions taken, or endorsements..."
+                  placeholderTextColor={colors.textMuted}
+                  multiline
+                  numberOfLines={5}
+                  editable={!isSubmitting}
+                  accessibilityLabel="Scene observations and notes"
+                  style={[
+                    styles.input,
+                    styles.textArea,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.border,
+                      color: colors.text,
+                    },
+                  ]}
+                />
+              </View>
+
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+              <View style={styles.sectionHeader}>
+                <Users size={17} color={colors.accent} />
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                  People & Transport
+                </Text>
+              </View>
+
+              <View style={styles.fieldContainer}>
+                <FieldLabel label="People Involved" hint="Affected civilians/responders" colors={colors} />
+                <View style={styles.counterRow}>
+                  <TouchableOpacity
+                    onPress={() => updatePeopleCount(peopleCount - 1)}
+                    disabled={isSubmitting || peopleCount === 0}
+                    style={[
+                      styles.counterButton,
+                      { backgroundColor: colors.surfaceHighlight, borderColor: colors.border },
+                      (isSubmitting || peopleCount === 0) && styles.disabledButton,
+                    ]}
+                    accessibilityRole="button"
+                    accessibilityLabel="Decrease people involved"
+                  >
+                    <Minus size={18} color={colors.textSecondary} />
+                  </TouchableOpacity>
                   <TextInput
                     value={form.peopleInvolved}
                     onChangeText={(value) =>
@@ -149,14 +317,13 @@ export default function PostReportModal({
                         peopleInvolved: value.replace(/[^0-9]/g, ""),
                       }))
                     }
-                    placeholder="e.g. 0 or 2"
+                    placeholder="0"
                     placeholderTextColor={colors.textMuted}
                     keyboardType="number-pad"
                     editable={!isSubmitting}
                     accessibilityLabel="Number of people involved"
-                    accessibilityHint="Enter the total count of affected civilian or responders"
                     style={[
-                      styles.input,
+                      styles.counterInput,
                       {
                         backgroundColor: colors.surface,
                         borderColor: colors.border,
@@ -164,53 +331,87 @@ export default function PostReportModal({
                       },
                     ]}
                   />
-                  <Text style={[styles.helperText, { color: colors.textMuted }]}>
-                    Total count of affected civilian or responders.
-                  </Text>
-                </View>
-
-                {/* Field 4: Status of people involved */}
-                <View style={styles.fieldContainer}>
-                  <Text style={[styles.fieldLabel, { color: colors.text }]}>Civilian Status / Injuries</Text>
-                  <TextInput
-                    value={form.peopleStatus}
-                    onChangeText={(value) =>
-                      setForm((current) => ({ ...current, peopleStatus: value }))
-                    }
-                    placeholder="e.g. Stable, conscious, minor burns treated"
-                    placeholderTextColor={colors.textMuted}
-                    editable={!isSubmitting}
-                    accessibilityLabel="Civilian status and injuries"
-                    accessibilityHint="Enter the current health state of all patients or individuals on scene"
+                  <TouchableOpacity
+                    onPress={() => updatePeopleCount(peopleCount + 1)}
+                    disabled={isSubmitting}
                     style={[
-                      styles.input,
-                      {
-                        backgroundColor: colors.surface,
-                        borderColor: colors.border,
-                        color: colors.text,
-                      },
+                      styles.counterButton,
+                      { backgroundColor: colors.surfaceHighlight, borderColor: colors.border },
+                      isSubmitting && styles.disabledButton,
                     ]}
-                  />
-                  <Text style={[styles.helperText, { color: colors.textMuted }]}>
-                    Current health state of all patients/individuals on scene.
-                  </Text>
+                    accessibilityRole="button"
+                    accessibilityLabel="Increase people involved"
+                  >
+                    <Plus size={18} color={colors.textSecondary} />
+                  </TouchableOpacity>
                 </View>
+              </View>
 
-                {/* Field 5: Hospital */}
-                <View style={styles.fieldContainer}>
-                  <Text style={[styles.fieldLabel, { color: colors.text }]}>Transported Hospital (Optional)</Text>
+              <View style={styles.fieldContainer}>
+                <FieldLabel label="Condition / Status" hint="Current patient or civilian state" colors={colors} />
+                <View style={styles.chipWrap}>
+                  {statusPresets.map((preset) => (
+                    <QuickChip
+                      key={preset}
+                      label={preset}
+                      selected={form.peopleStatus === preset}
+                      onPress={() => setForm((current) => ({ ...current, peopleStatus: preset }))}
+                      colors={colors}
+                      disabled={isSubmitting}
+                    />
+                  ))}
+                </View>
+                <TextInput
+                  value={form.peopleStatus}
+                  onChangeText={(value) =>
+                    setForm((current) => ({ ...current, peopleStatus: value }))
+                  }
+                  placeholder="e.g. Stable, conscious, minor burns treated"
+                  placeholderTextColor={colors.textMuted}
+                  editable={!isSubmitting}
+                  accessibilityLabel="Civilian status and injuries"
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.border,
+                      color: colors.text,
+                    },
+                  ]}
+                />
+              </View>
+
+              <View style={styles.fieldContainer}>
+                <FieldLabel label="Transport / Facility" hint={hasTransport ? "Facility recorded" : "Optional"} colors={colors} />
+                <View style={styles.chipWrap}>
+                  {hospitalPresets.map((preset) => (
+                    <QuickChip
+                      key={preset}
+                      label={preset}
+                      selected={form.hospital === preset || (!form.hospital && preset === "No transport")}
+                      onPress={() =>
+                        setForm((current) => ({
+                          ...current,
+                          hospital: preset === "No transport" ? "" : preset,
+                        }))
+                      }
+                      colors={colors}
+                      disabled={isSubmitting}
+                    />
+                  ))}
+                </View>
+                <View style={styles.inputIconRow}>
+                  <Building2 size={17} color={colors.textMuted} style={styles.inputIcon} />
                   <TextInput
                     value={form.hospital}
-                    onChangeText={(value) =>
-                      setForm((current) => ({ ...current, hospital: value }))
-                    }
-                    placeholder="e.g. City General Hospital, Emergency Wing"
+                    onChangeText={(value) => setForm((current) => ({ ...current, hospital: value }))}
+                    placeholder="Hospital, clinic, or receiving facility"
                     placeholderTextColor={colors.textMuted}
                     editable={!isSubmitting}
                     accessibilityLabel="Transported hospital name"
-                    accessibilityHint="Optional. Name the hospital or clinic where individuals were evacuated"
                     style={[
                       styles.input,
+                      styles.inputWithIcon,
                       {
                         backgroundColor: colors.surface,
                         borderColor: colors.border,
@@ -218,21 +419,21 @@ export default function PostReportModal({
                       },
                     ]}
                   />
-                  <Text style={[styles.helperText, { color: colors.textMuted }]}>
-                    If anyone was evacuated to a clinic or hospital, name it.
-                  </Text>
                 </View>
               </View>
 
               {error ? <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text> : null}
             </ScrollView>
 
-            {/* Footer Buttons */}
-            <View style={[styles.footer, { borderTopColor: colors.border }]}>
+            <View style={[styles.footer, { borderTopColor: colors.border, backgroundColor: colors.background }]}>
               <TouchableOpacity
                 onPress={onClose}
                 disabled={isSubmitting}
-                style={[styles.cancelButton, { borderColor: colors.border }]}
+                style={[
+                  styles.cancelButton,
+                  { borderColor: colors.border, backgroundColor: colors.surfaceHighlight },
+                  isSubmitting && styles.disabledButton,
+                ]}
                 accessibilityRole="button"
                 accessibilityLabel="Cancel report submission"
               >
@@ -251,7 +452,7 @@ export default function PostReportModal({
                 accessibilityState={{ disabled: isSubmitting }}
               >
                 <Text style={styles.submitButtonText}>
-                  {isSubmitting ? "Submitting..." : "Submit Report"}
+                  {isSubmitting ? "Submitting..." : "Complete Case"}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -268,38 +469,87 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.75)",
+    backgroundColor: "rgba(0, 0, 0, 0.72)",
     justifyContent: "flex-end",
   },
   modalContent: {
-    borderTopLeftRadius: radii.xl,
-    borderTopRightRadius: radii.xl,
-    borderWidth: 1,
-    borderBottomWidth: 0,
-    height: "90%",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    maxHeight: "92%",
+    minHeight: "72%",
     width: "100%",
+    overflow: "hidden",
+  },
+  sheetHandle: {
+    alignSelf: "center",
+    width: 44,
+    height: 5,
+    borderRadius: 99,
+    backgroundColor: "rgba(148, 163, 184, 0.45)",
+    marginTop: spacing.sm,
   },
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    padding: spacing.lg,
-    borderBottomWidth: 1,
+    justifyContent: "space-between",
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md,
+    gap: spacing.md,
   },
-  headerTitleRow: {
+  headerCopy: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
+    gap: spacing.md,
+  },
+  headerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
   },
   modalTitle: {
     fontFamily: "SpaceGrotesk_700Bold",
-    fontSize: 20,
+    fontSize: 22,
+  },
+  modalDescription: {
+    fontFamily: "SpaceGrotesk_400Regular",
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 2,
   },
   closeButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     alignItems: "center",
     justifyContent: "center",
+  },
+  progressStrip: {
+    marginHorizontal: spacing.lg,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  progressCopy: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  progressText: {
+    fontFamily: "SpaceGrotesk_600SemiBold",
+    fontSize: 12,
+  },
+  progressTrack: {
+    height: 4,
+    borderRadius: 99,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 99,
   },
   formScroll: {
     flex: 1,
@@ -308,91 +558,134 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
   },
-  modalDescription: {
-    fontFamily: "SpaceGrotesk_400Regular",
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: spacing.lg,
-  },
-  groupContainer: {
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    padding: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  groupHeader: {
+  sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
+    gap: spacing.sm,
     marginBottom: spacing.md,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "rgba(128,128,128,0.2)",
-    paddingBottom: 6,
   },
-  groupTitle: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
+  sectionTitle: {
+    fontFamily: "SpaceGrotesk_700Bold",
     fontSize: 12,
     textTransform: "uppercase",
     letterSpacing: 0.8,
   },
+  divider: {
+    height: 1,
+    marginVertical: spacing.lg,
+  },
   fieldContainer: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  fieldLabelRow: {
+    marginBottom: spacing.sm,
   },
   fieldLabel: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
+    fontFamily: "SpaceGrotesk_700Bold",
     fontSize: 14,
-    marginBottom: 6,
+  },
+  fieldHint: {
+    fontFamily: "SpaceGrotesk_400Regular",
+    fontSize: 12,
+    marginTop: 2,
+  },
+  chipWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  quickChip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    maxWidth: "100%",
+  },
+  quickChipText: {
+    fontFamily: "SpaceGrotesk_600SemiBold",
+    fontSize: 12,
   },
   input: {
     borderRadius: radii.md,
     borderWidth: 1,
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
     fontFamily: "SpaceGrotesk_400Regular",
     fontSize: 15,
   },
   textArea: {
-    minHeight: 100,
+    minHeight: 118,
     textAlignVertical: "top",
   },
-  helperText: {
-    fontFamily: "SpaceGrotesk_400Regular",
-    fontSize: 12,
-    marginTop: 4,
+  counterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  counterButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  counterInput: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    textAlign: "center",
+    fontFamily: "SpaceGrotesk_700Bold",
+    fontSize: 18,
+  },
+  inputIconRow: {
+    position: "relative",
+  },
+  inputIcon: {
+    position: "absolute",
+    left: spacing.md,
+    top: 14,
+    zIndex: 2,
+  },
+  inputWithIcon: {
+    paddingLeft: 42,
   },
   errorText: {
-    fontFamily: "SpaceGrotesk_400Regular",
+    fontFamily: "SpaceGrotesk_600SemiBold",
     fontSize: 13,
     marginTop: spacing.sm,
     textAlign: "center",
   },
   footer: {
     flexDirection: "row",
-    justifyContent: "flex-end",
     padding: spacing.lg,
     borderTopWidth: 1,
     gap: spacing.md,
   },
   cancelButton: {
-    borderRadius: radii.md,
+    minHeight: 52,
+    borderRadius: 999,
     borderWidth: 1,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
     justifyContent: "center",
     alignItems: "center",
   },
   cancelButtonText: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
+    fontFamily: "SpaceGrotesk_700Bold",
     fontSize: 15,
   },
   submitButton: {
-    borderRadius: radii.md,
+    flex: 1,
+    minHeight: 52,
+    borderRadius: 999,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
     justifyContent: "center",
     alignItems: "center",
-    minWidth: 140,
   },
   submitButtonText: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
+    fontFamily: "SpaceGrotesk_700Bold",
     fontSize: 15,
     color: "#FFFFFF",
   },
