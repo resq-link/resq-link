@@ -33,7 +33,7 @@ export function useDashboardLocationTracking(shouldTrack) {
         locationSubscription = await Location.watchPositionAsync(
           {
             accuracy: Location.Accuracy.High,
-            timeInterval: 30000,
+            timeInterval: 5000,
             distanceInterval: 50,
           },
           async (loc) => {
@@ -57,7 +57,7 @@ export function useDashboardLocationTracking(shouldTrack) {
           } catch (e) {
             console.error("Error updating location:", e);
           }
-        }, 60000);
+        }, 5000);
       } catch (e) {
         console.error("Error setting up location tracking:", e);
       }
