@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useCallback } from "react";
 import {
   View,
   Text,
@@ -9,12 +9,17 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from "react-native";
+import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
 import {
   AlertTriangle,
   Building2,
+  Camera,
   CheckCircle2,
   ClipboardList,
+  ImageIcon,
   Minus,
   Plus,
   Users,
@@ -132,6 +137,49 @@ export default function PostReportModal({
       peopleInvolved: String(Math.max(0, nextCount)),
     }));
   };
+
+  const pickerOptions = {
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    allowsEditing: true,
+    aspect: [4, 3],
+    quality: 0.8,
+  };
+
+  const handlePickPhoto = useCallback(
+    async (source) => {
+      if (isSubmitting) return;
+
+      const permission =
+        source === "camera"
+          ? await ImagePicker.requestCameraPermissionsAsync()
+          : await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        Alert.alert(
+          "Permission required",
+          source === "camera"
+            ? "Camera access is needed to take a scene photo."
+            : "Photo library access is needed to attach a scene photo."
+        );
+        return;
+      }
+
+      const result =
+        source === "camera"
+          ? await ImagePicker.launchCameraAsync(pickerOptions)
+          : await ImagePicker.launchImageLibraryAsync(pickerOptions);
+
+      if (!result.canceled && result.assets?.[0]?.uri) {
+        setForm((current) => ({ ...current, photoUri: result.assets[0].uri }));
+      }
+    },
+    [isSubmitting, setForm]
+  );
+
+  const handleRemovePhoto = useCallback(() => {
+    if (isSubmitting) return;
+    setForm((current) => ({ ...current, photoUri: "" }));
+  }, [isSubmitting, setForm]);
 
   return (
     <Modal
@@ -422,6 +470,79 @@ export default function PostReportModal({
                 </View>
               </View>
 
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+              <View style={styles.sectionHeader}>
+                <Camera size={17} color={colors.accent} />
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                  Scene Photo
+                </Text>
+              </View>
+
+              <View style={styles.fieldContainer}>
+                <FieldLabel
+                  label="Photo"
+                  hint="Optional — document scene condition or handover"
+                  colors={colors}
+                />
+                {form.photoUri ? (
+                  <View style={styles.photoPreviewWrap}>
+                    <Image
+                      source={{ uri: form.photoUri }}
+                      style={styles.photoPreview}
+                      contentFit="cover"
+                      accessibilityLabel="Selected scene photo preview"
+                    />
+                    <TouchableOpacity
+                      onPress={handleRemovePhoto}
+                      disabled={isSubmitting}
+                      style={[
+                        styles.removePhotoButton,
+                        { backgroundColor: colors.surfaceHighlight, borderColor: colors.border },
+                        isSubmitting && styles.disabledButton,
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel="Remove scene photo"
+                    >
+                      <X size={18} color={colors.textSecondary} />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.photoActionsRow}>
+                    <TouchableOpacity
+                      onPress={() => handlePickPhoto("camera")}
+                      disabled={isSubmitting}
+                      style={[
+                        styles.photoActionButton,
+                        { backgroundColor: colors.surfaceHighlight, borderColor: colors.border },
+                        isSubmitting && styles.disabledButton,
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel="Take scene photo"
+                    >
+                      <Camera size={18} color={colors.accent} />
+                      <Text style={[styles.photoActionText, { color: colors.text }]}>Take Photo</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handlePickPhoto("library")}
+                      disabled={isSubmitting}
+                      style={[
+                        styles.photoActionButton,
+                        { backgroundColor: colors.surfaceHighlight, borderColor: colors.border },
+                        isSubmitting && styles.disabledButton,
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel="Choose scene photo from library"
+                    >
+                      <ImageIcon size={18} color={colors.accent} />
+                      <Text style={[styles.photoActionText, { color: colors.text }]}>
+                        Choose Photo
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+
               {error ? <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text> : null}
             </ScrollView>
 
@@ -691,5 +812,45 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.55,
+  },
+  photoActionsRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  photoActionButton: {
+    flex: 1,
+    minHeight: 52,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  photoActionText: {
+    fontFamily: "SpaceGrotesk_600SemiBold",
+    fontSize: 13,
+  },
+  photoPreviewWrap: {
+    position: "relative",
+    borderRadius: radii.md,
+    overflow: "hidden",
+  },
+  photoPreview: {
+    width: "100%",
+    height: 200,
+    borderRadius: radii.md,
+  },
+  removePhotoButton: {
+    position: "absolute",
+    top: spacing.sm,
+    right: spacing.sm,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

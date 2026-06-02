@@ -135,6 +135,7 @@ export interface IncidentRecord {
     peopleInvolved?: number | null;
     peopleStatus?: string | null;
     hospital?: string | null;
+    photoUrl?: string | null;
     submittedAt?: Date | Timestamp | null;
     submittedByDispatcherId?: string | null;
     submittedByName?: string | null;
@@ -358,6 +359,27 @@ const toIncidentRecord = (snapshot: DocumentData): IncidentRecord => {
     acceptedAt: data.acceptedAt?.toDate ? data.acceptedAt.toDate() : (data.acceptedAt ? new Date(data.acceptedAt) : null),
     touchdownAt: data.touchdownAt?.toDate ? data.touchdownAt.toDate() : (data.touchdownAt ? new Date(data.touchdownAt) : null),
     responseTimeSeconds: typeof data.responseTimeSeconds === 'number' ? data.responseTimeSeconds : null,
+    postIncidentReport:
+      data.postIncidentReport && typeof data.postIncidentReport === 'object'
+        ? {
+            reasonForIncident: data.postIncidentReport.reasonForIncident || null,
+            notes: data.postIncidentReport.notes || null,
+            peopleInvolved:
+              typeof data.postIncidentReport.peopleInvolved === 'number'
+                ? data.postIncidentReport.peopleInvolved
+                : null,
+            peopleStatus: data.postIncidentReport.peopleStatus || null,
+            hospital: data.postIncidentReport.hospital || null,
+            photoUrl: data.postIncidentReport.photoUrl || null,
+            submittedAt: data.postIncidentReport.submittedAt?.toDate
+              ? data.postIncidentReport.submittedAt.toDate()
+              : data.postIncidentReport.submittedAt
+                ? new Date(data.postIncidentReport.submittedAt)
+                : null,
+            submittedByDispatcherId: data.postIncidentReport.submittedByDispatcherId || null,
+            submittedByName: data.postIncidentReport.submittedByName || null,
+          }
+        : null,
   };
 };
 
@@ -1397,6 +1419,7 @@ export async function submitPostIncidentReportForIncident(
     peopleInvolved?: number | null;
     peopleStatus?: string | null;
     hospital?: string | null;
+    photoUrl?: string | null;
   }
 ): Promise<IncidentRecord> {
   const currentUser = ensureAuthenticated();
@@ -1418,6 +1441,7 @@ export async function submitPostIncidentReportForIncident(
       peopleInvolved: typeof postReport.peopleInvolved === 'number' ? postReport.peopleInvolved : null,
       peopleStatus: postReport.peopleStatus?.trim() || null,
       hospital: postReport.hospital?.trim() || null,
+      photoUrl: postReport.photoUrl?.trim() || null,
       submittedAt: resolvedAt,
       submittedByDispatcherId: currentUser.uid,
       submittedByName: currentUser.displayName || currentUser.email || currentUser.uid,

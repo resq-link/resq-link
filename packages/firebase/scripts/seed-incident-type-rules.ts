@@ -1,7 +1,15 @@
 import * as dotenv from 'dotenv';
 import { resolve } from 'path';
 
-dotenv.config({ path: resolve(__dirname, '../.env') });
+const repoRoot = resolve(__dirname, '../../..');
+for (const envPath of [
+  resolve(__dirname, '../.env'),
+  resolve(repoRoot, '.env'),
+  resolve(repoRoot, 'apps/dispatcher-web-app/.env'),
+  resolve(repoRoot, 'apps/super-admin-web-app/.env'),
+]) {
+  dotenv.config({ path: envPath });
+}
 
 import * as admin from 'firebase-admin';
 import { defaultIncidentTypeRules } from '../src/incidentTypeRuleSeeds';

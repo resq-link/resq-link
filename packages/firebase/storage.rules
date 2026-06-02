@@ -19,6 +19,16 @@ service firebase.storage {
       // Allow authenticated users to read photos (for viewing in app)
       allow read: if isAuthenticated();
     }
+
+    // Responder post-incident report photos - post-reports/{incidentId}/{photoId}
+    // Read is public so dispatcher web <img> tags can load URLs without Firebase Auth headers.
+    match /post-reports/{incidentId}/{photoId} {
+      allow write: if isAuthenticated()
+                   && request.resource.size < 10 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+
+      allow read: if true;
+    }
     
     // Default: deny all other access
     match /{allPaths=**} {

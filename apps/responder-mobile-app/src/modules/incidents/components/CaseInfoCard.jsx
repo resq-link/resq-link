@@ -20,6 +20,7 @@ import {
   Navigation,
   Navigation2,
 } from "lucide-react-native";
+import { uploadImageToStorage } from "@packages/firebase";
 import {
   acceptIncidentCase as acceptCase,
   declineIncidentCase as declineCase,
@@ -149,6 +150,7 @@ export default function CaseInfoCard({
   const insets = useSafeAreaInsets();
 
   const [imageModalVisible, setImageModalVisible] = useState(false);
+  const [previewImageUri, setPreviewImageUri] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isDeclineModalVisible, setIsDeclineModalVisible] = useState(false);
   const [declineReason, setDeclineReason] = useState("");
@@ -165,6 +167,7 @@ export default function CaseInfoCard({
     peopleInvolved: "",
     peopleStatus: "",
     hospital: "",
+    photoUri: "",
   });
   const [error, setError] = useState("");
   const { user } = useUserStore();
@@ -441,14 +444,30 @@ export default function CaseInfoCard({
       setIsSubmittingPostReport(true);
       setError("");
       const peopleInvolvedValue = postReportForm.peopleInvolved.trim();
+      let photoUrl = null;
+      if (postReportForm.photoUri?.trim()) {
+        photoUrl = await uploadImageToStorage(
+          postReportForm.photoUri,
+          `post-reports/${caseData.id}/`
+        );
+      }
       await submitPostIncidentReport(caseData.id, {
         reasonForIncident: postReportForm.reasonForIncident,
         notes: postReportForm.notes,
         peopleInvolved: peopleInvolvedValue ? Number(peopleInvolvedValue) : null,
         peopleStatus: postReportForm.peopleStatus,
         hospital: postReportForm.hospital,
+        photoUrl,
       });
       setIsPostReportModalVisible(false);
+      setPostReportForm({
+        reasonForIncident: "",
+        notes: "",
+        peopleInvolved: "",
+        peopleStatus: "",
+        hospital: "",
+        photoUri: "",
+      });
       onStatusUpdate?.();
     } catch (err) {
       setError(err.message || "Failed to submit post report");
@@ -763,6 +782,21 @@ export default function CaseInfoCard({
           color: colors.text,
           marginTop: 2,
         },
+        postReportLine: {
+          fontFamily: "SpaceGrotesk_400Regular",
+          fontSize: 15,
+          color: colors.textSecondary,
+          lineHeight: 22,
+        },
+        postReportLabel: {
+          fontFamily: "SpaceGrotesk_700Bold",
+          color: colors.text,
+        },
+        postReportMeta: {
+          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontSize: 12,
+          color: colors.textMuted,
+        },
         sheetError: {
           marginBottom: spacing.sm,
         },
@@ -985,7 +1019,10 @@ export default function CaseInfoCard({
             {caseData.imageUrl && (
               <Section title="Photo" colors={colors} embedded={true}>
                 <TouchableOpacity
-                  onPress={() => setImageModalVisible(true)}
+                  onPress={() => {
+                    setPreviewImageUri(caseData.imageUrl);
+                    setImageModalVisible(true);
+                  }}
                   style={{ borderRadius: radii.md, overflow: "hidden" }}
                   accessibilityRole="imagebutton"
                   accessibilityLabel="View full-size incident photo"
@@ -1005,6 +1042,71 @@ export default function CaseInfoCard({
                 </TouchableOpacity>
               </Section>
             )}
+
+            {hasPostReport && caseData.postIncidentReport ? (
+              <Section title="Post Report" colors={colors} embedded={true}>
+                {caseData.postIncidentReport.reasonForIncident ? (
+                  <Text style={styles.postReportLine}>
+                    <Text style={styles.postReportLabel}>Reason: </Text>
+                    {caseData.postIncidentReport.reasonForIncident}
+                  </Text>
+                ) : null}
+                {caseData.postIncidentReport.notes ? (
+                  <Text style={[styles.postReportLine, { marginTop: spacing.sm }]}>
+                    <Text style={styles.postReportLabel}>Notes: </Text>
+                    {caseData.postIncidentReport.notes}
+                  </Text>
+                ) : null}
+                {caseData.postIncidentReport.peopleStatus ? (
+                  <Text style={[styles.postReportLine, { marginTop: spacing.sm }]}>
+                    <Text style={styles.postReportLabel}>Condition: </Text>
+                    {caseData.postIncidentReport.peopleStatus}
+                  </Text>
+                ) : null}
+                {caseData.postIncidentReport.peopleInvolved != null ? (
+                  <Text style={[styles.postReportLine, { marginTop: spacing.sm }]}>
+                    <Text style={styles.postReportLabel}>People involved: </Text>
+                    {caseData.postIncidentReport.peopleInvolved}
+                  </Text>
+                ) : null}
+                {caseData.postIncidentReport.hospital ? (
+                  <Text style={[styles.postReportLine, { marginTop: spacing.sm }]}>
+                    <Text style={styles.postReportLabel}>Transport: </Text>
+                    {caseData.postIncidentReport.hospital}
+                  </Text>
+                ) : null}
+                {caseData.postIncidentReport.submittedAt ? (
+                  <Text style={[styles.postReportMeta, { marginTop: spacing.md }]}>
+                    Submitted {formatDate(caseData.postIncidentReport.submittedAt)}
+                    {caseData.postIncidentReport.submittedByName
+                      ? ` · ${caseData.postIncidentReport.submittedByName}`
+                      : ""}
+                  </Text>
+                ) : null}
+                {caseData.postIncidentReport.photoUrl ? (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setPreviewImageUri(caseData.postIncidentReport.photoUrl);
+                      setImageModalVisible(true);
+                    }}
+                    style={{ borderRadius: radii.md, overflow: "hidden", marginTop: spacing.md }}
+                    accessibilityRole="imagebutton"
+                    accessibilityLabel="View post-report scene photo"
+                  >
+                    <Image
+                      source={{ uri: caseData.postIncidentReport.photoUrl }}
+                      style={{
+                        width: "100%",
+                        height: 200,
+                        borderRadius: radii.md,
+                      }}
+                      contentFit="cover"
+                      transition={200}
+                    />
+                  </TouchableOpacity>
+                ) : null}
+              </Section>
+            ) : null}
 
             <AdditionalDetailsSection
               caseData={caseData}
@@ -1037,18 +1139,27 @@ export default function CaseInfoCard({
           visible={imageModalVisible}
           transparent
           animationType="fade"
-          onRequestClose={() => setImageModalVisible(false)}
+          onRequestClose={() => {
+            setImageModalVisible(false);
+            setPreviewImageUri(null);
+          }}
         >
           <View style={styles.modalContainer}>
             <TouchableOpacity
               style={styles.modalBackdrop}
               activeOpacity={1}
-              onPress={() => setImageModalVisible(false)}
+              onPress={() => {
+                setImageModalVisible(false);
+                setPreviewImageUri(null);
+              }}
             >
               <View style={styles.modalContent}>
                 <TouchableOpacity
                   style={styles.closeButton}
-                  onPress={() => setImageModalVisible(false)}
+                  onPress={() => {
+                    setImageModalVisible(false);
+                    setPreviewImageUri(null);
+                  }}
                   accessibilityRole="button"
                   accessibilityLabel="Close full-screen photo viewer"
                 >
@@ -1063,7 +1174,7 @@ export default function CaseInfoCard({
                   </Text>
                 </TouchableOpacity>
                 <Image
-                  source={{ uri: caseData.imageUrl }}
+                  source={{ uri: previewImageUri || caseData.imageUrl }}
                   style={styles.fullImage}
                   contentFit="contain"
                   transition={200}

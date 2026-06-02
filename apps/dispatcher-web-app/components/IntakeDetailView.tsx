@@ -21,6 +21,7 @@ import {
   convertFirestoreDoc,
 } from "@packages/firebase";
 import IncidentStatusIndicator from "@/components/IncidentStatusIndicator";
+import PostIncidentReportPhoto from "@/components/PostIncidentReportPhoto";
 import { getQueueItemOperationalStatus } from "@/components/IntakeListItem";
 import {
   Calendar, 
@@ -70,16 +71,66 @@ const getIncidentTypeName = (incidentType: EmergencyReport["incidentType"]) => {
 
 const getExpectedAdditionalFields = (
   incidentType: EmergencyReport["incidentType"],
-): string[] => {
-  const fieldMap: Record<EmergencyReport["incidentType"], string[]> = {
-    fire: ["Fire scale", "Structures involved", "People trapped", "Source"],
-    medical: ["Condition", "Conscious/Breathing", "Age", "First Aid"],
-    vehicular_accident: ["Vehicles", "Injuries", "Obstruction", "Cause"],
-    police_emergency: ["Threat nature", "Suspect info", "Weapons", "Safety risk"],
-    electrical_powerline_hazard: ["Utility type", "Sparks/Outage", "Affected area", "Damage"],
-    other_emergency: ["Specific summary", "Who affected", "Hazard level", "Support"],
+): { key: string; label: string }[] => {
+  const fieldMap: Record<
+    EmergencyReport["incidentType"],
+    { key: string; label: string }[]
+  > = {
+    fire: [
+      { key: "fireScale", label: "Fire scale / affected area" },
+      { key: "structureInvolved", label: "Structure or property involved" },
+      { key: "trappedOrInjured", label: "People trapped or injured" },
+      { key: "fireSource", label: "Source of fire if known" },
+    ],
+    medical: [
+      { key: "patientCondition", label: "Patient condition" },
+      { key: "breathingStatus", label: "Conscious / breathing status" },
+      { key: "patientAge", label: "Age or estimated age" },
+      { key: "firstAidNeeds", label: "Immediate first-aid needs" },
+    ],
+    vehicular_accident: [
+      { key: "vehiclesInvolved", label: "Vehicles involved" },
+      { key: "injuredPersons", label: "Number of injured persons" },
+      { key: "roadObstruction", label: "Road obstruction status" },
+      { key: "collisionCause", label: "Collision type / cause if known" },
+    ],
+    police_emergency: [
+      { key: "threatNature", label: "Nature of threat" },
+      { key: "suspectPresence", label: "Suspect presence or description" },
+      { key: "weaponsInvolved", label: "Weapons involved" },
+      { key: "safetyRisk", label: "Immediate safety risk" },
+    ],
+    electrical_powerline_hazard: [
+      { key: "hazardType", label: "Type of utility hazard" },
+      { key: "liveWireStatus", label: "Live wire / spark / outage status" },
+      { key: "affectedArea", label: "Affected homes or road area" },
+      { key: "visibleDamage", label: "Visible damage details" },
+    ],
+    other_emergency: [
+      { key: "incidentSummary", label: "Incident-specific summary" },
+      { key: "whoIsAffected", label: "Who is affected" },
+      { key: "hazardLevel", label: "Current hazard level" },
+      { key: "supportNeeded", label: "Support needed on scene" },
+    ],
   };
   return fieldMap[incidentType] || fieldMap.other_emergency;
+};
+
+const incidentCategoryToEmergencyType = (
+  category: IncidentRecord["incidentCategory"] | undefined,
+): EmergencyReport["incidentType"] => {
+  const map: Partial<
+    Record<IncidentRecord["incidentCategory"], EmergencyReport["incidentType"]>
+  > = {
+    fire: "fire",
+    medical: "medical",
+    vehicular: "vehicular_accident",
+    utility: "electrical_powerline_hazard",
+    peace_and_order: "police_emergency",
+    other: "other_emergency",
+    community: "other_emergency",
+  };
+  return map[category || "other"] || "other_emergency";
 };
 
 const getDateLabel = (value: any) => {
@@ -329,6 +380,59 @@ export default function IntakeDetailView({
     return recentIncidents.find((inc) => inc.id === report.incidentId) || null;
   }, [report?.incidentId, recentIncidents]);
 
+  const dfaSourceReport = useMemo(() => {
+    if (isEmergency && report) return report;
+    if (associatedReports.length === 0) return null;
+
+    const withSubmitted = associatedReports.find(
+      (r) => r.additionalDetailsSubmittedAt || r.additionalDetails,
+    );
+    if (withSubmitted) return withSubmitted;
+
+    const withRequested = associatedReports.find((r) => r.additionalDetailsRequestedAt);
+    if (withRequested) return withRequested;
+
+    return associatedReports.find((r) => !r.primaryReportId) || associatedReports[0];
+  }, [isEmergency, report, associatedReports]);
+
+  const postIncidentReport = useMemo(() => {
+    type PostReport = NonNullable<IncidentRecord["postIncidentReport"]>;
+    const candidates: PostReport[] = [
+      incident?.postIncidentReport,
+      report?.postIncidentReport,
+      ...associatedReports.map((r) => r.postIncidentReport),
+    ].filter((entry): entry is PostReport => Boolean(entry));
+
+    if (candidates.length === 0) return null;
+
+    return candidates.reduce<PostReport>(
+      (merged, current) => ({
+        reasonForIncident: merged.reasonForIncident || current.reasonForIncident || null,
+        notes: merged.notes || current.notes || null,
+        peopleInvolved: merged.peopleInvolved ?? current.peopleInvolved ?? null,
+        peopleStatus: merged.peopleStatus || current.peopleStatus || null,
+        hospital: merged.hospital || current.hospital || null,
+        photoUrl: merged.photoUrl || current.photoUrl || null,
+        submittedAt: merged.submittedAt || current.submittedAt || null,
+        submittedByDispatcherId:
+          merged.submittedByDispatcherId || current.submittedByDispatcherId || null,
+        submittedByName: merged.submittedByName || current.submittedByName || null,
+      }),
+      { ...candidates[0] }
+    );
+  }, [report?.postIncidentReport, incident?.postIncidentReport, associatedReports]);
+
+  const showPostReportSection = useMemo(() => {
+    const status = report?.status || incident?.status;
+    const resolutionStatus = incident?.resolutionStatus;
+    return (
+      Boolean(postIncidentReport) ||
+      status === "resolved" ||
+      status === "done" ||
+      resolutionStatus === "resolved"
+    );
+  }, [postIncidentReport, report?.status, incident?.status, incident?.resolutionStatus]);
+
   useEffect(() => {
     if (!report?.assignedResponderId) {
       setResponderLocation(null);
@@ -392,7 +496,15 @@ export default function IntakeDetailView({
     return ` - Nearby fallback${resource?.quadrant ? `: ${resource.quadrant}` : ""}`;
   };
 
-  const expectedAdditionalFields = isEmergency ? getExpectedAdditionalFields(report?.incidentType) : [];
+  const dfaIncidentType: EmergencyReport["incidentType"] | undefined =
+    dfaSourceReport?.incidentType ??
+    (incident
+      ? incidentCategoryToEmergencyType(incident.incidentCategory)
+      : report?.incidentType);
+
+  const expectedAdditionalFields = dfaIncidentType
+    ? getExpectedAdditionalFields(dfaIncidentType)
+    : [];
 
   const hasPinnedLocation = (report || incident)?.latitude != null && (report || incident)?.longitude != null && (report || incident)?.latitude !== 0;
 
@@ -803,6 +915,63 @@ export default function IntakeDetailView({
            </div>
         </div>
 
+        {showPostReportSection && (
+          <DetailSection full icon={<CheckCircle className="w-3.5 h-3.5" />} title="Post-Incident Report">
+            {postIncidentReport ? (
+              <div className="mt-2 grid gap-4 lg:grid-cols-[1fr_minmax(200px,280px)]">
+                <div className="p-4 rounded-xl bg-emerald-950/10 border border-emerald-900/30 text-sm text-slate-300 space-y-2">
+                  <p className="text-[11px] text-emerald-400 font-bold uppercase tracking-widest border-b border-emerald-900/40 pb-1">
+                    Responder summary
+                  </p>
+                  <p className="text-xs font-medium text-slate-200 italic">
+                    &ldquo;{postIncidentReport.notes || "No summary notes."}&rdquo;
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 text-[10px] pt-2">
+                    <p className="text-slate-500 uppercase">
+                      Reason:{" "}
+                      <span className="text-slate-300">
+                        {postIncidentReport.reasonForIncident || "—"}
+                      </span>
+                    </p>
+                    <p className="text-slate-500 uppercase">
+                      Status:{" "}
+                      <span className="text-slate-300">
+                        {postIncidentReport.peopleStatus || "—"}
+                      </span>
+                    </p>
+                    <p className="text-slate-500 uppercase">
+                      People:{" "}
+                      <span className="text-slate-300">
+                        {postIncidentReport.peopleInvolved ?? "—"}
+                      </span>
+                    </p>
+                    <p className="text-slate-500 uppercase">
+                      Transport:{" "}
+                      <span className="text-slate-300">{postIncidentReport.hospital || "—"}</span>
+                    </p>
+                  </div>
+                  {postIncidentReport.submittedAt && (
+                    <p className="text-[10px] text-slate-500 pt-1">
+                      Submitted {getDateLabel(postIncidentReport.submittedAt)}
+                      {postIncidentReport.submittedByName
+                        ? ` by ${postIncidentReport.submittedByName}`
+                        : ""}
+                    </p>
+                  )}
+                </div>
+                <PostIncidentReportPhoto photoUrl={postIncidentReport.photoUrl} />
+              </div>
+            ) : (
+              <div className="mt-2 p-4 rounded-xl border border-dashed border-slate-700 bg-slate-950/40 text-center">
+                <p className="text-xs text-slate-500 font-medium">
+                  This incident is resolved but no post-incident report was submitted by the
+                  responder.
+                </p>
+              </div>
+            )}
+          </DetailSection>
+        )}
+
         {/* Narrative & Field-Specific Data */}
         <div className="grid gap-8 md:grid-cols-2">
            <div className="space-y-6">
@@ -814,23 +983,64 @@ export default function IntakeDetailView({
 
               {expectedAdditionalFields.length > 0 && (
                 <DetailSection full icon={<AlertTriangle className="w-3.5 h-3.5" />} title="Dynamic Field Assessment">
-                   <div className="mt-3 grid gap-2">
-                      {expectedAdditionalFields.map(field => (
-                        <div key={field} className="flex items-center justify-between p-2 rounded bg-slate-900/50 border border-slate-800/50">
-                          <span className="text-[10px] text-slate-500 uppercase tracking-widest">{field}</span>
-                          <span className="text-[10px] text-amber-500/80 font-bold italic">Awaiting civil response...</span>
+                  {dfaSourceReport?.additionalDetailsSubmittedAt && (
+                    <p className="text-[10px] text-emerald-400 mt-2">
+                      Submitted {getDateLabel(dfaSourceReport.additionalDetailsSubmittedAt)}
+                    </p>
+                  )}
+                  {!isEmergency && !dfaSourceReport && (
+                    <p className="text-[10px] text-slate-500 mt-2 italic">
+                      Awaiting linked civilian report for field assessment responses.
+                    </p>
+                  )}
+                  <div className="mt-3 grid gap-2">
+                    {expectedAdditionalFields.map((field) => {
+                      const value = dfaSourceReport?.additionalDetails?.[field.key];
+                      return (
+                        <div
+                          key={field.key}
+                          className="flex items-center justify-between p-2 rounded bg-slate-900/50 border border-slate-800/50"
+                        >
+                          <span className="text-[10px] text-slate-500 uppercase tracking-widest">
+                            {field.label}
+                          </span>
+                          {value ? (
+                            <span className="text-[10px] text-slate-200 font-medium text-right max-w-[55%]">
+                              {value}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-amber-500/80 font-bold italic">
+                              Awaiting civil response...
+                            </span>
+                          )}
                         </div>
-                      ))}
-                   </div>
+                      );
+                    })}
+                  </div>
                 </DetailSection>
               )}
            </div>
 
            <div className="space-y-6">
-              {(report?.imageUrl || (incident as any)?.imageUrl) ? (
+              {(report?.imageUrl ||
+                (incident as any)?.imageUrl ||
+                postIncidentReport?.photoUrl) ? (
                 <DetailSection full icon={<Activity className="w-3.5 h-3.5" />} title="Scene Documentation">
-                  <div className="mt-2 rounded-xl border border-slate-800 overflow-hidden bg-slate-950 shadow-2xl">
-                    <img src={report?.imageUrl || (incident as any)?.imageUrl} alt="Incident Scene" className="w-full h-auto object-cover max-h-[400px] hover:scale-105 transition-transform duration-500" />
+                  <div className="mt-2 rounded-xl border border-slate-800 overflow-hidden bg-slate-950 shadow-2xl space-y-3">
+                    {(report?.imageUrl || (incident as any)?.imageUrl) && (
+                      <img
+                        src={report?.imageUrl || (incident as any)?.imageUrl}
+                        alt="Incident scene"
+                        className="w-full h-auto object-cover max-h-[400px] hover:scale-105 transition-transform duration-500"
+                      />
+                    )}
+                    {postIncidentReport?.photoUrl ? (
+                      <PostIncidentReportPhoto
+                        photoUrl={postIncidentReport.photoUrl}
+                        alt="Post-incident report scene"
+                        className="w-full h-auto object-cover max-h-[400px] hover:scale-105 transition-transform duration-500"
+                      />
+                    ) : null}
                   </div>
                 </DetailSection>
               ) : (
@@ -838,19 +1048,6 @@ export default function IntakeDetailView({
                    <Activity className="w-8 h-8 text-slate-800 mb-2" />
                    <p className="text-xs text-slate-600 font-medium">No visual documentation available</p>
                 </div>
-              )}
-
-              {report?.postIncidentReport && (
-                <DetailSection full icon={<CheckCircle className="w-3.5 h-3.5" />} title="Post-Incident Report Summary">
-                  <div className="mt-2 p-4 rounded-xl bg-emerald-950/10 border border-emerald-900/30 text-sm text-slate-300 space-y-2">
-                    <p className="text-[11px] text-emerald-400 font-bold uppercase tracking-widest border-b border-emerald-900/40 pb-1">Summary Result</p>
-                    <p className="text-xs font-medium text-slate-200 italic">"{report.postIncidentReport.notes || 'No summary notes.'}"</p>
-                    <div className="grid grid-cols-2 gap-2 text-[10px] pt-2">
-                       <p className="text-slate-500 uppercase">Reason: <span className="text-slate-300">{report.postIncidentReport.reasonForIncident || '—'}</span></p>
-                       <p className="text-slate-500 uppercase">Status: <span className="text-slate-300">{report.postIncidentReport.peopleStatus || '—'}</span></p>
-                    </div>
-                  </div>
-                </DetailSection>
               )}
             </div>
          </div>
