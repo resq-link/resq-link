@@ -207,6 +207,26 @@ export {
   type ChatThreadType,
 } from './messaging';
 
+// Incident voice call sessions
+export {
+  acceptIncidentCallSession,
+  buildIncidentCallChannelName,
+  declineIncidentCallSession,
+  endIncidentCallSession,
+  failIncidentCallSession,
+  markIncidentCallConnected,
+  startIncidentCallSession,
+  getIncidentCallSession,
+  subscribeToActiveIncidentCallSessions,
+  subscribeToIncidentCallSession,
+  subscribeToIncidentCallSessions,
+  subscribeToResponderIncomingCallSessions,
+  type CallRole,
+  type CallSessionStatus,
+  type IncidentCallSession,
+  type StartIncidentCallSessionInput,
+} from './callSessions';
+
 // Export incident management functions
 export {
   createIncident,
@@ -224,6 +244,7 @@ export {
   formatIncidentStatus,
   getIncidentPriorityTone,
   getIncidentResourceMatch,
+  isIncidentResourceSuggested,
   validateIncidentAgencyRouting,
   associateReportsWithIncident,
   disassociateReportFromIncident,

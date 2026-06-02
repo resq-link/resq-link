@@ -45,6 +45,7 @@ import { queryKeys } from "@/query/queryKeys";
 import { useAssignedEmergencies } from "@/modules/incidents/hooks/useAssignedEmergencies";
 import { useOnlineResponderCount } from "@/modules/dashboard/hooks/useOnlineResponderCount";
 import { useDashboardLocationTracking } from "@/modules/dashboard/hooks/useDashboardLocationTracking";
+import ResponderCallPanel from "@/modules/calls/components/ResponderCallPanel";
 import {
   formatResponderName,
   initialsFromEmail,
@@ -236,6 +237,7 @@ export default function DashboardView() {
 
   return (
     <View style={styles.root}>
+      <ResponderCallPanel responderId={authUid} />
       <StatusBar
         style={resolvedScheme === "dark" ? "light" : "dark"}
         backgroundColor={D.bgBottom}

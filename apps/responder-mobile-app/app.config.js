@@ -58,6 +58,9 @@ module.exports = ({ config }) => {
         appId: getEnv('FIREBASE_APP_ID'),
         databaseURL: getEnv('FIREBASE_DATABASE_URL'),
       },
+      agora: {
+        appId: getEnv('AGORA_APP_ID'),
+      },
     },
   };
 };

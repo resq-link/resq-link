@@ -10,6 +10,7 @@ import AgentAssistant from "@/components/AgentAssistant";
 import OperationalChatWidget from "@/components/OperationalChatWidget";
 import AlarmControl from "@/components/AlarmControl";
 import { usePriorityAlerts } from "@/contexts/PriorityAlertContext";
+import IncidentCallNotification from "@/components/IncidentCallNotification";
 import {
   LayoutDashboard,
   Globe,
@@ -474,6 +475,7 @@ export default function Navigation({ children }: NavigationProps) {
 
         <div className="flex-1 min-h-0">{children}</div>
       </div>
+      <IncidentCallNotification />
       <OperationalChatWidget />
       <AgentAssistant />
     </div>

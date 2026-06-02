@@ -3,8 +3,9 @@ import { View, TouchableOpacity, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, usePathname } from "expo-router";
 import { BlurView } from "expo-blur";
-import { House, Clock3, CircleUserRound, AlertCircle, Video } from "lucide-react-native";
+import { House, Clock3, CircleUserRound, AlertCircle, Video, PhoneCall } from "lucide-react-native";
 import { useSOS } from "../utils/useSOS";
+import { useDispatcherCall } from "../utils/useDispatcherCall";
 import { useAppTheme } from "@/utils/useAppTheme";
 
 export default function CustomBottomNav() {
@@ -12,6 +13,7 @@ export default function CustomBottomNav() {
   const router = useRouter();
   const pathname = usePathname();
   const { handleSOS, sosLoading } = useSOS();
+  const { handleDispatcherCall, callLoading } = useDispatcherCall();
   const { colors, isLight } = useAppTheme();
 
   const isHomeActive =
@@ -25,6 +27,7 @@ export default function CustomBottomNav() {
     "/register",
     "/emergency-form",
     "/emergency-confirmation",
+    "/calling",
     "/appearance",
     "/notifications",
     "/privacy-security",
@@ -114,6 +117,20 @@ export default function CustomBottomNav() {
       </BlurView>
 
       <TouchableOpacity
+        onPress={handleDispatcherCall}
+        disabled={callLoading}
+        style={[
+          styles.callFab,
+          { borderColor: isLight ? "#FFFFFF" : "#141414" },
+          callLoading && styles.fabDisabled,
+        ]}
+        activeOpacity={0.85}
+        accessibilityLabel="Call command center"
+      >
+        <PhoneCall size={23} color="#06140B" strokeWidth={2.5} />
+      </TouchableOpacity>
+
+      <TouchableOpacity
         onPress={handleSOS}
         disabled={sosLoading}
         style={[
@@ -192,6 +209,22 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.24,
     shadowRadius: 10,
     elevation: 14,
+    zIndex: 1000,
+    borderWidth: 3,
+  },
+  callFab: {
+    marginLeft: 12,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: "#9AFF55",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.22,
+    shadowRadius: 10,
+    elevation: 13,
     zIndex: 1000,
     borderWidth: 3,
   },
