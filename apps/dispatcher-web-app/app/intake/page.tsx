@@ -23,6 +23,8 @@ import {
   QUADRANT_LABELS,
   requestEmergencyAdditionalDetails,
   subscribeToEmergencyReport,
+  isLiveEmergencyReport,
+  isLiveIncident,
   subscribeToEmergencyReports,
   subscribeToIncidents,
   subscribeToIncidentTypeRules,
@@ -584,10 +586,7 @@ function IntakeContent() {
 
     const unsubscribeEmergencyReports = subscribeToEmergencyReports(
       (reports) => {
-        setAppEmergencyReports(
-          reports
-            .filter((report) => report.status !== "done" && report.status !== "resolved")
-        );
+        setAppEmergencyReports(reports.filter(isLiveEmergencyReport));
       },
       { limitCount: 100 },
     );
@@ -771,7 +770,7 @@ function IntakeContent() {
 
   const activeIncidentCount = useMemo(
     () =>
-      recentIncidents.filter((incident) => incident.resolutionStatus === "open")
+      recentIncidents.filter(isLiveIncident)
         .length,
     [recentIncidents],
   );
@@ -779,7 +778,7 @@ function IntakeContent() {
   const appQueueItems = useMemo(
     () =>
       appEmergencyReports
-        .filter((report) => report.status !== "done" && report.status !== "resolved" && !report.primaryReportId)
+        .filter((report) => isLiveEmergencyReport(report) && !report.primaryReportId)
         .map(toQueueItemFromEmergency)
         .sort((left, right) => {
           const rank = comparePriority(
@@ -795,7 +794,7 @@ function IntakeContent() {
   const smsCallQueueItems = useMemo(
     () =>
       recentIncidents
-        .filter((incident) => smsCallSources.includes(incident.source))
+        .filter((incident) => isLiveIncident(incident) && smsCallSources.includes(incident.source))
         .map(toQueueItemFromIncident),
     [recentIncidents],
   );
@@ -803,7 +802,7 @@ function IntakeContent() {
   const manualQueueItems = useMemo(
     () =>
       recentIncidents
-        .filter((incident) => manualEntrySources.includes(incident.source))
+        .filter((incident) => isLiveIncident(incident) && manualEntrySources.includes(incident.source))
         .map(toQueueItemFromIncident),
     [recentIncidents],
   );
@@ -814,7 +813,9 @@ function IntakeContent() {
   );
 
   const awaitingResourcesCount = useMemo(() => 
-    recentIncidents.filter(i => i.status === "awaiting_resources" || i.status === "liaison_pending").length,
+    recentIncidents.filter(
+      (i) => isLiveIncident(i) && (i.status === "awaiting_resources" || i.status === "liaison_pending")
+    ).length,
     [recentIncidents]
   );
 

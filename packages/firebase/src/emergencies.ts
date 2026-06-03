@@ -508,7 +508,7 @@ export function subscribeToEmergencyReports(
           if (options.statusFilter === 'pending' || options.statusFilter === 'active') {
             reports = reports.filter(r => r.status === 'pending' || r.status === 'active');
           } else if (options.statusFilter === 'resolved') {
-            reports = reports.filter(r => r.status === 'resolved');
+            reports = reports.filter((r) => r.status === 'resolved' || r.status === 'done');
           }
         }
         

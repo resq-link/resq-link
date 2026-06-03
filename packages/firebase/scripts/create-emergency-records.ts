@@ -2,7 +2,11 @@
  * Seed sample emergency incident records for testing (automatic — no prompts).
  * Same pattern as create-civilian-users.ts.
  *
- * Inserts documents into Firestore `emergencies` for Intake, dashboard, maps, and priority filters.
+ * Inserts PENDING emergencies into Firestore `emergencies` for Intake, dashboard, maps,
+ * and priority filters. These are NOT report-ready (no team, agency, or resolvedAt).
+ *
+ * For completed report/export QA data, run:
+ *   npx ts-node scripts/seed-report-incidents.ts
  *
  * Usage:
  *   npx ts-node scripts/create-emergency-records.ts

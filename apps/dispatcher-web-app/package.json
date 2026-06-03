@@ -15,13 +15,16 @@
     "@packages/firebase": "file:../../packages/firebase",
     "agora-rtc-sdk-ng": "^4.24.3",
     "agora-token": "^2.0.5",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.562.0",
     "next": "^15.5.18",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-leaflet": "^5.0.0",
-    "react-markdown": "^10.1.0"
+    "react-markdown": "^10.1.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/leaflet": "^1.9.8",

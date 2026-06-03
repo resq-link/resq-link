@@ -9,6 +9,8 @@ import {
   assignDispatcherToEmergency,
   assignResponderToEmergency,
   moveEmergencyReportToHistory,
+  isLiveEmergencyReport,
+  isLiveIncident,
   subscribeToEmergencyReports,
   subscribeToIncidents,
   associateReportsWithIncident,
@@ -137,7 +139,7 @@ function IncidentsContent() {
     if (!user) return;
 
     const unsubscribeEmergencyReports = subscribeToEmergencyReports((reports) => {
-      setAppEmergencyReports(reports);
+      setAppEmergencyReports(reports.filter(isLiveEmergencyReport));
     }, { statusFilter: "all", limitCount: 200 });
 
     const unsubscribeIncidents = subscribeToIncidents((items) => {
@@ -153,13 +155,13 @@ function IncidentsContent() {
   // Compute active queues from both collections
   const activeAppQueueItems = useMemo(() => {
     return appEmergencyReports
-      .filter((report) => ["active", "enroute", "on_scene"].includes(report.status) && !report.primaryReportId)
+      .filter((report) => isLiveEmergencyReport(report) && !report.primaryReportId)
       .map(toQueueItemFromEmergency);
   }, [appEmergencyReports]);
 
   const activeManualQueueItems = useMemo(() => {
     return recentIncidents
-      .filter((incident) => incident.resolutionStatus === "open")
+      .filter(isLiveIncident)
       .map(toQueueItemFromIncident);
   }, [recentIncidents]);
 

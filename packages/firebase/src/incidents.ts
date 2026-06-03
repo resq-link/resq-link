@@ -121,6 +121,7 @@ export interface IncidentRecord {
   createdAt?: Date | Timestamp;
   updatedAt?: Date | Timestamp;
   resolvedAt?: Date | Timestamp | null;
+  movedToHistoryAt?: Date | Timestamp | null;
   // Responder Tracking Fields (1 team per incident)
   acceptedAt?: Date | Timestamp | null;
   touchdownAt?: Date | Timestamp | null;
@@ -1301,13 +1302,17 @@ async function propagateIncidentUpdatesToReports(incidentId: string, updates: an
     if (updates.status) {
       if (updates.status === 'enroute') reportUpdates.status = 'enroute';
       else if (updates.status === 'on_scene') reportUpdates.status = 'on_scene';
-      else if (updates.status === 'resolved') reportUpdates.status = 'resolved';
+      else if (updates.status === 'resolved') {
+        reportUpdates.status = 'resolved';
+        reportUpdates.resolvedAt = updates.resolvedAt ?? Timestamp.now();
+        reportUpdates.movedToHistoryAt = updates.movedToHistoryAt ?? reportUpdates.resolvedAt;
+      }
     }
     if (updates.acceptedAt) reportUpdates.acceptedAt = updates.acceptedAt;
     if (updates.touchdownAt) reportUpdates.touchdownAt = updates.touchdownAt;
     if (updates.responseTimeSeconds) reportUpdates.responseTimeSeconds = updates.responseTimeSeconds;
     if (updates.postIncidentReport) reportUpdates.postIncidentReport = updates.postIncidentReport;
-    if (updates.resolvedAt) reportUpdates.resolvedAt = updates.resolvedAt;
+    if (updates.resolvedAt && !reportUpdates.resolvedAt) reportUpdates.resolvedAt = updates.resolvedAt;
     
     snap.forEach((docSnap) => {
       updatePromises.push(updateDoc(docSnap.ref, reportUpdates));
@@ -1449,6 +1454,7 @@ export async function submitPostIncidentReportForIncident(
     status: 'resolved' as IncidentStatus,
     resolutionStatus: 'resolved' as ResolutionStatus,
     resolvedAt,
+    movedToHistoryAt: resolvedAt,
     updatedAt: Timestamp.now(),
   };
   
@@ -1481,8 +1487,10 @@ export async function updateIncidentCaseStatus(
   };
   
   if (finalStatus === 'resolved') {
+    const resolvedAt = Timestamp.now();
     updateData.resolutionStatus = 'resolved';
-    updateData.resolvedAt = Timestamp.now();
+    updateData.resolvedAt = resolvedAt;
+    updateData.movedToHistoryAt = resolvedAt;
   }
   
   await updateDoc(incidentRef, updateData);

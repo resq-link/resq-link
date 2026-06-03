@@ -70,6 +70,16 @@ export {
 
 export { getSuggestedAgenciesForEmergencyType } from './emergencies';
 
+export {
+  isLiveIncident,
+  isLiveEmergencyReport,
+  isResolvedIncidentRecord,
+  isResolvedEmergencyReport,
+  isReportEligibleIncident,
+  isResolvedIncidentStatus,
+  isResolvedResolutionStatus,
+} from './incidentLifecycle';
+
 // Incident prioritization (visual + sound coding, escalation)
 export {
   PRIORITY_LEVELS,

@@ -6,6 +6,8 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import CommandBar from "@/components/CommandBar";
 import { useAuth } from "@/contexts/AuthContext";
 import {
+  isResolvedEmergencyReport,
+  isResolvedIncidentRecord,
   subscribeToEmergencyReports,
   subscribeToIncidents,
   QUADRANT_LABELS,
@@ -60,8 +62,8 @@ function HistoryContent() {
     }
 
     const unsubscribeEmergencyReports = subscribeToEmergencyReports((reports) => {
-      setAppEmergencyReports(reports);
-    }, { statusFilter: "all", limitCount: 200 });
+      setAppEmergencyReports(reports.filter(isResolvedEmergencyReport));
+    }, { statusFilter: 'resolved', limitCount: 200 });
 
     const unsubscribeIncidents = subscribeToIncidents((items) => {
       setRecentIncidents(items);
@@ -79,7 +81,7 @@ function HistoryContent() {
     if (selectedQueueItem?.id === focusId) return;
 
     const matchInc = recentIncidents.find((i) => i.id === focusId || i.referenceNumber === focusId);
-    if (matchInc && matchInc.resolutionStatus === 'resolved') {
+    if (matchInc && isResolvedIncidentRecord(matchInc)) {
       setSelectedQueueItem(toQueueItemFromIncident(matchInc));
     }
   }, [focusId, recentIncidents, selectedQueueItem?.id]);
@@ -95,7 +97,7 @@ function HistoryContent() {
 
   // Compute resolved queue items from history
   const resolvedIncidents = useMemo(() => {
-    return recentIncidents.filter((incident) => incident.resolutionStatus === "resolved");
+    return recentIncidents.filter(isResolvedIncidentRecord);
   }, [recentIncidents]);
 
   const resolvedQueueItems = useMemo(() => {
