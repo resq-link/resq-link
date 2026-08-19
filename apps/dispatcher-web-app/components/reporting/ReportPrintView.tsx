@@ -38,7 +38,13 @@ export default function ReportPrintView({ bundle }: ReportPrintViewProps) {
             metrics={summary}
           />
 
-          <ReportPrintTeamSummary selectedTeam={bundle.filters.selectedTeam} />
+          <ReportPrintTeamSummary
+            selectedTeam={bundle.filters.selectedTeam}
+            teamLabel={
+              bundle.teamSummary.find((card) => card.team === bundle.filters.selectedTeam)
+                ?.teamLabel
+            }
+          />
 
           <section className="report-print-table-section">
             <h2 className="report-print-section-title">{REPORT_LAYOUT.sectionTitle}</h2>

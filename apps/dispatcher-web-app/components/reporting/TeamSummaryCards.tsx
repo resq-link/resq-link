@@ -1,14 +1,16 @@
 import type { TeamSummaryCardStats } from '@/lib/reporting/types'
-import {
-  TEAM_CARD_THEMES,
-  getTeamCardDisplay,
-} from '@/lib/reporting/teamSummaryTheme'
+import { getTeamCardDisplay, getTeamCardTheme } from '@/lib/reporting/teamSummaryTheme'
 
 type TeamSummaryCardsProps = {
   cards: TeamSummaryCardStats[]
 }
 
-function TeamSummaryStat({ label, value, isNumeric, isMuted }: {
+function TeamSummaryStat({
+  label,
+  value,
+  isNumeric,
+  isMuted,
+}: {
   label: string
   value: string
   isNumeric: boolean
@@ -16,13 +18,9 @@ function TeamSummaryStat({ label, value, isNumeric, isMuted }: {
 }) {
   return (
     <div className="min-w-0">
-      <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500">
-        {label}
-      </p>
+      <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500">{label}</p>
       {isNumeric ? (
-        <p className="mt-px text-xl font-black tabular-nums leading-none text-slate-50">
-          {value}
-        </p>
+        <p className="mt-px text-xl font-black tabular-nums leading-none text-slate-50">{value}</p>
       ) : (
         <p
           className={`mt-px text-[11px] font-semibold leading-tight ${
@@ -44,13 +42,13 @@ export default function TeamSummaryCards({ cards }: TeamSummaryCardsProps) {
           Team Summary
         </h2>
         <p className="text-[10px] leading-tight text-slate-500">
-          Completed incident overview by operational duty team.
+          Completed incident overview by assigned operational team.
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-        {cards.map((card) => {
-          const theme = TEAM_CARD_THEMES[card.team]
+        {cards.map((card, index) => {
+          const theme = getTeamCardTheme(card.teamLabel, index)
           const stats = getTeamCardDisplay(card)
 
           return (
@@ -72,12 +70,12 @@ export default function TeamSummaryCards({ cards }: TeamSummaryCardsProps) {
                 <h3
                   className={`min-w-0 truncate text-base font-black uppercase tracking-wide ${theme.accentText}`}
                 >
-                  {theme.name}
+                  {card.teamLabel}
                 </h3>
                 <span
                   className={`shrink-0 rounded px-1.5 py-px text-[8px] font-bold uppercase tracking-wide ring-1 ring-inset ${theme.accentBadge}`}
                 >
-                  On Duty
+                  Assigned
                 </span>
               </header>
 

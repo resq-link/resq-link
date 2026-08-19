@@ -37,6 +37,9 @@ export default function FormInput({
   minHeight = 52,
   /** Corner radius (default theme md). */
   borderRadius = radii.md,
+  /** Optional typography overrides (e.g. Inter on login). */
+  labelFontFamily = "Inter_600SemiBold",
+  inputFontFamily = "Inter_400Regular",
   style,
   ...props
 }) {
@@ -69,7 +72,7 @@ export default function FormInput({
     <View style={[{ marginBottom: spacing.xxl }, style]}>
       <Text
         style={{
-          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontFamily: labelFontFamily,
           fontSize: 14,
           color: lblCol,
           marginBottom: spacing.sm,
@@ -89,7 +92,7 @@ export default function FormInput({
             paddingLeft: leftPad,
             paddingRight: rightPad,
             paddingVertical: 14,
-            fontFamily: "SpaceGrotesk_400Regular",
+            fontFamily: inputFontFamily,
             fontSize: 16,
             color: txtCol,
             backgroundColor: bgCol,

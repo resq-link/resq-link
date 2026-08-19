@@ -167,7 +167,7 @@ export default function CaseTimeline({ caseData, colors, formatDate, formatRespo
                           ? colors.accent
                           : colors.textMuted,
                     fontFamily:
-                      step.state === "active" ? "SpaceGrotesk_700Bold" : "SpaceGrotesk_600SemiBold",
+                      step.state === "active" ? "Inter_700Bold" : "Inter_600SemiBold",
                   },
                 ]}
               >
@@ -275,19 +275,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   timeText: {
-    fontFamily: "SpaceGrotesk_400Regular",
+    fontFamily: "Inter_400Regular",
     fontSize: 12,
     marginTop: 2,
   },
   activeStatusText: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
+    fontFamily: "Inter_600SemiBold",
     fontSize: 11,
     textTransform: "uppercase",
     letterSpacing: 0.5,
     marginTop: 2,
   },
   pendingText: {
-    fontFamily: "SpaceGrotesk_400Regular",
+    fontFamily: "Inter_400Regular",
     fontSize: 12,
     marginTop: 2,
   },
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   responseText: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
+    fontFamily: "Inter_600SemiBold",
     fontSize: 11,
   },
 });

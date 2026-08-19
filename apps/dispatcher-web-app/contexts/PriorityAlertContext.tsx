@@ -24,7 +24,7 @@ import {
   type EmergencyReportsSnapshotMeta,
   type IncidentPriority,
 } from '@packages/firebase'
-import { initAudioContext } from '@/utils/alarmSound'
+import { initAudioContext, playNotificationSound } from '@/utils/alarmSound'
 import {
   playPriorityAlertForIncident,
   stopPriorityAlerts,
@@ -37,12 +37,16 @@ import { useAuth } from './AuthContext'
 type PriorityAlertContextType = {
   isAlarmMuted: boolean
   setIsAlarmMuted: (muted: boolean) => void
+  audioReady: boolean
+  unlockAudio: () => Promise<boolean>
   /** Highest-priority unacknowledged incident currently shown in the alert modal. */
   pendingAlertReport: EmergencyReport | null
   /** @deprecated Use pendingAlertReport */
   criticalModalReport: EmergencyReport | null
   acknowledgeReport: (reportId: string, dispatcherName: string) => Promise<EmergencyReport>
   unacknowledgedAlertCount: number
+  /** Untriaged active civilian reports (nav Intake badge). */
+  intakeAwaitingTriageCount: number
   /** @deprecated Use unacknowledgedAlertCount */
   unacknowledgedCriticalCount: number
 }
@@ -77,6 +81,7 @@ export function PriorityAlertProvider({ children }: { children: ReactNode }) {
   })
   const [reports, setReports] = useState<EmergencyReport[]>([])
   const [pendingAlertReport, setPendingAlertReport] = useState<EmergencyReport | null>(null)
+  const [audioReady, setAudioReady] = useState(false)
 
   const dismissedModalIdsRef = useRef<Set<string>>(new Set())
   const locallyAcknowledgedRef = useRef<Set<string>>(new Set())
@@ -97,6 +102,35 @@ export function PriorityAlertProvider({ children }: { children: ReactNode }) {
     }
     return isAlertAcknowledged(report)
   }, [])
+
+  const pickHighestUnacknowledged = useCallback(
+    (active: EmergencyReport[]): EmergencyReport | null => {
+      const candidates = active.filter(
+        (r) =>
+          r.id &&
+          !locallyAcknowledgedRef.current.has(r.id) &&
+          !dismissedModalIdsRef.current.has(r.id) &&
+          !isAlertAcknowledged(r)
+      )
+      if (candidates.length === 0) return null
+      return [...candidates].sort((a, b) =>
+        comparePriority(reportPriority(a), reportPriority(b))
+      )[0]
+    },
+    []
+  )
+
+  const syncPendingModal = useCallback(
+    (active: EmergencyReport[]) => {
+      if (pendingAlertReportRef.current?.id) return
+      const top = pickHighestUnacknowledged(active)
+      if (top?.id) {
+        pendingAlertReportRef.current = top
+        setPendingAlertReport(top)
+      }
+    },
+    [pickHighestUnacknowledged]
+  )
 
   const syncAcknowledgedFromServer = (active: EmergencyReport[]) => {
     for (const report of active) {
@@ -146,13 +180,22 @@ export function PriorityAlertProvider({ children }: { children: ReactNode }) {
   }
 
   /** Fire sound + modal directly from the Firestore listener (not from React effects). */
-  const triggerAlertForReport = (report: EmergencyReport, options?: { intensified?: boolean }) => {
-    if (!report.id || isAlarmMutedRef.current) return
+  const triggerAlertForReport = async (
+    report: EmergencyReport,
+    options?: { intensified?: boolean }
+  ) => {
+    if (!report.id) return
     if (locallyAcknowledgedRef.current.has(report.id) || isAlertAcknowledged(report)) return
 
-    const priority = reportPriority(report)
-    void playPriorityAlertForIncident(report.id, priority, options)
     presentAlertModal(report)
+
+    if (isAlarmMutedRef.current) return
+
+    const priority = reportPriority(report)
+    const ready = await warmPriorityAudio()
+    setAudioReady(ready)
+    if (!ready) return
+    void playPriorityAlertForIncident(report.id, priority, options)
   }
 
   const detectNewUnacknowledged = (
@@ -179,7 +222,7 @@ export function PriorityAlertProvider({ children }: { children: ReactNode }) {
     const top = sorted[0]
     if (top?.id) {
       playedOnceRef.current.add(top.id)
-      triggerAlertForReport(top)
+      void triggerAlertForReport(top)
     }
 
     sorted.slice(1).forEach((report) => {
@@ -201,33 +244,52 @@ export function PriorityAlertProvider({ children }: { children: ReactNode }) {
     syncAcknowledgedFromServer(active)
     stopAlertsForAcknowledged(active)
 
+    // Wait for the first server snapshot before baselining — cache-only snapshots can be empty/stale.
     if (!listenerBaselineReadyRef.current) {
+      if (meta?.fromCache) {
+        reportsRef.current = active
+        setReports(active)
+        return
+      }
       previousIdsRef.current = new Set(
         active.map((r) => r.id).filter((id): id is string => Boolean(id))
       )
       listenerBaselineReadyRef.current = true
+
+      const existingUnacknowledged = active.filter(
+        (r) =>
+          r.id &&
+          !locallyAcknowledgedRef.current.has(r.id) &&
+          !isAlertAcknowledged(r)
+      )
+      if (existingUnacknowledged.length > 0) {
+        processNewAlerts(existingUnacknowledged)
+      } else {
+        syncPendingModal(active)
+      }
+
       setReports(active)
       return
     }
 
-    if (!isAlarmMutedRef.current) {
-      const newReports = detectNewUnacknowledged(active, meta)
-      if (newReports.length > 0) {
-        processNewAlerts(newReports)
-      }
+    const newReports = detectNewUnacknowledged(active, meta)
+    if (newReports.length > 0) {
+      processNewAlerts(newReports)
+    } else {
+      syncPendingModal(active)
+    }
 
-      if (meta?.modifiedIds?.length) {
-        for (const id of meta.modifiedIds) {
-          const updated = active.find((r) => r.id === id)
-          if (
-            updated &&
-            (locallyAcknowledgedRef.current.has(id) || isAlertAcknowledged(updated))
-          ) {
-            stopPriorityAlertForIncident(id)
-            if (pendingAlertReportRef.current?.id === id) {
-              pendingAlertReportRef.current = null
-              setPendingAlertReport(null)
-            }
+    if (!isAlarmMutedRef.current && meta?.modifiedIds?.length) {
+      for (const id of meta.modifiedIds) {
+        const updated = active.find((r) => r.id === id)
+        if (
+          updated &&
+          (locallyAcknowledgedRef.current.has(id) || isAlertAcknowledged(updated))
+        ) {
+          stopPriorityAlertForIncident(id)
+          if (pendingAlertReportRef.current?.id === id) {
+            pendingAlertReportRef.current = null
+            setPendingAlertReport(null)
           }
         }
       }
@@ -251,7 +313,9 @@ export function PriorityAlertProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const initAudio = () => {
       const ctx = initAudioContext()
-      if (ctx) void warmPriorityAudio()
+      if (ctx) {
+        void warmPriorityAudio().then((ready) => setAudioReady(ready))
+      }
     }
     const events = ['click', 'touchstart', 'keydown', 'mousedown']
     const handlers: Array<() => void> = []
@@ -261,6 +325,21 @@ export function PriorityAlertProvider({ children }: { children: ReactNode }) {
       handlers.push(() => window.removeEventListener(event, handler))
     })
     return () => handlers.forEach((cleanup) => cleanup())
+  }, [])
+
+  const unlockAudio = useCallback(async () => {
+    const ready = await warmPriorityAudio()
+    setAudioReady(ready)
+    if (ready && pendingAlertReportRef.current?.id && !isAlarmMutedRef.current) {
+      const report = pendingAlertReportRef.current
+      if (report.id && !playedOnceRef.current.has(report.id)) {
+        playedOnceRef.current.add(report.id)
+        void playPriorityAlertForIncident(report.id, reportPriority(report))
+      } else if (report.id) {
+        void playPriorityAlertForIncident(report.id, reportPriority(report))
+      }
+    }
+    return ready
   }, [])
 
   useEffect(() => {
@@ -284,7 +363,7 @@ export function PriorityAlertProvider({ children }: { children: ReactNode }) {
 
     const unsubscribe = subscribeToEmergencyReports(
       (incoming, meta) => processSnapshotRef.current(incoming, meta),
-      { statusFilter: 'all', limitCount: 80 }
+      { statusFilter: 'all', limitCount: 200 }
     )
 
     return () => unsubscribe()
@@ -338,6 +417,14 @@ export function PriorityAlertProvider({ children }: { children: ReactNode }) {
     [reports, isReportAcknowledged]
   )
 
+  const intakeAwaitingTriageCount = useMemo(
+    () =>
+      reports.filter(
+        (r) => !r.alertAcknowledged && !r.acknowledgedBy && !r.viewedByName
+      ).length,
+    [reports]
+  )
+
   const acknowledgeReport = useCallback(
     async (reportId: string, dispatcherName: string) => {
       locallyAcknowledgedRef.current.add(reportId)
@@ -350,6 +437,14 @@ export function PriorityAlertProvider({ children }: { children: ReactNode }) {
         setPendingAlertReport(null)
       }
 
+      if (!isAlarmMutedRef.current) {
+        const ready = await warmPriorityAudio()
+        setAudioReady(ready)
+        if (ready) {
+          await playNotificationSound(false)
+        }
+      }
+
       const updated = await acknowledgeEmergencyAlert(reportId, dispatcherName)
       return updated
     },
@@ -360,17 +455,23 @@ export function PriorityAlertProvider({ children }: { children: ReactNode }) {
     () => ({
       isAlarmMuted,
       setIsAlarmMuted,
+      audioReady,
+      unlockAudio,
       pendingAlertReport,
       criticalModalReport: pendingAlertReport,
       acknowledgeReport,
       unacknowledgedAlertCount,
+      intakeAwaitingTriageCount,
       unacknowledgedCriticalCount: unacknowledgedAlertCount,
     }),
     [
       isAlarmMuted,
+      audioReady,
+      unlockAudio,
       pendingAlertReport,
       acknowledgeReport,
       unacknowledgedAlertCount,
+      intakeAwaitingTriageCount,
     ]
   )
 
@@ -390,5 +491,9 @@ export function usePriorityAlerts() {
 /** @deprecated Use usePriorityAlerts — kept for AlarmControl compatibility */
 export function useAlarm() {
   const ctx = usePriorityAlerts()
-  return { isAlarmMuted: ctx.isAlarmMuted, setIsAlarmMuted: ctx.setIsAlarmMuted }
+  return {
+    isAlarmMuted: ctx.isAlarmMuted,
+    setIsAlarmMuted: ctx.setIsAlarmMuted,
+    unlockAudio: ctx.unlockAudio,
+  }
 }

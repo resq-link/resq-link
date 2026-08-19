@@ -1,4 +1,3 @@
-import { isErrorLike, serializeError } from 'serialize-error';
 import React, { type ReactNode, useEffect, useState, useCallback, useRef } from 'react';
 import { Animated, Text, View } from 'react-native';
 
@@ -24,11 +23,8 @@ export function SharedErrorBoundary({
 
   const translateY = animation.interpolate({
     inputRange: [0, 1],
-    // fallback 100 if height not measured yet so it starts off-screen
     outputRange: [Math.max(contentHeight + 34, 100), 0],
   });
-
-  const opacity = animation;
 
   return (
     <Animated.View
@@ -122,63 +118,18 @@ export function Button({
   );
 }
 
-function InternalErrorBoundary({
-  error: errorArg = null,
-}: {
-  error: unknown | null;
-}) {
+function InternalErrorBoundary() {
   const [isOpen, setIsOpen] = useState(true);
-  const handleShowLogsClick = useCallback(() => {
-    window.parent.postMessage(
-      {
-        type: 'sandbox:web:show-logs',
-      },
-      '*'
-    );
+  const handleDismiss = useCallback(() => {
+    setIsOpen(false);
   }, []);
-  const handleFixClick = useCallback(() => {
-    window.parent.postMessage(
-      {
-        type: 'sandbox:web:fix',
-        error: serializeError(errorArg),
-      },
-      '*'
-    );
-    setIsOpen(false);
-  }, [errorArg]);
-  const handleCopyError = useCallback(() => {
-    const serializedError = serializeError(errorArg);
-    const text = isErrorLike(serializedError)
-      ? `${serializedError.message}\n\n${serializedError.stack}`
-      : JSON.stringify(serializedError, null, 2);
-    navigator.clipboard.writeText(text);
-    setIsOpen(false);
-  }, [errorArg]);
 
-  function isInIframe() {
-    try {
-      return window.parent !== window;
-    } catch {
-      return true;
-    }
-  }
   return (
     <SharedErrorBoundary isOpen={isOpen}>
       <View style={{ flexDirection: 'row', gap: 8 }}>
-        {isInIframe() ? (
-          <>
-            <Button color="primary" onPress={handleFixClick}>
-              Try to fix
-            </Button>
-            <Button color="secondary" onPress={handleShowLogsClick}>
-              Show logs
-            </Button>
-          </>
-        ) : (
-          <Button color="primary" onPress={handleCopyError}>
-            Copy error
-          </Button>
-        )}
+        <Button color="primary" onPress={handleDismiss}>
+          Dismiss
+        </Button>
       </View>
     </SharedErrorBoundary>
   );
@@ -204,7 +155,7 @@ export class ErrorBoundaryWrapper extends React.Component<
 
   render() {
     if (this.state.hasError) {
-      return <InternalErrorBoundary error={this.state.error} />;
+      return <InternalErrorBoundary />;
     }
     return this.props.children;
   }

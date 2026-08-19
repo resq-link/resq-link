@@ -18,18 +18,24 @@ import ReportDateFilters from '@/components/reporting/ReportDateFilters'
 import KpiCard from '@/components/reporting/KpiCard'
 import BreakdownBars from '@/components/reporting/BreakdownBars'
 import TrendChart from '@/components/reporting/TrendChart'
-import type { TeamOnDuty } from '@packages/firebase'
 import type { DatePreset } from '@/lib/reporting/types'
 import { applyPreset } from '@/lib/reporting/dates'
 import { PRIORITY_LABELS } from '@/lib/reporting/constants'
 import { filterIncidents, formatIncidentDateTime } from '@/lib/reporting/incidents'
 import { computeReportAnalytics, createDailyTrend } from '@/lib/reporting/analytics'
 import { useReportIncidents } from '@/lib/reporting/useReportIncidents'
+import { useOperationalTeams } from '@/contexts/OperationalTeamContext'
+import { getAssignedTeamName } from '@packages/firebase'
 
 export default function ReportPage() {
   const { incidents, isLoading } = useReportIncidents()
+  const { teams } = useOperationalTeams()
+  const teamOptions = useMemo(
+    () => teams.map((team) => ({ code: team.code, label: team.label })),
+    [teams]
+  )
   const [preset, setPreset] = useState<DatePreset>('30d')
-  const [selectedTeam, setSelectedTeam] = useState<TeamOnDuty | 'all'>('all')
+  const [selectedTeam, setSelectedTeam] = useState<string | 'all'>('all')
   const [fromDate, setFromDate] = useState(() => applyPreset('30d').fromDate)
   const [toDate, setToDate] = useState(() => applyPreset('30d').toDate)
 
@@ -48,7 +54,10 @@ export default function ReportPage() {
     [incidents, selectedTeam, fromDate, toDate]
   )
 
-  const analytics = useMemo(() => computeReportAnalytics(filteredIncidents), [filteredIncidents])
+  const analytics = useMemo(
+    () => computeReportAnalytics(filteredIncidents, teamOptions),
+    [filteredIncidents, teamOptions]
+  )
   const trendPoints = useMemo(() => createDailyTrend(filteredIncidents, fromDate, toDate), [filteredIncidents, fromDate, toDate])
 
   return (
@@ -170,7 +179,7 @@ export default function ReportPage() {
                             <div className="shrink-0 text-left sm:text-right">
                               <p className="text-xs font-semibold text-slate-300">{formatIncidentDateTime(incident)}</p>
                               <p className="mt-1 text-[10px] font-black uppercase tracking-wider text-slate-500">
-                                {incident.teamOnDuty ?? 'No team'} / {PRIORITY_LABELS[incident.priority]}
+                                {getAssignedTeamName(incident) ?? 'No team'} / {PRIORITY_LABELS[incident.priority]}
                               </p>
                             </div>
                           </div>

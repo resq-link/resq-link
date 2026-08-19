@@ -183,11 +183,19 @@ export function testAlarmSound(): void {
 /**
  * Play a subtle notification sound (for less urgent alerts)
  */
-export function playNotificationSound(isMuted: boolean = false): void {
+export async function playNotificationSound(isMuted: boolean = false): Promise<void> {
   if (isMuted || typeof window === 'undefined') return
 
   const ctx = initAudioContext()
   if (!ctx) return
+
+  if (ctx.state === 'suspended') {
+    try {
+      await ctx.resume()
+    } catch {
+      return
+    }
+  }
 
   try {
     const oscillator = ctx.createOscillator()

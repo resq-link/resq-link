@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   declineBtnText: {
-    fontFamily: "SpaceGrotesk_700Bold",
+    fontFamily: "Inter_700Bold",
     fontSize: 16,
     letterSpacing: 0.5,
   },
@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
   },
   touchdownButtonText: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
+    fontFamily: "Inter_600SemiBold",
     fontSize: 16,
     color: "#FFFFFF",
   },
@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
   },
   postReportButtonText: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
+    fontFamily: "Inter_600SemiBold",
     fontSize: 16,
     color: "#FFFFFF",
   },
@@ -296,11 +296,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   completedText: {
-    fontFamily: "SpaceGrotesk_700Bold",
+    fontFamily: "Inter_700Bold",
     fontSize: 15,
   },
   completedSubtext: {
-    fontFamily: "SpaceGrotesk_400Regular",
+    fontFamily: "Inter_400Regular",
     fontSize: 12,
     marginTop: 2,
   },

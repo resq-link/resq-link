@@ -8,6 +8,7 @@
 declare const __DEV__: boolean | undefined;
 
 const warnedOnceKeys = new Set<string>();
+const infoOnceKeys = new Set<string>();
 
 function isDevelopment(): boolean {
   if (typeof __DEV__ !== 'undefined') {
@@ -23,7 +24,17 @@ export function firebaseDebug(...args: unknown[]): void {
 }
 
 export function firebaseInfo(...args: unknown[]): void {
-  console.log(...args);
+  if (isDevelopment()) {
+    console.log(...args);
+  }
+}
+
+export function firebaseInfoOnce(key: string, ...args: unknown[]): void {
+  if (infoOnceKeys.has(key)) {
+    return;
+  }
+  infoOnceKeys.add(key);
+  firebaseInfo(...args);
 }
 
 export function firebaseWarnOnce(key: string, ...args: unknown[]): void {

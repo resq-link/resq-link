@@ -42,28 +42,36 @@ import {
   type IncidentTypeRule,
   type OperationalQuadrant,
   type ResourceRecord,
-  type TeamOnDuty,
+  getAssignedTeamName,
+  reassignIncidentTeam,
   comparePriority,
   normalizePriority,
   updateEmergencyPriority,
   type IncidentPriority,
+  getCivilianEmergencyTypeLabel,
 } from "@packages/firebase";
 import { usePriorityAlerts } from "@/contexts/PriorityAlertContext";
-import IntakeListItem, {
+import { useOperationalTeams } from "@/contexts/OperationalTeamContext";
+import CurrentTeamOnDutyChip from "@/components/operational/CurrentTeamOnDutyChip";
+import IntakeSourceFilterTabs, {
+  categorizeIntakeQueueItemSource,
+  type IntakeSourceTab,
+} from "@/components/operational/IntakeSourceFilterTabs";
+import IntakeTeamGroupedList from "@/components/operational/IntakeTeamGroupedList";
+import {
   IntakePriorityBadge,
+  attachLinkedEmergencyReport,
   type IntakeQueueItem,
 } from "@/components/IntakeListItem";
-import IntakeDetailView from "@/components/IntakeDetailView";
 import { 
   Plus,
-  Search, 
-  Filter, 
   ChevronRight, 
-  MessageSquare, 
-  Smartphone, 
-  Keyboard,
   Calendar 
 } from "lucide-react";
+
+const IntakeDetailView = dynamic(() => import("@/components/IntakeDetailView"), {
+  ssr: false,
+});
 
 const IncidentLocationPicker = dynamic(
   () => import("@/components/IncidentLocationPicker"),
@@ -90,8 +98,6 @@ type IncidentFormState = {
   description: string;
   vehicularAccidentReason: string;
   notes: string;
-  // Duty fields (Phase 1)
-  teamOnDuty: TeamOnDuty | "";
   incidentDate: string; // YYYY-MM-DD
   incidentTime: string; // hh:mm AM/PM
 };
@@ -125,7 +131,6 @@ const emptyForm: IncidentFormState = {
   description: "",
   vehicularAccidentReason: "",
   notes: "",
-  teamOnDuty: "",
   incidentDate: "",
   incidentTime: "",
 };
@@ -139,7 +144,7 @@ const sourceOptions: { value: IncidentSource; label: string }[] = [
   { value: "civilian_app", label: "Civilian App" },
 ];
 
-const teamOnDutyOptions: TeamOnDuty[] = ["Whiskey", "X-ray", "Yankee", "Zulu"];
+const SMS_CALL_SOURCES: IncidentSource[] = ["sms", "call"];
 
 const TIME_ZONE = "Asia/Manila";
 const INCIDENT_TIME_REGEX = /^(0?[1-9]|1[0-2]):([0-5]\d)\s?(AM|PM)$/i;
@@ -323,7 +328,7 @@ const toQueueItemFromIncident = (incident: IncidentRecord): IntakeQueueItem => (
   locationText: incident.locationText,
   priority: incident.priority,
   quadrantLabel: incident.quadrant ? QUADRANT_LABELS[incident.quadrant] : null,
-  teamOnDutyLabel: incident.teamOnDuty ?? null,
+  teamOnDutyLabel: getAssignedTeamName(incident),
   incidentDateLabel: incident.incidentDate ?? null,
   incidentTimeLabel: incident.incidentTime ?? null,
   createdAt: incident.createdAt,
@@ -343,7 +348,7 @@ const toQueueItemFromEmergency = (report: EmergencyReport): IntakeQueueItem => {
     id: report.id || `app-${String(report.createdAt ?? Date.now())}`,
     channel: "emergency_report",
     referenceNumber: report.id ? `APP-${report.id.slice(-6).toUpperCase()}` : "APP-REPORT",
-    incidentSubtypeLabel: getEmergencyIncidentTypeName(report.incidentType),
+    incidentSubtypeLabel: getCivilianEmergencyTypeLabel(report.incidentType, report.typeProfile),
     locationText: report.locationText,
     priority: report.priority || "medium",
     quadrantLabel: null,
@@ -371,6 +376,10 @@ const emergencyReportSyncKey = (report: EmergencyReport): string =>
     report.priority ?? "",
     report.assignedResponderId ?? "",
     report.responder ?? "",
+    report.description ?? "",
+    report.typeProfile ?? "",
+    JSON.stringify(report.fieldAssessment ?? {}),
+    JSON.stringify(report.imageUrls ?? []),
     String(toMillis(report.updatedAt)),
   ].join("|");
 
@@ -480,10 +489,6 @@ const sortResourcesByDispatchPriority = (
     return left.name.localeCompare(right.name);
   });
 
-const appSources: IncidentSource[] = ["civilian_app"];
-const smsCallSources: IncidentSource[] = ["sms", "call"];
-const manualEntrySources: IncidentSource[] = ["manual", "walk_in", "radio"];
-
 function formatIncidentDateForDisplay(date: string | null | undefined): string {
   // Store format is usually YYYY-MM-DD; display as MM/DD/YYYY for readability.
   if (!date) return "—";
@@ -497,20 +502,9 @@ function formatIncidentDateForDisplay(date: string | null | undefined): string {
 function IntakeContent() {
   const { user } = useAuth();
   const { acknowledgeReport } = usePriorityAlerts();
+  const { teams, requireCurrentTeamId } = useOperationalTeams();
   const searchParams = useSearchParams();
   const router = useRouter();
-
-  const preselectedTeamOnDuty = useMemo<TeamOnDuty | null>(() => {
-    // Optional: allow prefill via query string.
-    const candidate =
-      searchParams.get("teamOnDuty") ??
-      searchParams.get("team_on_duty") ??
-      searchParams.get("team");
-    if (!candidate) return null;
-    return teamOnDutyOptions.includes(candidate as TeamOnDuty)
-      ? (candidate as TeamOnDuty)
-      : null;
-  }, [searchParams]);
 
   const [incidentRules, setIncidentRules] = useState<IncidentTypeRule[]>([]);
   const [formState, setFormState] = useState<IncidentFormState>(() => {
@@ -522,15 +516,6 @@ function IntakeContent() {
     };
   });
 
-  useEffect(() => {
-    if (!preselectedTeamOnDuty) return;
-    setFormState((current) =>
-      current.teamOnDuty
-        ? current
-        : { ...current, teamOnDuty: preselectedTeamOnDuty },
-    );
-  }, [preselectedTeamOnDuty]);
-
   const [resources, setResources] = useState<ResourceRecord[]>([]);
   const [recentIncidents, setRecentIncidents] = useState<IncidentRecord[]>([]);
   const [appEmergencyReports, setAppEmergencyReports] = useState<EmergencyReport[]>([]);
@@ -538,9 +523,8 @@ function IntakeContent() {
     useState<BarangayFeatureCollection | null>(null);
   const [selectedResourceIds, setSelectedResourceIds] = useState<string[]>([]);
   const [selectedExistingResourceIds, setSelectedExistingResourceIds] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<"all" | "app" | "sms" | "manual">("all");
   const [selectedQueueItem, setSelectedQueueItem] = useState<IntakeQueueItem | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [activeSourceTab, setActiveSourceTab] = useState<IntakeSourceTab>("all");
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUpdatingExistingIncident, setIsUpdatingExistingIncident] = useState(false);
@@ -768,13 +752,6 @@ function IntakeContent() {
     ],
   );
 
-  const activeIncidentCount = useMemo(
-    () =>
-      recentIncidents.filter(isLiveIncident)
-        .length,
-    [recentIncidents],
-  );
-
   const appQueueItems = useMemo(
     () =>
       appEmergencyReports
@@ -791,26 +768,21 @@ function IntakeContent() {
     [appEmergencyReports],
   );
 
-  const smsCallQueueItems = useMemo(
-    () =>
-      recentIncidents
-        .filter((incident) => isLiveIncident(incident) && smsCallSources.includes(incident.source))
-        .map(toQueueItemFromIncident),
-    [recentIncidents],
-  );
+  const activeOperationalItems = useMemo(() => {
+    const items: IntakeQueueItem[] = [];
 
-  const manualQueueItems = useMemo(
-    () =>
-      recentIncidents
-        .filter((incident) => isLiveIncident(incident) && manualEntrySources.includes(incident.source))
-        .map(toQueueItemFromIncident),
-    [recentIncidents],
-  );
+    appQueueItems
+      .filter((item) => !item.rawEmergencyReport?.incidentId)
+      .forEach((item) => items.push(item));
 
-  const totalQueueCount = useMemo(() => 
-    appQueueItems.length + smsCallQueueItems.length + manualQueueItems.length,
-    [appQueueItems, smsCallQueueItems, manualQueueItems]
-  );
+    recentIncidents
+      .filter(isLiveIncident)
+      .map(toQueueItemFromIncident)
+      .map((item) => attachLinkedEmergencyReport(item, appEmergencyReports))
+      .forEach((item) => items.push(item));
+
+    return items;
+  }, [appQueueItems, recentIncidents]);
 
   const awaitingResourcesCount = useMemo(() => 
     recentIncidents.filter(
@@ -824,32 +796,53 @@ function IntakeContent() {
     [appEmergencyReports]
   );
 
-  const hasIncidentTypeCatalog = incidentRules.length > 0;
-
-  const groupedRecentIncidents = useMemo(
-    () => [
-      {
-        id: "app",
-        title: "From App",
-        description: "Incidents submitted through the system app.",
-        incidents: appQueueItems,
-      },
-      {
-        id: "sms-call",
-        title: "From SMS or Call",
-        description: "Incidents received through SMS and phone calls.",
-        incidents: smsCallQueueItems,
-      },
-      {
-        id: "manual",
-        title: "Manual Entry",
-        description:
-          "Incidents encoded manually, including walk-in and radio reports.",
-        incidents: manualQueueItems,
-      },
-    ],
-    [appQueueItems, manualQueueItems, smsCallQueueItems],
+  const activeCount = useMemo(
+    () =>
+      activeOperationalItems.filter((item) => {
+        if (item.channel === "emergency_report") return true;
+        const status = item.rawIncident?.status;
+        return status !== "awaiting_resources" && status !== "liaison_pending";
+      }).length,
+    [activeOperationalItems],
   );
+
+  const totalInQueueCount = activeOperationalItems.length;
+
+  const sourceTabCounts = useMemo(
+    () => ({
+      all: activeOperationalItems.length,
+      app: activeOperationalItems.filter(
+        (item) => categorizeIntakeQueueItemSource(item, SMS_CALL_SOURCES) === "app",
+      ).length,
+      sms: activeOperationalItems.filter(
+        (item) => categorizeIntakeQueueItemSource(item, SMS_CALL_SOURCES) === "sms",
+      ).length,
+      manual: activeOperationalItems.filter(
+        (item) => categorizeIntakeQueueItemSource(item, SMS_CALL_SOURCES) === "manual",
+      ).length,
+    }),
+    [activeOperationalItems],
+  );
+
+  const filteredOperationalItems = useMemo(() => {
+    if (activeSourceTab === "all") return activeOperationalItems;
+    return activeOperationalItems.filter(
+      (item) => categorizeIntakeQueueItemSource(item, SMS_CALL_SOURCES) === activeSourceTab,
+    );
+  }, [activeOperationalItems, activeSourceTab]);
+
+  useEffect(() => {
+    if (!selectedQueueItem) return;
+    const stillVisible = filteredOperationalItems.some(
+      (item) =>
+        item.id === selectedQueueItem.id && item.channel === selectedQueueItem.channel,
+    );
+    if (!stillVisible) {
+      setSelectedQueueItem(null);
+    }
+  }, [filteredOperationalItems, selectedQueueItem]);
+
+  const hasIncidentTypeCatalog = incidentRules.length > 0;
 
   const duplicateCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -906,35 +899,6 @@ function IntakeContent() {
     return counts;
   }, [appEmergencyReports]);
 
-  const filteredQueueItems = useMemo(() => {
-    let items: IntakeQueueItem[] = [];
-    if (activeTab === "all") items = [...appQueueItems, ...smsCallQueueItems, ...manualQueueItems];
-    else if (activeTab === "app") items = appQueueItems;
-    else if (activeTab === "sms") items = smsCallQueueItems;
-    else if (activeTab === "manual") items = manualQueueItems;
-
-    items.sort((a, b) => {
-      const rank = comparePriority(
-        normalizePriority(a.priority),
-        normalizePriority(b.priority)
-      );
-      if (rank !== 0) return rank;
-      const dateA = a.createdAt instanceof Date ? a.createdAt.getTime() : (a.createdAt as any)?.toDate?.()?.getTime() || 0;
-      const dateB = b.createdAt instanceof Date ? b.createdAt.getTime() : (b.createdAt as any)?.toDate?.()?.getTime() || 0;
-      return dateB - dateA;
-    });
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      return items.filter(val => 
-        val.referenceNumber.toLowerCase().includes(q) || 
-        val.incidentSubtypeLabel.toLowerCase().includes(q) ||
-        val.locationText.toLowerCase().includes(q)
-      );
-    }
-    return items;
-  }, [activeTab, appQueueItems, smsCallQueueItems, manualQueueItems, searchQuery]);
-
   const currentDispatcherLabel = useMemo(
     () => user?.displayName || user?.email || user?.uid || "Dispatcher",
     [user],
@@ -966,32 +930,6 @@ function IntakeContent() {
       longitude: "",
       quadrant: "",
     }));
-  };
-
-  const handleOpenQueueItem = async (item: IntakeQueueItem) => {
-    if (item.channel !== "emergency_report" || !item.rawEmergencyReport?.id) {
-      return;
-    }
-
-    const report = item.rawEmergencyReport;
-    if (report.alertAcknowledged || report.acknowledgedBy) {
-      return;
-    }
-
-    try {
-      const updated = await acknowledgeReport(
-        report.id!,
-        currentDispatcherLabel,
-      );
-      if (!updated?.id) return;
-      setSelectedQueueItem((prev) =>
-        prev && prev.id === updated.id
-          ? refreshQueueItemFromEmergencyReport(prev, updated)
-          : prev,
-      );
-    } catch (error: any) {
-      console.error("Failed to acknowledge report:", error);
-    }
   };
 
   const handleAcknowledgeSelectedAlert = async () => {
@@ -1040,9 +978,18 @@ function IntakeContent() {
       label: string;
       agency: DispatcherRole;
       suggestedAgency: DispatcherRole | null;
+      assignedTeamId?: string;
     },
   ) => {
     if (!report.id) return;
+
+    let assignedTeamId: string;
+    try {
+      assignedTeamId = requireCurrentTeamId();
+    } catch (error: any) {
+      setPageError(error.message || "Set the Current Team on Duty before elevating.");
+      return;
+    }
 
     try {
       // Find matching incident subtype rule to inherit correct taxonomy, category, and priority
@@ -1060,12 +1007,14 @@ function IntakeContent() {
       // Elevate civilian report to master INC incident atomically
       const incident = await elevateEmergencyToIncident(report.id, {
         priority: priority as any,
-        teamOnDuty: "Whiskey", // Default test operational dispatch team
+        assignedTeamId,
         incidentSubtypeId: subtypeId,
         incidentSubtypeLabel: subtypeLabel,
         assignedResponderId: responder.uid,
         responderName: responder.label,
         assignedAgency: responder.agency,
+        incidentDate: formState.incidentDate || getPhilippineDateString(new Date()),
+        incidentTime: formState.incidentTime || getPhilippineTimeString(new Date()),
       });
 
       // Update the local queue item immediately for smooth real-time visual feedback
@@ -1261,10 +1210,6 @@ function IntakeContent() {
       return;
     }
 
-    if (!formState.teamOnDuty) {
-      setPageError("Please select a Team on Duty before submitting.");
-      return;
-    }
     if (!formState.incidentDate) {
       setPageError("Incident date is required.");
       return;
@@ -1274,6 +1219,14 @@ function IntakeContent() {
     );
     if (!normalizedIncidentTime) {
       setPageError("Incident time must be in format hh:mm AM/PM.");
+      return;
+    }
+
+    let assignedTeamId: string;
+    try {
+      assignedTeamId = requireCurrentTeamId();
+    } catch (error: any) {
+      setPageError(error.message || "Set the Current Team on Duty before creating incidents.");
       return;
     }
 
@@ -1294,8 +1247,7 @@ function IntakeContent() {
       description: formState.description,
       vehicularAccidentReason: formState.vehicularAccidentReason,
       notes: formState.notes,
-      teamId: null,
-      teamOnDuty: formState.teamOnDuty,
+      assignedTeamId,
       incidentDate: formState.incidentDate,
       incidentTime: normalizedIncidentTime,
     };
@@ -1383,100 +1335,55 @@ function IntakeContent() {
   return (
     <ProtectedRoute>
       <div className="flex flex-col h-full">
-        <CommandBar 
-          pageName="Intake" 
-          description="Incident triage and emergency call management"
+        <CommandBar
+          pageName="Incident Intake"
+          description="Live emergency operations command center"
           statsCategory="Incidents"
           stats={[
-            { label: 'Total In Queue', value: totalQueueCount, highlight: true },
-            { label: 'Active', value: activeIncidentCount },
-            { label: 'Awaiting Resources', value: awaitingResourcesCount },
-            { label: 'Unassigned', value: unassignedCount }
+            { label: "Total In Queue", value: totalInQueueCount, highlight: true },
+            { label: "Active", value: activeCount },
+            { label: "Awaiting Resources", value: awaitingResourcesCount },
+            { label: "Unassigned", value: unassignedCount },
           ]}
         />
-        <div className="flex-1 flex flex-col min-h-0 bg-slate-950/20 backdrop-blur-sm">
-          {/* Tab Navigation & Search Bar */}
-          <div className="px-3 pt-3 border-b border-slate-800 bg-slate-900/40 flex flex-wrap items-end justify-between gap-4">
-            <div className="flex items-end gap-0">
-              {[
-                { id: "all", label: "All", icon: <Filter className="w-4 h-4" />, count: appQueueItems.length + smsCallQueueItems.length + manualQueueItems.length },
-                { id: "app", label: "App", icon: <Smartphone className="w-4 h-4" />, count: appQueueItems.length },
-                { id: "sms", label: "SMS/Call", icon: <MessageSquare className="w-4 h-4" />, count: smsCallQueueItems.length },
-                { id: "manual", label: "Manual", icon: <Keyboard className="w-4 h-4" />, count: manualQueueItems.length },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`
-                    relative flex items-center gap-2 px-4 py-[14px] rounded-t-lg text-xs font-bold transition-[background-color,color,transform] duration-200 focus:outline-none focus-visible:outline-none
-                    ${activeTab === tab.id 
-                      ? "bg-slate-950 text-white border-t border-x border-slate-800 translate-y-[1px] z-10 shadow-[0_-4px_12px_rgba(0,0,0,0.5)] \
-                         before:content-[''] before:absolute before:bottom-0 before:-left-3 before:w-3 before:h-3 before:bg-[radial-gradient(circle_at_0_0,transparent_11px,#1e293b_11px,#1e293b_12.5px,#020617_12.5px)] \
-                         after:content-[''] after:absolute after:bottom-0 after:-right-3 after:w-3 after:h-3 after:bg-[radial-gradient(circle_at_100%_0,transparent_11px,#1e293b_11px,#1e293b_12.5px,#020617_12.5px)]" 
-                      : "text-slate-500 hover:text-slate-300 hover:bg-slate-900/40 border-t border-x border-transparent"}
-                  `}
-                >
-                  {tab.icon}
-                  <span>{tab.label}</span>
-                  <span className={`px-1.5 py-0.5 rounded-md text-[10px] ${activeTab === tab.id ? "bg-primary-600 text-white" : "bg-slate-900 text-slate-500"}`}>
-                    {tab.count}
-                  </span>
-                </button>
-              ))}
-            </div>
- 
-            <div className="flex items-end gap-2 mb-3.5">
-              <div className="relative flex-1 max-w-[240px] hidden md:block">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
-                <input 
-                  type="text" 
-                  placeholder="Search incidents..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full h-8 pl-8 pr-4 rounded-lg bg-slate-950 border border-slate-800 text-[11px] text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-1 focus:ring-primary-500/50"
-                />
-              </div>
-              <button 
-                onClick={() => {
-                  setPageError(null);
-                  setPageSuccess(null);
-                  setIsFormModalOpen(true);
-                }}
-                className="h-8 px-3 rounded-lg bg-primary-600 hover:bg-primary-500 text-[10px] font-black text-white transition-colors flex items-center gap-2 whitespace-nowrap"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>NEW INCIDENT</span>
-              </button>
-            </div>
+        <div className="flex shrink-0 flex-wrap items-end justify-between gap-4 border-b border-slate-800 bg-slate-900/40 px-3 pt-2">
+          <IntakeSourceFilterTabs
+            activeTab={activeSourceTab}
+            counts={sourceTabCounts}
+            onChange={setActiveSourceTab}
+            variant="toolbar"
+          />
+          <div className="mb-2 flex shrink-0 items-center gap-2">
+            <CurrentTeamOnDutyChip variant="header" />
+            <button
+              type="button"
+              onClick={() => {
+                setPageError(null);
+                setPageSuccess(null);
+                setIsFormModalOpen(true);
+              }}
+              className="flex h-8 items-center gap-1.5 whitespace-nowrap rounded-lg bg-primary-600 px-3 text-[11px] font-semibold text-white transition-colors hover:bg-primary-500"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>New Incident</span>
+            </button>
           </div>
-
+        </div>
+        <div className="flex-1 flex flex-col min-h-0 bg-slate-950/20 backdrop-blur-sm">
           {/* Master-Detail Layout */}
           <div className="flex-1 flex min-h-0 overflow-hidden relative">
             <div className="absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-slate-950 to-transparent z-10 pointer-events-none"></div>
-            {/* Left Panel: Incident List */}
+            {/* Left Panel: Incident queue */}
             <div className={`${selectedQueueItem ? "hidden lg:flex" : "flex"} flex-col min-h-0 w-full lg:w-[400px] border-r border-slate-800 bg-slate-900/10`}>
-
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
-                {filteredQueueItems.length === 0 ? (
-                   <div className="h-full flex flex-col items-center justify-center p-8 text-center border-2 border-dashed border-slate-800/50 rounded-2xl">
-                    <Search className="w-10 h-10 text-slate-800 mb-3" />
-                    <p className="text-slate-500 text-sm font-medium">No results found</p>
-                    <p className="text-slate-600 text-xs mt-1">Try adjusting your filters or search query.</p>
-                  </div>
-                ) : (
-                  filteredQueueItems.map((item) => (
-                    <IntakeListItem 
-                      key={item.id} 
-                      item={item} 
-                      isSelected={selectedQueueItem?.id === item.id}
-                      duplicateCount={item.channel === "emergency_report" && item.id ? duplicateCounts[item.id] : undefined}
-                      onClick={(item) => {
-                        setSelectedQueueItem(item);
-                        handleOpenQueueItem(item);
-                      }}
-                    />
-                  ))
-                )}
+              <div className="flex-1 overflow-y-auto px-3 pt-2 pb-3 custom-scrollbar">
+                <IntakeTeamGroupedList
+                  items={filteredOperationalItems}
+                  teams={teams}
+                  recentIncidents={recentIncidents}
+                  selectedItemId={selectedQueueItem?.id ?? null}
+                  duplicateCounts={duplicateCounts}
+                  onSelect={setSelectedQueueItem}
+                />
               </div>
             </div>
 
@@ -1730,25 +1637,6 @@ function IntakeContent() {
                           {sourceOptions.map((option) => (
                             <option key={option.value} value={option.value}>
                               {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                          Team on Duty
-                        </label>
-                        <select
-                          value={formState.teamOnDuty}
-                          onChange={(event) =>
-                            handleFieldChange("teamOnDuty", event.target.value)
-                          }
-                          className="mt-1 h-10 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        >
-                          <option value="">Select team</option>
-                          {teamOnDutyOptions.map((team) => (
-                            <option key={team} value={team}>
-                              {team}
                             </option>
                           ))}
                         </select>
@@ -2133,11 +2021,9 @@ export default function IntakePage() {
   return (
     <Suspense fallback={
       <div className="flex flex-col h-full bg-slate-950">
-        <CommandBar 
-          pageName="Intake" 
-          description="Loading intake data..." 
-          statsCategory="Incidents"
-          stats={[]}
+        <CommandBar
+          pageName="Incident Intake"
+          description="Loading intake data..."
         />
         <div className="flex-1 flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>

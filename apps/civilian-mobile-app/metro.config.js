@@ -20,6 +20,9 @@ const resolveMonorepoPackage = (name) =>
   );
 
 const reactNativeRoot = resolveMonorepoPackage("react-native");
+const bottomSheetRoot = resolveMonorepoPackage("@gorhom/bottom-sheet");
+const bottomSheetLib = path.join(bottomSheetRoot, "lib/module");
+const flashListStub = path.resolve(__dirname, "./polyfills/optional/flash-list.js");
 const RN_TEXT_INPUT_IMPL = path.join(
   reactNativeRoot,
   "Libraries/Components/TextInput/TextInput.js",
@@ -28,48 +31,6 @@ const RN_TEXT_INPUT_IMPL = path.join(
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
 
-const WEB_ALIASES = {
-  "expo-secure-store": path.resolve(
-    __dirname,
-    "./polyfills/web/secureStore.web.ts",
-  ),
-  "react-native-webview": path.resolve(
-    __dirname,
-    "./polyfills/web/webview.web.tsx",
-  ),
-  "react-native-safe-area-context": path.resolve(
-    __dirname,
-    "./polyfills/web/safeAreaContext.web.jsx",
-  ),
-  "react-native-maps": path.resolve(__dirname, "./polyfills/web/maps.web.jsx"),
-  "react-native-web/dist/exports/SafeAreaView": path.resolve(
-    __dirname,
-    "./polyfills/web/SafeAreaView.web.jsx",
-  ),
-  "react-native-web/dist/exports/Alert": path.resolve(
-    __dirname,
-    "./polyfills/web/alerts.web.tsx",
-  ),
-  "react-native-web/dist/exports/RefreshControl": path.resolve(
-    __dirname,
-    "./polyfills/web/refreshControl.web.tsx",
-  ),
-  "expo-status-bar": path.resolve(
-    __dirname,
-    "./polyfills/web/statusBar.web.tsx",
-  ),
-  "expo-location": path.resolve(__dirname, "./polyfills/web/location.web.ts"),
-  "./layouts/Tabs": path.resolve(__dirname, "./polyfills/web/tabbar.web.jsx"),
-  "expo-notifications": path.resolve(
-    __dirname,
-    "./polyfills/web/notifications.web.tsx",
-  ),
-  "expo-contacts": path.resolve(__dirname, "./polyfills/web/contacts.web.ts"),
-  "react-native-web/dist/exports/ScrollView": path.resolve(
-    __dirname,
-    "./polyfills/web/scrollview.web.jsx",
-  ),
-};
 const NATIVE_ALIASES = {
   "./Libraries/Components/TextInput/TextInput": path.resolve(
     __dirname,
@@ -101,20 +62,42 @@ config.resolver = {
     "react-native": reactNativeRoot,
     "expo-router": resolveMonorepoPackage("expo-router"),
     "expo/virtual/env": path.join(resolveMonorepoPackage("expo"), "virtual", "env"),
+    "@gorhom/bottom-sheet": bottomSheetLib,
+    "@shopify/flash-list": flashListStub,
   },
 };
 
-// Add web-specific alias configuration through resolveRequest
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   try {
     if (moduleName === "@resqlink-internal/text-input-impl") {
       return { type: "sourceFile", filePath: RN_TEXT_INPUT_IMPL };
     }
 
-    // Polyfills are not resolved by Metro
+    // @gorhom/bottom-sheet "react-native" field points at TypeScript src; use compiled lib.
+    if (moduleName === "@gorhom/bottom-sheet") {
+      return {
+        type: "sourceFile",
+        filePath: path.join(bottomSheetLib, "index.js"),
+      };
+    }
+
+    if (moduleName.startsWith("@gorhom/bottom-sheet/")) {
+      const subpath = moduleName.slice("@gorhom/bottom-sheet/".length);
+      const libCandidate = path.join(bottomSheetRoot, "lib/module", subpath);
+      if (fs.existsSync(libCandidate)) {
+        return { type: "sourceFile", filePath: libCandidate };
+      }
+      if (fs.existsSync(`${libCandidate}.js`)) {
+        return { type: "sourceFile", filePath: `${libCandidate}.js` };
+      }
+    }
+
+    if (moduleName === "@shopify/flash-list") {
+      return { type: "sourceFile", filePath: flashListStub };
+    }
+
     if (
       context.originModulePath.startsWith(`${__dirname}/polyfills/native`) ||
-      context.originModulePath.startsWith(`${__dirname}/polyfills/web`) ||
       context.originModulePath.startsWith(`${__dirname}/polyfills/shared`)
     ) {
       return context.resolveRequest(context, moduleName, platform);
@@ -136,17 +119,6 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
         SHARED_ALIASES[moduleName],
         platform,
       );
-    }
-    if (platform === "web") {
-      // Only apply aliases if the module is one of our polyfills
-      if (WEB_ALIASES[moduleName] && !moduleName.startsWith("./polyfills/")) {
-        return context.resolveRequest(
-          context,
-          WEB_ALIASES[moduleName],
-          platform,
-        );
-      }
-      return context.resolveRequest(context, moduleName, platform);
     }
 
     if (NATIVE_ALIASES[moduleName] && !moduleName.startsWith("./polyfills/")) {
@@ -186,10 +158,11 @@ config.cacheStores = () => [
   }),
 ];
 config.resetCache = false;
+const originalReporterUpdate = config.reporter?.update?.bind(config.reporter);
 config.reporter = {
   ...config.reporter,
   update: (event) => {
-    config.reporter?.update(event);
+    originalReporterUpdate?.(event);
     const reportableErrors = [
       "error",
       "bundling_error",

@@ -355,13 +355,13 @@ function createStyles(palette) {
       backgroundColor: palette.surface,
     },
     headerTitle: {
-      fontFamily: "SpaceGrotesk_700Bold",
+      fontFamily: "Inter_700Bold",
       fontSize: 18,
       color: palette.textPrimary,
     },
     headerSubtitle: {
       marginTop: 2,
-      fontFamily: "SpaceGrotesk_400Regular",
+      fontFamily: "Inter_400Regular",
       fontSize: 12,
       color: palette.textSecondary,
     },
@@ -386,7 +386,7 @@ function createStyles(palette) {
       backgroundColor: palette.card,
     },
     sectionLabel: {
-      fontFamily: "SpaceGrotesk_700Bold",
+      fontFamily: "Inter_700Bold",
       fontSize: 10,
       letterSpacing: 1.6,
       textTransform: "uppercase",
@@ -407,13 +407,13 @@ function createStyles(palette) {
       paddingVertical: 10,
     },
     participantName: {
-      fontFamily: "SpaceGrotesk_700Bold",
+      fontFamily: "Inter_700Bold",
       fontSize: 12,
       color: palette.textPrimary,
     },
     participantRole: {
       marginTop: 2,
-      fontFamily: "SpaceGrotesk_600SemiBold",
+      fontFamily: "Inter_600SemiBold",
       fontSize: 10,
       color: palette.textSecondary,
       textTransform: "uppercase",
@@ -441,7 +441,7 @@ function createStyles(palette) {
       backgroundColor: palette.navActiveBg,
     },
     threadTitle: {
-      fontFamily: "SpaceGrotesk_700Bold",
+      fontFamily: "Inter_700Bold",
       fontSize: 13,
       color: palette.textPrimary,
     },
@@ -450,13 +450,13 @@ function createStyles(palette) {
     },
     threadPreview: {
       marginTop: 2,
-      fontFamily: "SpaceGrotesk_400Regular",
+      fontFamily: "Inter_400Regular",
       fontSize: 11,
       color: palette.textMuted,
     },
     threadLastMessage: {
       marginTop: 2,
-      fontFamily: "SpaceGrotesk_400Regular",
+      fontFamily: "Inter_400Regular",
       fontSize: 10,
       color: palette.textMuted,
       opacity: 0.72,
@@ -471,13 +471,13 @@ function createStyles(palette) {
       borderBottomColor: palette.cardBorder,
     },
     conversationTitle: {
-      fontFamily: "SpaceGrotesk_700Bold",
+      fontFamily: "Inter_700Bold",
       fontSize: 15,
       color: palette.textPrimary,
     },
     conversationMeta: {
       marginTop: 2,
-      fontFamily: "SpaceGrotesk_400Regular",
+      fontFamily: "Inter_400Regular",
       fontSize: 11,
       color: palette.textMuted,
     },
@@ -507,14 +507,14 @@ function createStyles(palette) {
       borderColor: palette.cardBorder,
     },
     senderName: {
-      fontFamily: "SpaceGrotesk_700Bold",
+      fontFamily: "Inter_700Bold",
       fontSize: 10,
       color: palette.textMuted,
       textTransform: "uppercase",
       marginBottom: 4,
     },
     messageText: {
-      fontFamily: "SpaceGrotesk_400Regular",
+      fontFamily: "Inter_400Regular",
       fontSize: 14,
       lineHeight: 20,
       color: palette.textPrimary,
@@ -524,7 +524,7 @@ function createStyles(palette) {
     },
     messageTime: {
       marginTop: 4,
-      fontFamily: "SpaceGrotesk_400Regular",
+      fontFamily: "Inter_400Regular",
       fontSize: 10,
       color: palette.textMuted,
       textAlign: "right",
@@ -533,14 +533,14 @@ function createStyles(palette) {
       color: "rgba(6,17,31,0.72)",
     },
     emptyText: {
-      fontFamily: "SpaceGrotesk_400Regular",
+      fontFamily: "Inter_400Regular",
       fontSize: 13,
       color: palette.textMuted,
       textAlign: "center",
       paddingVertical: 12,
     },
     emptyConversation: {
-      fontFamily: "SpaceGrotesk_400Regular",
+      fontFamily: "Inter_400Regular",
       fontSize: 14,
       color: palette.textMuted,
       textAlign: "center",
@@ -553,7 +553,7 @@ function createStyles(palette) {
       color: "#fecaca",
       paddingHorizontal: 16,
       paddingVertical: 8,
-      fontFamily: "SpaceGrotesk_600SemiBold",
+      fontFamily: "Inter_600SemiBold",
       fontSize: 12,
     },
     composer: {
@@ -577,7 +577,7 @@ function createStyles(palette) {
       paddingHorizontal: 14,
       paddingVertical: 11,
       color: palette.textPrimary,
-      fontFamily: "SpaceGrotesk_400Regular",
+      fontFamily: "Inter_400Regular",
       fontSize: 14,
     },
     sendButton: {

@@ -134,11 +134,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   modalTitle: {
-    fontFamily: "SpaceGrotesk_700Bold",
+    fontFamily: "Inter_700Bold",
     fontSize: 20,
   },
   modalDescription: {
-    fontFamily: "SpaceGrotesk_400Regular",
+    fontFamily: "Inter_400Regular",
     fontSize: 14,
     lineHeight: 20,
     marginBottom: spacing.md,
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   fieldLabel: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
+    fontFamily: "Inter_600SemiBold",
     fontSize: 14,
     marginBottom: 6,
   },
@@ -157,12 +157,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: spacing.md,
     textAlignVertical: "top",
-    fontFamily: "SpaceGrotesk_400Regular",
+    fontFamily: "Inter_400Regular",
     fontSize: 15,
     lineHeight: 22,
   },
   errorText: {
-    fontFamily: "SpaceGrotesk_400Regular",
+    fontFamily: "Inter_400Regular",
     fontSize: 13,
     marginBottom: spacing.sm,
   },
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   reasonCancelText: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
+    fontFamily: "Inter_600SemiBold",
     fontSize: 14,
   },
   reasonSubmitButton: {
@@ -190,7 +190,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   reasonSubmitText: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
+    fontFamily: "Inter_600SemiBold",
     fontSize: 14,
     color: "#FFFFFF",
   },

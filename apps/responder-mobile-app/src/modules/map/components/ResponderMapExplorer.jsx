@@ -30,10 +30,10 @@ import {
   AlertCircle,
 } from "lucide-react-native";
 import {
-  SpaceGrotesk_400Regular,
-  SpaceGrotesk_600SemiBold,
-  SpaceGrotesk_700Bold,
-} from "@expo-google-fonts/space-grotesk";
+  Inter_400Regular,
+  Inter_600SemiBold,
+  Inter_700Bold,
+} from "@expo-google-fonts/inter";
 import { useFonts } from "expo-font";
 import useUserStore from "@/store/userStore";
 import { getFirebaseAuth } from "@packages/firebase";
@@ -94,9 +94,9 @@ export default function ResponderMapExplorer() {
   const [showUserOnMap, setShowUserOnMap] = useState(false);
 
   const [fontsLoaded] = useFonts({
-    SpaceGrotesk_400Regular,
-    SpaceGrotesk_600SemiBold,
-    SpaceGrotesk_700Bold,
+    Inter_400Regular,
+    Inter_600SemiBold,
+    Inter_700Bold,
   });
 
   const initialCenter = useRef({
@@ -308,13 +308,13 @@ export default function ResponderMapExplorer() {
           justifyContent: "center",
         },
         headerTitle: {
-          fontFamily: "SpaceGrotesk_700Bold",
+          fontFamily: "Inter_700Bold",
           fontSize: 19,
           letterSpacing: -0.4,
           color: D.text,
         },
         headerSubtitle: {
-          fontFamily: "SpaceGrotesk_400Regular",
+          fontFamily: "Inter_400Regular",
           fontSize: 11,
           color: D.textSecondary,
           marginTop: 1,
@@ -329,7 +329,7 @@ export default function ResponderMapExplorer() {
           borderColor: M.accentBorder,
         },
         bfpBadgeText: {
-          fontFamily: "SpaceGrotesk_700Bold",
+          fontFamily: "Inter_700Bold",
           fontSize: 11,
           letterSpacing: 1,
           color: M.accent,
@@ -347,7 +347,7 @@ export default function ResponderMapExplorer() {
           gap: 6,
         },
         syncText: {
-          fontFamily: "SpaceGrotesk_400Regular",
+          fontFamily: "Inter_400Regular",
           fontSize: 10,
           color: D.textMuted,
         },
@@ -367,7 +367,7 @@ export default function ResponderMapExplorer() {
           borderColor: M.accent,
         },
         filterLabel: {
-          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontFamily: "Inter_600SemiBold",
           fontSize: 10,
           color: M.accent,
         },
@@ -433,7 +433,7 @@ export default function ResponderMapExplorer() {
         },
         errorText: {
           flex: 1,
-          fontFamily: "SpaceGrotesk_400Regular",
+          fontFamily: "Inter_400Regular",
           fontSize: 12,
           color: D.white,
         },
@@ -479,13 +479,13 @@ export default function ResponderMapExplorer() {
           gap: spacing.xs,
         },
         sheetTitle: {
-          fontFamily: "SpaceGrotesk_700Bold",
+          fontFamily: "Inter_700Bold",
           fontSize: 15,
           color: D.text,
           marginTop: 2,
         },
         sheetBody: {
-          fontFamily: "SpaceGrotesk_400Regular",
+          fontFamily: "Inter_400Regular",
           fontSize: 12,
           lineHeight: 16,
           color: D.textSecondary,
@@ -507,7 +507,7 @@ export default function ResponderMapExplorer() {
           maxWidth: 200,
         },
         caseChipTitle: {
-          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontFamily: "Inter_600SemiBold",
           fontSize: 12,
           color: D.text,
           flexShrink: 1,
@@ -523,7 +523,7 @@ export default function ResponderMapExplorer() {
           gap: spacing.sm,
         },
         detailType: {
-          fontFamily: "SpaceGrotesk_700Bold",
+          fontFamily: "Inter_700Bold",
           fontSize: 16,
           color: D.text,
           flex: 1,
@@ -537,19 +537,19 @@ export default function ResponderMapExplorer() {
           borderColor: D.alertMuted,
         },
         urgentChipText: {
-          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontFamily: "Inter_600SemiBold",
           fontSize: 9,
           letterSpacing: 0.5,
           color: colors.pending,
         },
         detailLocation: {
-          fontFamily: "SpaceGrotesk_400Regular",
+          fontFamily: "Inter_400Regular",
           fontSize: 12,
           lineHeight: 17,
           color: D.textSecondary,
         },
         detailMetaLine: {
-          fontFamily: "SpaceGrotesk_400Regular",
+          fontFamily: "Inter_400Regular",
           fontSize: 11,
           lineHeight: 15,
           color: D.textMuted,
@@ -573,7 +573,7 @@ export default function ResponderMapExplorer() {
           backgroundColor: D.accentSubtle,
         },
         btnSecondaryText: {
-          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontFamily: "Inter_600SemiBold",
           fontSize: 14,
           color: M.accent,
         },
@@ -590,7 +590,7 @@ export default function ResponderMapExplorer() {
           borderColor: "rgba(255,255,255,0.12)",
         },
         btnPrimaryText: {
-          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontFamily: "Inter_600SemiBold",
           fontSize: 14,
           color: D.mapFabIconOnAccent,
         },
@@ -600,7 +600,7 @@ export default function ResponderMapExplorer() {
           marginTop: 2,
         },
         clearSelectText: {
-          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontFamily: "Inter_600SemiBold",
           fontSize: 11,
           color: D.textMuted,
         },
@@ -711,7 +711,7 @@ export default function ResponderMapExplorer() {
           </View>
 
           <View style={styles.bfpBadge}>
-            <Text style={styles.bfpBadgeText}>BFP</Text>
+            <Text style={styles.bfpBadgeText}>Responder</Text>
           </View>
         </View>
 
@@ -833,10 +833,10 @@ export default function ResponderMapExplorer() {
                   ]}
                 >
                   <ClipboardList size={22} color={M.accent} strokeWidth={2} />
-                  <Text style={styles.sheetTitle}>No map pins</Text>
+                  <Text style={styles.sheetTitle}>No Active Incidents</Text>
                   <Text style={styles.sheetBody}>
                     {cases.length === 0
-                      ? "Awaiting dispatch."
+                      ? "You're ready for the next dispatch."
                       : `${cases.length - casesWithLocation.length} no coords.`}
                   </Text>
                 </View>

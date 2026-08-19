@@ -1,17 +1,23 @@
 'use client'
 
-import type { TeamOnDuty } from '@packages/firebase'
-import { TEAMS_ON_DUTY } from '@/lib/reporting/constants'
+import type { TeamRecord } from '@packages/firebase'
 
 type TeamQuickButtonsProps = {
-  selectedTeam: TeamOnDuty | 'all'
-  onSelectTeam: (team: TeamOnDuty | 'all') => void
+  teams: TeamRecord[]
+  selectedTeam: string | 'all'
+  onSelectTeam: (team: string | 'all') => void
+  title?: string
 }
 
-export default function TeamQuickButtons({ selectedTeam, onSelectTeam }: TeamQuickButtonsProps) {
+export default function TeamQuickButtons({
+  teams,
+  selectedTeam,
+  onSelectTeam,
+  title = 'Assigned Team',
+}: TeamQuickButtonsProps) {
   return (
     <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-lg shadow-black/20">
-      <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Quick Team Reports</p>
+      <p className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">{title}</p>
       <div className="mt-3 flex flex-wrap gap-2">
         <button
           type="button"
@@ -24,18 +30,18 @@ export default function TeamQuickButtons({ selectedTeam, onSelectTeam }: TeamQui
         >
           All Teams
         </button>
-        {TEAMS_ON_DUTY.map((team) => (
+        {teams.map((team) => (
           <button
-            key={team}
+            key={team.id || team.code}
             type="button"
-            onClick={() => onSelectTeam(team)}
+            onClick={() => onSelectTeam(team.code)}
             className={`h-10 rounded-xl border px-4 text-xs font-black uppercase tracking-wider transition-colors ${
-              selectedTeam === team
+              selectedTeam === team.code
                 ? 'border-primary-400 bg-primary-500/15 text-primary-200'
                 : 'border-slate-700 bg-slate-950/50 text-slate-300 hover:bg-slate-800'
             }`}
           >
-            {team}
+            {team.label}
           </button>
         ))}
       </div>

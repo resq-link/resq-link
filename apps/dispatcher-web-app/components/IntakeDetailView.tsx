@@ -8,6 +8,8 @@ import {
   type EmergencyReport,
   type IncidentRecord,
   getAllDispatchers,
+  getAssignedTeamName,
+  reassignIncidentTeam,
   getSuggestedAgenciesForEmergencyType,
   subscribeToResources,
   subscribeToDispatcherLocations,
@@ -19,10 +21,21 @@ import {
   onSnapshot,
   getFirebaseFirestore,
   convertFirestoreDoc,
+  getReportImageUrls,
+  getCivilianEmergencyTypeLabel,
+  getSceneAssessmentEntries,
+  hasResponderSceneAssessment,
+  resolveSceneAssessmentIncidentType,
 } from "@packages/firebase";
 import IncidentStatusIndicator from "@/components/IncidentStatusIndicator";
 import PostIncidentReportPhoto from "@/components/PostIncidentReportPhoto";
+import InitialNarrativeDisplay from "@/components/InitialNarrativeDisplay";
+import CitizenReportDetailDrawer from "@/components/CitizenReportDetailDrawer";
+import AssociatedCitizenReportList from "@/components/AssociatedCitizenReportList";
 import { getQueueItemOperationalStatus } from "@/components/IntakeListItem";
+import { useOperationalTeams } from "@/contexts/OperationalTeamContext";
+import { useAuth } from "@/contexts/AuthContext";
+import TeamBadge from "@/components/operational/TeamBadge";
 import {
   Calendar, 
   Clock, 
@@ -67,70 +80,6 @@ const getIncidentTypeName = (incidentType: EmergencyReport["incidentType"]) => {
     other_emergency: "Other Emergency",
   };
   return typeMap[incidentType] || "Emergency";
-};
-
-const getExpectedAdditionalFields = (
-  incidentType: EmergencyReport["incidentType"],
-): { key: string; label: string }[] => {
-  const fieldMap: Record<
-    EmergencyReport["incidentType"],
-    { key: string; label: string }[]
-  > = {
-    fire: [
-      { key: "fireScale", label: "Fire scale / affected area" },
-      { key: "structureInvolved", label: "Structure or property involved" },
-      { key: "trappedOrInjured", label: "People trapped or injured" },
-      { key: "fireSource", label: "Source of fire if known" },
-    ],
-    medical: [
-      { key: "patientCondition", label: "Patient condition" },
-      { key: "breathingStatus", label: "Conscious / breathing status" },
-      { key: "patientAge", label: "Age or estimated age" },
-      { key: "firstAidNeeds", label: "Immediate first-aid needs" },
-    ],
-    vehicular_accident: [
-      { key: "vehiclesInvolved", label: "Vehicles involved" },
-      { key: "injuredPersons", label: "Number of injured persons" },
-      { key: "roadObstruction", label: "Road obstruction status" },
-      { key: "collisionCause", label: "Collision type / cause if known" },
-    ],
-    police_emergency: [
-      { key: "threatNature", label: "Nature of threat" },
-      { key: "suspectPresence", label: "Suspect presence or description" },
-      { key: "weaponsInvolved", label: "Weapons involved" },
-      { key: "safetyRisk", label: "Immediate safety risk" },
-    ],
-    electrical_powerline_hazard: [
-      { key: "hazardType", label: "Type of utility hazard" },
-      { key: "liveWireStatus", label: "Live wire / spark / outage status" },
-      { key: "affectedArea", label: "Affected homes or road area" },
-      { key: "visibleDamage", label: "Visible damage details" },
-    ],
-    other_emergency: [
-      { key: "incidentSummary", label: "Incident-specific summary" },
-      { key: "whoIsAffected", label: "Who is affected" },
-      { key: "hazardLevel", label: "Current hazard level" },
-      { key: "supportNeeded", label: "Support needed on scene" },
-    ],
-  };
-  return fieldMap[incidentType] || fieldMap.other_emergency;
-};
-
-const incidentCategoryToEmergencyType = (
-  category: IncidentRecord["incidentCategory"] | undefined,
-): EmergencyReport["incidentType"] => {
-  const map: Partial<
-    Record<IncidentRecord["incidentCategory"], EmergencyReport["incidentType"]>
-  > = {
-    fire: "fire",
-    medical: "medical",
-    vehicular: "vehicular_accident",
-    utility: "electrical_powerline_hazard",
-    peace_and_order: "police_emergency",
-    other: "other_emergency",
-    community: "other_emergency",
-  };
-  return map[category || "other"] || "other_emergency";
 };
 
 const getDateLabel = (value: any) => {
@@ -195,8 +144,13 @@ export default function IntakeDetailView({
   onLinkAllReports
 }: IntakeDetailViewProps) {
   const router = useRouter();
+  const { user } = useAuth();
+  const { teams, currentTeamOnDuty } = useOperationalTeams();
   const [isElevateModalOpen, setIsElevateModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [reassignTeamId, setReassignTeamId] = useState("");
+  const [isReassigning, setIsReassigning] = useState(false);
+  const [reassignError, setReassignError] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -209,6 +163,7 @@ export default function IntakeDetailView({
   const [associatedReports, setAssociatedReports] = useState<EmergencyReport[]>([]);
   const [isLinking, setIsLinking] = useState(false);
   const [resources, setResources] = useState<ResourceRecord[]>([]);
+  const [selectedCitizenReport, setSelectedCitizenReport] = useState<EmergencyReport | null>(null);
 
   useEffect(() => {
     const unsubscribe = subscribeToResources(setResources);
@@ -219,6 +174,7 @@ export default function IntakeDetailView({
     setIsElevateModalOpen(false);
     setSelectedResponderId("");
     setResponderError(null);
+    setSelectedCitizenReport(null);
   }, [item?.id]);
 
   const report = item?.rawEmergencyReport as EmergencyReport;
@@ -380,20 +336,100 @@ export default function IntakeDetailView({
     return recentIncidents.find((inc) => inc.id === report.incidentId) || null;
   }, [report?.incidentId, recentIncidents]);
 
-  const dfaSourceReport = useMemo(() => {
+  const primaryCivilianReport = useMemo(() => {
     if (isEmergency && report) return report;
-    if (associatedReports.length === 0) return null;
+    if (associatedReports.length > 0) {
+      return associatedReports.find((entry) => !entry.primaryReportId) || associatedReports[0];
+    }
+    if (
+      incident &&
+      (incident.description ||
+        incident.fieldAssessment ||
+        incident.landmark ||
+        incident.peopleInvolved != null)
+    ) {
+      return {
+        incidentType: resolveSceneAssessmentIncidentType({
+          incidentCategory: incident.incidentCategory,
+        }),
+        typeProfile: incident.typeProfile ?? null,
+        description: incident.description ?? null,
+        landmark: incident.landmark ?? null,
+        peopleInvolved: incident.peopleInvolved ?? null,
+        fieldAssessment: incident.fieldAssessment ?? null,
+        imageUrl: incident.imageUrl ?? null,
+        imageUrls: incident.imageUrls ?? null,
+      } as EmergencyReport;
+    }
+    return null;
+  }, [isEmergency, report, associatedReports, incident]);
 
-    const withSubmitted = associatedReports.find(
-      (r) => r.additionalDetailsSubmittedAt || r.additionalDetails,
+  const primaryReportId = primaryCivilianReport?.id ?? null;
+
+  const mapLocation = useMemo(() => {
+    const candidates = [report, incident, primaryCivilianReport, ...associatedReports].filter(
+      Boolean,
+    ) as Array<{
+      latitude?: number | null;
+      longitude?: number | null;
+      locationText?: string | null;
+    }>;
+
+    for (const source of candidates) {
+      const lat = source.latitude;
+      const lng = source.longitude;
+      if (lat != null && lng != null && !(lat === 0 && lng === 0)) {
+        return {
+          latitude: lat,
+          longitude: lng,
+          label: source.locationText || "Incident Site",
+        };
+      }
+    }
+    return null;
+  }, [report, incident, primaryCivilianReport, associatedReports]);
+
+  const assignedResponderId =
+    report?.assignedResponderId ||
+    incident?.assignedResourceIds?.[0] ||
+    associatedReports.find((entry) => entry.assignedResponderId)?.assignedResponderId ||
+    null;
+
+  const sceneAssessmentContext = useMemo(() => {
+    const incidentType = resolveSceneAssessmentIncidentType({
+      incidentType: report?.incidentType,
+      incidentCategory: incident?.incidentCategory,
+    });
+
+    if (report?.responderAssessment && hasResponderSceneAssessment(report.responderAssessment)) {
+      return { assessment: report.responderAssessment, incidentType };
+    }
+
+    if (incident?.responderAssessment && hasResponderSceneAssessment(incident.responderAssessment)) {
+      return { assessment: incident.responderAssessment, incidentType };
+    }
+
+    const linkedAssessment = associatedReports.find(
+      (entry) => entry.responderAssessment && hasResponderSceneAssessment(entry.responderAssessment),
     );
-    if (withSubmitted) return withSubmitted;
+    if (linkedAssessment?.responderAssessment) {
+      return {
+        assessment: linkedAssessment.responderAssessment,
+        incidentType: linkedAssessment.incidentType || incidentType,
+      };
+    }
 
-    const withRequested = associatedReports.find((r) => r.additionalDetailsRequestedAt);
-    if (withRequested) return withRequested;
+    return { assessment: null, incidentType };
+  }, [report, incident, associatedReports]);
 
-    return associatedReports.find((r) => !r.primaryReportId) || associatedReports[0];
-  }, [isEmergency, report, associatedReports]);
+  const sceneAssessmentEntries = useMemo(
+    () =>
+      getSceneAssessmentEntries(
+        sceneAssessmentContext.assessment,
+        sceneAssessmentContext.incidentType,
+      ),
+    [sceneAssessmentContext],
+  );
 
   const postIncidentReport = useMemo(() => {
     type PostReport = NonNullable<IncidentRecord["postIncidentReport"]>;
@@ -434,19 +470,51 @@ export default function IntakeDetailView({
   }, [postIncidentReport, report?.status, incident?.status, incident?.resolutionStatus]);
 
   useEffect(() => {
-    if (!report?.assignedResponderId) {
+    if (!assignedResponderId) {
       setResponderLocation(null);
       return;
     }
 
     const unsubscribe = subscribeToDispatcherLocations((locations) => {
       setResponderLocation(
-        locations.find(l => l.dispatcherId === report.assignedResponderId) || null
+        locations.find((location) => location.dispatcherId === assignedResponderId) || null,
       );
     });
 
     return unsubscribe;
-  }, [report?.assignedResponderId]);
+  }, [assignedResponderId]);
+
+  const primarySceneImageUrls = useMemo(() => {
+    if (primaryCivilianReport) {
+      return getReportImageUrls(primaryCivilianReport);
+    }
+    return [];
+  }, [primaryCivilianReport]);
+
+  const emergencyTypeLabel = useMemo(() => {
+    if (report) {
+      return getCivilianEmergencyTypeLabel(report.incidentType, report.typeProfile);
+    }
+    if (primaryCivilianReport?.incidentType) {
+      return getCivilianEmergencyTypeLabel(
+        primaryCivilianReport.incidentType,
+        primaryCivilianReport.typeProfile,
+      );
+    }
+    if (incident?.typeProfile) {
+      return getCivilianEmergencyTypeLabel(
+        resolveSceneAssessmentIncidentType({ incidentCategory: incident.incidentCategory }),
+        incident.typeProfile,
+      );
+    }
+    return item?.incidentSubtypeLabel || null;
+  }, [report, primaryCivilianReport, incident, item?.incidentSubtypeLabel]);
+
+  const reportSourceLabel = isEmergency
+    ? "Civilian App"
+    : incident?.source
+    ? incident.source.replace(/_/g, " ")
+    : "Manual";
 
   if (!item) {
     return (
@@ -462,7 +530,11 @@ export default function IntakeDetailView({
     );
   }
 
-  const isResponderAssigned = Boolean(report?.assignedResponderId || report?.responder);
+  const isResponderAssigned = Boolean(
+    assignedResponderId ||
+      report?.responder ||
+      associatedReports.some((entry) => entry.responder || entry.assignedResponderId),
+  );
   const responderHasAccepted = ["enroute", "on_scene", "done", "resolved"].includes(report?.status || "");
   const responderStatusLabel = !isResponderAssigned 
     ? "Unassigned" 
@@ -496,17 +568,7 @@ export default function IntakeDetailView({
     return ` - Nearby fallback${resource?.quadrant ? `: ${resource.quadrant}` : ""}`;
   };
 
-  const dfaIncidentType: EmergencyReport["incidentType"] | undefined =
-    dfaSourceReport?.incidentType ??
-    (incident
-      ? incidentCategoryToEmergencyType(incident.incidentCategory)
-      : report?.incidentType);
-
-  const expectedAdditionalFields = dfaIncidentType
-    ? getExpectedAdditionalFields(dfaIncidentType)
-    : [];
-
-  const hasPinnedLocation = (report || incident)?.latitude != null && (report || incident)?.longitude != null && (report || incident)?.latitude !== 0;
+  const hasMapLocation = mapLocation != null;
 
   const loadResponders = async () => {
     setIsLoadingResponders(true);
@@ -571,7 +633,7 @@ export default function IntakeDetailView({
         uid: selected.uid,
         label: selected.account.fullName || selected.account.email,
         agency: selected.account.role,
-        suggestedAgency: primarySuggestedAgency
+        suggestedAgency: primarySuggestedAgency,
       });
       setIsElevateModalOpen(false);
     }
@@ -596,6 +658,28 @@ export default function IntakeDetailView({
     ? derivedResponders.join(", ")
     : ((incident?.assignedResourceIds?.length || 0) > 0 ? `${incident?.assignedResourceIds?.length} resource(s) dispatched` : 'Unassigned');
 
+  const assignedTeamLabel = incident ? getAssignedTeamName(incident) : null;
+  const canReassignTeam =
+    Boolean(incident?.id) &&
+    incident?.resolutionStatus !== 'resolved' &&
+    incident?.status !== 'resolved';
+
+  const handleReassignTeam = async () => {
+    if (!incident?.id || !reassignTeamId) return;
+    setIsReassigning(true);
+    setReassignError(null);
+    try {
+      await reassignIncidentTeam(incident.id, reassignTeamId, {
+        dispatcherName: user?.displayName || user?.email || undefined,
+      });
+      setReassignTeamId("");
+    } catch (error: any) {
+      setReassignError(error?.message || "Failed to reassign team.");
+    } finally {
+      setIsReassigning(false);
+    }
+  };
+
   return (
     <>
     <div className="h-full flex flex-col bg-slate-900/40 rounded-xl border border-slate-800 overflow-hidden shadow-2xl backdrop-blur-md">
@@ -614,7 +698,7 @@ export default function IntakeDetailView({
             )}
           </div>
           <p className="mt-0.5 text-[11px] text-slate-400 font-medium tracking-wide">
-            {item.incidentSubtypeLabel} • Reported via {isEmergency ? "App" : incident?.source || "Manual"}
+            {emergencyTypeLabel || item.incidentSubtypeLabel} • {reportSourceLabel}
           </p>
         </div>
         
@@ -670,7 +754,7 @@ export default function IntakeDetailView({
 
 
       {/* Content Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar no-scrollbar">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar no-scrollbar">
         {/* Linked Incident Banner */}
         {isEmergency && report?.incidentId && (
           <div className="rounded-xl border border-sky-900/60 bg-sky-950/40 p-4 flex items-center justify-between shadow-lg shadow-sky-950/20 border-dashed">
@@ -848,256 +932,359 @@ export default function IntakeDetailView({
           </div>
         )}
 
-        {/* Operational Metadata */}
-        <div className={hasPinnedLocation ? "grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch" : "space-y-8"}>
-           {hasPinnedLocation && (
-             <div className="lg:col-span-2 flex flex-col space-y-4">
-                <div className="flex-1 flex flex-col min-h-[300px]">
-                  {isResponderAssigned ? (
-                    <AppReportResponseMap 
+        {/* Incident Summary */}
+        <section className="rounded-xl border border-slate-800 bg-slate-950/50 p-3">
+          <div className="mb-2 flex items-center gap-2">
+            <Shield className="h-3.5 w-3.5 text-primary-400" />
+            <h3 className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-300">
+              Incident Summary
+            </h3>
+          </div>
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+            <SummaryMetric label="Incident ID" value={item.referenceNumber} mono />
+            <SummaryMetric
+              label="Status"
+              value={getQueueItemOperationalStatus(item).replace(/_/g, " ")}
+            />
+            <SummaryMetric label="Priority" value={(item.priority || "medium").toUpperCase()} />
+            <SummaryMetric label="Incident Type" value={emergencyTypeLabel || "—"} />
+            <SummaryMetric label="Report Source" value={reportSourceLabel} />
+            <SummaryMetric label="Created" value={getDateLabel(item.createdAt)} />
+          </div>
+        </section>
+
+        {/* Live Map (left) / Timeline + Assignment (right) */}
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-3 xl:items-stretch">
+          <div className="xl:col-span-2">
+            <DetailSection
+              compact
+              className="flex h-full flex-col"
+              contentClassName="flex min-h-0 flex-1 flex-col"
+              icon={<MapPin className="w-3 h-3" />}
+              title="Live Map"
+            >
+              <div className="min-h-[420px] w-full flex-1">
+                {hasMapLocation ? (
+                  isResponderAssigned ? (
+                    <AppReportResponseMap
                       className="h-full"
                       incident={{
-                        latitude: (report || incident).latitude!,
-                        longitude: (report || incident).longitude!,
-                        label: (report || incident).locationText || "Incident Site"
+                        latitude: mapLocation!.latitude,
+                        longitude: mapLocation!.longitude,
+                        label: mapLocation!.label,
                       }}
-                      responder={responderLocation ? {
-                        latitude: responderLocation.latitude,
-                        longitude: responderLocation.longitude,
-                        label: report?.responder || "En route"
-                      } : null}
+                      responder={
+                        responderLocation
+                          ? {
+                              latitude: responderLocation.latitude,
+                              longitude: responderLocation.longitude,
+                              label:
+                                report?.responder ||
+                                associatedReports.find((entry) => entry.responder)?.responder ||
+                                "En route",
+                            }
+                          : null
+                      }
                     />
                   ) : (
-                    <PinnedLocationMap 
+                    <PinnedLocationMap
                       className="h-full"
-                      latitude={(report || incident).latitude!}
-                      longitude={(report || incident).longitude!}
-                      label={(report || incident).locationText || "Incident Site"}
+                      latitude={mapLocation!.latitude}
+                      longitude={mapLocation!.longitude}
+                      label={mapLocation!.label}
                     />
-                  )}
-                </div>
-             </div>
-           )}
+                  )
+                ) : (
+                  <div className="flex h-full items-center justify-center rounded-lg border border-dashed border-slate-800 bg-slate-950 text-[10px] font-medium uppercase tracking-widest text-slate-500">
+                    No coordinates available
+                  </div>
+                )}
+              </div>
+            </DetailSection>
+          </div>
 
-           <div className={hasPinnedLocation 
-             ? "lg:col-span-1 flex flex-col gap-6" 
-             : "grid gap-6 md:grid-cols-2 lg:grid-cols-3 border-y border-slate-800/50 py-6"
-           }>
-              <DetailSection icon={<Activity className="w-3.5 h-3.5" />} title="Operations Control">
-                 <div className="space-y-2 mt-1">
-                   <p className="text-xs text-slate-400">Status: <span className="text-slate-100 font-bold uppercase font-mono">{report?.status || incident?.status}</span></p>
-                   <p className="text-xs text-slate-400">Agency: <span className="text-slate-100">{displayAgency}</span></p>
-                   <p className="text-xs text-slate-400">Responder: <span className="text-slate-100">{displayResponder}</span></p>
-                 </div>
-              </DetailSection>
-
-              <DetailSection icon={<Clock className="w-3.5 h-3.5" />} title="GPS Timeline">
-                 <div className="space-y-2 mt-1">
-                   <p className="text-xs text-slate-400">Reported: <span className="text-slate-100">{getDateLabel(item.createdAt)}</span></p>
-                   <p className="text-xs text-slate-400">Viewed: <span className="text-slate-100">{getDateLabel(report?.viewedAt)}</span></p>
-                    {(incident?.acceptedAt || report?.acceptedAt) && (
-                      <p className="text-xs text-slate-400">Accepted: <span className="text-slate-100">{getDateLabel(incident?.acceptedAt || report?.acceptedAt)}</span></p>
-                    )}
-                   <p className="text-xs text-slate-400">Touchdown: <span className="text-emerald-400 font-bold">{(incident?.touchdownAt || report?.touchdownAt) ? getDateLabel(incident?.touchdownAt || report?.touchdownAt) : 'N/A'}</span></p>
+          <div className="space-y-3">
+              <DetailSection compact emphasis icon={<Clock className="w-4 h-4" />} title="Timeline">
+                 <div className="space-y-2">
+                   <CompactRow size="md" label="Reported" value={getDateLabel(item.createdAt)} />
+                   <CompactRow size="md" label="Viewed" value={getDateLabel(report?.viewedAt)} />
+                   <CompactRow size="md" label="Assigned" value={getDateLabel(incident?.assignedTeamAt || report?.acceptedAt)} />
+                   <CompactRow size="md" label="En Route" value={getDateLabel(report?.acceptedAt || incident?.acceptedAt)} />
+                   <CompactRow
+                     size="md"
+                     label="On Scene"
+                     value={(incident?.touchdownAt || report?.touchdownAt) ? getDateLabel(incident?.touchdownAt || report?.touchdownAt) : "—"}
+                     highlight
+                   />
+                   <CompactRow
+                     size="md"
+                     label="Resolved"
+                     value={getDateLabel(incident?.resolvedAt || (report?.status === "resolved" || report?.status === "done" ? report?.updatedAt : null))}
+                   />
                     {(incident?.responseTimeSeconds ?? report?.responseTimeSeconds) != null && (
-                      <p className="text-xs text-slate-400">Response Time: <span className="text-cyan-400 font-bold">{formatResponseTime(incident?.responseTimeSeconds ?? report?.responseTimeSeconds)}</span></p>
+                      <CompactRow
+                        size="md"
+                        label="Response"
+                        value={formatResponseTime(incident?.responseTimeSeconds ?? report?.responseTimeSeconds) || "—"}
+                        highlight
+                      />
                     )}
                  </div>
               </DetailSection>
 
-              <DetailSection icon={<MapPin className="w-3.5 h-3.5" />} title="Spatial Context">
-                 <div className="space-y-2 mt-1">
-                   <p className="text-xs text-slate-400">Lat: <span className="text-slate-200 font-mono">{(report || incident)?.latitude?.toFixed(6) || '—'}</span></p>
-                   <p className="text-xs text-slate-400">Lon: <span className="text-slate-200 font-mono">{(report || incident)?.longitude?.toFixed(6) || '—'}</span></p>
-                   <p className="text-xs text-slate-400">Landmark: <span className="text-slate-200 truncate inline-block max-w-[100px]">{(report || incident)?.landmark || 'None'}</span></p>
-                 </div>
+              <DetailSection compact emphasis icon={<Activity className="w-4 h-4" />} title="Assignment">
+                <div className="grid w-full grid-cols-[minmax(6.5rem,auto)_1fr] items-start gap-x-4 gap-y-2.5 text-[13px] leading-snug">
+                  <span className="font-medium text-slate-500">Agency</span>
+                  <span className="min-w-0 break-words text-right font-medium text-slate-100">{displayAgency}</span>
+
+                  <span className="font-medium text-slate-500">Responder</span>
+                  <span className="min-w-0 break-all text-right font-medium text-slate-100">{displayResponder}</span>
+
+                  <span className="self-start pt-0.5 font-medium text-slate-500">Team</span>
+                  <div className="flex justify-end">
+                    <TeamBadge label={assignedTeamLabel} size="sm" />
+                  </div>
+
+                  {incident?.assignedTeamBy || incident?.assignedTeamAt ? (
+                    <>
+                      <span className="font-medium text-slate-500">Assigned By</span>
+                      <span className="min-w-0 break-all text-right font-medium text-slate-100">
+                        {incident?.assignedTeamBy === user?.uid
+                          ? user?.displayName || user?.email || "Dispatcher"
+                          : incident?.assignedTeamBy || "—"}
+                      </span>
+                      <span className="font-medium text-slate-500">Assigned Time</span>
+                      <span className="min-w-0 break-words text-right font-medium text-slate-100">
+                        {getDateLabel(incident?.assignedTeamAt)}
+                      </span>
+                    </>
+                  ) : null}
+                </div>
+                {canReassignTeam ? (
+                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-800/60 pt-3">
+                    <select
+                      value={reassignTeamId}
+                      onChange={(event) => setReassignTeamId(event.target.value)}
+                      className="h-9 rounded-lg border border-slate-800 bg-slate-950 px-2.5 text-xs text-slate-100"
+                    >
+                      <option value="">Reassign team…</option>
+                      {teams.map((team) => (
+                        <option key={team.id || team.code} value={team.id || team.code}>
+                          {team.label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      disabled={!reassignTeamId || isReassigning}
+                      onClick={handleReassignTeam}
+                      className="h-9 rounded-lg border border-primary-500/40 bg-primary-500/10 px-3.5 text-[11px] font-black uppercase tracking-wider text-primary-200 disabled:opacity-50"
+                    >
+                      {isReassigning ? "Saving…" : "Reassign"}
+                    </button>
+                    {reassignError ? (
+                      <span className="text-xs text-red-400">{reassignError}</span>
+                    ) : null}
+                  </div>
+                ) : null}
               </DetailSection>
            </div>
         </div>
 
-        {showPostReportSection && (
-          <DetailSection full icon={<CheckCircle className="w-3.5 h-3.5" />} title="Post-Incident Report">
+        {/* Location Details + Associated Citizen Reports */}
+        <div
+          className={`grid gap-3 ${
+            !isEmergency && associatedReports.length > 0 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"
+          }`}
+        >
+          <DetailSection compact emphasis icon={<MapPin className="w-4 h-4" />} title="Location Details">
+            <div className="grid w-full grid-cols-[minmax(6.5rem,auto)_1fr] items-start gap-x-4 gap-y-3 text-[13px] leading-snug">
+              <span className="font-medium text-slate-500">Address</span>
+              <span className="min-w-0 break-words text-right font-medium text-slate-100">
+                {(report || incident)?.locationText || mapLocation?.label || "—"}
+              </span>
+              <span className="font-medium text-slate-500">Landmark</span>
+              <span className="min-w-0 break-words text-right font-medium text-slate-100">
+                {(report || incident)?.landmark || "None"}
+              </span>
+              <span className="font-medium text-slate-500">Coordinates</span>
+              <span className="min-w-0 break-all text-right font-mono font-medium text-slate-100">
+                {mapLocation
+                  ? `${mapLocation.latitude.toFixed(6)}, ${mapLocation.longitude.toFixed(6)}`
+                  : `${(report || incident)?.latitude?.toFixed(6) || "—"}, ${(report || incident)?.longitude?.toFixed(6) || "—"}`}
+              </span>
+            </div>
+          </DetailSection>
+
+          {!isEmergency && associatedReports.length > 0 ? (
+            <DetailSection
+              compact
+              icon={<Shield className="w-3 h-3" />}
+              title={`Associated Citizen Reports (${associatedReports.length})`}
+            >
+              <AssociatedCitizenReportList
+                reports={associatedReports}
+                primaryReportId={primaryReportId}
+                masterLatitude={mapLocation?.latitude ?? (report || incident)?.latitude}
+                masterLongitude={mapLocation?.longitude ?? (report || incident)?.longitude}
+                onViewReport={setSelectedCitizenReport}
+              />
+            </DetailSection>
+          ) : null}
+        </div>
+
+        {/* Initial Narrative */}
+        <DetailSection compact full icon={<FileText className="w-4 h-4" />} title="Initial Narrative" emphasis>
+          {primaryCivilianReport ? (
+            <div className="space-y-3">
+              <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-3">
+                <InitialNarrativeDisplay
+                  description={primaryCivilianReport.description}
+                  fieldAssessment={primaryCivilianReport.fieldAssessment}
+                  typeProfile={primaryCivilianReport.typeProfile}
+                  incidentType={primaryCivilianReport.incidentType}
+                  peopleInvolved={primaryCivilianReport.peopleInvolved}
+                  omitLandmark
+                />
+              </div>
+              {primarySceneImageUrls.length > 0 ? (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {primarySceneImageUrls.map((url, index) => (
+                    <img
+                      key={`${url}-${index}`}
+                      src={url}
+                      alt={`Civilian evidence ${index + 1}`}
+                      className="max-h-40 w-full rounded-lg border border-slate-800 object-cover"
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[11px] italic text-slate-500">No photos attached.</p>
+              )}
+            </div>
+          ) : (
+            <p className="text-[11px] italic text-slate-500">No civilian narrative available.</p>
+          )}
+        </DetailSection>
+
+        {showPostReportSection ? (
+          <section className="w-full rounded-lg border border-slate-800/80 bg-slate-950/30 p-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <CheckCircle className="h-3.5 w-3.5 text-emerald-400" />
+                <h3 className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                  Post-Incident Report
+                </h3>
+              </div>
+              {postIncidentReport ? (
+                <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-px text-[9px] font-black uppercase tracking-wider text-emerald-300">
+                  Submitted
+                </span>
+              ) : null}
+            </div>
+
             {postIncidentReport ? (
-              <div className="mt-2 grid gap-4 lg:grid-cols-[1fr_minmax(200px,280px)]">
-                <div className="p-4 rounded-xl bg-emerald-950/10 border border-emerald-900/30 text-sm text-slate-300 space-y-2">
-                  <p className="text-[11px] text-emerald-400 font-bold uppercase tracking-widest border-b border-emerald-900/40 pb-1">
+              <div className="w-full space-y-2">
+                <div className="w-full">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-emerald-400/80">
                     Responder summary
                   </p>
-                  <p className="text-xs font-medium text-slate-200 italic">
-                    &ldquo;{postIncidentReport.notes || "No summary notes."}&rdquo;
+                  <p className="mt-0.5 w-full break-words text-sm font-medium leading-snug text-slate-100">
+                    {postIncidentReport.notes?.trim()
+                      ? `“${postIncidentReport.notes.trim()}”`
+                      : "No summary notes provided."}
                   </p>
-                  <div className="grid grid-cols-2 gap-2 text-[10px] pt-2">
-                    <p className="text-slate-500 uppercase">
-                      Reason:{" "}
-                      <span className="text-slate-300">
-                        {postIncidentReport.reasonForIncident || "—"}
-                      </span>
-                    </p>
-                    <p className="text-slate-500 uppercase">
-                      Status:{" "}
-                      <span className="text-slate-300">
-                        {postIncidentReport.peopleStatus || "—"}
-                      </span>
-                    </p>
-                    <p className="text-slate-500 uppercase">
-                      People:{" "}
-                      <span className="text-slate-300">
-                        {postIncidentReport.peopleInvolved ?? "—"}
-                      </span>
-                    </p>
-                    <p className="text-slate-500 uppercase">
-                      Transport:{" "}
-                      <span className="text-slate-300">{postIncidentReport.hospital || "—"}</span>
-                    </p>
-                  </div>
-                  {postIncidentReport.submittedAt && (
-                    <p className="text-[10px] text-slate-500 pt-1">
-                      Submitted {getDateLabel(postIncidentReport.submittedAt)}
-                      {postIncidentReport.submittedByName
-                        ? ` by ${postIncidentReport.submittedByName}`
-                        : ""}
-                    </p>
-                  )}
                 </div>
-                <PostIncidentReportPhoto photoUrl={postIncidentReport.photoUrl} />
+
+                <div className="grid w-full grid-cols-[minmax(5.5rem,auto)_1fr] items-center gap-x-3 gap-y-1 border-t border-slate-800/60 pt-2 text-xs leading-snug">
+                  <span className="text-slate-500">Reason</span>
+                  <span className="min-w-0 break-words text-right font-medium text-slate-100">
+                    {postIncidentReport.reasonForIncident || "—"}
+                  </span>
+                  <span className="text-slate-500">Status</span>
+                  <span className="min-w-0 break-words text-right font-medium text-slate-100">
+                    {postIncidentReport.peopleStatus || "—"}
+                  </span>
+                  <span className="text-slate-500">People</span>
+                  <span className="min-w-0 break-words text-right font-medium text-slate-100">
+                    {String(postIncidentReport.peopleInvolved ?? "—")}
+                  </span>
+                  <span className="text-slate-500">Transport</span>
+                  <span className="min-w-0 break-words text-right font-medium text-slate-100">
+                    {postIncidentReport.hospital || "—"}
+                  </span>
+                  {postIncidentReport.submittedAt ? (
+                    <>
+                      <span className="text-slate-500">Submitted</span>
+                      <span className="min-w-0 break-words text-right font-medium text-slate-100">
+                        {getDateLabel(postIncidentReport.submittedAt)}
+                      </span>
+                    </>
+                  ) : null}
+                  {postIncidentReport.submittedByName ? (
+                    <>
+                      <span className="text-slate-500">By</span>
+                      <span className="min-w-0 break-all text-right font-medium text-slate-100">
+                        {postIncidentReport.submittedByName}
+                      </span>
+                    </>
+                  ) : null}
+                </div>
+
+                {postIncidentReport.photoUrl ? (
+                  <PostIncidentReportPhoto
+                    photoUrl={postIncidentReport.photoUrl}
+                    className="max-h-36 w-full object-cover"
+                  />
+                ) : null}
               </div>
             ) : (
-              <div className="mt-2 p-4 rounded-xl border border-dashed border-slate-700 bg-slate-950/40 text-center">
-                <p className="text-xs text-slate-500 font-medium">
-                  This incident is resolved but no post-incident report was submitted by the
-                  responder.
+              <div className="rounded-lg border border-dashed border-slate-700 bg-slate-950/40 px-3 py-5 text-center">
+                <p className="text-xs font-medium text-slate-400">No post-incident report yet</p>
+                <p className="mt-0.5 text-[10px] text-slate-500">
+                  Resolved incident — awaiting responder summary.
                 </p>
               </div>
             )}
-          </DetailSection>
-        )}
+          </section>
+        ) : null}
 
-        {/* Narrative & Field-Specific Data */}
-        <div className="grid gap-8 md:grid-cols-2">
-           <div className="space-y-6">
-              <DetailSection full icon={<FileText className="w-3.5 h-3.5" />} title="Initial Narrative">
-                <div className="mt-2 p-4 rounded-xl bg-slate-950/60 border border-slate-800 text-sm text-slate-300 leading-relaxed shadow-inner">
-                  {report?.description || incident?.description || "No narrative provided."}
+        <DetailSection
+          compact
+          full
+          emphasis
+          icon={<AlertTriangle className="w-4 h-4" />}
+          title="Scene Assessment"
+        >
+          {sceneAssessmentContext.assessment?.updatedAt && (
+            <p className="mb-3 text-xs text-emerald-400">
+              Last updated {getDateLabel(sceneAssessmentContext.assessment.updatedAt)}
+              {sceneAssessmentContext.assessment.updatedByName
+                ? ` by ${sceneAssessmentContext.assessment.updatedByName}`
+                : ""}
+            </p>
+          )}
+          {sceneAssessmentEntries.length > 0 ? (
+            <div className="grid w-full grid-cols-[minmax(6.5rem,auto)_1fr] items-start gap-x-4 gap-y-3 text-[13px] leading-snug">
+              {sceneAssessmentEntries.map((field) => (
+                <div key={field.key} className="contents">
+                  <span className="font-medium text-slate-500">{field.label}</span>
+                  <span className="min-w-0 break-words text-right font-medium text-slate-100">
+                    {field.value}
+                  </span>
                 </div>
-              </DetailSection>
-
-              {expectedAdditionalFields.length > 0 && (
-                <DetailSection full icon={<AlertTriangle className="w-3.5 h-3.5" />} title="Dynamic Field Assessment">
-                  {dfaSourceReport?.additionalDetailsSubmittedAt && (
-                    <p className="text-[10px] text-emerald-400 mt-2">
-                      Submitted {getDateLabel(dfaSourceReport.additionalDetailsSubmittedAt)}
-                    </p>
-                  )}
-                  {!isEmergency && !dfaSourceReport && (
-                    <p className="text-[10px] text-slate-500 mt-2 italic">
-                      Awaiting linked civilian report for field assessment responses.
-                    </p>
-                  )}
-                  <div className="mt-3 grid gap-2">
-                    {expectedAdditionalFields.map((field) => {
-                      const value = dfaSourceReport?.additionalDetails?.[field.key];
-                      return (
-                        <div
-                          key={field.key}
-                          className="flex items-center justify-between p-2 rounded bg-slate-900/50 border border-slate-800/50"
-                        >
-                          <span className="text-[10px] text-slate-500 uppercase tracking-widest">
-                            {field.label}
-                          </span>
-                          {value ? (
-                            <span className="text-[10px] text-slate-200 font-medium text-right max-w-[55%]">
-                              {value}
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-amber-500/80 font-bold italic">
-                              Awaiting civil response...
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </DetailSection>
-              )}
-           </div>
-
-           <div className="space-y-6">
-              {(report?.imageUrl ||
-                (incident as any)?.imageUrl ||
-                postIncidentReport?.photoUrl) ? (
-                <DetailSection full icon={<Activity className="w-3.5 h-3.5" />} title="Scene Documentation">
-                  <div className="mt-2 rounded-xl border border-slate-800 overflow-hidden bg-slate-950 shadow-2xl space-y-3">
-                    {(report?.imageUrl || (incident as any)?.imageUrl) && (
-                      <img
-                        src={report?.imageUrl || (incident as any)?.imageUrl}
-                        alt="Incident scene"
-                        className="w-full h-auto object-cover max-h-[400px] hover:scale-105 transition-transform duration-500"
-                      />
-                    )}
-                    {postIncidentReport?.photoUrl ? (
-                      <PostIncidentReportPhoto
-                        photoUrl={postIncidentReport.photoUrl}
-                        alt="Post-incident report scene"
-                        className="w-full h-auto object-cover max-h-[400px] hover:scale-105 transition-transform duration-500"
-                      />
-                    ) : null}
-                  </div>
-                </DetailSection>
-              ) : (
-                <div className="h-44 rounded-xl border border-dashed border-slate-800 flex flex-col items-center justify-center p-6 text-center">
-                   <Activity className="w-8 h-8 text-slate-800 mb-2" />
-                   <p className="text-xs text-slate-600 font-medium">No visual documentation available</p>
-                </div>
-              )}
+              ))}
             </div>
-         </div>
-
-         {/* Associated Citizen Reports Section */}
-         {!isEmergency && associatedReports.length > 0 && (
-           <DetailSection full icon={<Shield className="w-3.5 h-3.5" />} title={`Associated Citizen Reports (${associatedReports.length})`}>
-             <div className="space-y-4 mt-3">
-               <div className="grid gap-3 grid-cols-1 md:grid-cols-2">
-                 {associatedReports.map((assocReport, index) => (
-                   <div key={assocReport.id || index} className="rounded-xl border border-slate-800 bg-slate-950/40 p-4 space-y-3 relative group overflow-hidden">
-                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-sky-500" />
-                     <div className="flex items-start justify-between gap-2">
-                       <div>
-                         <p className="text-xs font-bold text-slate-100 uppercase font-mono">
-                           APP-{assocReport.id?.slice(-6).toUpperCase() || "REPORT"}
-                         </p>
-                         <p className="text-[10px] text-slate-500 mt-0.5">
-                           Reported at {getDateLabel(assocReport.createdAt)}
-                         </p>
-                       </div>
-                       <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-sky-950 text-sky-400 border border-sky-900/50 uppercase tracking-widest">
-                         Linked
-                       </span>
-                     </div>
-
-                     <p className="text-xs text-slate-300 bg-slate-950/50 p-3 rounded-lg border border-slate-900/40 leading-relaxed italic">
-                       "{assocReport.description || "No description provided."}"
-                     </p>
-
-                     {assocReport.imageUrl && (
-                       <div className="rounded-lg overflow-hidden border border-slate-800 bg-slate-950 max-h-48 relative">
-                         <img 
-                           src={assocReport.imageUrl} 
-                           alt="Citizen evidence photo" 
-                           className="w-full h-auto object-cover max-h-48 hover:scale-105 transition-transform duration-300"
-                         />
-                       </div>
-                     )}
-                     
-                     <div className="text-[10px] text-slate-500 space-y-1 pt-1">
-                       <p>Citizen: <span className="text-slate-300 font-medium">Verified Civilian Reporter</span></p>
-                       {assocReport.landmark && <p>Landmark: <span className="text-slate-300">{assocReport.landmark}</span></p>}
-                     </div>
-                   </div>
-                 ))}
-               </div>
-             </div>
-           </DetailSection>
-         )}
+          ) : (
+            <div className="flex min-h-[180px] flex-col items-center justify-center rounded-lg border border-dashed border-slate-800 bg-slate-950/40 p-4 text-center">
+              <AlertTriangle className="mb-2 h-7 w-7 text-slate-700" />
+              <p className="text-sm font-medium text-slate-400">No on-scene assessment yet</p>
+              <p className="mt-1 text-xs text-slate-500">
+                Responder scene assessment will appear here once submitted.
+              </p>
+            </div>
+          )}
+        </DetailSection>
 
       </div>
     </div>
@@ -1128,6 +1315,16 @@ export default function IntakeDetailView({
 
             {/* Modal Body */}
             <div className="p-6 space-y-5">
+              {currentTeamOnDuty ? (
+                <p className="text-[10px] text-slate-400">
+                  New incident will inherit the current team on duty:{' '}
+                  <span className="font-bold text-slate-200">{currentTeamOnDuty.teamName}</span>
+                </p>
+              ) : (
+                <p className="text-[10px] font-bold text-amber-400">
+                  Set the Current Team on Duty in the header before elevating.
+                </p>
+              )}
               {/* Proximity Warning & Quick Link */}
               {potentialDuplicates.length > 0 && (
                 <div className="rounded-xl border border-amber-900/60 bg-amber-950/20 p-4 space-y-3 animate-in fade-in zoom-in-95 duration-200">
@@ -1249,22 +1446,109 @@ export default function IntakeDetailView({
           </div>
         </div>
       , document.body)}
+
+      <CitizenReportDetailDrawer
+        report={selectedCitizenReport}
+        onClose={() => setSelectedCitizenReport(null)}
+      />
     </>
   );
 }
 
-function DetailSection({ title, icon, children, full = false }: { title: string, icon?: React.ReactNode, children: React.ReactNode, full?: boolean }) {
+function SummaryMetric({
+  label,
+  value,
+  mono = false,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
   return (
-    <div className={full ? "col-span-full" : ""}>
-      <div className="flex items-center gap-2 mb-2">
+    <div className="rounded-lg border border-slate-800/80 bg-slate-900/40 px-2.5 py-2">
+      <p className="text-[8px] font-black uppercase tracking-widest text-slate-500">{label}</p>
+      <p className={`mt-0.5 truncate text-xs font-semibold text-slate-100 ${mono ? "font-mono" : ""}`}>{value}</p>
+    </div>
+  );
+}
+
+function CompactRow({
+  label,
+  value,
+  mono = false,
+  highlight = false,
+  size = "sm",
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+  highlight?: boolean;
+  size?: "sm" | "md";
+}) {
+  const isMd = size === "md";
+
+  return (
+    <div
+      className={`flex w-full items-start justify-between gap-3 ${isMd ? "py-0.5 text-[13px] leading-snug" : "text-[11px]"}`}
+    >
+      <span className={`shrink-0 text-slate-500 ${isMd ? "font-medium" : ""}`}>{label}</span>
+      <span
+        className={`min-w-0 flex-1 break-words text-right ${mono ? "font-mono" : ""} ${
+          highlight
+            ? "font-semibold text-emerald-400"
+            : isMd
+              ? "font-medium text-slate-100"
+              : "text-slate-200"
+        }`}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function DetailSection({
+  title,
+  icon,
+  children,
+  full = false,
+  compact = false,
+  emphasis = false,
+  className = "",
+  contentClassName = "",
+}: {
+  title: string;
+  icon?: React.ReactNode;
+  children: React.ReactNode;
+  full?: boolean;
+  compact?: boolean;
+  emphasis?: boolean;
+  className?: string;
+  contentClassName?: string;
+}) {
+  return (
+    <div
+      className={`${full ? "col-span-full" : ""} ${
+        compact
+          ? emphasis
+            ? "rounded-lg border border-slate-800/80 bg-slate-950/30 p-3.5"
+            : "rounded-lg border border-slate-800/80 bg-slate-950/30 p-2.5"
+          : ""
+      } ${className}`}
+    >
+      <div
+        className={`flex items-center gap-2 ${compact ? (emphasis ? "mb-2.5" : "mb-1.5") : "mb-2"}`}
+      >
         {icon && <span className="text-slate-500">{icon}</span>}
-        <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">
+        <h4
+          className={`font-black uppercase tracking-[0.18em] text-slate-500 ${
+            emphasis ? "text-[11px]" : "text-[9px]"
+          }`}
+        >
           {title}
         </h4>
       </div>
-      <div>
-        {children}
-      </div>
+      <div className={contentClassName}>{children}</div>
     </div>
   );
 }

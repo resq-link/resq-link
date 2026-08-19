@@ -19,7 +19,7 @@ export default function NotFoundScreen() {
         },
         title: {
           fontSize: 18,
-          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontFamily: "Inter_600SemiBold",
           color: colors.text,
           marginBottom: spacing.xl,
         },
@@ -31,7 +31,7 @@ export default function NotFoundScreen() {
         },
         buttonText: {
           color: t.buttonPrimaryText,
-          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontFamily: "Inter_600SemiBold",
           fontSize: 16,
         },
       }),

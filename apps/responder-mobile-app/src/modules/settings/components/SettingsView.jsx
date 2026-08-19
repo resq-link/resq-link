@@ -29,10 +29,10 @@ import {
   Navigation,
 } from "lucide-react-native";
 import {
-  SpaceGrotesk_400Regular,
-  SpaceGrotesk_600SemiBold,
-  SpaceGrotesk_700Bold,
-} from "@expo-google-fonts/space-grotesk";
+  Inter_400Regular,
+  Inter_600SemiBold,
+  Inter_700Bold,
+} from "@expo-google-fonts/inter";
 import { useFonts } from "expo-font";
 import {
   signOut,
@@ -77,9 +77,9 @@ export default function SettingsView() {
   const [liveShare, setLiveShare] = useState(true);
 
   const [fontsLoaded] = useFonts({
-    SpaceGrotesk_400Regular,
-    SpaceGrotesk_600SemiBold,
-    SpaceGrotesk_700Bold,
+    Inter_400Regular,
+    Inter_600SemiBold,
+    Inter_700Bold,
   });
 
   const styles = useMemo(
@@ -138,10 +138,17 @@ export default function SettingsView() {
           justifyContent: "center",
         },
         headerTitle: {
-          fontFamily: "SpaceGrotesk_700Bold",
+          fontFamily: "Inter_700Bold",
           fontSize: 19,
           letterSpacing: -0.4,
           color: D.text,
+        },
+        headerSubtitle: {
+          fontFamily: "Inter_400Regular",
+          fontSize: 11,
+          lineHeight: 14,
+          color: D.textMuted,
+          marginTop: 2,
         },
         bfpBadge: {
           paddingHorizontal: 8,
@@ -152,7 +159,7 @@ export default function SettingsView() {
           borderColor: D.accentBorder,
         },
         bfpBadgeText: {
-          fontFamily: "SpaceGrotesk_700Bold",
+          fontFamily: "Inter_700Bold",
           fontSize: 10,
           letterSpacing: 1,
           color: D.accent,
@@ -197,7 +204,7 @@ export default function SettingsView() {
           justifyContent: "center",
         },
         avatarText: {
-          fontFamily: "SpaceGrotesk_700Bold",
+          fontFamily: "Inter_700Bold",
           fontSize: 14,
           color: D.accent,
         },
@@ -206,12 +213,12 @@ export default function SettingsView() {
           minWidth: 0,
         },
         profileLine: {
-          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontFamily: "Inter_600SemiBold",
           fontSize: 13,
           color: D.text,
         },
         profileEmail: {
-          fontFamily: "SpaceGrotesk_400Regular",
+          fontFamily: "Inter_400Regular",
           fontSize: 11,
           color: D.textMuted,
           marginTop: 2,
@@ -235,7 +242,7 @@ export default function SettingsView() {
           backgroundColor: D.accent,
         },
         onlineChipText: {
-          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontFamily: "Inter_600SemiBold",
           fontSize: 9,
           color: D.text,
         },
@@ -243,7 +250,7 @@ export default function SettingsView() {
           marginBottom: spacing.md,
         },
         sectionHeading: {
-          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontFamily: "Inter_600SemiBold",
           fontSize: 10,
           letterSpacing: 0.9,
           color: D.textMuted,
@@ -273,7 +280,7 @@ export default function SettingsView() {
           gap: spacing.sm,
         },
         appearanceCaption: {
-          fontFamily: "SpaceGrotesk_400Regular",
+          fontFamily: "Inter_400Regular",
           fontSize: 12,
           color: D.textSecondary,
           lineHeight: 16,
@@ -298,7 +305,7 @@ export default function SettingsView() {
           backgroundColor: D.accentSubtle,
         },
         appearanceChipText: {
-          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontFamily: "Inter_600SemiBold",
           fontSize: 11,
           letterSpacing: 0.2,
           color: D.textSecondary,
@@ -337,7 +344,7 @@ export default function SettingsView() {
           justifyContent: "center",
         },
         rowLabel: {
-          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontFamily: "Inter_600SemiBold",
           fontSize: 14,
           color: D.text,
           flex: 1,
@@ -361,12 +368,12 @@ export default function SettingsView() {
           backgroundColor: D.buttonDestructiveBg,
         },
         logoutText: {
-          fontFamily: "SpaceGrotesk_700Bold",
+          fontFamily: "Inter_700Bold",
           fontSize: 15,
           color: themeColors.pending,
         },
         versionLabel: {
-          fontFamily: "SpaceGrotesk_400Regular",
+          fontFamily: "Inter_400Regular",
           fontSize: 10,
           color: D.textMuted,
         },
@@ -514,11 +521,12 @@ export default function SettingsView() {
               />
             </View>
             <View style={styles.headerTitleBlock}>
-              <Text style={styles.headerTitle}>Settings</Text>
+              <Text style={styles.headerTitle}>Profile</Text>
+              <Text style={styles.headerSubtitle}>Authorized Responders</Text>
             </View>
           </View>
           <View style={styles.bfpBadge}>
-            <Text style={styles.bfpBadgeText}>BFP</Text>
+            <Text style={styles.bfpBadgeText}>Responder</Text>
           </View>
         </View>
         <View style={styles.headerHairline} />

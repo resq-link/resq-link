@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
   },
   dot: {},
   text: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
+    fontFamily: "Inter_600SemiBold",
     fontSize: 11,
     textTransform: "uppercase",
     letterSpacing: 0.5,

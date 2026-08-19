@@ -112,20 +112,20 @@ export default function DetailHeader({
     switch (priority?.toLowerCase()) {
       case "critical":
         return isDark
-          ? ["#A1172A", "#420A12"]
-          : ["#FADBD8", "#FDEDEC"];
+          ? ["#7F1D1D", "#450A0A"]
+          : ["#FEE2E2", "#FEF2F2"];
       case "high":
         return isDark
-          ? ["#A74C23", "#4A1F0D"]
-          : ["#FDEBD0", "#FEF9E7"];
+          ? ["#9A3412", "#431407"]
+          : ["#FFEDD5", "#FFF7ED"];
       case "medium":
         return isDark
           ? [colors.surface, "#0A1220"]
-          : ["#FFFFFF", "#F2F4F4"];
+          : ["#FFFFFF", "#EFF6FF"];
       case "low":
         return isDark
           ? [colors.surface, "#111827"]
-          : ["#FFFFFF", "#F8F9FA"];
+          : ["#FFFFFF", "#F0FDF4"];
       default:
         return [colors.surface, colors.background];
     }
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   priorityText: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
+    fontFamily: "Inter_600SemiBold",
     fontSize: 11,
     letterSpacing: 0.5,
     textTransform: "uppercase",
@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   statusBadgeText: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
+    fontFamily: "Inter_600SemiBold",
     fontSize: 11,
     letterSpacing: 0.5,
   },
@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   title: {
-    fontFamily: "SpaceGrotesk_700Bold",
+    fontFamily: "Inter_700Bold",
     fontSize: 20,
     letterSpacing: -0.3,
   },
@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   subtitle: {
-    fontFamily: "SpaceGrotesk_400Regular",
+    fontFamily: "Inter_400Regular",
     fontSize: 12,
   },
 });

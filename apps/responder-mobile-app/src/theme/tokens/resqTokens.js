@@ -1,15 +1,37 @@
 /**
- * RES.Q global design tokens — Dark & Light.
- * BFP-inspired: navy authority, teal-green identity; red/orange only for urgency & destructive paths.
+ * RES.Q Responder design tokens — Dark & Light.
+ * Responder identity: Deep Emergency Blue primary, Bright Rescue Blue secondary,
+ * Emergency Red only for critical/urgency. Complements civilian app without copying teal.
  * Use via `useResqTheme().t` — keys are identical across modes for predictable theming.
  */
 
 const statCardBottomDark = "rgba(7, 11, 22, 0.96)";
 const statCardBottomLight = "rgba(248, 250, 252, 0.97)";
 
-/** Logged-in BFP × RES.Q — dark: deep navy base, teal-green identity, measured alert tones. */
+/** Deep Emergency Blue — app bars, primary CTAs, authority chrome */
+const DEEP_BLUE = "#0B1F3A";
+const DEEP_BLUE_MID = "#132A4A";
+const DEEP_BLUE_LIGHT = "#1E3A5F";
+
+/** Bright Rescue Blue — highlights, active tabs, interactive chrome */
+const RESCUE_BLUE = "#2563EB";
+const RESCUE_BLUE_BRIGHT = "#3B82F6";
+const RESCUE_BLUE_SOFT = "#60A5FA";
+
+/** Emergency Red — critical / SOS only */
+const EMERGENCY_RED = "#DC2626";
+const EMERGENCY_RED_DARK = "#EF4444";
+
+/** Success / Warning */
+const SUCCESS_GREEN = "#16A34A";
+const SUCCESS_GREEN_BRIGHT = "#22C55E";
+const WARNING_AMBER = "#D97706";
+const WARNING_AMBER_BRIGHT = "#F59E0B";
+const ON_SCENE_ORANGE = "#EA580C";
+
+/** Logged-in responder — dark: deep navy base, rescue-blue identity. */
 export const darkResqTokens = {
-  // —— Foundation (~70% navy / near-black) ——
+  // —— Foundation (~70% deep navy) ——
   bg: "#03060E",
   bgElevated: "#060B16",
   bgDeep: "#020611",
@@ -22,89 +44,88 @@ export const darkResqTokens = {
   textMuted: "#64748B",
 
   border: "rgba(45, 62, 95, 0.40)",
-  /** Solid-ish stroke for legacy components expecting hex-like contrast */
   borderSolid: "#273552",
   divider: "rgba(46, 64, 94, 0.32)",
   scrim: "rgba(0, 0, 0, 0.4)",
 
   surfaceIconMuted: "rgba(14, 22, 40, 0.78)",
 
-  // —— Teal-green — agency highlight (~20%) ——
-  accent: "#22B07D",
-  accentDim: "#1A8F68",
-  accentSoft: "#34D399",
-  accentGlow: "rgba(34, 176, 125, 0.20)",
-  accentBorder: "rgba(34, 176, 125, 0.26)",
-  accentSubtle: "rgba(34, 176, 125, 0.09)",
-  borderStrong: "rgba(34, 176, 125, 0.20)",
-  overlayPattern: "rgba(38, 64, 118, 0.08)",
-  heroGlowMid: "rgba(34, 176, 125, 0.06)",
+  // —— Bright Rescue Blue — secondary / interactive (~20%) ——
+  accent: RESCUE_BLUE_BRIGHT,
+  accentDim: RESCUE_BLUE,
+  accentSoft: RESCUE_BLUE_SOFT,
+  accentGlow: "rgba(59, 130, 246, 0.22)",
+  accentBorder: "rgba(59, 130, 246, 0.30)",
+  accentSubtle: "rgba(59, 130, 246, 0.10)",
+  borderStrong: "rgba(59, 130, 246, 0.22)",
+  overlayPattern: "rgba(30, 58, 95, 0.10)",
+  heroGlowMid: "rgba(59, 130, 246, 0.07)",
 
   // —— Urgency / alert (supporting ~5–10%) ——
-  alertAccent: "#C2412C",
-  alertMuted: "rgba(194, 65, 48, 0.44)",
-  crimsonHint: "rgba(176, 48, 40, 0.38)",
-  amber: "#D4654A",
-  amberMuted: "rgba(212, 101, 74, 0.48)",
-  mint: "#22B07D",
-  mintMuted: "rgba(34, 176, 125, 0.36)",
+  alertAccent: EMERGENCY_RED,
+  alertMuted: "rgba(220, 38, 38, 0.44)",
+  crimsonHint: "rgba(220, 38, 38, 0.38)",
+  amber: WARNING_AMBER_BRIGHT,
+  amberMuted: "rgba(245, 158, 11, 0.48)",
+  mint: RESCUE_BLUE_BRIGHT,
+  mintMuted: "rgba(59, 130, 246, 0.36)",
 
   // —— Operational semantics ——
-  greenResolved: "#4ADE80",
-  greenResolvedMuted: "rgba(74, 222, 128, 0.45)",
-  cyan: "#5EB8E0",
-  cyanMuted: "rgba(94, 184, 224, 0.45)",
+  greenResolved: SUCCESS_GREEN_BRIGHT,
+  greenResolvedMuted: "rgba(34, 197, 94, 0.45)",
+  cyan: RESCUE_BLUE_SOFT,
+  cyanMuted: "rgba(96, 165, 250, 0.45)",
 
-  presenceLiveBg: "rgba(34, 176, 125, 0.11)",
-  presenceLiveBorder: "rgba(34, 176, 125, 0.30)",
+  presenceLiveBg: "rgba(59, 130, 246, 0.12)",
+  presenceLiveBorder: "rgba(59, 130, 246, 0.32)",
   presenceMutedBg: "rgba(52, 62, 82, 0.28)",
   presenceMutedBorder: "rgba(72, 88, 112, 0.38)",
 
-  emptyPulseBorder: "rgba(34, 176, 125, 0.28)",
-  emptyPulseFill: "rgba(34, 176, 125, 0.045)",
+  emptyPulseBorder: "rgba(59, 130, 246, 0.30)",
+  emptyPulseFill: "rgba(59, 130, 246, 0.05)",
 
   statCardGradientBottom: statCardBottomDark,
-  statCardActiveTop: "rgba(212, 101, 74, 0.11)",
-  statCardResolvedTop: "rgba(74, 222, 128, 0.075)",
-  statCardOnlineTop: "rgba(94, 184, 224, 0.075)",
+  statCardActiveTop: "rgba(245, 158, 11, 0.12)",
+  statCardResolvedTop: "rgba(34, 197, 94, 0.08)",
+  statCardOnlineTop: "rgba(59, 130, 246, 0.08)",
   statCardNeutralTop: "rgba(255, 255, 255, 0.032)",
 
-  navBorder: "rgba(34, 176, 125, 0.24)",
-  navActiveBg: "rgba(34, 176, 125, 0.14)",
+  navBorder: "rgba(59, 130, 246, 0.28)",
+  navActiveBg: "rgba(59, 130, 246, 0.16)",
   navGlassOverlay: "rgba(3, 7, 16, 0.94)",
 
-  // —— Workflow & status (shared with legacy `colors`) ——
-  pending: "#D4654A",
-  enroute: "#3B82F6",
-  onScene: "#6366F1",
-  done: "#15803D",
-  resolved: "#15803D",
-  active: "#3B82F6",
-  info: "#3B82F6",
-  success: "#22C55E",
-  warning: "#CA8A04",
-  critical: "#C41E3A",
-  error: "#C41E3A",
+  // —— Workflow & status ——
+  pending: WARNING_AMBER_BRIGHT,
+  enroute: RESCUE_BLUE_BRIGHT,
+  onScene: ON_SCENE_ORANGE,
+  done: SUCCESS_GREEN,
+  resolved: SUCCESS_GREEN,
+  active: RESCUE_BLUE_BRIGHT,
+  info: RESCUE_BLUE_BRIGHT,
+  success: SUCCESS_GREEN_BRIGHT,
+  warning: WARNING_AMBER,
+  critical: EMERGENCY_RED_DARK,
+  error: EMERGENCY_RED_DARK,
   disabled: "#525E70",
   white: "#FFFFFF",
 
-  priorityCritical: "#C41E3A",
-  priorityHigh: "#D4654A",
-  priorityMedium: "#22B07D",
-  priorityLow: "#15803D",
+  priorityCritical: EMERGENCY_RED_DARK,
+  priorityHigh: ON_SCENE_ORANGE,
+  priorityMedium: WARNING_AMBER_BRIGHT,
+  priorityLow: SUCCESS_GREEN_BRIGHT,
 
-  // —— Buttons ——
-  buttonPrimaryBg: "#22B07D",
-  buttonPrimaryText: "#0A0E18",
+  // —— Buttons — Deep Emergency Blue primary ——
+  buttonPrimaryBg: DEEP_BLUE_LIGHT,
+  buttonPrimaryText: "#F8FAFC",
   buttonSecondaryBg: "transparent",
-  buttonSecondaryBorder: "rgba(34, 176, 125, 0.55)",
-  buttonSecondaryText: "#22B07D",
-  buttonOutlinedBorder: "rgba(34, 176, 125, 0.35)",
-  buttonDestructiveBg: "rgba(194, 74, 50, 0.12)",
-  buttonDestructiveBorder: "rgba(212, 101, 74, 0.45)",
+  buttonSecondaryBorder: "rgba(59, 130, 246, 0.55)",
+  buttonSecondaryText: RESCUE_BLUE_SOFT,
+  buttonOutlinedBorder: "rgba(59, 130, 246, 0.35)",
+  buttonDestructiveBg: "rgba(220, 38, 38, 0.12)",
+  buttonDestructiveBorder: "rgba(239, 68, 68, 0.45)",
   buttonDestructiveText: "#F87171",
-  buttonWarningBg: "rgba(202, 138, 4, 0.15)",
-  buttonWarningText: "#EAB308",
+  buttonWarningBg: "rgba(245, 158, 11, 0.15)",
+  buttonWarningText: WARNING_AMBER_BRIGHT,
 
   // —— Inputs / chrome ——
   inputBg: "#0B1526",
@@ -112,53 +133,63 @@ export const darkResqTokens = {
   inputPlaceholder: "#64748B",
 
   switchTrackOff: "rgba(100, 116, 139, 0.35)",
-  switchTrackOn: "rgba(34, 176, 125, 0.45)",
+  switchTrackOn: "rgba(59, 130, 246, 0.45)",
   switchThumbOff: "#94A3B8",
-  switchThumbOn: "#22B07D",
+  switchThumbOn: RESCUE_BLUE_BRIGHT,
 
-  chipBg: "rgba(34, 176, 125, 0.10)",
-  chipBorder: "rgba(34, 176, 125, 0.22)",
+  chipBg: "rgba(59, 130, 246, 0.10)",
+  chipBorder: "rgba(59, 130, 246, 0.24)",
 
-  // —— Login screen (navy + teal-green, unified brand) ——
+  // —— Login screen ——
   loginBgTop: "#020611",
   loginBgMid: "#03060E",
   loginBgBottom: "#0A1424",
-  loginDecorFill: "rgba(34, 176, 125, 0.07)",
-  loginDecorLine: "rgba(34, 176, 125, 0.06)",
+  loginDecorFill: "rgba(59, 130, 246, 0.08)",
+  loginDecorLine: "rgba(59, 130, 246, 0.07)",
   loginSurfaceCard: "#101E34",
-  loginBorder: "rgba(34, 176, 125, 0.14)",
-  loginBorderStrong: "rgba(34, 176, 125, 0.24)",
-  loginCardShineTop: "rgba(34, 176, 125, 0.08)",
-  loginCtaStart: "#1A8F68",
-  loginCtaEnd: "#22B07D",
+  loginBorder: "rgba(59, 130, 246, 0.16)",
+  loginBorderStrong: "rgba(59, 130, 246, 0.26)",
+  loginCardShineTop: "rgba(59, 130, 246, 0.09)",
+  loginCtaStart: DEEP_BLUE_MID,
+  loginCtaEnd: DEEP_BLUE_LIGHT,
   loginCtaDisabledStart: "#2A303E",
   loginCtaDisabledEnd: "#1F2533",
   loginTextPrimary: "#F5F7FA",
   loginTextSubtitle: "#94A3B8",
   loginTextMuted: "#64748B",
-  loginLink: "#34D399",
-  loginIconTint: "#22B07D",
+  loginLink: RESCUE_BLUE_SOFT,
+  loginIconTint: RESCUE_BLUE_BRIGHT,
+  loginAccent: RESCUE_BLUE_BRIGHT,
+  loginCtaText: "#FFFFFF",
+  loginAlertSoftBg: "rgba(201, 125, 110, 0.12)",
+  loginAlertSoftBorder: "rgba(201, 125, 110, 0.35)",
+  loginAlertSoftText: "#E8D5D0",
+  loginSecurityBg: "rgba(59, 130, 246, 0.08)",
+  loginSecurityBorder: "rgba(59, 130, 246, 0.18)",
+  loginBadgeBg: "rgba(59, 130, 246, 0.12)",
+  loginBadgeBorder: "rgba(59, 130, 246, 0.28)",
+  loginBadgeText: RESCUE_BLUE_SOFT,
 
   // —— Map UI chrome ——
   mapOverlayScrim: "rgba(6, 10, 20, 0.88)",
-  mapLineRouteAlt: "rgba(34, 176, 125, 0.35)",
+  mapLineRouteAlt: "rgba(59, 130, 246, 0.35)",
   mapPinResolved: "#6B9080",
-  mapFabIconOnAccent: "#060A14",
+  mapFabIconOnAccent: "#F8FAFC",
 
   // —— Alerts / sheets ——
-  alertErrorBg: "#C41E3A",
+  alertErrorBg: EMERGENCY_RED,
   alertErrorText: "#FFFFFF",
-  alertSoftBg: "rgba(194, 74, 50, 0.12)",
-  alertSoftBorder: "rgba(194, 74, 50, 0.35)",
+  alertSoftBg: "rgba(220, 38, 38, 0.12)",
+  alertSoftBorder: "rgba(220, 38, 38, 0.35)",
   alertSoftText: "#E8D5D0",
   sheetOverlay: "rgba(0, 0, 0, 0.45)",
 };
 
-/** Light — cool off-white bases, navy typography, teal-green highlights (not generic gray SaaS). */
+/** Light — cool neutrals, Deep Emergency Blue type/CTAs, Bright Rescue Blue chrome. */
 export const lightResqTokens = {
-  bg: "#E8EEF7",
-  bgElevated: "#F0F5FC",
-  bgDeep: "#DFE7F4",
+  bg: "#EEF2F7",
+  bgElevated: "#F5F7FA",
+  bgDeep: "#E4EAF2",
   surface: "#FFFFFF",
   surfaceCard: "#FFFFFF",
   surfaceCardHover: "#F4F7FC",
@@ -174,119 +205,128 @@ export const lightResqTokens = {
 
   surfaceIconMuted: "rgba(241, 245, 251, 0.95)",
 
-  accent: "#14B8A6",
-  accentDim: "#0F766E",
-  accentSoft: "#2DD4BF",
-  accentGlow: "rgba(20, 184, 166, 0.18)",
-  accentBorder: "rgba(20, 184, 166, 0.30)",
-  accentSubtle: "rgba(20, 184, 166, 0.08)",
-  borderStrong: "rgba(19, 42, 74, 0.12)",
-  overlayPattern: "rgba(30, 58, 95, 0.06)",
-  heroGlowMid: "rgba(20, 184, 166, 0.04)",
+  accent: RESCUE_BLUE,
+  accentDim: "#1D4ED8",
+  accentSoft: RESCUE_BLUE_BRIGHT,
+  accentGlow: "rgba(37, 99, 235, 0.18)",
+  accentBorder: "rgba(37, 99, 235, 0.30)",
+  accentSubtle: "rgba(37, 99, 235, 0.08)",
+  borderStrong: "rgba(11, 31, 58, 0.14)",
+  overlayPattern: "rgba(11, 31, 58, 0.06)",
+  heroGlowMid: "rgba(37, 99, 235, 0.05)",
 
-  alertAccent: "#B83C28",
-  alertMuted: "rgba(184, 60, 40, 0.35)",
-  crimsonHint: "rgba(176, 58, 48, 0.32)",
-  amber: "#C2410C",
-  amberMuted: "rgba(194, 65, 12, 0.45)",
-  mint: "#14B8A6",
-  mintMuted: "rgba(20, 184, 166, 0.40)",
+  alertAccent: EMERGENCY_RED,
+  alertMuted: "rgba(220, 38, 38, 0.35)",
+  crimsonHint: "rgba(220, 38, 38, 0.32)",
+  amber: WARNING_AMBER,
+  amberMuted: "rgba(217, 119, 6, 0.45)",
+  mint: RESCUE_BLUE,
+  mintMuted: "rgba(37, 99, 235, 0.40)",
 
-  greenResolved: "#15803D",
-  greenResolvedMuted: "rgba(21, 128, 61, 0.35)",
+  greenResolved: SUCCESS_GREEN,
+  greenResolvedMuted: "rgba(22, 163, 74, 0.35)",
   cyan: "#0369A1",
   cyanMuted: "rgba(3, 105, 161, 0.35)",
 
-  presenceLiveBg: "rgba(20, 184, 166, 0.10)",
-  presenceLiveBorder: "rgba(20, 184, 166, 0.28)",
+  presenceLiveBg: "rgba(37, 99, 235, 0.10)",
+  presenceLiveBorder: "rgba(37, 99, 235, 0.28)",
   presenceMutedBg: "rgba(241, 245, 251, 0.95)",
   presenceMutedBorder: "rgba(15, 23, 42, 0.12)",
 
-  emptyPulseBorder: "rgba(20, 184, 166, 0.35)",
-  emptyPulseFill: "rgba(20, 184, 166, 0.04)",
+  emptyPulseBorder: "rgba(37, 99, 235, 0.35)",
+  emptyPulseFill: "rgba(37, 99, 235, 0.04)",
 
   statCardGradientBottom: statCardBottomLight,
-  statCardActiveTop: "rgba(194, 65, 12, 0.06)",
-  statCardResolvedTop: "rgba(21, 128, 61, 0.06)",
-  statCardOnlineTop: "rgba(3, 105, 161, 0.06)",
+  statCardActiveTop: "rgba(217, 119, 6, 0.07)",
+  statCardResolvedTop: "rgba(22, 163, 74, 0.06)",
+  statCardOnlineTop: "rgba(37, 99, 235, 0.06)",
   statCardNeutralTop: "rgba(15, 23, 42, 0.03)",
 
-  navBorder: "rgba(20, 184, 166, 0.22)",
-  navActiveBg: "rgba(20, 184, 166, 0.14)",
+  navBorder: "rgba(37, 99, 235, 0.24)",
+  navActiveBg: "rgba(37, 99, 235, 0.12)",
   navGlassOverlay: "rgba(255, 255, 255, 0.92)",
 
-  pending: "#C2410C",
-  enroute: "#2563EB",
-  onScene: "#4F46E5",
-  done: "#15803D",
-  resolved: "#15803D",
-  active: "#2563EB",
-  info: "#2563EB",
-  success: "#15803D",
-  warning: "#B45309",
-  critical: "#B91C1C",
-  error: "#B91C1C",
+  pending: WARNING_AMBER,
+  enroute: RESCUE_BLUE,
+  onScene: ON_SCENE_ORANGE,
+  done: SUCCESS_GREEN,
+  resolved: SUCCESS_GREEN,
+  active: RESCUE_BLUE,
+  info: RESCUE_BLUE,
+  success: SUCCESS_GREEN,
+  warning: WARNING_AMBER,
+  critical: EMERGENCY_RED,
+  error: EMERGENCY_RED,
   disabled: "#94A3B8",
   white: "#FFFFFF",
 
-  priorityCritical: "#B91C1C",
-  priorityHigh: "#C2410C",
-  priorityMedium: "#14B8A6",
-  priorityLow: "#15803D",
+  priorityCritical: EMERGENCY_RED,
+  priorityHigh: ON_SCENE_ORANGE,
+  priorityMedium: WARNING_AMBER,
+  priorityLow: SUCCESS_GREEN,
 
-  // Primary CTA = navy (authority), teal-green = identity chrome
-  buttonPrimaryBg: "#132A4A",
+  buttonPrimaryBg: DEEP_BLUE,
   buttonPrimaryText: "#F8FAFC",
   buttonSecondaryBg: "transparent",
-  buttonSecondaryBorder: "rgba(20, 184, 166, 0.45)",
-  buttonSecondaryText: "#132A4A",
-  buttonOutlinedBorder: "rgba(19, 42, 74, 0.22)",
-  buttonDestructiveBg: "rgba(185, 28, 28, 0.08)",
-  buttonDestructiveBorder: "rgba(185, 28, 28, 0.35)",
-  buttonDestructiveText: "#B91C1C",
-  buttonWarningBg: "rgba(180, 83, 9, 0.12)",
-  buttonWarningText: "#B45309",
+  buttonSecondaryBorder: "rgba(37, 99, 235, 0.45)",
+  buttonSecondaryText: DEEP_BLUE,
+  buttonOutlinedBorder: "rgba(11, 31, 58, 0.22)",
+  buttonDestructiveBg: "rgba(220, 38, 38, 0.08)",
+  buttonDestructiveBorder: "rgba(220, 38, 38, 0.35)",
+  buttonDestructiveText: EMERGENCY_RED,
+  buttonWarningBg: "rgba(217, 119, 6, 0.12)",
+  buttonWarningText: WARNING_AMBER,
 
   inputBg: "#F8FAFC",
   inputBorder: "rgba(15, 23, 42, 0.12)",
   inputPlaceholder: "#94A3B8",
 
   switchTrackOff: "rgba(148, 163, 184, 0.35)",
-  switchTrackOn: "rgba(20, 184, 166, 0.40)",
+  switchTrackOn: "rgba(37, 99, 235, 0.40)",
   switchThumbOff: "#F1F5F9",
-  switchThumbOn: "#14B8A6",
+  switchThumbOn: RESCUE_BLUE,
 
-  chipBg: "rgba(20, 184, 166, 0.10)",
-  chipBorder: "rgba(20, 184, 166, 0.24)",
+  chipBg: "rgba(37, 99, 235, 0.10)",
+  chipBorder: "rgba(37, 99, 235, 0.24)",
 
-  loginBgTop: "#F7FAFF",
-  loginBgMid: "#EDF2F9",
-  loginBgBottom: "#E4EBF6",
-  loginDecorFill: "rgba(19, 42, 74, 0.06)",
-  loginDecorLine: "rgba(19, 42, 74, 0.05)",
+  loginBgTop: "#F5F8FC",
+  loginBgMid: "#EAF0F8",
+  loginBgBottom: "#E0E8F3",
+  loginDecorFill: "rgba(11, 31, 58, 0.06)",
+  loginDecorLine: "rgba(11, 31, 58, 0.05)",
   loginSurfaceCard: "#FFFFFF",
   loginBorder: "rgba(15, 23, 42, 0.10)",
-  loginBorderStrong: "rgba(19, 42, 74, 0.14)",
-  loginCardShineTop: "rgba(20, 184, 166, 0.06)",
-  loginCtaStart: "#142A47",
-  loginCtaEnd: "#1E3F6B",
+  loginBorderStrong: "rgba(11, 31, 58, 0.14)",
+  loginCardShineTop: "rgba(37, 99, 235, 0.06)",
+  loginCtaStart: DEEP_BLUE,
+  loginCtaEnd: DEEP_BLUE_MID,
   loginCtaDisabledStart: "#CBD5E1",
   loginCtaDisabledEnd: "#B8C4D4",
   loginTextPrimary: "#0B1220",
   loginTextSubtitle: "#475569",
   loginTextMuted: "#64748B",
-  loginLink: "#0F766E",
-  loginIconTint: "#14B8A6",
+  loginLink: RESCUE_BLUE,
+  loginIconTint: RESCUE_BLUE,
+  loginAccent: RESCUE_BLUE,
+  loginCtaText: "#FFFFFF",
+  loginAlertSoftBg: "rgba(201, 125, 110, 0.12)",
+  loginAlertSoftBorder: "rgba(201, 125, 110, 0.35)",
+  loginAlertSoftText: "#7C4A42",
+  loginSecurityBg: "rgba(11, 31, 58, 0.05)",
+  loginSecurityBorder: "rgba(11, 31, 58, 0.10)",
+  loginBadgeBg: "rgba(37, 99, 235, 0.08)",
+  loginBadgeBorder: "rgba(37, 99, 235, 0.22)",
+  loginBadgeText: DEEP_BLUE_MID,
 
   mapOverlayScrim: "rgba(248, 250, 252, 0.92)",
-  mapLineRouteAlt: "rgba(20, 184, 166, 0.32)",
+  mapLineRouteAlt: "rgba(37, 99, 235, 0.32)",
   mapPinResolved: "#4D7C59",
   mapFabIconOnAccent: "#F8FAFC",
 
-  alertErrorBg: "#B91C1C",
+  alertErrorBg: EMERGENCY_RED,
   alertErrorText: "#FFFFFF",
-  alertSoftBg: "rgba(185, 28, 28, 0.08)",
-  alertSoftBorder: "rgba(185, 28, 28, 0.28)",
+  alertSoftBg: "rgba(220, 38, 38, 0.08)",
+  alertSoftBorder: "rgba(220, 38, 38, 0.28)",
   alertSoftText: "#7F1D1D",
   sheetOverlay: "rgba(15, 23, 42, 0.4)",
 };

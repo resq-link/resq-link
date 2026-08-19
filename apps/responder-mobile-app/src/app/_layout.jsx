@@ -15,10 +15,11 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { queryClient } from "@/query/queryClient";
 import {
   useFonts,
-  SpaceGrotesk_400Regular,
-  SpaceGrotesk_600SemiBold,
-  SpaceGrotesk_700Bold,
-} from "@expo-google-fonts/space-grotesk";
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+} from "@expo-google-fonts/inter";
 import useUserStore from "@/store/userStore";
 import { ResqThemeProvider } from "@/theme";
 import ResponderMessagingWidget from "@/modules/messaging/components/ResponderMessagingWidget";
@@ -30,9 +31,10 @@ export default function RootLayout() {
   const { loadUser, user } = useUserStore();
 
   const [fontsLoaded] = useFonts({
-    SpaceGrotesk_400Regular,
-    SpaceGrotesk_600SemiBold,
-    SpaceGrotesk_700Bold,
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
   });
 
   useEffect(() => {

@@ -2,7 +2,7 @@ import React, { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { SharedErrorBoundary, Button } from './SharedErrorBoundary';
 import * as Updates from 'expo-updates';
 import { SplashScreen } from 'expo-router/build/exports';
-import { DevSettings, LogBox, Platform, View } from 'react-native';
+import { DevSettings, LogBox, View } from 'react-native';
 import { serializeError } from 'serialize-error';
 import { reportErrorToRemote } from './report-error-to-remote';
 
@@ -17,12 +17,7 @@ const DeviceErrorBoundary = ({
     SplashScreen.hideAsync().catch(() => {});
   }, []);
   const handleReload = useCallback(async () => {
-    if (Platform.OS === 'web') {
-      window.location.reload();
-      return;
-    }
-
-    Updates.reloadAsync().catch((error) => {
+    Updates.reloadAsync().catch(() => {
       // no-op, we don't want to show an error here
     });
   }, []);

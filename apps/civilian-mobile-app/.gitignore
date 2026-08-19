@@ -5,6 +5,9 @@ node_modules/
 
 # Expo
 .expo/
+.expo-*-check/
+.expo-*-check-*/
+.expo-export-*/
 dist/
 web-build/
 expo-env.d.ts
@@ -19,8 +22,7 @@ expo-env.d.ts
 
 # Metro
 .metro-health-check*
-
-# debug
+.metro-virtual/
 npm-debug.*
 yarn-debug.*
 yarn-error.*
@@ -38,7 +40,5 @@ yarn-error.*
 app-example
 
 .env
-
-.metro-virtual/*
 
 caches/*

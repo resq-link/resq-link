@@ -351,9 +351,15 @@ function isPermissionDenied(error: any): boolean {
   )
 }
 
+export type ResourcesSnapshotMeta = {
+  fromCache: boolean;
+  hasPendingWrites: boolean;
+};
+
 export function subscribeToResources(
-  callback: (resources: ResourceRecord[]) => void,
-  limitCount: number = 300
+  callback: (resources: ResourceRecord[], meta?: ResourcesSnapshotMeta) => void,
+  limitCount: number = 300,
+  options?: { onError?: (error: Error) => void }
 ): () => void {
   try {
     // Avoid permission errors during auth initialization races.
@@ -373,16 +379,19 @@ export function subscribeToResources(
         const resources = snapshot.docs
           .map(convertFirestoreDoc)
           .filter((resource) => resource.isActive !== false);
-        callback(resources);
+        callback(resources, {
+          fromCache: snapshot.metadata.fromCache,
+          hasPendingWrites: snapshot.metadata.hasPendingWrites,
+        });
       },
       (error) => {
         // Avoid console spam for expected auth/rules failures.
         if (isPermissionDenied(error)) {
-          callback([]);
-          return
+          callback([], { fromCache: false, hasPendingWrites: false });
+          return;
         }
-        console.error('Error subscribing to resources:', error);
-        callback([]);
+        options?.onError?.(error instanceof Error ? error : new Error(String(error)));
+        callback([], { fromCache: false, hasPendingWrites: false });
       }
     );
 

@@ -5,10 +5,10 @@ import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
 import {
-  SpaceGrotesk_400Regular,
-  SpaceGrotesk_600SemiBold,
-  SpaceGrotesk_700Bold,
-} from "@expo-google-fonts/space-grotesk";
+  Inter_400Regular,
+  Inter_600SemiBold,
+  Inter_700Bold,
+} from "@expo-google-fonts/inter";
 import { useFonts } from "expo-font";
 import Constants from "expo-constants";
 import { spacing, useResqTheme } from "@/theme";
@@ -19,9 +19,9 @@ export default function AboutView() {
   const router = useRouter();
 
   const [fontsLoaded] = useFonts({
-    SpaceGrotesk_400Regular,
-    SpaceGrotesk_600SemiBold,
-    SpaceGrotesk_700Bold,
+    Inter_400Regular,
+    Inter_600SemiBold,
+    Inter_700Bold,
   });
 
   const styles = useMemo(
@@ -44,7 +44,7 @@ export default function AboutView() {
           padding: 4,
         },
         title: {
-          fontFamily: "SpaceGrotesk_700Bold",
+          fontFamily: "Inter_700Bold",
           fontSize: 20,
           color: colors.text,
         },
@@ -52,19 +52,19 @@ export default function AboutView() {
           marginTop: spacing.lg,
         },
         appName: {
-          fontFamily: "SpaceGrotesk_700Bold",
+          fontFamily: "Inter_700Bold",
           fontSize: 24,
           color: colors.text,
           marginBottom: 8,
         },
         version: {
-          fontFamily: "SpaceGrotesk_400Regular",
+          fontFamily: "Inter_400Regular",
           fontSize: 14,
           color: colors.textSecondary,
           marginBottom: spacing.xl,
         },
         description: {
-          fontFamily: "SpaceGrotesk_400Regular",
+          fontFamily: "Inter_400Regular",
           fontSize: 15,
           color: colors.textSecondary,
           lineHeight: 22,

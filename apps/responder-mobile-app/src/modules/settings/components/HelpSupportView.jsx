@@ -12,10 +12,10 @@ import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
 import {
-  SpaceGrotesk_400Regular,
-  SpaceGrotesk_600SemiBold,
-  SpaceGrotesk_700Bold,
-} from "@expo-google-fonts/space-grotesk";
+  Inter_400Regular,
+  Inter_600SemiBold,
+  Inter_700Bold,
+} from "@expo-google-fonts/inter";
 import { useFonts } from "expo-font";
 import { spacing, radii, useResqTheme } from "@/theme";
 
@@ -25,9 +25,9 @@ export default function HelpSupportView() {
   const router = useRouter();
 
   const [fontsLoaded] = useFonts({
-    SpaceGrotesk_400Regular,
-    SpaceGrotesk_600SemiBold,
-    SpaceGrotesk_700Bold,
+    Inter_400Regular,
+    Inter_600SemiBold,
+    Inter_700Bold,
   });
 
   const styles = useMemo(
@@ -50,12 +50,12 @@ export default function HelpSupportView() {
           padding: 4,
         },
         title: {
-          fontFamily: "SpaceGrotesk_700Bold",
+          fontFamily: "Inter_700Bold",
           fontSize: 20,
           color: colors.text,
         },
         subtitle: {
-          fontFamily: "SpaceGrotesk_400Regular",
+          fontFamily: "Inter_400Regular",
           fontSize: 15,
           color: colors.textSecondary,
           lineHeight: 22,
@@ -68,7 +68,7 @@ export default function HelpSupportView() {
           alignItems: "center",
         },
         primaryButtonText: {
-          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontFamily: "Inter_600SemiBold",
           fontSize: 16,
           color: t.buttonPrimaryText,
         },
@@ -81,13 +81,13 @@ export default function HelpSupportView() {
           borderColor: colors.border,
         },
         infoTitle: {
-          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontFamily: "Inter_600SemiBold",
           fontSize: 14,
           color: colors.text,
           marginBottom: 8,
         },
         infoText: {
-          fontFamily: "SpaceGrotesk_400Regular",
+          fontFamily: "Inter_400Regular",
           fontSize: 14,
           color: colors.textSecondary,
           lineHeight: 20,

@@ -1,23 +1,30 @@
-import { getAgencyLabel, type AgencyCode, type IncidentRecord, type TeamOnDuty } from '@packages/firebase'
-import { CATEGORY_DEFAULT_AGENCY, CATEGORY_LABELS, TEAMS_ON_DUTY } from './constants'
+import {
+  getAgencyLabel,
+  getAssignedTeamCode,
+  getAssignedTeamName,
+  type AgencyCode,
+  type IncidentRecord,
+} from '@packages/firebase'
+import { CATEGORY_DEFAULT_AGENCY, CATEGORY_LABELS } from './constants'
 import { formatReportDisplayDate, formatReportDuration, getTimestamp } from './dates'
 import type { IncidentExportRow } from './types'
 
 const REPORT_UNAVAILABLE = 'Not Available'
 const REPORT_UNASSIGNED_TEAM = 'Unassigned (Needs Fix)'
 
-function isTeamOnDuty(value: string | null | undefined): value is TeamOnDuty {
-  if (!value) return false
-  return TEAMS_ON_DUTY.includes(value as TeamOnDuty)
+export function getIncidentAssignedTeam(incident: IncidentRecord): {
+  code: string | null
+  label: string | null
+} {
+  return {
+    code: getAssignedTeamCode(incident),
+    label: getAssignedTeamName(incident),
+  }
 }
 
-export function inferTeamOnDuty(incident: IncidentRecord): TeamOnDuty | null {
-  if (isTeamOnDuty(incident.teamOnDuty)) return incident.teamOnDuty
-  if (isTeamOnDuty(incident.teamName)) return incident.teamName
-
-  const responder = incident.teamName?.trim() || ''
-  const match = TEAMS_ON_DUTY.find((team) => team.toLowerCase() === responder.toLowerCase())
-  return match ?? null
+/** @deprecated Use getIncidentAssignedTeam — kept for backward compatibility */
+export function inferTeamOnDuty(incident: IncidentRecord): string | null {
+  return getAssignedTeamName(incident)
 }
 
 export function enrichAssignedAgencies(incident: IncidentRecord): AgencyCode[] {
@@ -57,13 +64,14 @@ export function inferResolutionTimeSeconds(incident: IncidentRecord): number | n
 }
 
 export function normalizeIncidentForReport(incident: IncidentRecord): IncidentRecord {
-  const teamOnDuty = inferTeamOnDuty(incident)
+  const { label } = getIncidentAssignedTeam(incident)
   const assignedAgencies = enrichAssignedAgencies(incident)
 
   return {
     ...incident,
-    teamOnDuty,
-    teamName: teamOnDuty ?? incident.teamName,
+    assignedTeamName: label,
+    teamOnDuty: label,
+    teamName: label ?? incident.teamName,
     assignedAgencies,
     responseTimeSeconds: inferResponseTimeSeconds(incident) ?? incident.responseTimeSeconds,
   }
@@ -85,8 +93,8 @@ export function formatReportAgency(incident: IncidentRecord): string {
 }
 
 export function formatReportTeam(incident: IncidentRecord): string {
-  const team = inferTeamOnDuty(incident)
-  return team ?? REPORT_UNASSIGNED_TEAM
+  const { label } = getIncidentAssignedTeam(incident)
+  return label ?? REPORT_UNASSIGNED_TEAM
 }
 
 export function toNormalizedExportRow(incident: IncidentRecord): IncidentExportRow {

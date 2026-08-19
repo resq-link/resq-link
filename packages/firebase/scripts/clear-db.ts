@@ -27,44 +27,86 @@ function getAdminApp(): admin.app.App {
     return admin.initializeApp();
   }
 
-  throw new Error(
-    'Missing Firebase Admin credentials. Create packages/firebase/.env with either:\n' +
-      '  FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}\n' +
-      '  OR\n' +
-      '  GOOGLE_APPLICATION_CREDENTIALS=./path-to-service-account.json'
-  );
+  const serviceAccountPath = resolve(__dirname, '../service-account.json');
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const serviceAccount = require(serviceAccountPath);
+    return admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+  } catch {
+    throw new Error(
+      'Missing Firebase Admin credentials. Create packages/firebase/.env with either:\n' +
+        '  FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}\n' +
+        '  OR\n' +
+        '  GOOGLE_APPLICATION_CREDENTIALS=./path-to-service-account.json\n' +
+        '  OR place service-account.json in packages/firebase/'
+    );
+  }
+}
+
+async function deleteCollection(
+  db: admin.firestore.Firestore,
+  collectionPath: string
+): Promise<number> {
+  const snapshot = await db.collection(collectionPath).get();
+  if (snapshot.empty) return 0;
+
+  const batch = db.batch();
+  snapshot.docs.forEach((docSnap) => batch.delete(docSnap.ref));
+  await batch.commit();
+  return snapshot.size;
+}
+
+async function deleteIncidentWithSubcollections(
+  db: admin.firestore.Firestore,
+  incidentId: string,
+  referenceNumber?: string
+): Promise<void> {
+  const historyDeleted = await deleteCollection(db, `incidents/${incidentId}/teamAssignmentHistory`);
+  if (historyDeleted > 0) {
+    console.log(`  - removed ${historyDeleted} team assignment history entries`);
+  }
+
+  await db.collection('incidents').doc(incidentId).delete();
+  console.log(`Deleted incident: ${incidentId}${referenceNumber ? ` (${referenceNumber})` : ''}`);
 }
 
 async function clearDatabase() {
-  console.log("Initializing Firebase Admin SDK...");
+  console.log('Initializing Firebase Admin SDK...');
   const app = getAdminApp();
   const db = app.firestore();
 
-  // 1. Clear incidents
-  console.log("Fetching all master incidents...");
-  const incidentsSnapshot = await db.collection("incidents").get();
-  console.log(`Found ${incidentsSnapshot.size} incidents. Deleting...`);
-  
-  const incidentDeletes = incidentsSnapshot.docs.map(docSnap => {
-    console.log(`Deleting incident: ${docSnap.id} (${docSnap.data().referenceNumber})`);
-    return docSnap.ref.delete();
-  });
-  await Promise.all(incidentDeletes);
-  console.log("All incidents deleted successfully!");
+  console.log('\nClearing incident dispatch ledger...');
+  const dispatchCount = await deleteCollection(db, 'incidentDispatches');
+  console.log(`Deleted ${dispatchCount} incident dispatch records.`);
 
-  // 2. Clear emergencies
-  console.log("\nFetching all emergencies...");
-  const emergenciesSnapshot = await db.collection("emergencies").get();
+  console.log('\nFetching all master incidents...');
+  const incidentsSnapshot = await db.collection('incidents').get();
+  console.log(`Found ${incidentsSnapshot.size} incidents. Deleting...`);
+
+  for (const docSnap of incidentsSnapshot.docs) {
+    const data = docSnap.data();
+    await deleteIncidentWithSubcollections(db, docSnap.id, data.referenceNumber);
+  }
+  console.log('All incidents deleted successfully!');
+
+  console.log('\nFetching all emergencies...');
+  const emergenciesSnapshot = await db.collection('emergencies').get();
   console.log(`Found ${emergenciesSnapshot.size} emergencies. Deleting...`);
 
-  const emergencyDeletes = emergenciesSnapshot.docs.map(docSnap => {
+  const emergencyDeletes = emergenciesSnapshot.docs.map((docSnap) => {
     console.log(`Deleting emergency report: ${docSnap.id}`);
     return docSnap.ref.delete();
   });
   await Promise.all(emergencyDeletes);
-  console.log("All emergencies deleted successfully!");
+  console.log('All emergencies deleted successfully!');
 
-  console.log("\n✨ Clean slate! All master incidents and civilian reports cleared. All user/dispatcher profiles were kept untouched.");
+  console.log(
+    '\nClean slate! Intake, Active Incidents, History, and Reports will show no incident data.'
+  );
+  console.log('User accounts, teams, resources, and incident type rules were not modified.');
 }
 
-clearDatabase().catch(console.error);
+clearDatabase().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

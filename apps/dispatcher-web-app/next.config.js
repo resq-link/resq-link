@@ -40,9 +40,18 @@ const nextConfig = {
   // With react-leaflet + Next 15, this can trigger duplicate
   // Leaflet initialization on the same container ("Map container is already initialized").
   reactStrictMode: false,
-  transpilePackages: ["@packages/firebase", "lucide-react"],
+  transpilePackages: ["@packages/firebase"],
+  experimental: {
+    optimizePackageImports: ["lucide-react"],
+  },
   eslint: {
     ignoreDuringBuilds: true,
+  },
+  async redirects() {
+    return [
+      { source: "/", destination: "/intake", permanent: false },
+      { source: "/dashboard", destination: "/overview", permanent: false },
+    ];
   },
   // Keep dev overlay; avoid experimental flags that change webpack graph mid-restart
   devIndicators: {
@@ -57,6 +66,10 @@ const nextConfig = {
     // Ignore React Native modules that aren't available in Next.js
     config.resolve.alias = {
       ...config.resolve.alias,
+      "@packages/firebase$": path.resolve(
+        __dirname,
+        "../../packages/firebase/src/index.ts"
+      ),
       "expo-constants": false,
       "@react-native-async-storage/async-storage": false,
     };

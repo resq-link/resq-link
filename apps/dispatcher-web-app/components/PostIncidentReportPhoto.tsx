@@ -57,8 +57,8 @@ export default function PostIncidentReportPhoto({
   if (!photoUrl) return null;
 
   return (
-    <div className="rounded-xl border border-slate-800 overflow-hidden bg-slate-950">
-      <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-emerald-500/90 border-b border-slate-800">
+    <div className="w-full overflow-hidden rounded-xl border border-slate-800 bg-slate-950">
+      <p className="border-b border-slate-800 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-widest text-emerald-400/90">
         Scene photo
       </p>
       {!loadFailed ? (

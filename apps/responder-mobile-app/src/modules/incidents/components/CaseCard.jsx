@@ -65,7 +65,6 @@ export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
       style={{
         backgroundColor: colors.surface,
         borderRadius: radii.lg,
-        padding: spacing.lg,
         marginBottom: spacing.md,
         borderWidth: priority === "critical" ? 2 : 1,
         borderColor:
@@ -74,8 +73,28 @@ export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
             : priority === "high"
             ? colors.priorityHigh
             : colors.border,
+        overflow: "hidden",
       }}
     >
+      <View
+        style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: 4,
+          backgroundColor:
+            priority === "critical"
+              ? colors.priorityCritical
+              : priority === "high"
+              ? colors.priorityHigh
+              : priority === "low"
+              ? colors.priorityLow
+              : colors.priorityMedium,
+        }}
+        accessibilityElementsHidden
+      />
+      <View style={{ padding: spacing.lg, paddingLeft: spacing.lg + 4 }}>
       <View
         style={{
           flexDirection: "row",
@@ -87,7 +106,7 @@ export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
         <View style={{ flex: 1 }}>
           <Text
             style={{
-              fontFamily: "SpaceGrotesk_700Bold",
+              fontFamily: "Inter_700Bold",
               fontSize: 17,
               color: colors.text,
               marginBottom: 6,
@@ -106,7 +125,7 @@ export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
       {caseData.description && (
         <Text
           style={{
-            fontFamily: "SpaceGrotesk_400Regular",
+            fontFamily: "Inter_400Regular",
             fontSize: 14,
             color: colors.textSecondary,
             marginBottom: spacing.md,
@@ -125,7 +144,7 @@ export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
       >
         <Text
           style={{
-            fontFamily: "SpaceGrotesk_400Regular",
+            fontFamily: "Inter_400Regular",
             fontSize: 13,
             color: colors.textSecondary,
           }}
@@ -137,7 +156,7 @@ export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
 
       <Text
         style={{
-          fontFamily: "SpaceGrotesk_400Regular",
+          fontFamily: "Inter_400Regular",
           fontSize: 12,
           color: colors.textMuted,
         }}
@@ -163,7 +182,7 @@ export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
         >
           <Text
             style={{
-              fontFamily: "SpaceGrotesk_600SemiBold",
+              fontFamily: "Inter_600SemiBold",
               fontSize: 15,
               color: colors.white,
             }}
@@ -172,6 +191,7 @@ export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
           </Text>
         </TouchableOpacity>
       )}
+      </View>
     </TouchableOpacity>
   );
 }

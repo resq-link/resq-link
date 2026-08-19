@@ -151,7 +151,7 @@ export default function AgentAssistant() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
-    if (!user) return
+    if (!user || !isOpen) return
 
     const unsubscribeIncidents = subscribeToIncidents(setIncidents, 300)
     const unsubscribeResources = subscribeToResources(setResources, 300)
@@ -162,7 +162,7 @@ export default function AgentAssistant() {
       unsubscribeResources()
       unsubscribeTeams()
     }
-  }, [user])
+  }, [user, isOpen])
 
   useEffect(() => {
     if (!isOpen) return

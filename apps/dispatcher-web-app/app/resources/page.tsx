@@ -59,13 +59,6 @@ const resourceStatuses: ResourceStatus[] = [
   'maintenance',
   'offline',
 ]
-const defaultOperationalTeams: TeamRecord[] = [
-  { id: 'Whiskey', code: 'Whiskey', label: 'Team Whiskey', isActive: true },
-  { id: 'X-ray', code: 'X-ray', label: 'Team X-ray', isActive: true },
-  { id: 'Yankee', code: 'Yankee', label: 'Team Yankee', isActive: true },
-  { id: 'Zulu', code: 'Zulu', label: 'Team Zulu', isActive: true },
-]
-
 const emptyForm: ResourceFormState = {
   name: '',
   resourceCode: '',
@@ -264,10 +257,6 @@ export default function ResourcesPage() {
   )
   const teamOptions = useMemo(() => {
     const merged = new Map<string, TeamRecord>()
-
-    defaultOperationalTeams.forEach((team) => {
-      merged.set(team.id || team.code, team)
-    })
 
     responders.forEach((responder) => {
       const code = responder.account.teamCode?.trim()

@@ -1,0 +1,33 @@
+/** Shared route paths used by navigation components. */
+export const ROUTES = {
+  splash: "/",
+  login: "/login",
+  register: "/register",
+  dashboard: "/dashboard",
+  emergencyForm: "/emergency-form",
+  emergencyConfirmation: "/emergency-confirmation",
+  calling: "/calling",
+  responderMap: "/responder-map",
+  history: "/(tabs)/history",
+  profile: "/(tabs)/profile",
+  appearance: "/appearance",
+  notifications: "/notifications",
+  privacySecurity: "/privacy-security",
+  helpSupport: "/help-support",
+  reportIssue: "/report-issue",
+  faq: "/faq",
+};
+
+export const HIDE_NAV_SCREENS = [
+  ROUTES.login,
+  ROUTES.register,
+  ROUTES.emergencyForm,
+  ROUTES.emergencyConfirmation,
+  ROUTES.calling,
+  ROUTES.appearance,
+  ROUTES.notifications,
+  ROUTES.privacySecurity,
+  ROUTES.helpSupport,
+  ROUTES.reportIssue,
+  ROUTES.faq,
+];

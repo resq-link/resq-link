@@ -3,12 +3,18 @@
 import { useAlarm } from '@/contexts/AlarmContext'
 
 export default function AlarmControl() {
-  const { isAlarmMuted, setIsAlarmMuted } = useAlarm()
+  const { isAlarmMuted, setIsAlarmMuted, unlockAudio } = useAlarm()
   
   return (
     <button
       type="button"
-      onClick={() => setIsAlarmMuted(!isAlarmMuted)}
+      onClick={() => {
+        const nextMuted = !isAlarmMuted
+        setIsAlarmMuted(nextMuted)
+        if (!nextMuted) {
+          void unlockAudio()
+        }
+      }}
       className={`inline-flex h-10 items-center gap-3 rounded-lg border px-3 text-sm font-medium transition-colors ${
         isAlarmMuted
           ? 'border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800'

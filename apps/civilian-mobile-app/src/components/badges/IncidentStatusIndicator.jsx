@@ -15,7 +15,7 @@ import {
   normalizeOperationalStatus,
   shouldPulseIncidentStatus,
 } from "@packages/firebase";
-import { useAppTheme } from "@/utils/useAppTheme";
+import { useAppTheme } from "@/hooks/useAppTheme";
 
 const AnimatedDot = Animated.createAnimatedComponent(View);
 const { scaleTo, opacityTo, durationMs } = INCIDENT_STATUS_DOT_PULSE;

@@ -10,10 +10,10 @@ import { StatusBar } from "expo-status-bar";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
 import {
-  SpaceGrotesk_400Regular,
-  SpaceGrotesk_600SemiBold,
-  SpaceGrotesk_700Bold,
-} from "@expo-google-fonts/space-grotesk";
+  Inter_400Regular,
+  Inter_600SemiBold,
+  Inter_700Bold,
+} from "@expo-google-fonts/inter";
 import { useFonts } from "expo-font";
 import { getDoc, doc, getFirebaseFirestore, onSnapshot } from "@packages/firebase";
 import CaseInfoCard from "@/modules/incidents/components/CaseInfoCard";
@@ -42,9 +42,9 @@ export default function CaseDetailView() {
   const [error, setError] = useState("");
 
   const [fontsLoaded] = useFonts({
-    SpaceGrotesk_400Regular,
-    SpaceGrotesk_600SemiBold,
-    SpaceGrotesk_700Bold,
+    Inter_400Regular,
+    Inter_600SemiBold,
+    Inter_700Bold,
   });
 
   useEffect(() => {
@@ -180,7 +180,7 @@ export default function CaseDetailView() {
           </TouchableOpacity>
           <Text
             style={{
-              fontFamily: "SpaceGrotesk_700Bold",
+              fontFamily: "Inter_700Bold",
               fontSize: 18,
               color: colors.text,
             }}
@@ -204,7 +204,7 @@ export default function CaseDetailView() {
             >
               <Text
                 style={{
-                  fontFamily: "SpaceGrotesk_600SemiBold",
+                  fontFamily: "Inter_600SemiBold",
                   fontSize: 16,
                   color: colors.text,
                 }}

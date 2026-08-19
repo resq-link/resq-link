@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState, Suspense } from "react";
+import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import CommandBar from "@/components/CommandBar";
+import CurrentTeamOnDutyChip from "@/components/operational/CurrentTeamOnDutyChip";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   assignDispatcherToEmergency,
@@ -18,14 +20,22 @@ import {
   linkReportToReport,
   unlinkReportFromReport,
   getSuggestedAgenciesForEmergencyType,
+  getAssignedTeamName,
   QUADRANT_LABELS,
+  getCivilianEmergencyTypeLabel,
   type DispatcherRole,
   type EmergencyReport,
   type IncidentRecord,
 } from "@packages/firebase";
-import IntakeListItem, { type IntakeQueueItem } from "@/components/IntakeListItem";
-import IntakeDetailView from "@/components/IntakeDetailView";
+import IntakeListItem, {
+  attachLinkedEmergencyReport,
+  type IntakeQueueItem,
+} from "@/components/IntakeListItem";
 import { Search, ShieldAlert, Activity } from "lucide-react";
+
+const IntakeDetailView = dynamic(() => import("@/components/IntakeDetailView"), {
+  ssr: false,
+});
 
 const getEmergencyIncidentTypeName = (
   incidentType: EmergencyReport["incidentType"],
@@ -71,7 +81,7 @@ function toQueueItemFromEmergency(report: EmergencyReport): IntakeQueueItem {
     id: report.id || `app-${String(report.createdAt ?? Date.now())}`,
     channel: "emergency_report",
     referenceNumber: report.id ? `APP-${report.id.slice(-6).toUpperCase()}` : "APP-REPORT",
-    incidentSubtypeLabel: getEmergencyIncidentTypeName(report.incidentType),
+    incidentSubtypeLabel: getCivilianEmergencyTypeLabel(report.incidentType, report.typeProfile),
     locationText: report.locationText,
     priority: report.priority || "medium",
     quadrantLabel: null,
@@ -96,7 +106,7 @@ const toQueueItemFromIncident = (incident: IncidentRecord): IntakeQueueItem => (
   locationText: incident.locationText,
   priority: incident.priority,
   quadrantLabel: incident.quadrant ? QUADRANT_LABELS[incident.quadrant] : null,
-  teamOnDutyLabel: incident.teamOnDuty ?? null,
+  teamOnDutyLabel: getAssignedTeamName(incident),
   incidentDateLabel: incident.incidentDate ?? null,
   incidentTimeLabel: incident.incidentTime ?? null,
   createdAt: incident.createdAt,
@@ -121,7 +131,9 @@ function IncidentsContent() {
 
     const matchInc = recentIncidents.find((i) => i.id === focusId || i.referenceNumber === focusId);
     if (matchInc) {
-      setSelectedQueueItem(toQueueItemFromIncident(matchInc));
+      setSelectedQueueItem(
+        attachLinkedEmergencyReport(toQueueItemFromIncident(matchInc), appEmergencyReports),
+      );
       return;
     }
 
@@ -152,18 +164,13 @@ function IncidentsContent() {
     };
   }, [user]);
 
-  // Compute active queues from both collections
-  const activeAppQueueItems = useMemo(() => {
-    return appEmergencyReports
-      .filter((report) => isLiveEmergencyReport(report) && !report.primaryReportId)
-      .map(toQueueItemFromEmergency);
-  }, [appEmergencyReports]);
-
   const activeManualQueueItems = useMemo(() => {
     return recentIncidents
       .filter(isLiveIncident)
-      .map(toQueueItemFromIncident);
-  }, [recentIncidents]);
+      .map((incident) =>
+        attachLinkedEmergencyReport(toQueueItemFromIncident(incident), appEmergencyReports),
+      );
+  }, [recentIncidents, appEmergencyReports]);
 
   const activeQueueItems = useMemo(() => {
     return activeManualQueueItems.sort(
@@ -209,10 +216,12 @@ function IncidentsContent() {
     } else if (selectedQueueItem.channel === "incident") {
       const match = recentIncidents.find((i) => i.id === selectedQueueItem.id);
       if (match) {
-        setSelectedQueueItem(toQueueItemFromIncident(match));
+        setSelectedQueueItem(
+          attachLinkedEmergencyReport(toQueueItemFromIncident(match), appEmergencyReports),
+        );
       }
     }
-  }, [appEmergencyReports, recentIncidents, selectedQueueItem?.id]);
+  }, [appEmergencyReports, recentIncidents, selectedQueueItem?.id, selectedQueueItem?.channel]);
 
   // Actions/handlers
   const handleRespondToAppReport = async (
@@ -324,7 +333,9 @@ function IncidentsContent() {
             { label: 'En Route', value: enRouteCount },
             { label: 'On Scene', value: onSceneCount }
           ]}
-        />
+        >
+          <CurrentTeamOnDutyChip variant="header" />
+        </CommandBar>
 
         <div className="flex-1 flex flex-col min-h-0 bg-slate-950/20 backdrop-blur-sm">
           {/* Active Search Bar */}

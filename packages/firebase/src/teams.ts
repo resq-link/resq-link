@@ -14,6 +14,7 @@ import {
   type QuerySnapshot,
 } from 'firebase/firestore';
 import { getFirebaseAuth, getFirebaseFirestore } from './config';
+import { DEFAULT_OPERATIONAL_TEAMS } from './operationalTeams';
 
 export interface TeamRecord {
   id?: string;
@@ -21,6 +22,7 @@ export interface TeamRecord {
   label: string;
   description?: string | null;
   isActive: boolean;
+  sortOrder?: number;
   createdAt?: Date | Timestamp;
   updatedAt?: Date | Timestamp;
 }
@@ -46,6 +48,7 @@ const convertFirestoreDoc = (snapshot: DocumentData): TeamRecord => {
     label: data.label || data.code || snapshot.id,
     description: data.description || null,
     isActive: data.isActive !== false,
+    sortOrder: typeof data.sortOrder === 'number' ? data.sortOrder : undefined,
     createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
     updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : null,
   };
@@ -158,4 +161,49 @@ export function subscribeToTeams(
     callback([]);
     return () => {};
   }
+}
+
+/**
+ * Idempotently ensure the four default operational teams exist in Firestore.
+ */
+export async function ensureDefaultOperationalTeams(): Promise<TeamRecord[]> {
+  ensureAuthenticated();
+  const db = getFirebaseFirestore();
+  const teamsRef = collection(db, 'teams');
+  const existingSnap = await getDocs(teamsRef);
+  const existingByCode = new Map<string, TeamRecord>();
+
+  existingSnap.docs.forEach((teamDoc) => {
+    const team = convertFirestoreDoc(teamDoc);
+    existingByCode.set(team.code.toLowerCase(), team);
+  });
+
+  const ensured: TeamRecord[] = [];
+
+  for (const template of DEFAULT_OPERATIONAL_TEAMS) {
+    const existing = existingByCode.get(template.code.toLowerCase());
+    if (existing?.id) {
+      ensured.push(existing);
+      continue;
+    }
+
+    const payload = {
+      code: template.code,
+      label: template.label,
+      description: template.description,
+      isActive: true,
+      sortOrder: template.sortOrder,
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+    };
+    const docRef = await addDoc(teamsRef, payload);
+    ensured.push({
+      ...payload,
+      id: docRef.id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  }
+
+  return ensured.sort((left, right) => (left.sortOrder ?? 0) - (right.sortOrder ?? 0));
 }

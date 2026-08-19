@@ -4,9 +4,12 @@ import {
   type IncidentRecord,
   type EmergencyReport,
   type IncidentPriority,
+  normalizeOperationalStatus,
   normalizePriority,
+  type OperationalIncidentStatus,
 } from '@packages/firebase'
 import IncidentStatusIndicator from '@/components/IncidentStatusIndicator'
+import TeamBadge from '@/components/operational/TeamBadge'
 
 export type IntakeQueueItem = {
   id: string
@@ -84,8 +87,53 @@ export function IntakePriorityBadge({ priority, size = 'sm' }: IntakePriorityBad
   )
 }
 
-export function getQueueItemOperationalStatus(item: IntakeQueueItem): string {
-  return item.rawEmergencyReport?.status ?? item.rawIncident?.status ?? 'pending'
+export function attachLinkedEmergencyReport(
+  item: IntakeQueueItem,
+  appReports: EmergencyReport[],
+): IntakeQueueItem {
+  if (item.channel !== 'incident' || item.rawEmergencyReport || !item.rawIncident) {
+    return item;
+  }
+
+  const incidentId = item.rawIncident.id ?? item.id;
+  let linkedReport =
+    appReports.find(
+      (report) => report.incidentId === incidentId && !report.primaryReportId,
+    ) ?? null;
+
+  if (!linkedReport && item.rawIncident.associatedReportIds?.length) {
+    const primaryReportId =
+      item.rawIncident.associatedReportIds.find(
+        (reportId) => !appReports.some((report) => report.primaryReportId === reportId),
+      ) ?? item.rawIncident.associatedReportIds[0];
+
+    linkedReport = appReports.find((report) => report.id === primaryReportId) ?? null;
+  }
+
+  return linkedReport ? { ...item, rawEmergencyReport: linkedReport } : item;
+}
+
+const OPERATIONAL_STATUS_RANK: Record<OperationalIncidentStatus, number> = {
+  pending: 0,
+  active: 1,
+  on_scene: 2,
+  resolved: 3,
+  cancelled: 4,
+};
+
+export function getQueueItemOperationalStatus(item: IntakeQueueItem): OperationalIncidentStatus {
+  const statuses = [item.rawEmergencyReport?.status, item.rawIncident?.status].filter(
+    (status): status is NonNullable<typeof status> =>
+      status != null && String(status).length > 0,
+  );
+
+  if (statuses.length === 0) return 'pending';
+
+  return statuses.reduce<OperationalIncidentStatus>((best, current) => {
+    const bestRank = OPERATIONAL_STATUS_RANK[normalizeOperationalStatus(best)];
+    const currentRank = OPERATIONAL_STATUS_RANK[normalizeOperationalStatus(current)];
+    return currentRank > bestRank ? normalizeOperationalStatus(current) : best;
+  }, normalizeOperationalStatus(statuses[0]));
 }
 
 interface IntakeListItemProps {
@@ -113,12 +161,12 @@ export default function IntakeListItem({
           : 'border-slate-800'
       }`}
     >
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
           <p className="text-sm font-bold text-slate-100 uppercase tracking-tight">
             {item.referenceNumber}
           </p>
-          <div className="flex items-center gap-2 mt-1">
+          <div className="mt-1 flex items-center gap-2">
             <p className="text-xs font-medium text-slate-300">
               {item.incidentSubtypeLabel}
             </p>
@@ -129,9 +177,10 @@ export default function IntakeListItem({
             ) : null}
           </div>
         </div>
-        <div className="text-right">
+        <div className="ml-2 shrink-0 text-right">
           <IncidentStatusIndicator status={operationalStatus} />
-          <div className="mt-1 flex justify-end">
+          <div className="mt-1 flex flex-wrap items-center justify-end gap-1.5">
+            <TeamBadge label={item.teamOnDutyLabel} />
             <IntakePriorityBadge priority={priority} />
           </div>
         </div>
@@ -142,8 +191,8 @@ export default function IntakeListItem({
       </p>
 
       <div className="mt-2 flex items-center justify-between text-[10px] text-slate-500 border-t border-slate-800/50 pt-2">
-        <span className="truncate max-w-[100px]">
-          {item.teamOnDutyLabel ? `Team ${item.teamOnDutyLabel}` : 'No Team'}
+        <span className="truncate max-w-[140px]">
+          {item.quadrantLabel || item.suggestedAgencyLabel || '—'}
         </span>
         <span className="font-mono text-slate-500">
           {item.createdAt instanceof Date

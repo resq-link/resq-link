@@ -1,5 +1,5 @@
-import type { IncidentRecord, TeamOnDuty } from '@packages/firebase'
-import { TEAMS_ON_DUTY, CATEGORY_LABELS, PRIORITY_LABELS, STATUS_LABELS } from './constants'
+import type { IncidentRecord } from '@packages/firebase'
+import { CATEGORY_LABELS, PRIORITY_LABELS } from './constants'
 import type {
   BreakdownItem,
   ChartPoint,
@@ -22,8 +22,14 @@ import {
   formatReportAgency,
   inferResponseTimeSeconds,
   inferResolutionTimeSeconds,
-  inferTeamOnDuty,
+  getIncidentAssignedTeam,
 } from './normalizeReportIncident'
+import { incidentMatchesTeamFilter } from '@packages/firebase'
+
+export type OperationalTeamOption = {
+  code: string
+  label: string
+}
 
 export function countBy<T extends string>(
   incidents: IncidentRecord[],
@@ -86,7 +92,10 @@ export function buildLinePath(points: ChartPoint[], width: number, height: numbe
     .join(' ')
 }
 
-export function computeReportAnalytics(filteredIncidents: IncidentRecord[]): ReportAnalytics {
+export function computeReportAnalytics(
+  filteredIncidents: IncidentRecord[],
+  teams: OperationalTeamOption[] = []
+): ReportAnalytics {
   const total = filteredIncidents.length
   const resolved = filteredIncidents.filter(isResolvedIncident).length
   const unresolved = filteredIncidents.filter(
@@ -110,10 +119,14 @@ export function computeReportAnalytics(filteredIncidents: IncidentRecord[]): Rep
     const op = getOperationalStatus(incident)
     return op.charAt(0).toUpperCase() + op.slice(1).replace('_', ' ')
   })
-  const byTeam = TEAMS_ON_DUTY.map((team) => ({
-    label: team,
-    value: filteredIncidents.filter((incident) => inferTeamOnDuty(incident) === team).length,
-  }))
+  const byTeam = teams.length
+    ? teams.map((team) => ({
+        label: team.label,
+        value: filteredIncidents.filter((incident) =>
+          incidentMatchesTeamFilter(incident, team.code)
+        ).length,
+      }))
+    : countBy(filteredIncidents, (incident) => getIncidentAssignedTeam(incident).label)
   const byLocation = countBy(filteredIncidents, (incident) => incident.locationText || 'Unspecified location')
   const byAgency = countBy(filteredIncidents, (incident) => {
     const label = getIncidentAgencyLabel(incident)
@@ -155,13 +168,36 @@ function getTopIncidentTypeLabel(incidents: IncidentRecord[]): string {
   return breakdown[0]?.label ?? '—'
 }
 
+function buildTeamCardStats(
+  team: OperationalTeamOption,
+  teamIncidents: IncidentRecord[]
+): TeamSummaryCardStats {
+  const responseValues = teamIncidents
+    .map((incident) => inferResponseTimeSeconds(incident))
+    .filter((value): value is number => value != null)
+  const resolutionValues = teamIncidents
+    .map((incident) => inferResolutionTimeSeconds(incident) ?? getResolutionTimeSeconds(incident))
+    .filter((value): value is number => value != null)
+
+  return {
+    team: team.code,
+    teamLabel: team.label,
+    completed: teamIncidents.length,
+    criticalCases: teamIncidents.filter((incident) => incident.priority === 'critical').length,
+    topIncidentType: getTopIncidentTypeLabel(teamIncidents),
+    avgResponseTime: formatDurationSeconds(averageSeconds(responseValues)),
+    avgResolutionTime: formatDurationSeconds(averageSeconds(resolutionValues)),
+  }
+}
+
 /**
  * Per-team stats for the export center summary cards.
- * Uses date range (and incident type) only — ignores Team On Duty and report table filters.
+ * Uses date range (and incident type) only — ignores team filter on the table.
  */
 export function computeTeamSummaryCards(
   incidents: IncidentRecord[],
-  filters: ReportFilters
+  filters: ReportFilters,
+  teams: OperationalTeamOption[]
 ): TeamSummaryCardStats[] {
   const summaryScoped = filterIncidents(
     incidents,
@@ -169,20 +205,22 @@ export function computeTeamSummaryCards(
     { reportEligibleOnly: true }
   )
 
-  return TEAMS_ON_DUTY.map((team) => {
-    const teamIncidents = summaryScoped.filter((incident) => inferTeamOnDuty(incident) === team)
-    return {
-      team,
-      completed: teamIncidents.length,
-      criticalCases: teamIncidents.filter((incident) => incident.priority === 'critical').length,
-      topIncidentType: getTopIncidentTypeLabel(teamIncidents),
-    }
+  return teams.map((team) => {
+    const teamIncidents = summaryScoped.filter((incident) =>
+      incidentMatchesTeamFilter(incident, team.code)
+    )
+    return buildTeamCardStats(team, teamIncidents)
   })
 }
 
-export function computeTeamComparison(filteredIncidents: IncidentRecord[]): TeamComparisonStats[] {
-  return TEAMS_ON_DUTY.map((team) => {
-    const teamIncidents = filteredIncidents.filter((incident) => inferTeamOnDuty(incident) === team)
+export function computeTeamComparison(
+  filteredIncidents: IncidentRecord[],
+  teams: OperationalTeamOption[]
+): TeamComparisonStats[] {
+  return teams.map((team) => {
+    const teamIncidents = filteredIncidents.filter((incident) =>
+      incidentMatchesTeamFilter(incident, team.code)
+    )
     const responseValues = teamIncidents
       .map((incident) => inferResponseTimeSeconds(incident))
       .filter((value): value is number => value != null)
@@ -191,7 +229,8 @@ export function computeTeamComparison(filteredIncidents: IncidentRecord[]): Team
       .filter((value): value is number => value != null)
 
     return {
-      team,
+      team: team.code,
+      teamLabel: team.label,
       total: teamIncidents.length,
       resolved: teamIncidents.filter(isResolvedIncident).length,
       active: teamIncidents.filter(isActiveIncident).length,

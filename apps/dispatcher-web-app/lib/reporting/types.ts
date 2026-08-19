@@ -1,4 +1,4 @@
-import type { IncidentCategory, IncidentRecord, TeamOnDuty } from '@packages/firebase'
+import type { IncidentCategory, IncidentRecord } from '@packages/firebase'
 
 export type DatePreset = '7d' | '30d' | '90d' | 'month' | 'quarter' | 'year' | 'all' | 'custom'
 
@@ -16,7 +16,8 @@ export type BreakdownItem = {
 export type ReportFilters = {
   fromDate: string
   toDate: string
-  selectedTeam: TeamOnDuty | 'all'
+  /** Operational team code (e.g. whiskey) or "all" */
+  selectedTeam: string | 'all'
   incidentType: IncidentCategory | 'all'
 }
 
@@ -42,7 +43,8 @@ export type IncidentExportRow = {
 }
 
 export type TeamComparisonStats = {
-  team: TeamOnDuty
+  team: string
+  teamLabel: string
   total: number
   resolved: number
   active: number
@@ -51,10 +53,13 @@ export type TeamComparisonStats = {
 }
 
 export type TeamSummaryCardStats = {
-  team: TeamOnDuty
+  team: string
+  teamLabel: string
   completed: number
   criticalCases: number
   topIncidentType: string
+  avgResponseTime: string
+  avgResolutionTime: string
 }
 
 export type ReportAnalytics = {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PermissionsAndroid, Platform } from "react-native";
 import Constants from "expo-constants";
-import { fetchAgoraRtcToken, getAgoraAppId } from "@/services/agoraVoice";
+import { fetchAgoraRtcToken, getAgoraAppId } from "@/services/agora/voice";
 
 const requestMicrophonePermission = async () => {
   if (Platform.OS === "android") {
@@ -10,15 +10,10 @@ const requestMicrophonePermission = async () => {
     );
     return result === PermissionsAndroid.RESULTS.GRANTED;
   }
-  return Platform.OS !== "web";
+  return true;
 };
 
-const loadAgora = () => {
-  if (Platform.OS === "web") {
-    throw new Error("Agora voice calls require an Expo development build on a device.");
-  }
-  return require("react-native-agora");
-};
+const loadAgora = () => require("react-native-agora");
 
 export function useAgoraVoiceCall() {
   const engineRef = useRef(null);

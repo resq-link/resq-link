@@ -71,6 +71,38 @@ export {
 export { getSuggestedAgenciesForEmergencyType } from './emergencies';
 
 export {
+  CIVILIAN_TYPE_SPECIFIC_FIELDS,
+  DISPATCHER_ADDITIONAL_DETAIL_FIELDS,
+  CIVILIAN_NARRATIVE_FIELD_LABELS,
+  TYPE_PROFILE_LABELS,
+  getCivilianEmergencyTypeLabel,
+  mapEmergencyTypeToIncidentCategory,
+  mapIncidentCategoryToEmergencyType,
+  resolveCivilianNarrativeDisplay,
+  resolveFieldAssessmentDisplay,
+  getPendingDispatcherFollowUpFields,
+  getReportImageUrls,
+  type FieldAssessmentEntry,
+  type CivilianNarrativeDisplay,
+  type CivilianNarrativeField,
+  type EmergencyReportFieldAssessmentInput,
+} from './civilianFieldAssessment';
+
+export {
+  RESPONDER_SCENE_ASSESSMENT_FIELDS,
+  getSceneAssessmentFieldDefs,
+  getSceneAssessmentEntries,
+  hasResponderSceneAssessment,
+  parseResponderAssessment,
+  submitResponderSceneAssessmentForEmergency,
+  submitResponderSceneAssessmentForIncident,
+  resolveSceneAssessmentIncidentType,
+  type ResponderAssessmentRecord,
+  type SceneAssessmentEntry,
+  type SceneAssessmentField,
+} from './responderAssessment';
+
+export {
   isLiveIncident,
   isLiveEmergencyReport,
   isResolvedIncidentRecord,
@@ -199,8 +231,31 @@ export {
   deleteTeam,
   getAllTeams,
   subscribeToTeams,
+  ensureDefaultOperationalTeams,
   type TeamRecord,
 } from './teams';
+
+export {
+  DEFAULT_OPERATIONAL_TEAMS,
+  buildAssignedTeamSnapshot,
+  getAssignedTeamCode,
+  getAssignedTeamId,
+  getAssignedTeamName,
+  incidentMatchesTeamFilter,
+  resolveTeamByCode,
+  resolveTeamById,
+  resolveTeamFromInput,
+  sortTeamsByOrder,
+  type AssignedTeamSnapshot,
+  type TeamAssignmentHistoryEntry,
+} from './operationalTeams';
+
+export {
+  setCommandCenterCurrentTeamOnDuty,
+  subscribeToCommandCenterCurrentTeamOnDuty,
+  currentTeamToAssignmentSnapshot,
+  type CurrentTeamOnDutyState,
+} from './commandCenterShift';
 
 // Operational messaging
 export {
@@ -259,6 +314,7 @@ export {
   associateReportsWithIncident,
   disassociateReportFromIncident,
   elevateEmergencyToIncident,
+  reassignIncidentTeam,
   incidentAgencyCatalog,
   subscribeToResponderAssignedIncidents,
   acceptIncident,

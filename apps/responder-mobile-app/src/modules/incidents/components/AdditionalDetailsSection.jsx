@@ -70,7 +70,7 @@ export default function AdditionalDetailsSection({ caseData, colors, formatDate,
           {caseData.additionalDetailsSubmittedAt && (
             <Text
               style={{
-                fontFamily: "SpaceGrotesk_400Regular",
+                fontFamily: "Inter_400Regular",
                 fontSize: 12,
                 color: colors.success,
                 marginBottom: spacing.md,
@@ -97,7 +97,7 @@ export default function AdditionalDetailsSection({ caseData, colors, formatDate,
       ) : (
         <Text
           style={{
-            fontFamily: "SpaceGrotesk_400Regular",
+            fontFamily: "Inter_400Regular",
             fontSize: 14,
             color: colors.textSecondary,
             lineHeight: 20,
@@ -120,14 +120,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   detailLabel: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
+    fontFamily: "Inter_600SemiBold",
     fontSize: 12,
     textTransform: "uppercase",
     letterSpacing: 0.8,
     marginBottom: 6,
   },
   detailValue: {
-    fontFamily: "SpaceGrotesk_400Regular",
+    fontFamily: "Inter_400Regular",
     fontSize: 15,
     lineHeight: 22,
   },

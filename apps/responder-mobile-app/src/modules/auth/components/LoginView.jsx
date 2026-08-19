@@ -17,7 +17,7 @@ import { StatusBar } from "expo-status-bar";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import Svg, { Circle } from "react-native-svg";
-import { Mail, Lock } from "lucide-react-native";
+import { Mail, Lock, Shield } from "lucide-react-native";
 import FormInput from "@/components/ui/FormInput";
 import ErrorAlert from "@/components/feedback/ErrorAlert";
 import useUserStore from "@/store/userStore";
@@ -91,6 +91,7 @@ export default function LoginView() {
   };
 
   const bottomPad = Math.max(insets.bottom, spacing.lg);
+  const loginAccent = t.loginAccent ?? t.loginIconTint;
 
   const inputCommon = useMemo(
     () => ({
@@ -103,6 +104,8 @@ export default function LoginView() {
       requiredColor: t.alertAccent,
       minHeight: 56,
       borderRadius: 18,
+      labelFontFamily: "Inter_600SemiBold",
+      inputFontFamily: "Inter_400Regular",
     }),
     [t]
   );
@@ -137,10 +140,28 @@ export default function LoginView() {
         logo: {
           width: 220,
           height: 58,
+          marginBottom: spacing.md,
+        },
+        badge: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 6,
+          paddingHorizontal: 12,
+          paddingVertical: 6,
+          borderRadius: 999,
+          borderWidth: 1,
+          borderColor: t.loginBadgeBorder,
+          backgroundColor: t.loginBadgeBg,
           marginBottom: spacing.xl,
         },
+        badgeText: {
+          fontFamily: "Inter_600SemiBold",
+          fontSize: 12,
+          letterSpacing: 0.3,
+          color: t.loginBadgeText,
+        },
         title: {
-          fontFamily: "SpaceGrotesk_700Bold",
+          fontFamily: "Inter_700Bold",
           fontSize: 34,
           letterSpacing: -0.8,
           color: t.loginTextPrimary,
@@ -149,7 +170,7 @@ export default function LoginView() {
           alignSelf: "stretch",
         },
         subtitle: {
-          fontFamily: "SpaceGrotesk_400Regular",
+          fontFamily: "Inter_400Regular",
           fontSize: 16,
           lineHeight: 24,
           color: t.loginTextSubtitle,
@@ -181,7 +202,7 @@ export default function LoginView() {
           paddingHorizontal: spacing.xs,
         },
         forgotText: {
-          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontFamily: "Inter_600SemiBold",
           fontSize: 14,
           color: t.loginLink,
           opacity: 0.85,
@@ -198,10 +219,10 @@ export default function LoginView() {
           justifyContent: "center",
         },
         ctaText: {
-          fontFamily: "SpaceGrotesk_700Bold",
+          fontFamily: "Inter_700Bold",
           fontSize: 17,
           letterSpacing: 0.4,
-          color: t.white,
+          color: t.loginCtaText ?? t.white,
         },
         ctaDisabled: {
           opacity: 0.85,
@@ -211,7 +232,7 @@ export default function LoginView() {
           transform: [{ scale: 0.992 }],
         },
         footerNote: {
-          fontFamily: "SpaceGrotesk_400Regular",
+          fontFamily: "Inter_400Regular",
           fontSize: 12,
           lineHeight: 18,
           color: t.loginTextMuted,
@@ -232,14 +253,13 @@ export default function LoginView() {
         style={StyleSheet.absoluteFill}
       />
 
-      {/* Soft brand glow + abstract rescue/radar motif */}
       <View style={styles.decorWrap} pointerEvents="none">
         <Svg width={screenW} height={420} style={styles.decorSvg}>
           <Circle
             cx={screenW * 0.5}
             cy={72}
             r={200}
-            fill={t.accent}
+            fill={loginAccent}
             fillOpacity={0.07}
           />
           <Circle
@@ -271,7 +291,7 @@ export default function LoginView() {
             cx={screenW * 0.18}
             cy={200}
             r={96}
-            stroke={t.accent}
+            stroke={loginAccent}
             strokeOpacity={0.07}
             strokeWidth={1}
             fill="none"
@@ -298,21 +318,29 @@ export default function LoginView() {
           }}
           showsVerticalScrollIndicator={false}
         >
-          {/* Logo + headline */}
           <View style={styles.headerBlock}>
             <Image
               source={require("../../../../assets/images/resq-link-logo.png")}
               style={styles.logo}
               contentFit="contain"
-              accessibilityLabel="RES.Q"
+              accessibilityLabel="RESQ Link"
             />
-            <Text style={styles.title}>Responder</Text>
+            <View
+              style={styles.badge}
+              accessibilityRole="text"
+              accessibilityLabel="Responder Portal"
+            >
+              <Shield size={14} color={t.loginBadgeText} strokeWidth={2} />
+              <Text style={styles.badgeText}>Responder Portal</Text>
+            </View>
+            <Text style={styles.title} accessibilityRole="header">
+              Welcome Back
+            </Text>
             <Text style={styles.subtitle}>
-              Sign in to access your assigned cases
+              Sign in to access your assigned cases.
             </Text>
           </View>
 
-          {/* Form card */}
           <View style={styles.card}>
             <LinearGradient
               colors={[t.loginCardShineTop, "transparent"]}
@@ -325,17 +353,24 @@ export default function LoginView() {
                 message={error}
                 onDismiss={() => setError("")}
                 variant="soft"
+                softBgColor={t.loginAlertSoftBg}
+                softBorderColor={t.loginAlertSoftBorder}
+                softTextColor={t.loginAlertSoftText}
+                bodyFontFamily="Inter_400Regular"
+                dismissFontFamily="Inter_600SemiBold"
               />
 
               <FormInput
                 label="Email"
-                placeholder="username@agency.ph"
+                placeholder="your.email@agency.ph"
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 required
-                leftIcon={<Mail size={20} color={t.loginIconTint} strokeWidth={2} />}
+                leftIcon={
+                  <Mail size={20} color={t.loginIconTint} strokeWidth={2} />
+                }
                 {...inputCommon}
               />
 
@@ -346,7 +381,9 @@ export default function LoginView() {
                 onChangeText={setPassword}
                 secureTextEntry
                 required
-                leftIcon={<Lock size={20} color={t.loginIconTint} strokeWidth={2} />}
+                leftIcon={
+                  <Lock size={20} color={t.loginIconTint} strokeWidth={2} />
+                }
                 {...inputCommon}
               />
 
@@ -376,6 +413,12 @@ export default function LoginView() {
                     ? styles.ctaDisabled
                     : pressed && styles.ctaPressed,
                 ]}
+                accessibilityRole="button"
+                accessibilityLabel="Sign In"
+                accessibilityState={{
+                  disabled: !canSubmit || isSubmitting,
+                  busy: isSubmitting,
+                }}
               >
                 <LinearGradient
                   colors={
@@ -388,7 +431,10 @@ export default function LoginView() {
                   style={styles.ctaGradient}
                 >
                   {isSubmitting ? (
-                    <ActivityIndicator color={t.white} size="small" />
+                    <ActivityIndicator
+                      color={t.loginCtaText ?? t.white}
+                      size="small"
+                    />
                   ) : (
                     <Text style={styles.ctaText}>Sign In</Text>
                   )}
@@ -406,4 +452,3 @@ export default function LoginView() {
     </View>
   );
 }
-

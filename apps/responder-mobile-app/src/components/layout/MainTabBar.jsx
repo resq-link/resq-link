@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { View, TouchableOpacity, StyleSheet, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
-import { LayoutDashboard, Map, Settings } from "lucide-react-native";
+import { Shield, Radio, UserRound } from "lucide-react-native";
 import { useResqTheme, dashboardThemeDark, dashboardThemeLight } from "@/theme";
 
 /**
@@ -84,7 +84,7 @@ export default function MainTabBar({ state, navigation }) {
           backgroundColor: navChrome.navActiveBg,
         },
         label: {
-          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontFamily: "Inter_600SemiBold",
           fontSize: 10,
           color: navChrome.textSecondary,
           marginTop: 4,
@@ -103,21 +103,21 @@ export default function MainTabBar({ state, navigation }) {
     () => [
       {
         name: "dashboard",
-        label: "Dashboard",
-        Icon: LayoutDashboard,
-        accessibilityLabel: "Go to dashboard",
+        label: "Dispatch",
+        Icon: Shield,
+        accessibilityLabel: "Go to dispatch dashboard",
       },
       {
         name: "map",
         label: "Map",
-        Icon: Map,
-        accessibilityLabel: "Go to map",
+        Icon: Radio,
+        accessibilityLabel: "Go to response map",
       },
       {
         name: "settings",
-        label: "Settings",
-        Icon: Settings,
-        accessibilityLabel: "Settings",
+        label: "Profile",
+        Icon: UserRound,
+        accessibilityLabel: "Profile and settings",
       },
     ],
     []

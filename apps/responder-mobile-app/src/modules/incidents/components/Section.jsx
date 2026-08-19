@@ -53,7 +53,7 @@ export default function Section({ title, children, colors, collapsible = false, 
           <Text
             accessibilityRole="header"
             style={{
-              fontFamily: "SpaceGrotesk_600SemiBold",
+              fontFamily: "Inter_600SemiBold",
               fontSize: 14,
               color: colors.textSecondary,
               textTransform: "uppercase",
@@ -85,7 +85,7 @@ export default function Section({ title, children, colors, collapsible = false, 
       <Text
         accessibilityRole="header"
         style={{
-          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontFamily: "Inter_600SemiBold",
           fontSize: 14,
           color: colors.textSecondary,
           marginBottom: spacing.md,

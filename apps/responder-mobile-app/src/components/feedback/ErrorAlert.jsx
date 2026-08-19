@@ -1,6 +1,6 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
-import { radii, useResqTheme } from "@/theme";
+import { useResqTheme } from "@/theme";
 
 export default function ErrorAlert({
   message,
@@ -8,6 +8,10 @@ export default function ErrorAlert({
   variant = "default",
   softBorderColor,
   softTextColor,
+  softBgColor,
+  borderRadius = 14,
+  bodyFontFamily = "Inter_400Regular",
+  dismissFontFamily = "Inter_600SemiBold",
 }) {
   const { colors, t } = useResqTheme();
 
@@ -18,25 +22,32 @@ export default function ErrorAlert({
   return (
     <View
       style={{
-        backgroundColor: isSoft ? "rgba(201, 125, 110, 0.12)" : colors.critical,
-        borderRadius: radii.lg,
+        backgroundColor: isSoft
+          ? softBgColor ?? t.loginAlertSoftBg ?? "rgba(201, 125, 110, 0.12)"
+          : colors.critical,
+        borderRadius,
         padding: 14,
         marginBottom: 16,
         flexDirection: "row",
         alignItems: "center",
         borderWidth: 1,
         borderColor: isSoft
-          ? softBorderColor ?? "rgba(201, 125, 110, 0.35)"
+          ? softBorderColor ??
+            t.loginAlertSoftBorder ??
+            "rgba(201, 125, 110, 0.35)"
           : "rgba(255,255,255,0.15)",
       }}
+      accessibilityRole="alert"
     >
       <Text
         style={{
           flex: 1,
-          fontFamily: "SpaceGrotesk_400Regular",
+          fontFamily: bodyFontFamily,
           fontSize: 14,
           lineHeight: 20,
-          color: isSoft ? softTextColor ?? "#E8D5D0" : colors.white,
+          color: isSoft
+            ? softTextColor ?? t.loginAlertSoftText ?? "#E8D5D0"
+            : colors.white,
         }}
       >
         {message}
@@ -49,12 +60,16 @@ export default function ErrorAlert({
             padding: 4,
             marginLeft: 8,
           }}
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss error"
         >
           <Text
             style={{
-              fontFamily: "SpaceGrotesk_600SemiBold",
+              fontFamily: dismissFontFamily,
               fontSize: 18,
-              color: isSoft ? softTextColor ?? t.alertSoftText : t.alertErrorText,
+              color: isSoft
+                ? softTextColor ?? t.loginAlertSoftText ?? t.alertSoftText
+                : t.alertErrorText,
               opacity: 0.9,
             }}
           >

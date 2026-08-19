@@ -77,13 +77,13 @@ export default function OperationalChatWidget() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
-    if (!user) return
+    if (!user || !isOpen) return
     const unsubscribe = subscribeToChatThreads((items) => {
       setThreads(items)
       setSelectedThreadId((current) => current || items[0]?.id || null)
     })
     return unsubscribe
-  }, [user])
+  }, [user, isOpen])
 
   useEffect(() => {
     if (!user || !isOpen) return
@@ -96,12 +96,12 @@ export default function OperationalChatWidget() {
   }, [isOpen, user])
 
   useEffect(() => {
-    if (!selectedThreadId) {
+    if (!selectedThreadId || !isOpen) {
       setMessages([])
       return
     }
     return subscribeToChatMessages(selectedThreadId, setMessages)
-  }, [selectedThreadId])
+  }, [selectedThreadId, isOpen])
 
   useEffect(() => {
     if (!isOpen) return

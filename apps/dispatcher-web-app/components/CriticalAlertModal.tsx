@@ -2,6 +2,7 @@
 
 import { usePriorityAlerts } from '@/contexts/PriorityAlertContext'
 import PriorityBadge from '@/components/PriorityBadge'
+import InitialNarrativeDisplay from '@/components/InitialNarrativeDisplay'
 import { useAuth } from '@/contexts/AuthContext'
 import { PRIORITY_VISUAL, type IncidentPriority } from '@packages/firebase'
 import { AlertTriangle, MapPin } from 'lucide-react'
@@ -50,7 +51,7 @@ const priorityCopy: Record<
 }
 
 export default function CriticalAlertModal() {
-  const { pendingAlertReport, acknowledgeReport } = usePriorityAlerts()
+  const { pendingAlertReport, acknowledgeReport, unlockAudio } = usePriorityAlerts()
   const { user } = useAuth()
 
   if (!pendingAlertReport?.id) return null
@@ -115,9 +116,12 @@ export default function CriticalAlertModal() {
             />
             {pendingAlertReport.locationText}
           </p>
-          {pendingAlertReport.description ? (
-            <p className="text-sm text-slate-400">{pendingAlertReport.description}</p>
-          ) : null}
+          <InitialNarrativeDisplay
+            compact
+            description={pendingAlertReport.description}
+            landmark={pendingAlertReport.landmark}
+            peopleInvolved={pendingAlertReport.peopleInvolved}
+          />
           {(pendingAlertReport.escalationLevel ?? 0) > 0 ? (
             <p className="text-xs font-bold uppercase tracking-wider text-amber-300">
               Escalation level {pendingAlertReport.escalationLevel} — supervisor notified
@@ -128,7 +132,11 @@ export default function CriticalAlertModal() {
         <div className="mt-6">
           <button
             type="button"
-            onClick={() => acknowledgeReport(pendingAlertReport.id as string, dispatcherName)}
+            onClick={() => {
+              void unlockAudio().then(() =>
+                acknowledgeReport(pendingAlertReport.id as string, dispatcherName)
+              )
+            }}
             className={`w-full rounded-lg px-4 py-3 text-sm font-bold uppercase tracking-wider text-white transition ${copy.ackClass}`}
           >
             Acknowledge Alert

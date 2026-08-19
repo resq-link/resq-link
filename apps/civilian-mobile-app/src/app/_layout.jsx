@@ -1,4 +1,4 @@
-import { useAuth } from "@/utils/auth/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
@@ -11,16 +11,21 @@ import {
   Inter_600SemiBold,
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
-import useUserStore from "@/utils/userStore";
+import useUserStore from "@/stores/userStore";
 import CustomBottomNav from "@/components/CustomBottomNav";
+import { AppThemeProvider } from "@/theme/AppThemeProvider";
+import {
+  useImmersiveAndroidNavigation,
+  applyImmersiveAndroidNavigationBar,
+} from "@/hooks/useImmersiveAndroidNavigation";
 
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      cacheTime: 1000 * 60 * 30, // 30 minutes
+      staleTime: 1000 * 60 * 5,
+      cacheTime: 1000 * 60 * 30,
       retry: 1,
       refetchOnWindowFocus: false,
     },
@@ -30,6 +35,7 @@ const queryClient = new QueryClient({
 export default function RootLayout() {
   const { initiate, isReady } = useAuth();
   const { loadUser } = useUserStore();
+  useImmersiveAndroidNavigation();
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -45,6 +51,7 @@ export default function RootLayout() {
   useEffect(() => {
     if (isReady && fontsLoaded) {
       SplashScreen.hideAsync();
+      applyImmersiveAndroidNavigationBar();
     }
   }, [isReady, fontsLoaded]);
 
@@ -54,29 +61,19 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <View style={{ flex: 1 }}>
-          <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
-            <Stack.Screen name="index" />
-            <Stack.Screen name="login" />
-            <Stack.Screen name="register" />
-            <Stack.Screen name="dashboard" />
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="emergency-form" />
-            <Stack.Screen name="footage-request" />
-            <Stack.Screen name="emergency-confirmation" />
-            <Stack.Screen name="calling" />
-            <Stack.Screen name="responder-map" />
-            <Stack.Screen name="appearance" />
-            <Stack.Screen name="notifications" />
-            <Stack.Screen name="privacy-security" />
-            <Stack.Screen name="help-support" />
-            <Stack.Screen name="report-issue" />
-            <Stack.Screen name="faq" />
-          </Stack>
-          <CustomBottomNav />
-        </View>
-      </GestureHandlerRootView>
+      <AppThemeProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <View style={{ flex: 1 }}>
+            <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
+              <Stack.Screen name="index" />
+              <Stack.Screen name="(auth)" />
+              <Stack.Screen name="(main)" />
+              <Stack.Screen name="(settings)" />
+            </Stack>
+            <CustomBottomNav />
+          </View>
+        </GestureHandlerRootView>
+      </AppThemeProvider>
     </QueryClientProvider>
   );
 }

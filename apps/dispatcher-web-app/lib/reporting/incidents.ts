@@ -1,5 +1,7 @@
 import {
   getAgencyLabel,
+  getAssignedTeamCode,
+  incidentMatchesTeamFilter,
   isLiveIncident,
   isReportEligibleIncident as isReportEligibleIncidentRecord,
   isResolvedIncidentRecord,
@@ -10,16 +12,14 @@ import {
   type IncidentRecord,
   type IncidentStatus,
   type OperationalIncidentStatus,
-  type TeamOnDuty,
 } from '@packages/firebase'
 import {
   AGENCY_FILTER_CODES,
   CATEGORY_DEFAULT_AGENCY,
   CATEGORY_LABELS,
   DISPATCHER_ROLE_TO_AGENCY,
-  TEAMS_ON_DUTY,
 } from './constants'
-import { inferTeamOnDuty, toNormalizedExportRow } from './normalizeReportIncident'
+import { toNormalizedExportRow } from './normalizeReportIncident'
 import type { AgencyFilterKey, IncidentExportRow, ReportFilters } from './types'
 import {
   endOfDay,
@@ -125,10 +125,9 @@ function mapEmergencyAgencies(report: EmergencyReport): AgencyCode[] {
   return codes
 }
 
-function inferTeamOnDutyFromEmergency(report: EmergencyReport): TeamOnDuty | null {
-  const candidate = report.responder?.trim()
-  if (!candidate) return null
-  return TEAMS_ON_DUTY.find((team) => team.toLowerCase() === candidate.toLowerCase()) ?? null
+function inferTeamOnDutyFromEmergency(report: EmergencyReport): string | null {
+  if (report.assignedTeamName) return report.assignedTeamName
+  return null
 }
 
 export function convertEmergencyReportToIncident(report: EmergencyReport): IncidentRecord {
@@ -170,8 +169,11 @@ export function convertEmergencyReportToIncident(report: EmergencyReport): Incid
     recommendedAgencies: [],
     assignedAgencies,
     assignedResourceIds: report.assignedResponderId ? [report.assignedResponderId] : [],
-    teamId: report.assignedResponderId || null,
-    teamName: report.responder || null,
+    assignedTeamId: report.assignedTeamId || null,
+    assignedTeamName: report.assignedTeamName || inferTeamOnDutyFromEmergency(report),
+    assignedTeamCode: report.assignedTeamCode || null,
+    teamId: report.assignedTeamId || report.assignedResponderId || null,
+    teamName: report.assignedTeamName || report.responder || null,
     incidentDate,
     incidentTime,
     dateOfDuty: incidentDate,
@@ -247,7 +249,9 @@ export function filterIncidents(
 
   return incidents.filter((incident) => {
     if (options?.reportEligibleOnly && !isReportEligibleIncident(incident)) return false
-    if (filters.selectedTeam !== 'all' && inferTeamOnDuty(incident) !== filters.selectedTeam) return false
+    if (filters.selectedTeam !== 'all' && !incidentMatchesTeamFilter(incident, filters.selectedTeam)) {
+      return false
+    }
 
     const incidentDate = getIncidentDate(incident)
     if (!incidentDate) return false

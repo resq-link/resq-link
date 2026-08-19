@@ -632,11 +632,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   modalTitle: {
-    fontFamily: "SpaceGrotesk_700Bold",
+    fontFamily: "Inter_700Bold",
     fontSize: 22,
   },
   modalDescription: {
-    fontFamily: "SpaceGrotesk_400Regular",
+    fontFamily: "Inter_400Regular",
     fontSize: 13,
     lineHeight: 18,
     marginTop: 2,
@@ -660,7 +660,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   progressText: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
+    fontFamily: "Inter_600SemiBold",
     fontSize: 12,
   },
   progressTrack: {
@@ -686,7 +686,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   sectionTitle: {
-    fontFamily: "SpaceGrotesk_700Bold",
+    fontFamily: "Inter_700Bold",
     fontSize: 12,
     textTransform: "uppercase",
     letterSpacing: 0.8,
@@ -702,11 +702,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   fieldLabel: {
-    fontFamily: "SpaceGrotesk_700Bold",
+    fontFamily: "Inter_700Bold",
     fontSize: 14,
   },
   fieldHint: {
-    fontFamily: "SpaceGrotesk_400Regular",
+    fontFamily: "Inter_400Regular",
     fontSize: 12,
     marginTop: 2,
   },
@@ -724,7 +724,7 @@ const styles = StyleSheet.create({
     maxWidth: "100%",
   },
   quickChipText: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
+    fontFamily: "Inter_600SemiBold",
     fontSize: 12,
   },
   input: {
@@ -732,7 +732,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: spacing.md,
     paddingVertical: 12,
-    fontFamily: "SpaceGrotesk_400Regular",
+    fontFamily: "Inter_400Regular",
     fontSize: 15,
   },
   textArea: {
@@ -758,7 +758,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     borderWidth: 1,
     textAlign: "center",
-    fontFamily: "SpaceGrotesk_700Bold",
+    fontFamily: "Inter_700Bold",
     fontSize: 18,
   },
   inputIconRow: {
@@ -774,7 +774,7 @@ const styles = StyleSheet.create({
     paddingLeft: 42,
   },
   errorText: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
+    fontFamily: "Inter_600SemiBold",
     fontSize: 13,
     marginTop: spacing.sm,
     textAlign: "center",
@@ -794,7 +794,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   cancelButtonText: {
-    fontFamily: "SpaceGrotesk_700Bold",
+    fontFamily: "Inter_700Bold",
     fontSize: 15,
   },
   submitButton: {
@@ -806,7 +806,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   submitButtonText: {
-    fontFamily: "SpaceGrotesk_700Bold",
+    fontFamily: "Inter_700Bold",
     fontSize: 15,
     color: "#FFFFFF",
   },
@@ -829,7 +829,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   photoActionText: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
+    fontFamily: "Inter_600SemiBold",
     fontSize: 13,
   },
   photoPreviewWrap: {

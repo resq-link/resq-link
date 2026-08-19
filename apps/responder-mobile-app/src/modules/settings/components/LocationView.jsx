@@ -13,10 +13,10 @@ import { useRouter } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
-  SpaceGrotesk_400Regular,
-  SpaceGrotesk_600SemiBold,
-  SpaceGrotesk_700Bold,
-} from "@expo-google-fonts/space-grotesk";
+  Inter_400Regular,
+  Inter_600SemiBold,
+  Inter_700Bold,
+} from "@expo-google-fonts/inter";
 import { useFonts } from "expo-font";
 import { spacing, radii, useResqTheme } from "@/theme";
 
@@ -29,9 +29,9 @@ export default function LocationView() {
   const [locationPaused, setLocationPaused] = useState(false);
 
   const [fontsLoaded] = useFonts({
-    SpaceGrotesk_400Regular,
-    SpaceGrotesk_600SemiBold,
-    SpaceGrotesk_700Bold,
+    Inter_400Regular,
+    Inter_600SemiBold,
+    Inter_700Bold,
   });
 
   const styles = useMemo(
@@ -54,7 +54,7 @@ export default function LocationView() {
           padding: 4,
         },
         title: {
-          fontFamily: "SpaceGrotesk_700Bold",
+          fontFamily: "Inter_700Bold",
           fontSize: 20,
           color: colors.text,
         },
@@ -74,12 +74,12 @@ export default function LocationView() {
           marginRight: spacing.md,
         },
         toggleLabel: {
-          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontFamily: "Inter_600SemiBold",
           fontSize: 16,
           color: colors.text,
         },
         toggleDescription: {
-          fontFamily: "SpaceGrotesk_400Regular",
+          fontFamily: "Inter_400Regular",
           fontSize: 13,
           color: colors.textSecondary,
           marginTop: 8,
@@ -89,7 +89,7 @@ export default function LocationView() {
           padding: spacing.lg,
         },
         infoText: {
-          fontFamily: "SpaceGrotesk_400Regular",
+          fontFamily: "Inter_400Regular",
           fontSize: 13,
           color: colors.textMuted,
           lineHeight: 20,

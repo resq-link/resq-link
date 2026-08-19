@@ -5,12 +5,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { subscribeToFootageRequests, subscribeToEmergencyReports } from "@packages/firebase";
-import AgentAssistant from "@/components/AgentAssistant";
-import OperationalChatWidget from "@/components/OperationalChatWidget";
+import { subscribeToFootageRequests } from "@packages/firebase";
+import AppShellWidgets from "@/components/AppShellWidgets";
 import AlarmControl from "@/components/AlarmControl";
 import { usePriorityAlerts } from "@/contexts/PriorityAlertContext";
-import IncidentCallNotification from "@/components/IncidentCallNotification";
 import {
   LayoutDashboard,
   Globe,
@@ -82,7 +80,7 @@ type NavigationProps = {
 
 const BrandBlock = ({ compact = false, onNavigate }: { compact?: boolean, onNavigate?: () => void }) => (
   <Link
-    href="/"
+    href="/intake"
     className={`flex items-center gap-3 group shrink-0 rounded-lg outline-none ring-primary-500/40 focus-visible:ring-2 ${compact ? "min-w-0" : ""}`}
     aria-label="RESQ-Link Command - Home"
     onClick={onNavigate}
@@ -304,8 +302,7 @@ export default function Navigation({ children }: NavigationProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [pendingFootageCount, setPendingFootageCount] = useState(0);
-  const [intakeCount, setIntakeCount] = useState(0);
-  const { unacknowledgedCriticalCount } = usePriorityAlerts();
+  const { unacknowledgedCriticalCount, intakeAwaitingTriageCount } = usePriorityAlerts();
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -344,30 +341,6 @@ export default function Navigation({ children }: NavigationProps) {
     };
   }, [user]);
 
-  // Subscribe to Emergency Reports (Intake Awaiting Triage Badge)
-  useEffect(() => {
-    if (!user) {
-      setIntakeCount(0);
-      return;
-    }
-    const unsub = subscribeToEmergencyReports((reports) => {
-      // Calculate unassigned/pending emergencies needing triage
-      const awaitingTriage = reports.filter(
-        (r) =>
-          r.status !== 'done' &&
-          r.status !== 'resolved' &&
-          !r.alertAcknowledged &&
-          !r.acknowledgedBy &&
-          !r.viewedByName
-      ).length;
-      setIntakeCount(awaitingTriage);
-    }, { limitCount: 200 }); // get a healthy pool to accurately calculate metrics
-    return () => {
-      unsub();
-      setIntakeCount(0);
-    };
-  }, [user]);
-
   useEffect(() => {
     if (mobileMenuOpen) {
       document.body.style.overflow = "hidden";
@@ -390,7 +363,7 @@ export default function Navigation({ children }: NavigationProps) {
   }
 
   const badges: Record<NavBadgeKey, number> = {
-    intakeCount,
+    intakeCount: intakeAwaitingTriageCount,
     pendingFootageCount
   };
 
@@ -475,9 +448,7 @@ export default function Navigation({ children }: NavigationProps) {
 
         <div className="flex-1 min-h-0">{children}</div>
       </div>
-      <IncidentCallNotification />
-      <OperationalChatWidget />
-      <AgentAssistant />
+      <AppShellWidgets />
     </div>
   );
 }

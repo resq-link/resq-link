@@ -528,7 +528,7 @@ export default function CaseInfoCard({
           paddingHorizontal: spacing.xl,
         },
         mapFallbackText: {
-          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontFamily: "Inter_600SemiBold",
           fontSize: 15,
           color: colors.textSecondary,
           textAlign: "center",
@@ -589,12 +589,12 @@ export default function CaseInfoCard({
         },
         caseTitle: {
           flex: 1,
-          fontFamily: "SpaceGrotesk_700Bold",
+          fontFamily: "Inter_700Bold",
           fontSize: 24,
           color: colors.text,
         },
         titleAddress: {
-          fontFamily: "SpaceGrotesk_400Regular",
+          fontFamily: "Inter_400Regular",
           fontSize: 14,
           lineHeight: 20,
           color: colors.textSecondary,
@@ -615,7 +615,7 @@ export default function CaseInfoCard({
           paddingHorizontal: 10,
         },
         priorityBadgeText: {
-          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontFamily: "Inter_600SemiBold",
           fontSize: 11,
           color: priorityColor,
           textTransform: "uppercase",
@@ -625,7 +625,7 @@ export default function CaseInfoCard({
           marginTop: spacing.sm,
         },
         locationSubtext: {
-          fontFamily: "SpaceGrotesk_400Regular",
+          fontFamily: "Inter_400Regular",
           fontSize: 13,
           color: colors.textSecondary,
           marginTop: 5,
@@ -642,7 +642,7 @@ export default function CaseInfoCard({
           borderColor: colors.border,
         },
         peoplePillText: {
-          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontFamily: "Inter_600SemiBold",
           fontSize: 12,
           color: colors.textSecondary,
         },
@@ -685,12 +685,12 @@ export default function CaseInfoCard({
           zIndex: 2,
         },
         progressLabel: {
-          fontFamily: "SpaceGrotesk_700Bold",
+          fontFamily: "Inter_700Bold",
           fontSize: 11,
           textAlign: "center",
         },
         progressDetail: {
-          fontFamily: "SpaceGrotesk_400Regular",
+          fontFamily: "Inter_400Regular",
           fontSize: 10,
           lineHeight: 13,
           marginTop: 2,
@@ -723,7 +723,7 @@ export default function CaseInfoCard({
           elevation: 16,
         },
         primaryActionText: {
-          fontFamily: "SpaceGrotesk_700Bold",
+          fontFamily: "Inter_700Bold",
           fontSize: 15,
           color: "#FFFFFF",
         },
@@ -744,7 +744,7 @@ export default function CaseInfoCard({
           elevation: 12,
         },
         secondaryActionText: {
-          fontFamily: "SpaceGrotesk_700Bold",
+          fontFamily: "Inter_700Bold",
           fontSize: 14,
           color: colors.error,
         },
@@ -772,28 +772,28 @@ export default function CaseInfoCard({
           elevation: 14,
         },
         completedText: {
-          fontFamily: "SpaceGrotesk_700Bold",
+          fontFamily: "Inter_700Bold",
           fontSize: 15,
           color: colors.accent,
         },
         completedSubtext: {
-          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontFamily: "Inter_600SemiBold",
           fontSize: 12,
           color: colors.text,
           marginTop: 2,
         },
         postReportLine: {
-          fontFamily: "SpaceGrotesk_400Regular",
+          fontFamily: "Inter_400Regular",
           fontSize: 15,
           color: colors.textSecondary,
           lineHeight: 22,
         },
         postReportLabel: {
-          fontFamily: "SpaceGrotesk_700Bold",
+          fontFamily: "Inter_700Bold",
           color: colors.text,
         },
         postReportMeta: {
-          fontFamily: "SpaceGrotesk_600SemiBold",
+          fontFamily: "Inter_600SemiBold",
           fontSize: 12,
           color: colors.textMuted,
         },
@@ -1005,7 +1005,7 @@ export default function CaseInfoCard({
               <Section title="Description" colors={colors} embedded={true}>
                 <Text
                   style={{
-                    fontFamily: "SpaceGrotesk_400Regular",
+                    fontFamily: "Inter_400Regular",
                     fontSize: 15,
                     color: colors.textSecondary,
                     lineHeight: 22,
@@ -1167,7 +1167,7 @@ export default function CaseInfoCard({
                     style={{
                       fontSize: 24,
                       color: colors.white,
-                      fontFamily: "SpaceGrotesk_400Regular",
+                      fontFamily: "Inter_400Regular",
                     }}
                   >
                     ×

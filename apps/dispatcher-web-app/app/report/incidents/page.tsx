@@ -4,9 +4,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Download, FileSpreadsheet, Printer, RotateCcw, FileText } from 'lucide-react'
 import IncidentReportTable from '@/components/reporting/IncidentReportTable'
 import TeamSummaryCards from '@/components/reporting/TeamSummaryCards'
-import type { IncidentCategory, TeamOnDuty } from '@packages/firebase'
+import type { IncidentCategory } from '@packages/firebase'
 import type { ReportFilters } from '@/lib/reporting/types'
-import { TEAMS_ON_DUTY, INCIDENT_TYPE_OPTIONS } from '@/lib/reporting/constants'
+import { INCIDENT_TYPE_OPTIONS } from '@/lib/reporting/constants'
 import { filterIncidents, toExportRow } from '@/lib/reporting/incidents'
 import {
   computeReportAnalytics,
@@ -15,8 +15,9 @@ import {
 } from '@/lib/reporting/analytics'
 import { useReportIncidents } from '@/lib/reporting/useReportIncidents'
 import { filtersForTeamSummary, getDefaultReportFilters } from '@/lib/reporting/filters'
-import { buildExportBundle, exportExcel, exportPdf } from '@/lib/reporting/export'
+import { buildExportBundle } from '@/lib/reporting/export'
 import { printIncidentReport } from '@/lib/reporting/printReport'
+import { useOperationalTeams } from '@/contexts/OperationalTeamContext'
 
 const inputClass =
   'h-9 w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 text-sm font-medium text-slate-100 outline-none transition-colors focus:border-primary-400'
@@ -29,6 +30,12 @@ const actionBtnClass =
 
 export default function IncidentReportsExportPage() {
   const { incidents, isLoading } = useReportIncidents()
+  const { teams } = useOperationalTeams()
+
+  const teamOptions = useMemo(
+    () => teams.map((team) => ({ code: team.code, label: team.label })),
+    [teams]
+  )
 
   const [draftFilters, setDraftFilters] = useState<ReportFilters>(getDefaultReportFilters)
   const [appliedFilters, setAppliedFilters] = useState<ReportFilters | null>(null)
@@ -51,14 +58,14 @@ export default function IncidentReportsExportPage() {
   const summaryFilters = appliedFilters ?? draftFilters
 
   const teamSummaryCards = useMemo(
-    () => computeTeamSummaryCards(incidents, filtersForTeamSummary(summaryFilters)),
-    [incidents, summaryFilters.fromDate, summaryFilters.toDate, summaryFilters.incidentType]
+    () => computeTeamSummaryCards(incidents, filtersForTeamSummary(summaryFilters), teamOptions),
+    [incidents, summaryFilters.fromDate, summaryFilters.toDate, summaryFilters.incidentType, teamOptions]
   )
 
   const exportBundle = useMemo(() => {
     if (!appliedFilters) return null
-    const analytics = computeReportAnalytics(filteredIncidents)
-    const teamComparison = computeTeamComparison(filteredIncidents)
+    const analytics = computeReportAnalytics(filteredIncidents, teamOptions)
+    const teamComparison = computeTeamComparison(filteredIncidents, teamOptions)
     return buildExportBundle(
       filteredIncidents,
       analytics,
@@ -86,6 +93,7 @@ export default function IncidentReportsExportPage() {
     if (!exportBundle) return
     setExporting('pdf')
     try {
+      const { exportPdf } = await import('@/lib/reporting/exportPdf')
       await exportPdf(exportBundle)
     } finally {
       setExporting(null)
@@ -96,6 +104,7 @@ export default function IncidentReportsExportPage() {
     if (!exportBundle) return
     setExporting('excel')
     try {
+      const { exportExcel } = await import('@/lib/reporting/exportExcel')
       await exportExcel(exportBundle)
     } finally {
       setExporting(null)
@@ -145,18 +154,18 @@ export default function IncidentReportsExportPage() {
                   />
                 </label>
                 <label className={fieldClass}>
-                  <span className={labelClass}>Team On Duty</span>
+                  <span className={labelClass}>Assigned Team</span>
                   <select
                     value={draftFilters.selectedTeam}
                     onChange={(event) =>
-                      updateDraft('selectedTeam', event.target.value as TeamOnDuty | 'all')
+                      updateDraft('selectedTeam', event.target.value)
                     }
                     className={selectClass}
                   >
                     <option value="all">All Teams</option>
-                    {TEAMS_ON_DUTY.map((team) => (
-                      <option key={team} value={team}>
-                        {team}
+                    {teams.map((team) => (
+                      <option key={team.id || team.code} value={team.code}>
+                        {team.label}
                       </option>
                     ))}
                   </select>

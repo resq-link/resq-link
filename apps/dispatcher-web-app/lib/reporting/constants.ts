@@ -3,11 +3,8 @@ import type {
   IncidentCategory,
   IncidentPriority,
   IncidentStatus,
-  TeamOnDuty,
 } from '@packages/firebase'
 import type { AgencyFilterKey } from './types'
-
-export const TEAMS_ON_DUTY: TeamOnDuty[] = ['Whiskey', 'X-ray', 'Yankee', 'Zulu']
 
 export const CATEGORY_LABELS: Record<IncidentCategory, string> = {
   fire: 'Fire',

@@ -126,11 +126,13 @@ function buildFrontMatterHtml(bundle: ExportBundle): string {
 
 function buildTeamFilterHtml(bundle: ExportBundle): string {
   if (bundle.filters.selectedTeam === 'all') return ''
-  const team = bundle.filters.selectedTeam.toUpperCase()
+  const teamLabel =
+    bundle.teamSummary.find((card) => card.team === bundle.filters.selectedTeam)?.teamLabel ??
+    bundle.filters.selectedTeam
   return (
     `<section class="report-print-team-filter">` +
-    `<p class="report-print-team-filter-label">Team On Duty</p>` +
-    `<p class="report-print-team-filter-name">${escapeHtml(team)}</p>` +
+    `<p class="report-print-team-filter-label">Assigned Team</p>` +
+    `<p class="report-print-team-filter-name">${escapeHtml(teamLabel.toUpperCase())}</p>` +
     `</section>`
   )
 }

@@ -12,7 +12,13 @@
     "**/*.ts",
     "**/*.tsx",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts",
-    "nativewind-env.d.ts"
+    "nativewind-env.d.ts",
+    "expo-env.d.ts"
+  ],
+  "exclude": [
+    "App.tsx",
+    "index.web.tsx",
+    "global.css",
+    "polyfills/web"
   ]
 }

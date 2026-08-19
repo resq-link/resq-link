@@ -9,7 +9,6 @@ import {
   Animated,
   Easing,
 } from "react-native";
-import { Image } from "expo-image";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -28,6 +27,7 @@ import {
   CheckCircle2,
   Radio,
   ClipboardList,
+  Shield,
 } from "lucide-react-native";
 import useUserStore from "@/store/userStore";
 import { getFirebaseAuth } from "@packages/firebase";
@@ -38,6 +38,7 @@ import {
   useResqTheme,
   dashboardThemeDark,
   dashboardThemeLight,
+  dashboardConstants,
 } from "@/theme";
 import { LOCATION_PAUSED_KEY } from "@/constants/location";
 import { useQueryClient } from "@tanstack/react-query";
@@ -220,7 +221,12 @@ export default function DashboardView() {
 
   if (!fontsLoaded) return null;
   if (initialSyncPending) {
-    return <LoadingScreen title="Loading…" subtitle={null} />;
+    return (
+      <LoadingScreen
+        title="RESQ Responders"
+        subtitle="Preparing Mission Dashboard..."
+      />
+    );
   }
 
   const activeCount = cases.filter(
@@ -308,17 +314,26 @@ export default function DashboardView() {
           </View>
 
           <View style={styles.brandRow}>
-            <Image
-              source={require("../../../../assets/images/resq-link-logo.png")}
-              style={styles.logo}
-              contentFit="contain"
-              accessibilityLabel="RES.Q"
-            />
+            <View style={styles.brandTextBlock}>
+              <Text style={styles.brandTitle} accessibilityRole="header">
+                {dashboardConstants.appTitle}
+              </Text>
+              <Text style={styles.brandSubtitle}>
+                {dashboardConstants.appSubtitle}
+              </Text>
+            </View>
             <View style={styles.liveBadge}>
               <View style={styles.liveDot} />
               <Text style={styles.liveBadgeText}>
                 {locationPaused ? "Idle" : "Live"}
               </Text>
+            </View>
+          </View>
+
+          <View style={styles.welcomeRow}>
+            <View style={styles.responderBadge}>
+              <Shield size={12} color={D.accentBright} strokeWidth={2.25} />
+              <Text style={styles.responderBadgeText}>Responder</Text>
             </View>
           </View>
 
@@ -334,8 +349,13 @@ export default function DashboardView() {
                 <Text style={styles.nameLine} numberOfLines={1}>
                   {identity.displayName}
                 </Text>
+                <Text style={styles.metaLine} numberOfLines={1}>
+                  {dashboardConstants.unitLabel}
+                </Text>
                 <Text style={styles.emailLine} numberOfLines={1}>
-                  {identity.email || "—"}
+                  Station: {dashboardConstants.stationLabel}
+                  {"  ·  "}
+                  {locationPaused ? "Idle" : "Available"}
                 </Text>
               </View>
             </LinearGradient>
@@ -403,8 +423,10 @@ export default function DashboardView() {
                 </LinearGradient>
               </View>
 
-              <Text style={styles.emptyTitle}>No cases</Text>
-              <Text style={styles.emptySubtitle}>Awaiting dispatch</Text>
+              <Text style={styles.emptyTitle}>No Active Incidents</Text>
+              <Text style={styles.emptySubtitle}>
+                You&apos;re ready for the next dispatch.
+              </Text>
             </View>
           ) : (
             cases.map((caseData) => (

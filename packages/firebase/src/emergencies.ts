@@ -28,9 +28,12 @@ import {
   firebaseWarnOnce,
   isFirestoreMissingIndexError,
 } from './logger';
+import { parseResponderAssessment, type ResponderAssessmentRecord } from './responderAssessment';
 
 /** After first missing-index error, skip composite queries for this session. */
 let userEmergenciesCompositeIndexAvailable: boolean | null = null;
+/** After first missing-index error on command-center subscriptions, skip orderBy. */
+let emergenciesOrderedQueryAvailable: boolean | null = null;
 
 function getCreatedAtMillis(date: Date | Timestamp | undefined): number {
   if (!date) return 0;
@@ -65,6 +68,14 @@ export interface EmergencyReport {
   longitude: number | null;
   description?: string | null;
   imageUrl?: string | null;
+  /** All uploaded scene photos (first entry mirrors `imageUrl` for backward compatibility) */
+  imageUrls?: string[] | null;
+  /** Civilian-selected profile within `incidentType` (e.g. flood vs rescue under other_emergency) */
+  typeProfile?: string | null;
+  /** Structured answers from the civilian intake questionnaire */
+  fieldAssessment?: Record<string, string> | null;
+  /** Responder on-scene assessment — separate from civilian report data */
+  responderAssessment?: ResponderAssessmentRecord | null;
   incidentId?: string | null; // Associated master incident (if any)
   primaryReportId?: string | null; // Primary report this is grouped under (report-to-report grouping)
   status: 'pending' | 'linked' | 'enroute' | 'on_scene' | 'done' | 'active' | 'resolved'; // Support both old and new statuses for backward compatibility
@@ -86,6 +97,9 @@ export interface EmergencyReport {
   assignedAgency?: DispatcherRole | null;
   suggestedAgency?: DispatcherRole | null;
   dispatcherId?: string | null;
+  assignedTeamId?: string | null;
+  assignedTeamName?: string | null;
+  assignedTeamCode?: string | null;
   viewedByDispatcherId?: string | null;
   viewedByName?: string | null;
   viewedAt?: Date | Timestamp | null;
@@ -137,6 +151,29 @@ export const convertFirestoreDoc = (doc: DocumentData): EmergencyReport => {
     longitude: data.longitude ?? null,
     description: data.description || null,
     imageUrl: data.imageUrl || data.image_url || null,
+    imageUrls: Array.isArray(data.imageUrls)
+      ? data.imageUrls.filter((url: unknown): url is string => typeof url === 'string' && Boolean(url.trim()))
+      : Array.isArray(data.image_urls)
+      ? data.image_urls.filter((url: unknown): url is string => typeof url === 'string' && Boolean(url.trim()))
+      : null,
+    typeProfile: data.typeProfile || data.type_profile || data.profile || null,
+    fieldAssessment:
+      data.fieldAssessment && typeof data.fieldAssessment === 'object'
+        ? Object.entries(data.fieldAssessment).reduce<Record<string, string>>((acc, [key, value]) => {
+            if (typeof value === 'string' && value.trim()) {
+              acc[key] = value.trim();
+            }
+            return acc;
+          }, {})
+        : data.field_assessment && typeof data.field_assessment === 'object'
+        ? Object.entries(data.field_assessment).reduce<Record<string, string>>((acc, [key, value]) => {
+            if (typeof value === 'string' && value.trim()) {
+              acc[key] = value.trim();
+            }
+            return acc;
+          }, {})
+        : null,
+    responderAssessment: parseResponderAssessment(data.responderAssessment),
     incidentId: data.incidentId || data.incident_id || null,
     primaryReportId: data.primaryReportId || null,
     status: data.status || 'pending',
@@ -181,6 +218,9 @@ export const convertFirestoreDoc = (doc: DocumentData): EmergencyReport => {
     assignedAgency: data.assignedAgency || null,
     suggestedAgency: data.suggestedAgency || null,
     dispatcherId: data.dispatcherId || data.dispatcher_id || null,
+    assignedTeamId: data.assignedTeamId || null,
+    assignedTeamName: data.assignedTeamName || null,
+    assignedTeamCode: data.assignedTeamCode || null,
     viewedByDispatcherId: data.viewedByDispatcherId || data.viewed_by_dispatcher_id || null,
     viewedByName: data.viewedByName || data.viewed_by_name || null,
     viewedAt: data.viewedAt?.toDate ? data.viewedAt.toDate() : (data.viewed_at?.toDate ? data.viewed_at.toDate() : null),
@@ -285,6 +325,14 @@ export async function submitEmergencyReport(report: Omit<EmergencyReport, 'id' |
       longitude: report.longitude,
       description: report.description || null,
       imageUrl: report.imageUrl || null,
+      imageUrls:
+        Array.isArray(report.imageUrls) && report.imageUrls.length > 0
+          ? report.imageUrls.filter((url) => typeof url === 'string' && url.trim())
+          : report.imageUrl
+          ? [report.imageUrl]
+          : null,
+      typeProfile: report.typeProfile || null,
+      fieldAssessment: report.fieldAssessment || null,
       incidentId: report.incidentId || null,
       status: report.status || 'pending',
       priority:
@@ -431,15 +479,41 @@ export async function getAllEmergencyReports(limitCount: number = 100): Promise<
 export async function getActiveEmergencyReports(limitCount: number = 100): Promise<EmergencyReport[]> {
   try {
     const reportsRef = collection(getFirebaseFirestore(), 'emergencies');
-    const q = query(
-      reportsRef,
-      where('status', 'in', ['pending', 'active']),
-      orderBy('createdAt', 'desc'),
-      limit(limitCount)
-    );
 
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(convertFirestoreDoc);
+    const fetchUnordered = async () => {
+      const q = query(reportsRef, limit(limitCount * 3));
+      const querySnapshot = await getDocs(q);
+      return sortByCreatedAtDesc(querySnapshot.docs.map(convertFirestoreDoc))
+        .filter((report) => report.status === 'pending' || report.status === 'active')
+        .slice(0, limitCount);
+    };
+
+    if (emergenciesOrderedQueryAvailable === false) {
+      return fetchUnordered();
+    }
+
+    try {
+      const q = query(
+        reportsRef,
+        where('status', 'in', ['pending', 'active']),
+        orderBy('createdAt', 'desc'),
+        limit(limitCount)
+      );
+
+      const querySnapshot = await getDocs(q);
+      emergenciesOrderedQueryAvailable = true;
+      return querySnapshot.docs.map(convertFirestoreDoc);
+    } catch (indexError: unknown) {
+      if (isFirestoreMissingIndexError(indexError)) {
+        emergenciesOrderedQueryAvailable = false;
+        firebaseWarnOnce(
+          'emergencies-status-createdAt-index',
+          'Composite index missing for emergencies (status + createdAt). Using in-memory filter. Deploy packages/firebase/firestore.indexes.json.'
+        );
+        return fetchUnordered();
+      }
+      throw indexError;
+    }
   } catch (error: any) {
     console.error('Error fetching active emergency reports:', error);
     throw new Error(`Failed to fetch active emergency reports: ${error.message}`);
@@ -463,97 +537,119 @@ export function subscribeToEmergencyReports(
   options?: {
     statusFilter?: 'pending' | 'active' | 'resolved' | 'all';
     limitCount?: number;
-  }
+  },
+  internal?: { ordered?: boolean }
 ): () => void {
-  try {
-    const reportsRef = collection(getFirebaseFirestore(), 'emergencies');
-    
-    // Build query constraints - avoid composite indexes by NOT using orderBy in query
-    // We'll sort in memory instead to avoid index requirements
-    const constraints: QueryConstraint[] = [];
-    
-    // Use simple equality filter if a single status is specified
-    // For 'pending' or 'active', we'll filter in the callback to avoid composite index requirement
+  const reportsRef = collection(getFirebaseFirestore(), 'emergencies');
+  const useOrderedQuery =
+    internal?.ordered !== false && emergenciesOrderedQueryAvailable !== false;
+  const fetchLimit = options?.limitCount ? Math.max(options.limitCount * 2, 200) : 300;
+
+  const applyFilters = (reports: EmergencyReport[]): EmergencyReport[] => {
+    let filtered = sortByCreatedAtDesc(reports);
+
     if (options?.statusFilter && options.statusFilter !== 'all') {
-      if (options.statusFilter === 'resolved') {
-        constraints.push(where('status', '==', 'resolved'));
+      if (options.statusFilter === 'pending' || options.statusFilter === 'active') {
+        filtered = filtered.filter((r) => r.status === 'pending' || r.status === 'active');
+      } else if (options.statusFilter === 'resolved') {
+        filtered = filtered.filter((r) => r.status === 'resolved' || r.status === 'done');
       }
-      // For 'pending' or 'active', we'll filter in callback to avoid 'in' query with orderBy
     }
-    
-    // Don't use orderBy in query to avoid index requirement - we'll sort in memory
-    // This ensures the query works even without a Firestore index
-    
-    // Apply a higher limit to get more documents for filtering/sorting
-    const fetchLimit = options?.limitCount ? options.limitCount * 3 : 300;
-    constraints.push(limit(fetchLimit));
+
+    if (options?.limitCount) {
+      filtered = filtered.slice(0, options.limitCount);
+    }
+
+    return filtered;
+  };
+
+  const emitSnapshot = (snapshot: QuerySnapshot) => {
+    const reports = applyFilters(snapshot.docs.map(convertFirestoreDoc));
+    const meta: EmergencyReportsSnapshotMeta = {
+      addedIds: snapshot.docChanges().filter((c) => c.type === 'added').map((c) => c.doc.id),
+      modifiedIds: snapshot
+        .docChanges()
+        .filter((c) => c.type === 'modified')
+        .map((c) => c.doc.id),
+      removedIds: snapshot.docChanges().filter((c) => c.type === 'removed').map((c) => c.doc.id),
+      fromCache: snapshot.metadata.fromCache,
+      hasPendingWrites: snapshot.metadata.hasPendingWrites,
+    };
+
+    firebaseDebug(
+      `[subscribeToEmergencyReports] Calling callback with ${reports.length} reports`
+    );
+    callback(reports, meta);
+  };
+
+  const handleSubscriptionError = (error: unknown, unsubscribeCurrent: () => void) => {
+    if (isFirestoreMissingIndexError(error)) {
+      emergenciesOrderedQueryAvailable = false;
+      firebaseWarnOnce(
+        'emergencies-createdAt-index',
+        'Firestore index missing for emergencies ordering. Using in-memory sort fallback. Deploy packages/firebase/firestore.indexes.json or use the link in the first Firebase error.'
+      );
+      unsubscribeCurrent();
+      return subscribeToEmergencyReports(callback, options, { ordered: false });
+    }
+
+    console.error('Error in emergency reports subscription:', error);
+    callback([], {
+      addedIds: [],
+      modifiedIds: [],
+      removedIds: [],
+      fromCache: false,
+      hasPendingWrites: false,
+    });
+    return () => {};
+  };
+
+  try {
+    const constraints: QueryConstraint[] = [];
+
+    if (useOrderedQuery) {
+      constraints.push(orderBy('createdAt', 'desc'));
+    }
+
+    constraints.push(limit(useOrderedQuery ? fetchLimit : fetchLimit * 3));
 
     const q = query(reportsRef, ...constraints);
 
-    const unsubscribe = onSnapshot(
+    let unsubscribe = onSnapshot(
       q,
       (snapshot: QuerySnapshot) => {
         firebaseDebug(
           `[subscribeToEmergencyReports] Snapshot received: ${snapshot.docs.length} documents`
         );
-        let reports = snapshot.docs.map(convertFirestoreDoc);
-        firebaseDebug(
-          `[subscribeToEmergencyReports] Converted ${reports.length} reports`
-        );
-
-        reports = sortByCreatedAtDesc(reports);
-        
-        // Filter by status in callback if needed (avoids composite index requirement)
-        if (options?.statusFilter && options.statusFilter !== 'all') {
-          if (options.statusFilter === 'pending' || options.statusFilter === 'active') {
-            reports = reports.filter(r => r.status === 'pending' || r.status === 'active');
-          } else if (options.statusFilter === 'resolved') {
-            reports = reports.filter((r) => r.status === 'resolved' || r.status === 'done');
-          }
-        }
-        
-        // Apply final limit after filtering and sorting
-        if (options?.limitCount) {
-          reports = reports.slice(0, options.limitCount);
-        }
-        
-        const meta: EmergencyReportsSnapshotMeta = {
-          addedIds: snapshot.docChanges().filter((c) => c.type === 'added').map((c) => c.doc.id),
-          modifiedIds: snapshot
-            .docChanges()
-            .filter((c) => c.type === 'modified')
-            .map((c) => c.doc.id),
-          removedIds: snapshot.docChanges().filter((c) => c.type === 'removed').map((c) => c.doc.id),
-          fromCache: snapshot.metadata.fromCache,
-          hasPendingWrites: snapshot.metadata.hasPendingWrites,
-        };
-
-        firebaseDebug(
-          `[subscribeToEmergencyReports] Calling callback with ${reports.length} reports`
-        );
-        callback(reports, meta);
+        emitSnapshot(snapshot);
       },
       (error) => {
-        console.error('Error in emergency reports subscription:', error);
-        console.error('Error code:', error.code);
-        console.error('Error message:', error.message);
-        console.error('Full error:', error);
-        // Still call callback with empty array to show loading is done
-        callback([], {
-          addedIds: [],
-          modifiedIds: [],
-          removedIds: [],
-          fromCache: false,
-          hasPendingWrites: false,
-        });
+        const fallbackUnsub = handleSubscriptionError(error, unsubscribe);
+        if (typeof fallbackUnsub === 'function') {
+          unsubscribe = fallbackUnsub;
+        }
+      }
+    );
+
+    return () => unsubscribe();
+  } catch (error: any) {
+    firebaseWarnOnce(
+      'emergencies-subscription-setup',
+      'Emergency reports subscription setup failed; using limit-only fallback.',
+      error
+    );
+
+    const fallbackQuery = query(reportsRef, limit(fetchLimit * 3));
+
+    const unsubscribe = onSnapshot(
+      fallbackQuery,
+      (snapshot) => emitSnapshot(snapshot),
+      (fallbackError) => {
+        handleSubscriptionError(fallbackError, unsubscribe);
       }
     );
 
     return unsubscribe;
-  } catch (error: any) {
-    console.error('Error setting up emergency reports subscription:', error);
-    console.error('Full error:', error);
-    return () => {}; // Return empty unsubscribe function
   }
 }
 
@@ -631,7 +727,8 @@ export async function assignDispatcherToEmergency(
 
 export function subscribeToEmergencyReport(
   reportId: string,
-  callback: (report: EmergencyReport | null) => void
+  callback: (report: EmergencyReport | null) => void,
+  options?: { onError?: (error: Error) => void }
 ): () => void {
   try {
     if (!reportId) {
@@ -650,12 +747,12 @@ export function subscribeToEmergencyReport(
         callback(convertFirestoreDoc(snapshot));
       },
       (error) => {
-        console.error('Error subscribing to emergency report:', error);
+        options?.onError?.(error instanceof Error ? error : new Error(String(error)));
         callback(null);
       }
     );
   } catch (error) {
-    console.error('Error setting up emergency report subscription:', error);
+    options?.onError?.(error instanceof Error ? error : new Error(String(error)));
     callback(null);
     return () => {};
   }

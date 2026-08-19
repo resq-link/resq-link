@@ -29,14 +29,27 @@ export function buildDashboardStyles(D) {
     },
     brandRow: {
       flexDirection: "row",
-      alignItems: "center",
+      alignItems: "flex-start",
       justifyContent: "space-between",
       marginBottom: spacing.sm,
+      gap: spacing.md,
     },
-    logo: {
-      width: 104,
-      height: 30,
-      marginLeft: -2,
+    brandTextBlock: {
+      flex: 1,
+      minWidth: 0,
+    },
+    brandTitle: {
+      fontFamily: "Inter_700Bold",
+      fontSize: 22,
+      letterSpacing: -0.4,
+      color: D.textPrimary,
+      marginBottom: 2,
+    },
+    brandSubtitle: {
+      fontFamily: "Inter_400Regular",
+      fontSize: 12,
+      lineHeight: 16,
+      color: D.textMuted,
     },
     liveBadge: {
       flexDirection: "row",
@@ -48,6 +61,7 @@ export function buildDashboardStyles(D) {
       backgroundColor: D.accentSoft,
       borderWidth: 1,
       borderColor: D.borderAccent,
+      marginTop: 2,
     },
     liveDot: {
       width: 6,
@@ -62,6 +76,28 @@ export function buildDashboardStyles(D) {
       fontSize: 11,
       color: D.textPrimary,
       letterSpacing: 0.15,
+    },
+    welcomeRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: spacing.sm,
+    },
+    responderBadge: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 5,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 999,
+      backgroundColor: D.chipBg,
+      borderWidth: 1,
+      borderColor: D.chipBorder,
+    },
+    responderBadgeText: {
+      fontFamily: "Inter_600SemiBold",
+      fontSize: 11,
+      letterSpacing: 0.2,
+      color: D.accentBright,
     },
     identityCard: {
       borderRadius: 14,
@@ -105,6 +141,12 @@ export function buildDashboardStyles(D) {
       fontFamily: "Inter_600SemiBold",
       fontSize: 15,
       color: D.textPrimary,
+      marginBottom: 2,
+    },
+    metaLine: {
+      fontFamily: "Inter_500Medium",
+      fontSize: 11,
+      color: D.textSecondary,
       marginBottom: 2,
     },
     emailLine: {

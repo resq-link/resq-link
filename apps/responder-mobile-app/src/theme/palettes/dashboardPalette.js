@@ -6,4 +6,7 @@ export { darkResqTokens as dashboardPalette } from "../tokens/resqTokens";
 
 export const dashboardConstants = {
   unitLabel: "BFP Tuguegarao Unit",
+  stationLabel: "Tuguegarao",
+  appTitle: "RESQ Responders",
+  appSubtitle: "Emergency Response Team",
 };

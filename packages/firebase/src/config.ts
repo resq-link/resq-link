@@ -1,9 +1,16 @@
 import { initializeApp, getApps, FirebaseApp, type FirebaseOptions } from 'firebase/app';
 import { getAuth, initializeAuth, type Auth } from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore';
+import {
+  getFirestore,
+  initializeFirestore,
+  memoryLocalCache,
+  type Firestore,
+} from 'firebase/firestore';
 import { getDatabase, Database } from 'firebase/database';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
-import { firebaseDebug, firebaseInfo } from './logger';
+import { firebaseDebug, firebaseInfoOnce, firebaseWarnOnce } from './logger';
+
+const FIREBASE_INIT_LOG_KEY = 'firebase:initialized';
 
 const isPlaceholder = (value: string | undefined | null): boolean => {
   if (!value) return true;
@@ -169,16 +176,34 @@ let _firestore: Firestore | null = null;
 let _database: Database | null = null;
 let _storage: FirebaseStorage | null = null;
 
-function ensureFirebaseApp(): FirebaseApp {
+const globalFirebaseState = globalThis as typeof globalThis & {
+  __RESQLINK_FIREBASE_APP__?: FirebaseApp;
+};
+
+function syncAppFromRuntime(): FirebaseApp | null {
   if (_app) {
     return _app;
   }
 
-  const existingApps = getApps();
+  if (globalFirebaseState.__RESQLINK_FIREBASE_APP__) {
+    _app = globalFirebaseState.__RESQLINK_FIREBASE_APP__;
+    return _app;
+  }
 
+  const existingApps = getApps();
   if (existingApps.length > 0) {
     _app = existingApps[0];
+    globalFirebaseState.__RESQLINK_FIREBASE_APP__ = _app;
     return _app;
+  }
+
+  return null;
+}
+
+function ensureFirebaseApp(): FirebaseApp {
+  const existing = syncAppFromRuntime();
+  if (existing) {
+    return existing;
   }
 
   const firebaseConfig = getFirebaseOptions();
@@ -203,7 +228,8 @@ function ensureFirebaseApp(): FirebaseApp {
   try {
     firebaseDebug('Initializing Firebase...');
     _app = initializeApp(firebaseConfig);
-    firebaseInfo('Firebase initialized');
+    globalFirebaseState.__RESQLINK_FIREBASE_APP__ = _app;
+    firebaseInfoOnce(FIREBASE_INIT_LOG_KEY, 'Firebase initialized');
     return _app;
   } catch (error: any) {
     console.error('❌ Firebase initialization error:', error.message);
@@ -288,9 +314,16 @@ function ensureFirebaseFirestore(): Firestore {
   const app = ensureFirebaseApp();
 
   try {
-    _firestore = getFirestore(app);
+    // Explicit in-memory offline cache (RN has no IndexedDB persistence in the JS SDK).
+    _firestore = initializeFirestore(app, {
+      localCache: memoryLocalCache(),
+    });
     return _firestore;
   } catch (error: any) {
+    if (error?.code === 'failed-precondition' || error?.message?.includes('already')) {
+      _firestore = getFirestore(app);
+      return _firestore;
+    }
     console.error('❌ Error initializing Firestore:', error.message);
     throw new Error(`Failed to initialize Firebase Firestore: ${error.message}`);
   }

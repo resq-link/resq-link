@@ -11,7 +11,7 @@ export default function ReporterSection({ reporterInfo, colors, handleMakeCall, 
     <Section title="Reporter" colors={colors} collapsible={true} defaultExpanded={false} embedded={embedded}>
       <Text
         style={{
-          fontFamily: "SpaceGrotesk_400Regular",
+          fontFamily: "Inter_400Regular",
           fontSize: 15,
           color: colors.text,
           marginBottom: 4,
@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   contactChipText: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
+    fontFamily: "Inter_600SemiBold",
     fontSize: 13,
   },
 });

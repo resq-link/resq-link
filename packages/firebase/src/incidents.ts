@@ -15,6 +15,11 @@ import {
   type DocumentData,
   type QuerySnapshot,
 } from 'firebase/firestore';
+import {
+  buildAssignedTeamSnapshot,
+  resolveTeamFromInput,
+  type TeamAssignmentHistoryEntry,
+} from './operationalTeams';
 import { getFirebaseAuth, getFirebaseFirestore } from './config';
 import { normalizeQuadrant, type OperationalQuadrant } from './quadrants';
 import type { ResourceRecord, ResourceStatus, ResourceType } from './resources';
@@ -24,6 +29,8 @@ import {
   normalizePriorityFromRecord,
   type IncidentPriority,
 } from './priority';
+import { mapEmergencyTypeToIncidentCategory } from './civilianFieldAssessment';
+import { parseResponderAssessment } from './responderAssessment';
 
 export type { IncidentPriority };
 export type IncidentSource = 'civilian_app' | 'call' | 'sms' | 'walk_in' | 'radio' | 'manual';
@@ -60,7 +67,7 @@ export type AgencyCode =
   | 'COMMAND_CENTER'
   | 'OTHER';
 
-export type TeamOnDuty = 'Whiskey' | 'X-ray' | 'Yankee' | 'Zulu';
+export type TeamOnDuty = string;
 export type ScheduleOfDuty = 'AM' | 'PM';
 
 export interface IncidentTypeRule {
@@ -104,10 +111,23 @@ export interface IncidentRecord {
   description?: string | null;
   vehicularAccidentReason?: string | null;
   notes?: string | null;
+  /** Copied from linked civilian report on elevation */
+  typeProfile?: string | null;
+  fieldAssessment?: Record<string, string> | null;
+  imageUrl?: string | null;
+  imageUrls?: string[] | null;
+  peopleInvolved?: number | null;
+  responderAssessment?: import('./responderAssessment').ResponderAssessmentRecord | null;
   requiresExternalAgency: boolean;
   recommendedAgencies: AgencyCode[];
   assignedAgencies: AgencyCode[];
   assignedResourceIds: string[];
+  /** Permanent operational team assignment (source of truth). */
+  assignedTeamId?: string | null;
+  assignedTeamName?: string | null;
+  assignedTeamCode?: string | null;
+  assignedTeamAt?: Date | Timestamp | null;
+  assignedTeamBy?: string | null;
   teamId?: string | null;
   teamName?: string | null;
   // Duty fields (Phase 1: derived from dispatcher intake date/time)
@@ -174,10 +194,12 @@ export interface CreateIncidentInput {
   description?: string | null;
   vehicularAccidentReason?: string | null;
   notes?: string | null;
+  /** Preferred: Firestore teams/{id} */
+  assignedTeamId?: string | null;
   teamId?: string | null;
   teamName?: string | null;
-  // Duty fields (Phase 1)
-  teamOnDuty: TeamOnDuty;
+  /** Legacy label — resolved against teams collection when assignedTeamId is omitted */
+  teamOnDuty?: TeamOnDuty | null;
   incidentDate: string; // YYYY-MM-DD
   incidentTime: string; // hh:mm AM/PM
 }
@@ -243,10 +265,9 @@ const normalizeNullableNumber = (value?: number | null): number | null => {
 };
 
 const normalizeTeamOnDuty = (value: unknown): TeamOnDuty | null => {
-  if (value === 'Whiskey' || value === 'X-ray' || value === 'Yankee' || value === 'Zulu') {
-    return value;
-  }
-  return null;
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
 };
 
 const normalizeScheduleOfDuty = (value: unknown): ScheduleOfDuty | null => {
@@ -341,17 +362,49 @@ const toIncidentRecord = (snapshot: DocumentData): IncidentRecord => {
     description: data.description || null,
     vehicularAccidentReason: data.vehicularAccidentReason || null,
     notes: data.notes || null,
+    typeProfile: data.typeProfile || data.type_profile || data.profile || null,
+    fieldAssessment:
+      data.fieldAssessment && typeof data.fieldAssessment === 'object'
+        ? Object.entries(data.fieldAssessment).reduce<Record<string, string>>((acc, [key, value]) => {
+            if (typeof value === 'string' && value.trim()) {
+              acc[key] = value.trim();
+            }
+            return acc;
+          }, {})
+        : null,
+    imageUrl: data.imageUrl || data.image_url || null,
+    imageUrls: Array.isArray(data.imageUrls)
+      ? data.imageUrls.filter((url: unknown): url is string => typeof url === 'string' && Boolean(url.trim()))
+      : Array.isArray(data.image_urls)
+      ? data.image_urls.filter((url: unknown): url is string => typeof url === 'string' && Boolean(url.trim()))
+      : null,
+    peopleInvolved:
+      typeof data.peopleInvolved === 'number'
+        ? data.peopleInvolved
+        : typeof data.people_involved === 'number'
+        ? data.people_involved
+        : null,
+    responderAssessment: parseResponderAssessment(data.responderAssessment),
     requiresExternalAgency: Boolean(data.requiresExternalAgency),
     recommendedAgencies: Array.isArray(data.recommendedAgencies) ? data.recommendedAgencies : [],
     assignedAgencies: Array.isArray(data.assignedAgencies) ? data.assignedAgencies : [],
     assignedResourceIds: Array.isArray(data.assignedResourceIds) ? data.assignedResourceIds : [],
-    teamId: data.teamId || null,
-    teamName: data.teamName || null,
+    assignedTeamId: data.assignedTeamId || data.teamId || null,
+    assignedTeamName: data.assignedTeamName || data.teamOnDuty || data.teamName || null,
+    assignedTeamCode: data.assignedTeamCode || null,
+    assignedTeamAt: data.assignedTeamAt?.toDate
+      ? data.assignedTeamAt.toDate()
+      : data.assignedTeamAt
+        ? new Date(data.assignedTeamAt)
+        : null,
+    assignedTeamBy: data.assignedTeamBy || null,
+    teamId: data.teamId || data.assignedTeamId || null,
+    teamName: data.teamName || data.assignedTeamName || null,
     incidentDate: normalizeIncidentDate(data.incidentDate),
     incidentTime: typeof data.incidentTime === 'string' ? data.incidentTime : null,
     dateOfDuty: normalizeIncidentDate(data.dateOfDuty),
     scheduleOfDuty: normalizeScheduleOfDuty(data.scheduleOfDuty),
-    teamOnDuty: normalizeTeamOnDuty(data.teamOnDuty),
+    teamOnDuty: normalizeTeamOnDuty(data.teamOnDuty ?? data.assignedTeamName ?? data.teamName),
     status: data.status || 'new',
     resolutionStatus: data.resolutionStatus || 'open',
     createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
@@ -659,9 +712,15 @@ export async function createIncident(input: CreateIncidentInput): Promise<Incide
     throw new Error('Vehicular incidents require an accident reason.');
   }
 
-  if (!input.teamOnDuty) {
-    throw new Error('Team on duty is required.');
+  if (!input.assignedTeamId && !input.teamOnDuty) {
+    throw new Error('Assigned operational team is required.');
   }
+
+  const resolvedTeam = await resolveTeamFromInput({
+    assignedTeamId: input.assignedTeamId ?? input.teamId,
+    teamOnDuty: input.teamOnDuty,
+    teamName: input.teamName,
+  });
 
   const incidentDate = normalizeIncidentDate(input.incidentDate);
   if (!incidentDate) {
@@ -674,6 +733,7 @@ export async function createIncident(input: CreateIncidentInput): Promise<Incide
   const createdAt = Timestamp.now();
   const initialStatus: IncidentStatus = 'awaiting_resources';
   const referenceNumber = `INC-${Date.now()}`;
+  const teamSnapshot = buildAssignedTeamSnapshot(resolvedTeam, currentUser.uid, createdAt);
 
   const payload: Omit<IncidentRecord, 'id' | 'createdAt' | 'updatedAt'> & {
     createdAt: Timestamp;
@@ -702,11 +762,7 @@ export async function createIncident(input: CreateIncidentInput): Promise<Incide
     recommendedAgencies: rule.recommendedAgencies,
     assignedAgencies: [],
     assignedResourceIds: [],
-    teamId: normalizeNullableString(input.teamId),
-    // Team assignment is derived from the selected "teamOnDuty" only.
-    // Provision-style inputs (e.g. nullable teamName) are ignored for new incidents.
-    teamName: input.teamOnDuty,
-    teamOnDuty: input.teamOnDuty,
+    ...teamSnapshot,
     incidentDate,
     incidentTime,
     dateOfDuty: incidentDate,
@@ -1145,16 +1201,24 @@ export async function elevateEmergencyToIncident(
   reportId: string,
   input: {
     priority?: 'low' | 'medium' | 'high' | 'critical' | null;
-    teamOnDuty: string;
+    assignedTeamId?: string | null;
+    teamOnDuty?: string | null;
     incidentSubtypeId: string;
     incidentSubtypeLabel: string;
     assignedResponderId?: string | null;
     responderName?: string | null;
     assignedAgency?: DispatcherRole | null;
+    incidentDate?: string | null;
+    incidentTime?: string | null;
   }
 ): Promise<IncidentRecord> {
   const currentUser = ensureAuthenticated();
   const db = getFirebaseFirestore();
+
+  const resolvedTeam = await resolveTeamFromInput({
+    assignedTeamId: input.assignedTeamId,
+    teamOnDuty: input.teamOnDuty,
+  });
   
   // 1. Fetch the civilian emergency report
   const reportRef = doc(db, 'emergencies', reportId);
@@ -1169,9 +1233,15 @@ export async function elevateEmergencyToIncident(
   const incidentDocRef = doc(incidentsRef); // Auto-generate ID
   const referenceNumber = `INC-${Date.now()}`;
   const timestamp = Timestamp.now();
+  const teamSnapshot = buildAssignedTeamSnapshot(resolvedTeam, currentUser.uid, timestamp);
 
   const isAssigned = Boolean(input.assignedResponderId || input.responderName);
   const initialStatus: IncidentStatus = isAssigned ? 'dispatched' : 'awaiting_resources';
+
+  const dutyDate = input.incidentDate || new Date().toISOString().split('T')[0];
+  const dutyTime =
+    input.incidentTime ||
+    new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
   const incidentPayload: IncidentRecord = {
     id: incidentDocRef.id,
@@ -1180,7 +1250,7 @@ export async function elevateEmergencyToIncident(
     source: 'civilian_app',
     createdByUserId: currentUser.uid,
     commandCenterAdminId: currentUser.uid,
-    incidentCategory: report.incidentType || 'other',
+    incidentCategory: mapEmergencyTypeToIncidentCategory(report.incidentType) as IncidentCategory,
     incidentSubtypeId: input.incidentSubtypeId,
     incidentSubtypeLabel: input.incidentSubtypeLabel,
     priority: input.priority || report.priority || 'medium',
@@ -1191,28 +1261,49 @@ export async function elevateEmergencyToIncident(
     longitude: report.longitude || null,
     callerName: report.userName || 'Citizen Reporter',
     callerContact: report.userPhone || null,
-    description: report.description || 'No description provided.',
-    teamOnDuty: input.teamOnDuty as any,
+    description: report.description || null,
+    typeProfile: report.typeProfile || report.type_profile || report.profile || null,
+    fieldAssessment: report.fieldAssessment || report.field_assessment || null,
+    imageUrl: report.imageUrl || report.image_url || null,
+    imageUrls: Array.isArray(report.imageUrls)
+      ? report.imageUrls
+      : Array.isArray(report.image_urls)
+      ? report.image_urls
+      : report.imageUrl || report.image_url
+      ? [report.imageUrl || report.image_url]
+      : null,
+    peopleInvolved:
+      typeof report.peopleInvolved === 'number'
+        ? report.peopleInvolved
+        : typeof report.people_involved === 'number'
+        ? report.people_involved
+        : null,
+    ...teamSnapshot,
     status: initialStatus,
     resolutionStatus: 'open',
-    requiresExternalAgency: false, // Default to false, resolved in UI rules
+    requiresExternalAgency: false,
     recommendedAgencies: [],
     assignedAgencies: input.assignedAgency ? [input.assignedAgency as any] : [],
     assignedResourceIds: input.assignedResponderId ? [input.assignedResponderId] : [],
-    incidentDate: new Date().toISOString().split('T')[0],
-    incidentTime: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+    incidentDate: dutyDate,
+    incidentTime: dutyTime,
+    dateOfDuty: dutyDate,
+    scheduleOfDuty: dutyTime.includes('PM') ? 'PM' : 'AM',
     createdAt: timestamp,
     updatedAt: timestamp,
   };
 
   // 3. Update the civilian report: point to new master incident, inherit responder and agency
-  const reportUpdatePayload: any = {
+  const reportUpdatePayload: Record<string, unknown> = {
     incidentId: incidentDocRef.id,
-    status: isAssigned ? 'active' : 'linked', // active if responder is dispatched, linked otherwise
+    status: isAssigned ? 'active' : 'linked',
     assignedResponderId: input.assignedResponderId || null,
     dispatcherId: input.assignedResponderId || null,
     responder: input.responderName || null,
     assignedAgency: input.assignedAgency || null,
+    assignedTeamId: teamSnapshot.assignedTeamId,
+    assignedTeamName: teamSnapshot.assignedTeamName,
+    assignedTeamCode: teamSnapshot.assignedTeamCode,
     updatedAt: timestamp,
   };
 
@@ -1239,6 +1330,9 @@ export async function elevateEmergencyToIncident(
       dispatcherId: input.assignedResponderId || null,
       responder: input.responderName || null,
       assignedAgency: input.assignedAgency || null,
+      assignedTeamId: teamSnapshot.assignedTeamId,
+      assignedTeamName: teamSnapshot.assignedTeamName,
+      assignedTeamCode: teamSnapshot.assignedTeamCode,
       updatedAt: timestamp,
     });
   });
@@ -1246,6 +1340,61 @@ export async function elevateEmergencyToIncident(
   await batch.commit();
 
   return incidentPayload;
+}
+
+/**
+ * Reassign an incident's operational team. Active incidents only.
+ * Writes an audit entry to teamAssignmentHistory sub-collection.
+ */
+export async function reassignIncidentTeam(
+  incidentId: string,
+  newTeamId: string,
+  options?: { reason?: string | null; dispatcherName?: string | null }
+): Promise<IncidentRecord> {
+  const currentUser = ensureAuthenticated();
+  const db = getFirebaseFirestore();
+  const incidentRef = doc(db, 'incidents', incidentId);
+  const incidentSnap = await getDoc(incidentRef);
+
+  if (!incidentSnap.exists()) {
+    throw new Error('Incident not found.');
+  }
+
+  const current = toIncidentRecord(incidentSnap);
+  if (current.resolutionStatus === 'resolved' || current.status === 'resolved') {
+    throw new Error('Cannot reassign team on a resolved incident.');
+  }
+
+  const newTeam = await resolveTeamFromInput({ assignedTeamId: newTeamId });
+  const timestamp = Timestamp.now();
+  const teamSnapshot = buildAssignedTeamSnapshot(newTeam, currentUser.uid, timestamp);
+
+  const historyEntry: Omit<TeamAssignmentHistoryEntry, 'id'> = {
+    previousTeamId: current.assignedTeamId ?? current.teamId ?? null,
+    previousTeamName: current.assignedTeamName ?? current.teamOnDuty ?? current.teamName ?? null,
+    previousTeamCode: current.assignedTeamCode ?? null,
+    newTeamId: teamSnapshot.assignedTeamId,
+    newTeamName: teamSnapshot.assignedTeamName,
+    newTeamCode: teamSnapshot.assignedTeamCode,
+    reassignedBy: currentUser.uid,
+    reassignedByName: options?.dispatcherName ?? currentUser.displayName ?? currentUser.email ?? null,
+    reassignedAt: timestamp,
+    reason: options?.reason ?? null,
+  };
+
+  const historyRef = doc(collection(db, 'incidents', incidentId, 'teamAssignmentHistory'));
+  const batch = writeBatch(db);
+
+  batch.set(historyRef, historyEntry);
+  batch.update(incidentRef, {
+    ...teamSnapshot,
+    updatedAt: timestamp,
+  });
+
+  await batch.commit();
+
+  const updatedSnap = await getDoc(incidentRef);
+  return toIncidentRecord(updatedSnap);
 }
 // Append this to incidents.ts
 

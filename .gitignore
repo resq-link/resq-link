@@ -41,6 +41,7 @@ apps/responder-mobile-app/app.json
 .eslintcache
 .cache
 *.tsbuildinfo
+.expo/
 
 # IntelliJ based IDEs
 .idea

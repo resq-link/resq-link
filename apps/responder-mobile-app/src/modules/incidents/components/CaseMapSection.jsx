@@ -214,7 +214,7 @@ export default function CaseMapSection({
       <View style={{ marginTop: hasPinnedLocation ? spacing.md : 0 }}>
         <Text
           style={{
-            fontFamily: "SpaceGrotesk_600SemiBold",
+            fontFamily: "Inter_600SemiBold",
             fontSize: 15,
             color: colors.text,
           }}
@@ -225,7 +225,7 @@ export default function CaseMapSection({
         {caseData.landmark && (
           <Text
             style={{
-              fontFamily: "SpaceGrotesk_400Regular",
+              fontFamily: "Inter_400Regular",
               fontSize: 14,
               color: colors.textSecondary,
               marginTop: 4,
@@ -250,7 +250,7 @@ export default function CaseMapSection({
           >
             <Text
               style={{
-                fontFamily: "SpaceGrotesk_600SemiBold",
+                fontFamily: "Inter_600SemiBold",
                 fontSize: 12,
                 color: colors.textSecondary,
               }}
@@ -323,19 +323,19 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   progressLabel: {
-    fontFamily: "SpaceGrotesk_700Bold",
+    fontFamily: "Inter_700Bold",
     fontSize: 11,
     textAlign: "center",
   },
   progressDetail: {
-    fontFamily: "SpaceGrotesk_400Regular",
+    fontFamily: "Inter_400Regular",
     fontSize: 10,
     lineHeight: 13,
     marginTop: 2,
     textAlign: "center",
   },
   locationErrorText: {
-    fontFamily: "SpaceGrotesk_400Regular",
+    fontFamily: "Inter_400Regular",
     fontSize: 12,
     marginTop: spacing.sm,
   },
@@ -355,12 +355,12 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   mapFabText: {
-    fontFamily: "SpaceGrotesk_600SemiBold",
+    fontFamily: "Inter_600SemiBold",
     fontSize: 13,
     color: "#fff",
   },
   touchdownDistanceText: {
-    fontFamily: "SpaceGrotesk_400Regular",
+    fontFamily: "Inter_400Regular",
     fontSize: 12,
     marginTop: spacing.sm,
   },

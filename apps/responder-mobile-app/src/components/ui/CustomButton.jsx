@@ -45,7 +45,7 @@ export default function CustomButton({
 
   const getTextStyle = () => {
     const baseTextStyle = {
-      fontFamily: "SpaceGrotesk_600SemiBold",
+      fontFamily: "Inter_600SemiBold",
       fontSize: 16,
       letterSpacing: 0.5,
     };

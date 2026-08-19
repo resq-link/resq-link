@@ -17,7 +17,7 @@ export default function LoginPage() {
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
-      router.push('/')
+      router.push('/intake')
     }
   }, [user, router])
 
@@ -29,7 +29,7 @@ export default function LoginPage() {
     try {
       const userCredential = await signInCommandCenter(email, password)
       console.log('Login successful:', userCredential.uid)
-      router.push('/')
+      router.push('/intake')
     } catch (error: any) {
       console.error('Login failed:', error)
       setError(error.message || 'Failed to login. Please check your credentials.')
