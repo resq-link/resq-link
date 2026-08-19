@@ -43,6 +43,11 @@ service cloud.firestore {
       allow update: if isOwner(userId) || isSuperAdmin();
       allow delete: if isOwner(userId) || isSuperAdmin();
     }
+
+    // Email OTP codes are written/read only by the Admin SDK (API routes).
+    match /emailOtps/{email} {
+      allow read, write: if false;
+    }
     
     // Dispatchers collection - dispatchers can read their own, command center can read all
     match /dispatchers/{userId} {

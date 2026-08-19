@@ -30,6 +30,8 @@ export {
   signInDispatcher,
   signInCommandCenter,
   signInCivilian,
+  registerCivilian,
+  GOV_ID_TYPES,
   getAllDispatchers,
   verifyCommandCenterUser,
   type DispatcherRole,
@@ -37,6 +39,9 @@ export {
   type UserAccount,
   type CommandCenterAccount,
   type CivilianUserProfile,
+  type CivilianAccountStatus,
+  type GovIdType,
+  type RegisterCivilianInput,
 } from './auth';
 
 // Export emergency report functions

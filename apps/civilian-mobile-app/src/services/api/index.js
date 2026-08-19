@@ -67,6 +67,29 @@ const getApiBaseUrl = () => {
 
 const API_BASE_URL = getApiBaseUrl();
 
+/** Super-admin Next.js app (email OTP / KYC APIs). Defaults to port 3001. */
+const getOtpApiBaseUrl = () => {
+  const envUrl = process.env.EXPO_PUBLIC_API_URL;
+  if (envUrl) {
+    return trimTrailingSlash(envUrl);
+  }
+
+  const devHostIp = getDebuggerHostIp();
+  if (devHostIp) {
+    return `http://${devHostIp}:3001`;
+  }
+
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:3001';
+  }
+
+  return 'http://localhost:3001';
+};
+
+export const OTP_API_BASE_URL = getOtpApiBaseUrl();
+
+export const getOtpApiUrl = (endpoint) => `${OTP_API_BASE_URL}${endpoint}`;
+
 /** True when the API URL is localhost and cannot be reached from this native runtime. */
 export const isNativeLocalhostApi = () => {
   if (!isLocalhostHost(API_BASE_URL)) {
@@ -87,6 +110,7 @@ if (__DEV__) {
     appInfo('UI MODE: Using mock data (no backend required)');
   } else {
     appDebug('API Base URL:', API_BASE_URL);
+    appDebug('OTP API Base URL:', OTP_API_BASE_URL);
   }
 }
 
@@ -95,6 +119,8 @@ export const apiConfig = {
   endpoints: {
     login: '/api/auth/login',
     register: '/api/auth/register',
+    emailOtpSend: '/api/email-otp/send',
+    emailOtpVerify: '/api/email-otp/verify',
     emergency: {
       list: '/api/emergency/list',
       submit: '/api/emergency/submit',

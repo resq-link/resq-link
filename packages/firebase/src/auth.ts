@@ -11,6 +11,7 @@ import {
 import { doc, setDoc, serverTimestamp, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { getFirebaseAuth, getFirebaseFirestore } from './config';
 import { firebaseInfo } from './logger';
+import { uploadImageToStorage } from './storage';
 
 // Dispatcher roles
 export type DispatcherRole = 'BFP' | 'PNP' | 'MDRRMO' | 'AMBULANCE' | 'PCG';
@@ -290,12 +291,50 @@ export async function signInCommandCenter(
 /**
  * Civilian user profile interface (from Firestore)
  */
+export type CivilianAccountStatus =
+  | 'pending_email_verification'
+  | 'pending_kyc_review'
+  | 'active'
+  | 'rejected';
+
+export const GOV_ID_TYPES = [
+  'PhilSys',
+  "Driver's License",
+  'Passport',
+  'SSS',
+  'GSIS',
+  'PhilHealth',
+  "Voter's ID",
+  'Postal ID',
+  'PRC ID',
+] as const;
+
+export type GovIdType = (typeof GOV_ID_TYPES)[number];
+
+export interface RegisterCivilianInput {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  address: string;
+  govIdType: GovIdType | string;
+  govIdFrontUrl?: string;
+  govIdFrontUri?: string;
+}
+
 export interface CivilianUserProfile {
   uid: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
   phone: string;
   email: string;
   role: string;
+  status: CivilianAccountStatus;
+  govIdType?: string;
+  govIdFrontUrl?: string;
+  kycRejectionReason?: string;
   createdAt?: any;
   updatedAt?: any;
 }
@@ -328,6 +367,7 @@ export async function signInCivilian(
         email: normalizedEmail,
         phone: user.phoneNumber || '',
         role: 'civilian',
+        status: 'active',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
@@ -340,12 +380,27 @@ export async function signInCivilian(
       (typeof profileData.name === 'string' && profileData.name) ||
       (typeof profileData.fullName === 'string' && profileData.fullName) ||
       '';
+    const rawStatus = profileData.status;
+    const status: CivilianAccountStatus =
+      rawStatus === 'pending_email_verification' ||
+      rawStatus === 'pending_kyc_review' ||
+      rawStatus === 'rejected' ||
+      rawStatus === 'active'
+        ? rawStatus
+        : 'active';
     const profile: CivilianUserProfile = {
       uid: user.uid,
       name: displayName,
+      firstName: typeof profileData.firstName === 'string' ? profileData.firstName : undefined,
+      lastName: typeof profileData.lastName === 'string' ? profileData.lastName : undefined,
       phone: (profileData.phone as string) || user.phoneNumber || '',
       email: (profileData.email as string) || user.email || normalizedEmail,
       role: (profileData.role as string) || 'civilian',
+      status,
+      govIdType: typeof profileData.govIdType === 'string' ? profileData.govIdType : undefined,
+      govIdFrontUrl: typeof profileData.govIdFrontUrl === 'string' ? profileData.govIdFrontUrl : undefined,
+      kycRejectionReason:
+        typeof profileData.kycRejectionReason === 'string' ? profileData.kycRejectionReason : undefined,
       createdAt: profileData.createdAt,
       updatedAt: profileData.updatedAt,
     };
@@ -354,6 +409,80 @@ export async function signInCivilian(
     return { user, profile };
   } catch (error: any) {
     const wrapped = new Error(`Failed to sign in: ${error.message}`) as Error & {
+      code?: string;
+    };
+    wrapped.code = error.code;
+    throw wrapped;
+  }
+}
+
+/**
+ * Register a civilian with email/password and KYC profile fields.
+ * Account stays pending until email OTP and super-admin KYC approval.
+ */
+export async function registerCivilian(
+  input: RegisterCivilianInput
+): Promise<{ user: User; uid: string; profile: CivilianUserProfile }> {
+  const email = input.email.trim().toLowerCase();
+  const firstName = input.firstName.trim();
+  const lastName = input.lastName.trim();
+  const fullName = `${firstName} ${lastName}`.trim();
+
+  try {
+    const userCredential = await createUserWithEmailAndPassword(
+      getFirebaseAuth(),
+      email,
+      input.password
+    );
+    const user = userCredential.user;
+
+    let govIdFrontUrl = (input.govIdFrontUrl || '').trim();
+    if (input.govIdFrontUri) {
+      govIdFrontUrl = await uploadImageToStorage(
+        input.govIdFrontUri,
+        `kyc-documents/${user.uid}/`,
+        'gov-id-front.jpg'
+      );
+    }
+
+    if (!govIdFrontUrl) {
+      throw new Error('Government ID photo is required.');
+    }
+
+    const accountData = {
+      email,
+      firstName,
+      lastName,
+      name: fullName,
+      phone: input.phone,
+      address: input.address,
+      role: 'civilian' as const,
+      status: 'pending_email_verification' as CivilianAccountStatus,
+      govIdType: input.govIdType,
+      govIdFrontUrl,
+      kycSubmittedAt: serverTimestamp(),
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+
+    await setDoc(doc(getFirebaseFirestore(), 'users', user.uid), accountData);
+
+    const profile: CivilianUserProfile = {
+      uid: user.uid,
+      name: fullName,
+      firstName,
+      lastName,
+      phone: input.phone,
+      email,
+      role: 'civilian',
+      status: 'pending_email_verification',
+      govIdType: input.govIdType,
+      govIdFrontUrl,
+    };
+
+    return { user, uid: user.uid, profile };
+  } catch (error: any) {
+    const wrapped = new Error(`Failed to register: ${error.message}`) as Error & {
       code?: string;
     };
     wrapped.code = error.code;

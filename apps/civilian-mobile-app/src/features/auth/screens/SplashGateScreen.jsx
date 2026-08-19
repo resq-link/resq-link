@@ -154,6 +154,15 @@ export default function Index() {
     const auth = getFirebaseAuth();
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        const status = user?.status;
+        if (status === "pending_email_verification") {
+          router.replace(ROUTES.emailVerification);
+          return;
+        }
+        if (status === "pending_kyc_review" || status === "rejected") {
+          router.replace(ROUTES.accountPending);
+          return;
+        }
         router.replace("/dashboard");
         return;
       }

@@ -3,6 +3,8 @@ export const ROUTES = {
   splash: "/",
   login: "/login",
   register: "/register",
+  emailVerification: "/email-verification",
+  accountPending: "/account-pending",
   dashboard: "/dashboard",
   emergencyForm: "/emergency-form",
   emergencyConfirmation: "/emergency-confirmation",
@@ -21,6 +23,8 @@ export const ROUTES = {
 export const HIDE_NAV_SCREENS = [
   ROUTES.login,
   ROUTES.register,
+  ROUTES.emailVerification,
+  ROUTES.accountPending,
   ROUTES.emergencyForm,
   ROUTES.emergencyConfirmation,
   ROUTES.calling,

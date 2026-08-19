@@ -121,6 +121,7 @@ export async function createCivilianAccountAdmin(input: CreateCivilianInput): Pr
     phone,
     address,
     role: 'civilian',
+    status: 'active',
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
@@ -149,4 +150,12 @@ export async function isCommandCenterAccount(uid: string): Promise<boolean> {
  */
 export async function verifyIdToken(token: string): Promise<admin.auth.DecodedIdToken> {
   return adminAuth.verifyIdToken(token);
+}
+
+export function getAdminFirestore(): admin.firestore.Firestore {
+  return adminFirestore;
+}
+
+export function emailOtpDocId(email: string): string {
+  return email.trim().toLowerCase().replace(/\//g, '_');
 }

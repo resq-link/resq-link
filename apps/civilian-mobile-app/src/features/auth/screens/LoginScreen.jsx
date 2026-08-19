@@ -313,13 +313,47 @@ export default function LoginScreen() {
         uid: profile.uid,
         email: profile.email,
         name: profile.name,
+        firstName: profile.firstName,
+        lastName: profile.lastName,
         phone_number: profile.phone,
         phone: profile.phone,
         role: profile.role,
+        status: profile.status,
       };
+
+      if (profile.status === "rejected") {
+        try {
+          const { getFirebaseAuth, signOut } = require("@packages/firebase");
+          await signOut(getFirebaseAuth());
+        } catch {
+          // ignore
+        }
+        throw new Error(
+          profile.kycRejectionReason
+            ? `KYC was rejected: ${profile.kycRejectionReason}`
+            : "Your account was rejected during KYC review. Contact support."
+        );
+      }
 
       await setUser(userData);
       setIsLoading(false);
+
+      if (profile.status === "pending_email_verification") {
+        try {
+          const { sendEmailOtp } = require("@/features/auth/utils/emailOtpApi");
+          await sendEmailOtp({ uid: profile.uid, email: profile.email });
+        } catch (otpError) {
+          console.warn("Could not auto-resend OTP:", otpError);
+        }
+        router.replace("/email-verification");
+        return;
+      }
+
+      if (profile.status === "pending_kyc_review") {
+        router.replace("/account-pending");
+        return;
+      }
+
       setSuccess(true);
 
       setTimeout(() => {

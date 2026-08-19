@@ -84,6 +84,8 @@ const NAV_ITEMS = [
 const HIDE_NAV_SCREENS = [
   "/login",
   "/register",
+  "/email-verification",
+  "/account-pending",
   "/emergency-form",
   "/emergency-confirmation",
   "/calling",
