@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   StyleSheet,
   useWindowDimensions,
-  Alert,
   TextInput,
   TouchableOpacity,
   Image,
@@ -658,12 +657,7 @@ export default function LoginScreen() {
               />
 
               <Pressable
-                onPress={() =>
-                  Alert.alert(
-                    "Password help",
-                    "Contact support to reset your civilian account password."
-                  )
-                }
+                onPress={() => router.push("/forgot-password")}
                 style={({ pressed }) => [
                   styles.forgotWrap,
                   pressed && { opacity: 0.7 },

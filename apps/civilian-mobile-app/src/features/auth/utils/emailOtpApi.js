@@ -36,6 +36,42 @@ export async function verifyEmailOtp({ email, otp }) {
   return data;
 }
 
+export async function sendForgotPasswordOtp({ email }) {
+  const response = await fetch(getOtpApiUrl(apiConfig.endpoints.forgotPasswordSend), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  let data = {};
+  try {
+    data = await response.json();
+  } catch {
+    data = {};
+  }
+  if (!response.ok) {
+    throw new Error(data.error || "Failed to send reset code.");
+  }
+  return data;
+}
+
+export async function resetPassword({ email, otp, newPassword }) {
+  const response = await fetch(getOtpApiUrl(apiConfig.endpoints.forgotPasswordReset), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, otp, newPassword }),
+  });
+  let data = {};
+  try {
+    data = await response.json();
+  } catch {
+    data = {};
+  }
+  if (!response.ok) {
+    throw new Error(data.error || "Failed to reset password.");
+  }
+  return data;
+}
+
 export function maskEmail(email) {
   const value = String(email || "");
   const at = value.indexOf("@");

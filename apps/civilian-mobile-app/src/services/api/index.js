@@ -121,6 +121,8 @@ export const apiConfig = {
     register: '/api/auth/register',
     emailOtpSend: '/api/email-otp/send',
     emailOtpVerify: '/api/email-otp/verify',
+    forgotPasswordSend: '/api/auth/forgot-password/send',
+    forgotPasswordReset: '/api/auth/forgot-password/reset',
     emergency: {
       list: '/api/emergency/list',
       submit: '/api/emergency/submit',

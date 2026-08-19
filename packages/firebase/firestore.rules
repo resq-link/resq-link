@@ -48,6 +48,11 @@ service cloud.firestore {
     match /emailOtps/{email} {
       allow read, write: if false;
     }
+
+    // Password-reset OTP codes are written/read only by the Admin SDK (API routes).
+    match /passwordResetOtps/{email} {
+      allow read, write: if false;
+    }
     
     // Dispatchers collection - dispatchers can read their own, command center can read all
     match /dispatchers/{userId} {

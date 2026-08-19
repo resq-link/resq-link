@@ -30,6 +30,7 @@ import {
 import { useSOS } from "@/hooks/useSOS";
 import { useDispatcherCall } from "@/hooks/useDispatcherCall";
 import { useAppTheme } from "@/hooks/useAppTheme";
+import { HIDE_NAV_SCREENS } from "@/constants/routes";
 import {
   getBottomNavInset,
   NAV_BAR_CONTENT_HEIGHT,
@@ -79,22 +80,6 @@ const NAV_ITEMS = [
     Icon: Settings,
     isActive: (pathname) => pathname?.includes("/profile"),
   },
-];
-
-const HIDE_NAV_SCREENS = [
-  "/login",
-  "/register",
-  "/email-verification",
-  "/account-pending",
-  "/emergency-form",
-  "/emergency-confirmation",
-  "/calling",
-  "/appearance",
-  "/notifications",
-  "/privacy-security",
-  "/help-support",
-  "/report-issue",
-  "/faq",
 ];
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
