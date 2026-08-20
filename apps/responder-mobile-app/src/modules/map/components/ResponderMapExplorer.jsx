@@ -56,6 +56,15 @@ import {
   isActiveIncident,
   isResolved,
 } from "@/utils/mapIncidentHelpers";
+import { canRenderGoogleMapsProvider } from "@/utils/nativeMapConfig";
+
+const hasValidCoordinate = (latitude, longitude) =>
+  Number.isFinite(latitude) &&
+  Number.isFinite(longitude) &&
+  Math.abs(latitude) <= 90 &&
+  Math.abs(longitude) <= 180 &&
+  latitude !== 0 &&
+  longitude !== 0;
 
 /**
  * Use native `pinColor` only (no custom Marker children).
@@ -142,13 +151,7 @@ export default function ResponderMapExplorer() {
   }, [user, router]);
 
   useEffect(() => {
-    const mapped = cases.filter(
-      (c) =>
-        c.latitude != null &&
-        c.longitude != null &&
-        c.latitude !== 0 &&
-        c.longitude !== 0
-    );
+    const mapped = cases.filter((c) => hasValidCoordinate(c.latitude, c.longitude));
     if (mapped.length > 0 && !userLocation) {
       const first = mapped[0];
       const r = {
@@ -163,14 +166,7 @@ export default function ResponderMapExplorer() {
   }, [cases, userLocation]);
 
   const casesWithLocation = useMemo(
-    () =>
-      cases.filter(
-        (c) =>
-          c.latitude != null &&
-          c.longitude != null &&
-          c.latitude !== 0 &&
-          c.longitude !== 0
-      ),
+    () => cases.filter((c) => hasValidCoordinate(c.latitude, c.longitude)),
     [cases]
   );
 
@@ -390,6 +386,25 @@ export default function ResponderMapExplorer() {
           ...(Platform.OS === "android" ? { elevation: 0 } : {}),
         },
         /** All interactive chrome above the map — peers must sit here or touches can miss on Android. */
+        mapUnavailable: {
+          backgroundColor: D.surface,
+          alignItems: "center",
+          justifyContent: "center",
+          paddingHorizontal: spacing.xl,
+          gap: spacing.xs,
+        },
+        mapUnavailableTitle: {
+          fontFamily: "SpaceGrotesk_700Bold",
+          fontSize: 15,
+          color: D.text,
+        },
+        mapUnavailableText: {
+          fontFamily: "SpaceGrotesk_400Regular",
+          fontSize: 12,
+          lineHeight: 17,
+          color: D.textSecondary,
+          textAlign: "center",
+        },
         mapOverlayLayer: {
           ...StyleSheet.absoluteFillObject,
           zIndex: 20,
@@ -654,6 +669,8 @@ export default function ResponderMapExplorer() {
     return <LoadingScreen title="Loading map…" subtitle="" />;
   }
 
+  const canRenderMap = canRenderGoogleMapsProvider();
+
   let headerSub = "";
   if (casesWithLocation.length === 0) headerSub = "No pins";
   else headerSub = `${casesWithLocation.length} · ${activeCount} active`;
@@ -741,49 +758,59 @@ export default function ResponderMapExplorer() {
       </LinearGradient>
 
       <View style={styles.mapWrap}>
-        <MapView
-          ref={mapRef}
-          provider={PROVIDER_GOOGLE}
-          style={[StyleSheet.absoluteFill, styles.mapNativeUnderlay]}
-          initialRegion={initialCenter.current}
-          customMapStyle={mapTileStyle}
-          showsUserLocation={showUserOnMap && !locationError}
-          showsMyLocationButton={false}
-          showsPointsOfInterest={false}
-          toolbarEnabled={false}
-          mapType="standard"
-        >
-          {routeCoords && (
-            <Polyline
-              coordinates={routeCoords}
-              strokeColor={M.lineRouteAlt}
-              strokeWidth={3}
-              lineDashPattern={[8, 6]}
-            />
-          )}
-
-          {visibleMarkers.map((caseData) => {
-            const sel = selectedCase?.id === caseData.id;
-            return (
-              <Marker
-                key={caseData.id}
-                coordinate={{
-                  latitude: caseData.latitude,
-                  longitude: caseData.longitude,
-                }}
-                title={getIncidentTypeName(caseData.incidentType, true)}
-                description={caseData.locationText || undefined}
-                pinColor={pinColorFor(
-                  caseData.priority || "medium",
-                  caseData.status,
-                  sel
-                )}
-                onPress={() => handleSelectCase(caseData)}
-                zIndex={sel ? 50 : 10}
+        {canRenderMap ? (
+          <MapView
+            ref={mapRef}
+            provider={PROVIDER_GOOGLE}
+            style={[StyleSheet.absoluteFill, styles.mapNativeUnderlay]}
+            initialRegion={initialCenter.current}
+            customMapStyle={mapTileStyle}
+            showsUserLocation={showUserOnMap && !locationError}
+            showsMyLocationButton={false}
+            showsPointsOfInterest={false}
+            toolbarEnabled={false}
+            mapType="standard"
+          >
+            {routeCoords && (
+              <Polyline
+                coordinates={routeCoords}
+                strokeColor={M.lineRouteAlt}
+                strokeWidth={3}
+                lineDashPattern={[8, 6]}
               />
-            );
-          })}
-        </MapView>
+            )}
+
+            {visibleMarkers.map((caseData) => {
+              const sel = selectedCase?.id === caseData.id;
+              return (
+                <Marker
+                  key={caseData.id}
+                  coordinate={{
+                    latitude: caseData.latitude,
+                    longitude: caseData.longitude,
+                  }}
+                  title={getIncidentTypeName(caseData.incidentType, true)}
+                  description={caseData.locationText || undefined}
+                  pinColor={pinColorFor(
+                    caseData.priority || "medium",
+                    caseData.status,
+                    sel
+                  )}
+                  onPress={() => handleSelectCase(caseData)}
+                  zIndex={sel ? 50 : 10}
+                />
+              );
+            })}
+          </MapView>
+        ) : (
+          <View style={[StyleSheet.absoluteFill, styles.mapUnavailable]}>
+            <AlertCircle size={24} color={D.textMuted} />
+            <Text style={styles.mapUnavailableTitle}>Map unavailable</Text>
+            <Text style={styles.mapUnavailableText}>
+              Add a Google Maps API key to this Android build.
+            </Text>
+          </View>
+        )}
 
         <View style={styles.mapOverlayLayer}>
           <View

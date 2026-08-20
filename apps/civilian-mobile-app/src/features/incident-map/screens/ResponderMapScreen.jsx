@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
+  Text,
   StyleSheet,
   AccessibilityInfo,
   Linking,
@@ -10,6 +11,7 @@ import { StatusBar } from "expo-status-bar";
 import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
 import BottomSheet, { BottomSheetBackdrop } from "@gorhom/bottom-sheet";
 import * as Haptics from "expo-haptics";
+import { MapPin } from "lucide-react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useMapScreen } from "@/features/incident-map/hooks/useMapScreen";
@@ -27,6 +29,7 @@ import {
   getMarkerDistanceLabel,
 } from "@/features/incident-map/components/MapMarkers";
 import { coordFrom } from "@/features/incident-map/utils/mapUtils";
+import { canRenderGoogleMapsProvider } from "@/utils/nativeMapConfig";
 
 const DEFAULT_REGION = {
   latitude: 17.6132,
@@ -50,6 +53,7 @@ export default function ResponderMapScreen() {
   const focusReportId =
     typeof params.reportId === "string" ? params.reportId : undefined;
   const { colors, isLight, mapTheme: theme } = useAppTheme();
+  const canRenderMap = canRenderGoogleMapsProvider();
   const mapRef = useRef(null);
   const sheetRef = useRef(null);
   const reduceMotionRef = useRef(false);
@@ -251,36 +255,50 @@ export default function ResponderMapScreen() {
       </View>
 
       <View style={styles.mapStage} onLayout={handleMapStageLayout}>
-        <MapView
-          ref={mapRef}
-          provider={PROVIDER_GOOGLE}
-          style={StyleSheet.absoluteFill}
-          initialRegion={initialRegion}
-          showsUserLocation
-          showsMyLocationButton={false}
-          showsCompass={false}
-          toolbarEnabled={false}
-          onLongPress={handleMapLongPress}
-          accessibilityLabel={
-            isIncidentMode
-              ? "Personal emergency tracking map"
-              : "Your location map"
-          }
-        >
-          {isIncidentMode && incidentCoord ? (
-            <>
-              <IncidentRadiusCircle coordinate={incidentCoord} />
-              <IncidentMapMarker
-                coordinate={incidentCoord}
-                distanceLabel={getMarkerDistanceLabel(
-                  userLocation,
-                  incidentCoord.latitude,
-                  incidentCoord.longitude
-                )}
-              />
-            </>
-          ) : null}
-        </MapView>
+        {canRenderMap ? (
+          <MapView
+            ref={mapRef}
+            provider={PROVIDER_GOOGLE}
+            style={StyleSheet.absoluteFill}
+            initialRegion={initialRegion}
+            showsUserLocation
+            showsMyLocationButton={false}
+            showsCompass={false}
+            toolbarEnabled={false}
+            onLongPress={handleMapLongPress}
+            accessibilityLabel={
+              isIncidentMode
+                ? "Personal emergency tracking map"
+                : "Your location map"
+            }
+          >
+            {isIncidentMode && incidentCoord ? (
+              <>
+                <IncidentRadiusCircle coordinate={incidentCoord} />
+                <IncidentMapMarker
+                  coordinate={incidentCoord}
+                  distanceLabel={getMarkerDistanceLabel(
+                    userLocation,
+                    incidentCoord.latitude,
+                    incidentCoord.longitude
+                  )}
+                />
+              </>
+            ) : null}
+          </MapView>
+        ) : (
+          <View
+            style={[
+              StyleSheet.absoluteFill,
+              styles.mapUnavailable,
+              { backgroundColor: theme.card },
+            ]}
+          >
+            <MapPin size={28} color={theme.textSecondary} />
+            <Text style={[styles.mapUnavailableTitle, { color: theme.text }]}>Map unavailable</Text>
+            <Text style={[styles.mapUnavailableText, { color: theme.textSecondary }]}>Add a Google Maps API key to this Android build.</Text>
+          </View>
+        )}
 
         {showDataError ? (
           <MapDataErrorBanner
@@ -354,6 +372,24 @@ const styles = StyleSheet.create({
   mapStage: {
     flex: 1,
     position: "relative",
+  },
+  mapUnavailable: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  mapUnavailableTitle: {
+    marginTop: 10,
+    fontFamily: "Inter_700Bold",
+    fontSize: 16,
+    textAlign: "center",
+  },
+  mapUnavailableText: {
+    marginTop: 6,
+    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: "center",
   },
   sheet: {
     zIndex: 30,

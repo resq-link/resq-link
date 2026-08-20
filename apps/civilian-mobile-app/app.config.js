@@ -1,8 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const appJson = require('./app.json');
-
 function loadLocalEnv() {
   const envPath = path.join(__dirname, '.env');
   if (!fs.existsSync(envPath)) {
@@ -33,17 +31,17 @@ function loadLocalEnv() {
 const localEnv = loadLocalEnv();
 
 const getEnv = (name) =>
+  process.env[name] ||
   process.env[`EXPO_PUBLIC_${name}`] ||
   process.env[`NEXT_PUBLIC_${name}`] ||
+  localEnv[name] ||
   localEnv[`EXPO_PUBLIC_${name}`] ||
   localEnv[`NEXT_PUBLIC_${name}`] ||
   '';
 
 module.exports = ({ config }) => {
-  const baseConfig = {
-    ...appJson.expo,
-    ...config,
-  };
+  const baseConfig = config;
+  const googleMapsApiKey = getEnv('GOOGLE_MAPS_API_KEY');
 
   return {
     ...baseConfig,
@@ -59,6 +57,9 @@ module.exports = ({ config }) => {
       },
       agora: {
         appId: getEnv('AGORA_APP_ID'),
+      },
+      googleMaps: {
+        apiKey: googleMapsApiKey,
       },
     },
   };

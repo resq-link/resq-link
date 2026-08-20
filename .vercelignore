@@ -1,0 +1,10 @@
+apps/civilian-mobile-app
+apps/responder-mobile-app
+*.docx
+*.pdf
+*.msi
+*.bin
+*.raw
+gh_*.msi
+civilian-build.log.bin
+civilian-eas-log.raw

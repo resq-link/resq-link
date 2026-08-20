@@ -1,5 +1,5 @@
 import { initializeApp, getApps, FirebaseApp, type FirebaseOptions } from 'firebase/app';
-import { getAuth, initializeAuth, type Auth } from 'firebase/auth';
+import { getAuth, initializeAuth, type Auth, type User } from 'firebase/auth';
 import {
   getFirestore,
   initializeFirestore,
@@ -380,6 +380,17 @@ export function getFirebaseAuth(): Auth {
 }
 export function getFirebaseFirestore(): Firestore {
   return ensureFirebaseFirestore();
+}
+
+/** Wait until Auth has restored a session and the ID token is available. */
+export async function waitForFirebaseAuthUser(): Promise<User | null> {
+  const auth = ensureFirebaseAuth();
+  await auth.authStateReady();
+  const user = auth.currentUser;
+  if (user) {
+    await user.getIdToken();
+  }
+  return user;
 }
 
 /** Returns true when a Realtime Database URL is configured (presence features). */

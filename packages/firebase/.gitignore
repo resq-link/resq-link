@@ -5,3 +5,4 @@ dist/
 .env.local
 service-account*.json
 
+.vercel

@@ -28,6 +28,12 @@ const toDateValue = (value) => {
   return Number.isNaN(date.getTime()) ? null : date;
 };
 
+const toCoordinateValue = (value) => {
+  if (value == null || value === "") return null;
+  const coordinate = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(coordinate) ? coordinate : null;
+};
+
 export default function CaseDetailView() {
   const { colors, statusBarStyle } = useResqTheme();
   const insets = useSafeAreaInsets();
@@ -65,6 +71,8 @@ export default function CaseDetailView() {
           }
 
           const data = docSnap.data();
+          const latitude = toCoordinateValue(data.latitude ?? data.location?.latitude);
+          const longitude = toCoordinateValue(data.longitude ?? data.location?.longitude);
           const caseInfo = {
             id: docSnap.id,
             userId: data.createdByUserId || data.userId || data.user_id || "",
@@ -77,8 +85,8 @@ export default function CaseDetailView() {
                 : typeof data.people_involved === "number"
                   ? data.people_involved
                   : null,
-            latitude: data.latitude ?? null,
-            longitude: data.longitude ?? null,
+            latitude,
+            longitude,
             description: data.description || null,
             imageUrl: data.imageUrl || data.image_url || null,
             status: data.status || "pending",

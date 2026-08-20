@@ -38,8 +38,17 @@ import ReporterSection from "./ReporterSection";
 import CaseStatusBadge from "./CaseStatusBadge";
 import ErrorAlert from "@/components/feedback/ErrorAlert";
 import { radii, spacing, useResqTheme } from "@/theme";
+import { canRenderGoogleMapsProvider } from "@/utils/nativeMapConfig";
 
 const TOUCHDOWN_RADIUS_METERS = 10;
+
+const isValidCoordinate = (latitude, longitude) =>
+  Number.isFinite(latitude) &&
+  Number.isFinite(longitude) &&
+  Math.abs(latitude) <= 90 &&
+  Math.abs(longitude) <= 180 &&
+  latitude !== 0 &&
+  longitude !== 0;
 
 const getDistanceMeters = (from, to) => {
   const earthRadiusMeters = 6371000;
@@ -274,11 +283,8 @@ export default function CaseInfoCard({
     }
   };
 
-  const hasPinnedLocation =
-    caseData.latitude != null &&
-    caseData.longitude != null &&
-    caseData.latitude !== 0 &&
-    caseData.longitude !== 0;
+  const hasPinnedLocation = isValidCoordinate(caseData.latitude, caseData.longitude);
+  const canRenderMapPreview = hasPinnedLocation && canRenderGoogleMapsProvider();
 
   const touchdownDistanceMeters =
     hasPinnedLocation && responderLocation
@@ -863,7 +869,7 @@ export default function CaseInfoCard({
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
         <View style={styles.mapStage}>
-          {hasPinnedLocation ? (
+          {canRenderMapPreview ? (
             <MapView
               provider={PROVIDER_GOOGLE}
               style={styles.map}
@@ -893,7 +899,11 @@ export default function CaseInfoCard({
           ) : (
             <View style={styles.mapFallback}>
               <MapPin size={28} color={colors.textMuted} />
-              <Text style={styles.mapFallbackText}>Pinned map location is not available.</Text>
+              <Text style={styles.mapFallbackText}>
+                {hasPinnedLocation
+                  ? "Map preview is unavailable in this build."
+                  : "Pinned map location is not available."}
+              </Text>
             </View>
           )}
 

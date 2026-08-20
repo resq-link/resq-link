@@ -55,7 +55,10 @@
       ],
       [
         "expo-video",
-        { "supportsBackgroundPlayback": true, "supportsPictureInPicture": true }
+        {
+          "supportsBackgroundPlayback": true,
+          "supportsPictureInPicture": true
+        }
       ],
       "expo-font",
       "expo-secure-store",
@@ -84,8 +87,11 @@
         "origin": false
       },
       "apiUrl": "http://localhost:4000",
-      "uiMode": false
+      "uiMode": false,
+      "eas": {
+        "projectId": "6f35acd3-b528-4968-ad8d-c21f0162886d"
+      }
     },
-    "runtimeVersion": "1.0.0"
+    "owner": "grymarkers-team"
   }
 }

@@ -1,8 +1,10 @@
 import React, { memo } from "react";
-import { View, StyleSheet } from "react-native";
+import { View, Text } from "react-native";
 import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
+import { MapPin } from "lucide-react-native";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useThemedStyles } from "@/hooks/useThemedStyles";
+import { canRenderGoogleMapsProvider } from "@/utils/nativeMapConfig";
 
 function MiniMapPreview({ latitude, longitude, mapRegion, onPin, interactive = false }) {
   const { reportTheme } = useAppTheme();
@@ -18,6 +20,23 @@ function MiniMapPreview({ latitude, longitude, mapRegion, onPin, interactive = f
       },
       placeholder: {
         backgroundColor: t.surface,
+        alignItems: "center",
+        justifyContent: "center",
+        paddingHorizontal: 18,
+      },
+      placeholderTitle: {
+        marginTop: 8,
+        color: t.text,
+        fontFamily: "Inter_600SemiBold",
+        fontSize: 14,
+        textAlign: "center",
+      },
+      placeholderText: {
+        marginTop: 4,
+        color: t.textSecondary,
+        fontFamily: "Inter_400Regular",
+        fontSize: 12,
+        textAlign: "center",
       },
     }),
     reportTheme
@@ -25,6 +44,16 @@ function MiniMapPreview({ latitude, longitude, mapRegion, onPin, interactive = f
 
   if (!latitude || !longitude) {
     return <View style={[styles.placeholder, styles.map]} />;
+  }
+
+  if (!canRenderGoogleMapsProvider()) {
+    return (
+      <View style={[styles.placeholder, styles.map]}>
+        <MapPin size={22} color={reportTheme.primary} />
+        <Text style={styles.placeholderTitle}>Map pin unavailable in this build</Text>
+        <Text style={styles.placeholderText}>Type the address or nearest landmark instead.</Text>
+      </View>
+    );
   }
 
   return (

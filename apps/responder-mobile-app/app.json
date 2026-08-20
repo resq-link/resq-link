@@ -1,6 +1,7 @@
 {
   "expo": {
     "name": "RESQ-Link Responder",
+    "slug": "resq-link-responder",
     "scheme": "resqlink-responder",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -63,12 +64,15 @@
     },
     "extra": {
       "router": {
-        "origin": false
+        "origin": false,
+        "sitemap": false
       },
       "apiUrl": "http://localhost:4000",
-      "uiMode": false
+      "uiMode": false,
+      "eas": {
+        "projectId": "12355ad0-d170-4727-9799-dba31b6d403b"
+      }
     },
-    "runtimeVersion": "1.0.0"
+    "owner": "grymarkers-team"
   }
 }
-

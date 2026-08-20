@@ -37,9 +37,13 @@ function getAdminApp(): admin.app.App {
   );
 }
 
-const adminApp = getAdminApp();
-const adminAuth = adminApp.auth();
-const adminFirestore = adminApp.firestore();
+function adminAuth() {
+  return getAdminApp().auth();
+}
+
+function adminFirestore() {
+  return getAdminApp().firestore();
+}
 
 export interface CreateDispatcherInput {
   fullName?: string;
@@ -79,8 +83,8 @@ export async function createDispatcherAccountAdmin(input: CreateDispatcherInput)
     teamCode = null,
     teamLabel = null,
   } = input;
-  const userRecord = await adminAuth.createUser({ email, password });
-  await adminFirestore.doc(`dispatchers/${userRecord.uid}`).set({
+  const userRecord = await adminAuth().createUser({ email, password });
+  await adminFirestore().doc(`dispatchers/${userRecord.uid}`).set({
     fullName,
     email,
     role,
@@ -98,8 +102,8 @@ export async function createDispatcherAccountAdmin(input: CreateDispatcherInput)
  */
 export async function createCommandCenterAccountAdmin(input: CreateCommandCenterInput): Promise<{ uid: string }> {
   const { email, password, name, location } = input;
-  const userRecord = await adminAuth.createUser({ email, password });
-  await adminFirestore.doc(`commandCenters/${userRecord.uid}`).set({
+  const userRecord = await adminAuth().createUser({ email, password });
+  await adminFirestore().doc(`commandCenters/${userRecord.uid}`).set({
     email,
     name,
     location,
@@ -114,8 +118,8 @@ export async function createCommandCenterAccountAdmin(input: CreateCommandCenter
  */
 export async function createCivilianAccountAdmin(input: CreateCivilianInput): Promise<{ uid: string }> {
   const { email, password, fullName, phone = '', address = '' } = input;
-  const userRecord = await adminAuth.createUser({ email, password });
-  await adminFirestore.doc(`users/${userRecord.uid}`).set({
+  const userRecord = await adminAuth().createUser({ email, password });
+  await adminFirestore().doc(`users/${userRecord.uid}`).set({
     email,
     name: fullName,
     phone,
@@ -132,7 +136,7 @@ export async function createCivilianAccountAdmin(input: CreateCivilianInput): Pr
  * Check if a user UID exists in the admins collection
  */
 export async function isAdmin(uid: string): Promise<boolean> {
-  const doc = await adminFirestore.doc(`admins/${uid}`).get();
+  const doc = await adminFirestore().doc(`admins/${uid}`).get();
   return doc.exists;
 }
 
@@ -140,7 +144,7 @@ export async function isAdmin(uid: string): Promise<boolean> {
  * Check if a user UID exists in the commandCenters collection.
  */
 export async function isCommandCenterAccount(uid: string): Promise<boolean> {
-  const doc = await adminFirestore.doc(`commandCenters/${uid}`).get();
+  const doc = await adminFirestore().doc(`commandCenters/${uid}`).get();
   return doc.exists;
 }
 
@@ -149,11 +153,11 @@ export async function isCommandCenterAccount(uid: string): Promise<boolean> {
  * Use to authenticate API requests from the client.
  */
 export async function verifyIdToken(token: string): Promise<admin.auth.DecodedIdToken> {
-  return adminAuth.verifyIdToken(token);
+  return adminAuth().verifyIdToken(token);
 }
 
 export function getAdminFirestore(): admin.firestore.Firestore {
-  return adminFirestore;
+  return adminFirestore();
 }
 
 export function emailOtpDocId(email: string): string {

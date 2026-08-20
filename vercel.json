@@ -1,6 +1,0 @@
-{
-    "buildCommand": "cd ../../packages/firebase && npm run build && cd ../../apps/dispatcher-web-app && npm run build",
-    "outputDirectory": ".next",
-    "installCommand": "cd ../../packages/firebase && npm install && cd ../../apps/dispatcher-web-app && npm install",
-    "framework": "nextjs"
-}

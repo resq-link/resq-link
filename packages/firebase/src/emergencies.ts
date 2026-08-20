@@ -16,7 +16,7 @@ import {
   updateDoc,
   onSnapshot as onDocumentSnapshot,
 } from 'firebase/firestore';
-import { getFirebaseFirestore, getFirebaseAuth } from './config';
+import { getFirebaseFirestore, getFirebaseAuth, waitForFirebaseAuthUser } from './config';
 import type { DispatcherRole } from './auth';
 import {
   normalizePriorityFromRecord,
@@ -540,6 +540,17 @@ export function subscribeToEmergencyReports(
   },
   internal?: { ordered?: boolean }
 ): () => void {
+  const emptyMeta: EmergencyReportsSnapshotMeta = {
+    addedIds: [],
+    modifiedIds: [],
+    removedIds: [],
+    fromCache: false,
+    hasPendingWrites: false,
+  };
+  let stopped = false;
+  let unsubscribeSnapshot: (() => void) | null = null;
+
+  const attachSnapshot = (): (() => void) => {
   const reportsRef = collection(getFirebaseFirestore(), 'emergencies');
   const useOrderedQuery =
     internal?.ordered !== false && emergenciesOrderedQueryAvailable !== false;
@@ -594,13 +605,12 @@ export function subscribeToEmergencyReports(
     }
 
     console.error('Error in emergency reports subscription:', error);
-    callback([], {
-      addedIds: [],
-      modifiedIds: [],
-      removedIds: [],
-      fromCache: false,
-      hasPendingWrites: false,
-    });
+    const firebaseError = error as { code?: string; message?: string };
+    const authUser = getFirebaseAuth().currentUser;
+    console.error('Error code:', firebaseError.code);
+    console.error('Error message:', firebaseError.message);
+    console.error('Auth uid at error:', authUser ? authUser.uid : 'none');
+    callback([], emptyMeta);
     return () => {};
   };
 
@@ -651,6 +661,27 @@ export function subscribeToEmergencyReports(
 
     return unsubscribe;
   }
+  };
+
+  void (async () => {
+    try {
+      const user = await waitForFirebaseAuthUser();
+      if (stopped) return;
+      if (!user) {
+        callback([], emptyMeta);
+        return;
+      }
+      unsubscribeSnapshot = attachSnapshot();
+    } catch (error) {
+      console.error('Error setting up emergency reports subscription:', error);
+      callback([], emptyMeta);
+    }
+  })();
+
+  return () => {
+    stopped = true;
+    unsubscribeSnapshot?.();
+  };
 }
 
 /**
