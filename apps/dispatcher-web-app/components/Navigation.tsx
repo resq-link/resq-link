@@ -358,7 +358,7 @@ export default function Navigation({ children }: NavigationProps) {
     await signOut();
   };
 
-  if (pathname === "/login") {
+  if (pathname === "/" || pathname === "/login") {
     return <>{children}</>;
   }
 
