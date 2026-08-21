@@ -358,7 +358,7 @@ export default function Navigation({ children }: NavigationProps) {
     await signOut();
   };
 
-  if (pathname === "/" || pathname === "/login") {
+  if (["/", "/login", "/contact", "/privacy-policy", "/data-privacy"].includes(pathname)) {
     return <>{children}</>;
   }
 

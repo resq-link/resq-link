@@ -5,13 +5,13 @@ import {
   ArrowRight,
   CheckCircle2,
   ChevronRight,
-  Headphones,
   MapPin,
   Radio,
   ShieldCheck,
   Siren,
   UsersRound,
 } from 'lucide-react'
+import PublicFooter from '@/components/PublicFooter'
 
 const capabilities = [
   {
@@ -33,7 +33,7 @@ const capabilities = [
 
 export default function Home() {
   return (
-    <div className="landing-page relative min-h-screen overflow-hidden bg-[#080d0b] text-slate-100">
+    <div className="landing-page relative min-h-screen overflow-x-hidden bg-[#080d0b] text-slate-100">
       <div className="landing-grid pointer-events-none absolute inset-0 opacity-40" />
       <div className="landing-orb landing-orb-one pointer-events-none absolute" />
       <div className="landing-orb landing-orb-two pointer-events-none absolute" />
@@ -122,9 +122,13 @@ export default function Home() {
             {capabilities.map(({ icon: Icon, title, description }, index) => <article key={title} className="landing-capability rounded-2xl border border-slate-800 bg-slate-900/45 p-6 transition duration-300 hover:-translate-y-1 hover:border-primary-500/35 hover:bg-slate-900/75" style={{ animationDelay: `${index * 110}ms` }}><span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary-500/10 text-primary-400"><Icon size={21} /></span><h3 className="mt-5 text-lg font-semibold text-slate-100">{title}</h3><p className="mt-2.5 text-sm leading-6 text-slate-400">{description}</p></article>)}
           </div>
         </section>
-      </main>
 
-      <footer className="relative z-10 border-t border-slate-800/80 px-5 py-6 text-center text-xs text-slate-500 sm:px-8"><span className="inline-flex items-center gap-2"><Headphones size={14} className="text-primary-400" /> RESQ-Link Command Center • Ready when you are</span></footer>
+        <section className="relative mt-24 overflow-hidden rounded-3xl border border-primary-400/15 bg-primary-500/[0.07] px-6 py-10 sm:mt-32 sm:px-10 sm:py-14">
+          <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-primary-400/10 blur-3xl" />
+          <div className="relative flex flex-col items-start justify-between gap-7 md:flex-row md:items-end"><div className="max-w-xl"><p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary-400">An end-to-end response system</p><h2 className="mt-3 text-3xl font-semibold tracking-tight text-white">From public reporting to coordinated field response.</h2><p className="mt-4 text-sm leading-6 text-slate-400">RESQ-Link connects the civilian reporting experience, command-center operations, and field-responder workflows through a shared emergency-response network.</p></div><Link href="/contact" className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-primary-400/30 bg-slate-950/60 px-5 py-3 text-sm font-semibold text-primary-300 transition hover:border-primary-400/60 hover:bg-slate-900">Contact us <ArrowRight size={16} /></Link></div>
+        </section>
+      </main>
+      <PublicFooter />
     </div>
   )
 }
