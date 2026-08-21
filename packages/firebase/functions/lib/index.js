@@ -17,6 +17,11 @@ const gatewayWebhookSecret = (0, params_1.defineSecret)('SMS_GATEWAY_WEBHOOK_SEC
 const gatewayUsername = (0, params_1.defineSecret)('SMS_GATEWAY_USERNAME');
 const gatewayPassword = (0, params_1.defineSecret)('SMS_GATEWAY_PASSWORD');
 const gatewayBaseUrl = (0, params_1.defineSecret)('SMS_GATEWAY_BASE_URL');
+const dispatcherOrigins = [
+    /^https:\/\/(www\.)?resq-link\.com$/,
+    /^https:\/\/resq-link-[a-z0-9-]+\.vercel\.app$/,
+    /^http:\/\/localhost(?::\d+)?$/,
+];
 function normalizePhone(value) {
     const digits = String(value ?? '').replace(/\D/g, '');
     if (/^9\d{9}$/.test(digits))
@@ -85,7 +90,7 @@ exports.smsGatewayInbound = (0, https_1.onRequest)({ region: 'asia-southeast1', 
     });
     response.status(204).end();
 });
-exports.sendSms = (0, https_1.onRequest)({ region: 'asia-southeast1', secrets: [gatewayUsername, gatewayPassword, gatewayBaseUrl] }, async (request, response) => {
+exports.sendSms = (0, https_1.onRequest)({ region: 'asia-southeast1', cors: dispatcherOrigins, secrets: [gatewayUsername, gatewayPassword, gatewayBaseUrl] }, async (request, response) => {
     if (request.method !== 'POST')
         return response.status(405).send('Method not allowed');
     try {
@@ -97,15 +102,27 @@ exports.sendSms = (0, https_1.onRequest)({ region: 'asia-southeast1', secrets: [
             return response.status(400).send('Invalid message.');
         const outgoingRef = db.collection('smsMessages').doc();
         await outgoingRef.set({ threadId, phoneNumber, body, direction: 'outbound', status: 'queued', dispatcherId: dispatcher.uid, createdAt: firestore_1.FieldValue.serverTimestamp() });
-        const gatewayResponse = await fetch(`${gatewayBaseUrl.value().replace(/\/$/, '')}/messages`, {
+        const gatewayResponse = await fetch(`${gatewayBaseUrl.value().trim().replace(/\/$/, '')}/messages`, {
             method: 'POST', headers: {
-                authorization: `Basic ${Buffer.from(`${gatewayUsername.value()}:${gatewayPassword.value()}`).toString('base64')}`,
+                authorization: `Basic ${Buffer.from(`${gatewayUsername.value().trim()}:${gatewayPassword.value().trim()}`).toString('base64')}`,
                 'content-type': 'application/json',
             }, body: JSON.stringify({ phoneNumbers: [phoneNumber], textMessage: { text: body } }),
         });
-        const gatewayPayload = await gatewayResponse.json().catch(() => null);
-        if (!gatewayResponse.ok)
-            throw new Error('Gateway rejected the message.');
+        const gatewayResponseText = await gatewayResponse.text();
+        let gatewayPayload = null;
+        try {
+            gatewayPayload = gatewayResponseText ? JSON.parse(gatewayResponseText) : null;
+        }
+        catch {
+            gatewayPayload = null;
+        }
+        if (!gatewayResponse.ok) {
+            console.error('SMS gateway rejected the message request.', {
+                status: gatewayResponse.status,
+                detail: gatewayResponseText.slice(0, 300),
+            });
+            throw new Error(`Gateway rejected the message (${gatewayResponse.status}).`);
+        }
         await Promise.all([
             outgoingRef.update({ status: 'sent', gatewayMessageId: gatewayPayload?.id ?? null, sentAt: firestore_1.FieldValue.serverTimestamp() }),
             db.doc(`smsThreads/${threadId}`).set({ preview: body, lastMessageAt: firestore_1.FieldValue.serverTimestamp(), lastDirection: 'outbound', updatedAt: firestore_1.FieldValue.serverTimestamp() }, { merge: true }),
@@ -117,7 +134,7 @@ exports.sendSms = (0, https_1.onRequest)({ region: 'asia-southeast1', secrets: [
         response.status(error instanceof https_1.HttpsError ? 401 : 500).json({ error: message });
     }
 });
-exports.updateSmsIntake = (0, https_1.onRequest)({ region: 'asia-southeast1' }, async (request, response) => {
+exports.updateSmsIntake = (0, https_1.onRequest)({ region: 'asia-southeast1', cors: dispatcherOrigins }, async (request, response) => {
     if (request.method !== 'POST')
         return response.status(405).send('Method not allowed');
     try {

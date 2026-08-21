@@ -1,4 +1,4 @@
-import { collection, onSnapshot, orderBy, query, type Timestamp } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, type Timestamp } from 'firebase/firestore';
 import { getFirebaseFirestore } from './config';
 
 export type SmsMessageStatus = 'received' | 'queued' | 'sent' | 'delivered' | 'failed';
@@ -6,7 +6,17 @@ export interface SmsThread { id: string; phoneNumber: string; preview: string; u
 export interface SmsMessage { id: string; threadId: string; phoneNumber: string; body: string; direction: 'inbound' | 'outbound'; status: SmsMessageStatus; createdAt?: Date | Timestamp; }
 export type SmsIntakeStatus = 'untriaged' | 'triaged' | 'closed';
 export interface SmsIntake { id: string; threadId: string; phoneNumber: string; latestMessage: string; status: SmsIntakeStatus; updatedAt?: Date | Timestamp; triagedAt?: Date | Timestamp; triagedBy?: string; }
+export interface SmsQuickReply { id: string; label: string; text: string; sortOrder: number; }
+
+export const defaultSmsQuickReplies = [
+  { label: 'Request location', text: 'Thank you for contacting RESQ-Link. Please share your exact location or nearest landmark.', sortOrder: 10 },
+  { label: 'Assess emergency', text: 'For dispatch, please tell us what happened, how many people are involved, and whether anyone is injured or in immediate danger.', sortOrder: 20 },
+  { label: 'Acknowledgement', text: 'We are reviewing your report. If there is immediate danger, call 911 or your local emergency number now.', sortOrder: 30 },
+];
 
 const map = <T>(id: string, data: Record<string, unknown>) => ({ id, ...data }) as T;
 export const subscribeToSmsIntakes = (callback: (items: SmsIntake[]) => void) => onSnapshot(query(collection(getFirebaseFirestore(), 'smsIntakes'), orderBy('updatedAt', 'desc')), snap => callback(snap.docs.map(doc => map<SmsIntake>(doc.id, doc.data()))));
 export const subscribeToSmsMessages = (threadId: string, callback: (items: SmsMessage[]) => void) => onSnapshot(query(collection(getFirebaseFirestore(), 'smsMessages'), orderBy('createdAt', 'asc')), snap => callback(snap.docs.map(doc => map<SmsMessage>(doc.id, doc.data())).filter(message => message.threadId === threadId)));
+export const subscribeToSmsQuickReplies = (callback: (items: SmsQuickReply[]) => void) => onSnapshot(query(collection(getFirebaseFirestore(), 'smsQuickReplies'), orderBy('sortOrder', 'asc')), snap => callback(snap.docs.map(item => map<SmsQuickReply>(item.id, item.data()))));
+export const createSmsQuickReply = async (input: Omit<SmsQuickReply, 'id'>) => addDoc(collection(getFirebaseFirestore(), 'smsQuickReplies'), { ...input, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+export const deleteSmsQuickReply = async (id: string) => deleteDoc(doc(getFirebaseFirestore(), 'smsQuickReplies', id));

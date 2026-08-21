@@ -345,10 +345,15 @@ export {
 export {
   subscribeToSmsIntakes,
   subscribeToSmsMessages,
+  subscribeToSmsQuickReplies,
+  createSmsQuickReply,
+  deleteSmsQuickReply,
+  defaultSmsQuickReplies,
   type SmsIntake,
   type SmsIntakeStatus,
   type SmsMessage,
   type SmsMessageStatus,
+  type SmsQuickReply,
   type SmsThread,
 } from './sms';
 

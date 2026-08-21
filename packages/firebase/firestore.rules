@@ -171,6 +171,11 @@ service cloud.firestore {
       allow read: if isCommandCenter() || isDispatcher() || isSuperAdmin();
       allow write: if false;
     }
+    // Dispatcher-managed, reusable SMS acknowledgement and triage prompts.
+    match /smsQuickReplies/{replyId} {
+      allow read: if isCommandCenter() || isDispatcher() || isSuperAdmin();
+      allow create, update, delete: if isCommandCenter() || isDispatcher() || isSuperAdmin();
+    }
 
     // Resources collection
     match /resources/{resourceId} {

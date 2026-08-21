@@ -12,6 +12,11 @@ const gatewayWebhookSecret = defineSecret('SMS_GATEWAY_WEBHOOK_SECRET');
 const gatewayUsername = defineSecret('SMS_GATEWAY_USERNAME');
 const gatewayPassword = defineSecret('SMS_GATEWAY_PASSWORD');
 const gatewayBaseUrl = defineSecret('SMS_GATEWAY_BASE_URL');
+const dispatcherOrigins = [
+  /^https:\/\/(www\.)?resq-link\.com$/,
+  /^https:\/\/resq-link-[a-z0-9-]+\.vercel\.app$/,
+  /^http:\/\/localhost(?::\d+)?$/,
+];
 
 type GatewayInbound = {
   event?: string;
@@ -88,7 +93,7 @@ export const smsGatewayInbound = onRequest(
 );
 
 export const sendSms = onRequest(
-  { region: 'asia-southeast1', secrets: [gatewayUsername, gatewayPassword, gatewayBaseUrl] },
+  { region: 'asia-southeast1', cors: dispatcherOrigins, secrets: [gatewayUsername, gatewayPassword, gatewayBaseUrl] },
   async (request: any, response: any) => {
     if (request.method !== 'POST') return response.status(405).send('Method not allowed');
     try {
@@ -99,14 +104,26 @@ export const sendSms = onRequest(
       if (!phoneNumber || !threadId || !body || body.length > 480) return response.status(400).send('Invalid message.');
       const outgoingRef = db.collection('smsMessages').doc();
       await outgoingRef.set({ threadId, phoneNumber, body, direction: 'outbound', status: 'queued', dispatcherId: dispatcher.uid, createdAt: FieldValue.serverTimestamp() });
-      const gatewayResponse = await fetch(`${gatewayBaseUrl.value().replace(/\/$/, '')}/messages`, {
+      const gatewayResponse = await fetch(`${gatewayBaseUrl.value().trim().replace(/\/$/, '')}/messages`, {
         method: 'POST', headers: {
-          authorization: `Basic ${Buffer.from(`${gatewayUsername.value()}:${gatewayPassword.value()}`).toString('base64')}`,
+          authorization: `Basic ${Buffer.from(`${gatewayUsername.value().trim()}:${gatewayPassword.value().trim()}`).toString('base64')}`,
           'content-type': 'application/json',
         }, body: JSON.stringify({ phoneNumbers: [phoneNumber], textMessage: { text: body } }),
       });
-      const gatewayPayload = await gatewayResponse.json().catch(() => null) as { id?: string } | null;
-      if (!gatewayResponse.ok) throw new Error('Gateway rejected the message.');
+      const gatewayResponseText = await gatewayResponse.text();
+      let gatewayPayload: { id?: string } | null = null;
+      try {
+        gatewayPayload = gatewayResponseText ? JSON.parse(gatewayResponseText) as { id?: string } : null;
+      } catch {
+        gatewayPayload = null;
+      }
+      if (!gatewayResponse.ok) {
+        console.error('SMS gateway rejected the message request.', {
+          status: gatewayResponse.status,
+          detail: gatewayResponseText.slice(0, 300),
+        });
+        throw new Error(`Gateway rejected the message (${gatewayResponse.status}).`);
+      }
       await Promise.all([
         outgoingRef.update({ status: 'sent', gatewayMessageId: gatewayPayload?.id ?? null, sentAt: FieldValue.serverTimestamp() }),
         db.doc(`smsThreads/${threadId}`).set({ preview: body, lastMessageAt: FieldValue.serverTimestamp(), lastDirection: 'outbound', updatedAt: FieldValue.serverTimestamp() }, { merge: true }),
@@ -120,7 +137,7 @@ export const sendSms = onRequest(
 );
 
 export const updateSmsIntake = onRequest(
-  { region: 'asia-southeast1' },
+  { region: 'asia-southeast1', cors: dispatcherOrigins },
   async (request: any, response: any) => {
     if (request.method !== 'POST') return response.status(405).send('Method not allowed');
     try {
