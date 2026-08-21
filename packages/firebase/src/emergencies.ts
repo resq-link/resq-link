@@ -126,6 +126,7 @@ export interface EmergencyReport {
     peopleStatus?: string | null;
     hospital?: string | null;
     photoUrl?: string | null;
+    actionPhotoUrl?: string | null;
     submittedAt?: Date | Timestamp | null;
     submittedByDispatcherId?: string | null;
     submittedByName?: string | null;
@@ -267,6 +268,7 @@ export const convertFirestoreDoc = (doc: DocumentData): EmergencyReport => {
             peopleStatus: data.postIncidentReport.peopleStatus || null,
             hospital: data.postIncidentReport.hospital || null,
             photoUrl: data.postIncidentReport.photoUrl || null,
+            actionPhotoUrl: data.postIncidentReport.actionPhotoUrl || null,
             submittedAt: data.postIncidentReport.submittedAt?.toDate
               ? data.postIncidentReport.submittedAt.toDate()
               : null,

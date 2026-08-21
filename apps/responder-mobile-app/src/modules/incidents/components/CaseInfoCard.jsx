@@ -177,6 +177,7 @@ export default function CaseInfoCard({
     peopleStatus: "",
     hospital: "",
     photoUri: "",
+    actionPhotoUri: "",
   });
   const [error, setError] = useState("");
   const { user } = useUserStore();
@@ -457,6 +458,13 @@ export default function CaseInfoCard({
           `post-reports/${caseData.id}/`
         );
       }
+      let actionPhotoUrl = null;
+      if (postReportForm.actionPhotoUri?.trim()) {
+        actionPhotoUrl = await uploadImageToStorage(
+          postReportForm.actionPhotoUri,
+          `post-reports/${caseData.id}/`
+        );
+      }
       await submitPostIncidentReport(caseData.id, {
         reasonForIncident: postReportForm.reasonForIncident,
         notes: postReportForm.notes,
@@ -464,6 +472,7 @@ export default function CaseInfoCard({
         peopleStatus: postReportForm.peopleStatus,
         hospital: postReportForm.hospital,
         photoUrl,
+        actionPhotoUrl,
       });
       setIsPostReportModalVisible(false);
       setPostReportForm({
@@ -473,6 +482,7 @@ export default function CaseInfoCard({
         peopleStatus: "",
         hospital: "",
         photoUri: "",
+        actionPhotoUri: "",
       });
       onStatusUpdate?.();
     } catch (err) {
@@ -1093,28 +1103,38 @@ export default function CaseInfoCard({
                       : ""}
                   </Text>
                 ) : null}
-                {caseData.postIncidentReport.photoUrl ? (
-                  <TouchableOpacity
-                    onPress={() => {
-                      setPreviewImageUri(caseData.postIncidentReport.photoUrl);
-                      setImageModalVisible(true);
-                    }}
-                    style={{ borderRadius: radii.md, overflow: "hidden", marginTop: spacing.md }}
-                    accessibilityRole="imagebutton"
-                    accessibilityLabel="View post-report scene photo"
-                  >
-                    <Image
-                      source={{ uri: caseData.postIncidentReport.photoUrl }}
-                      style={{
-                        width: "100%",
-                        height: 200,
-                        borderRadius: radii.md,
-                      }}
-                      contentFit="cover"
-                      transition={200}
-                    />
-                  </TouchableOpacity>
-                ) : null}
+                {[
+                  { url: caseData.postIncidentReport.photoUrl, label: "Scene photo" },
+                  { url: caseData.postIncidentReport.actionPhotoUrl, label: "Action photo" },
+                ]
+                  .filter((photo) => photo.url)
+                  .map((photo) => (
+                    <View key={photo.label}>
+                      <Text style={[styles.postReportMeta, { marginTop: spacing.md }]}>
+                        {photo.label}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => {
+                          setPreviewImageUri(photo.url);
+                          setImageModalVisible(true);
+                        }}
+                        style={{ borderRadius: radii.md, overflow: "hidden", marginTop: spacing.xs }}
+                        accessibilityRole="imagebutton"
+                        accessibilityLabel={`View post-report ${photo.label.toLowerCase()}`}
+                      >
+                        <Image
+                          source={{ uri: photo.url }}
+                          style={{
+                            width: "100%",
+                            height: 200,
+                            borderRadius: radii.md,
+                          }}
+                          contentFit="cover"
+                          transition={200}
+                        />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
               </Section>
             ) : null}
 

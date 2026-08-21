@@ -157,6 +157,7 @@ export interface IncidentRecord {
     peopleStatus?: string | null;
     hospital?: string | null;
     photoUrl?: string | null;
+    actionPhotoUrl?: string | null;
     submittedAt?: Date | Timestamp | null;
     submittedByDispatcherId?: string | null;
     submittedByName?: string | null;
@@ -425,6 +426,7 @@ const toIncidentRecord = (snapshot: DocumentData): IncidentRecord => {
             peopleStatus: data.postIncidentReport.peopleStatus || null,
             hospital: data.postIncidentReport.hospital || null,
             photoUrl: data.postIncidentReport.photoUrl || null,
+            actionPhotoUrl: data.postIncidentReport.actionPhotoUrl || null,
             submittedAt: data.postIncidentReport.submittedAt?.toDate
               ? data.postIncidentReport.submittedAt.toDate()
               : data.postIncidentReport.submittedAt
@@ -1574,6 +1576,7 @@ export async function submitPostIncidentReportForIncident(
     peopleStatus?: string | null;
     hospital?: string | null;
     photoUrl?: string | null;
+    actionPhotoUrl?: string | null;
   }
 ): Promise<IncidentRecord> {
   const currentUser = ensureAuthenticated();
@@ -1596,6 +1599,7 @@ export async function submitPostIncidentReportForIncident(
       peopleStatus: postReport.peopleStatus?.trim() || null,
       hospital: postReport.hospital?.trim() || null,
       photoUrl: postReport.photoUrl?.trim() || null,
+      actionPhotoUrl: postReport.actionPhotoUrl?.trim() || null,
       submittedAt: resolvedAt,
       submittedByDispatcherId: currentUser.uid,
       submittedByName: currentUser.displayName || currentUser.email || currentUser.uid,

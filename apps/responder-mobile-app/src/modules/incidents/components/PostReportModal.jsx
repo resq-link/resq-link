@@ -109,6 +109,68 @@ function FieldLabel({ label, hint, colors }) {
   );
 }
 
+function PhotoField({ label, hint, noun, uri, onPick, onRemove, disabled, colors }) {
+  return (
+    <View style={styles.fieldContainer}>
+      <FieldLabel label={label} hint={hint} colors={colors} />
+      {uri ? (
+        <View style={styles.photoPreviewWrap}>
+          <Image
+            source={{ uri }}
+            style={styles.photoPreview}
+            contentFit="cover"
+            accessibilityLabel={`Selected ${noun} preview`}
+          />
+          <TouchableOpacity
+            onPress={onRemove}
+            disabled={disabled}
+            style={[
+              styles.removePhotoButton,
+              { backgroundColor: colors.surfaceHighlight, borderColor: colors.border },
+              disabled && styles.disabledButton,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={`Remove ${noun}`}
+          >
+            <X size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <View style={styles.photoActionsRow}>
+          <TouchableOpacity
+            onPress={() => onPick("camera")}
+            disabled={disabled}
+            style={[
+              styles.photoActionButton,
+              { backgroundColor: colors.surfaceHighlight, borderColor: colors.border },
+              disabled && styles.disabledButton,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={`Take ${noun}`}
+          >
+            <Camera size={18} color={colors.accent} />
+            <Text style={[styles.photoActionText, { color: colors.text }]}>Take Photo</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => onPick("library")}
+            disabled={disabled}
+            style={[
+              styles.photoActionButton,
+              { backgroundColor: colors.surfaceHighlight, borderColor: colors.border },
+              disabled && styles.disabledButton,
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel={`Choose ${noun} from library`}
+          >
+            <ImageIcon size={18} color={colors.accent} />
+            <Text style={[styles.photoActionText, { color: colors.text }]}>Choose Photo</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
+}
+
 export default function PostReportModal({
   visible,
   onClose,
@@ -146,7 +208,7 @@ export default function PostReportModal({
   };
 
   const handlePickPhoto = useCallback(
-    async (source) => {
+    async (source, field = "photoUri", noun = "scene photo") => {
       if (isSubmitting) return;
 
       const permission =
@@ -158,8 +220,8 @@ export default function PostReportModal({
         Alert.alert(
           "Permission required",
           source === "camera"
-            ? "Camera access is needed to take a scene photo."
-            : "Photo library access is needed to attach a scene photo."
+            ? `Camera access is needed to take a ${noun}.`
+            : `Photo library access is needed to attach a ${noun}.`
         );
         return;
       }
@@ -170,16 +232,19 @@ export default function PostReportModal({
           : await ImagePicker.launchImageLibraryAsync(pickerOptions);
 
       if (!result.canceled && result.assets?.[0]?.uri) {
-        setForm((current) => ({ ...current, photoUri: result.assets[0].uri }));
+        setForm((current) => ({ ...current, [field]: result.assets[0].uri }));
       }
     },
     [isSubmitting, setForm]
   );
 
-  const handleRemovePhoto = useCallback(() => {
-    if (isSubmitting) return;
-    setForm((current) => ({ ...current, photoUri: "" }));
-  }, [isSubmitting, setForm]);
+  const handleRemovePhoto = useCallback(
+    (field = "photoUri") => {
+      if (isSubmitting) return;
+      setForm((current) => ({ ...current, [field]: "" }));
+    },
+    [isSubmitting, setForm]
+  );
 
   return (
     <Modal
@@ -475,73 +540,31 @@ export default function PostReportModal({
               <View style={styles.sectionHeader}>
                 <Camera size={17} color={colors.accent} />
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-                  Scene Photo
+                  Photos
                 </Text>
               </View>
 
-              <View style={styles.fieldContainer}>
-                <FieldLabel
-                  label="Photo"
-                  hint="Optional — document scene condition or handover"
-                  colors={colors}
-                />
-                {form.photoUri ? (
-                  <View style={styles.photoPreviewWrap}>
-                    <Image
-                      source={{ uri: form.photoUri }}
-                      style={styles.photoPreview}
-                      contentFit="cover"
-                      accessibilityLabel="Selected scene photo preview"
-                    />
-                    <TouchableOpacity
-                      onPress={handleRemovePhoto}
-                      disabled={isSubmitting}
-                      style={[
-                        styles.removePhotoButton,
-                        { backgroundColor: colors.surfaceHighlight, borderColor: colors.border },
-                        isSubmitting && styles.disabledButton,
-                      ]}
-                      accessibilityRole="button"
-                      accessibilityLabel="Remove scene photo"
-                    >
-                      <X size={18} color={colors.textSecondary} />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <View style={styles.photoActionsRow}>
-                    <TouchableOpacity
-                      onPress={() => handlePickPhoto("camera")}
-                      disabled={isSubmitting}
-                      style={[
-                        styles.photoActionButton,
-                        { backgroundColor: colors.surfaceHighlight, borderColor: colors.border },
-                        isSubmitting && styles.disabledButton,
-                      ]}
-                      accessibilityRole="button"
-                      accessibilityLabel="Take scene photo"
-                    >
-                      <Camera size={18} color={colors.accent} />
-                      <Text style={[styles.photoActionText, { color: colors.text }]}>Take Photo</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      onPress={() => handlePickPhoto("library")}
-                      disabled={isSubmitting}
-                      style={[
-                        styles.photoActionButton,
-                        { backgroundColor: colors.surfaceHighlight, borderColor: colors.border },
-                        isSubmitting && styles.disabledButton,
-                      ]}
-                      accessibilityRole="button"
-                      accessibilityLabel="Choose scene photo from library"
-                    >
-                      <ImageIcon size={18} color={colors.accent} />
-                      <Text style={[styles.photoActionText, { color: colors.text }]}>
-                        Choose Photo
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </View>
+              <PhotoField
+                label="Scene Photo"
+                hint="Optional — document scene condition or handover"
+                noun="scene photo"
+                uri={form.photoUri}
+                onPick={(source) => handlePickPhoto(source, "photoUri", "scene photo")}
+                onRemove={() => handleRemovePhoto("photoUri")}
+                disabled={isSubmitting}
+                colors={colors}
+              />
+
+              <PhotoField
+                label="Action Photo"
+                hint="Optional — responders carrying out the response"
+                noun="action photo"
+                uri={form.actionPhotoUri}
+                onPick={(source) => handlePickPhoto(source, "actionPhotoUri", "action photo")}
+                onRemove={() => handleRemovePhoto("actionPhotoUri")}
+                disabled={isSubmitting}
+                colors={colors}
+              />
 
               {error ? <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text> : null}
             </ScrollView>

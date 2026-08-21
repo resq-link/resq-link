@@ -480,7 +480,7 @@ Global (any authenticated screen):
 | Aspect | Detail |
 |--------|--------|
 | **Purpose** | Submit post-incident report to close case |
-| **Fields** | reasonForIncident, notes, peopleInvolved, peopleStatus, hospital, photoUri (optional) |
+| **Fields** | reasonForIncident, notes, peopleInvolved, peopleStatus, hospital, photoUri, actionPhotoUri (optional) |
 | **Presets** | Cause, people status, notes, hospital dropdowns |
 | **Validation** | 3/3 key fields: reason + peopleStatus + notes |
 | **Submit** | `uploadImageToStorage` (optional) → `submitIncidentPostReport` |
@@ -821,6 +821,7 @@ submitPostIncidentReportForIncident(incidentId, postReport):
 | `peopleStatus` | string (required) | No injuries, Stable, Minor injuries, Critical, Transported |
 | `hospital` | string (optional) | No transport, TCPGH, City Health Office, Private clinic |
 | `photoUrl` | string (optional) | Camera/gallery → `post-reports/{incidentId}/{photoId}` in Storage |
+| `actionPhotoUrl` | string (optional) | Camera/gallery → `post-reports/{incidentId}/{photoId}` in Storage |
 
 ### Civilian Field Assessment (Read-Only)
 

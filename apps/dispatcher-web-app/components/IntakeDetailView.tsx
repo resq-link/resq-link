@@ -1237,6 +1237,12 @@ export default function IntakeDetailView({
                     className="max-h-36 w-full object-cover"
                   />
                 ) : null}
+                {postIncidentReport.actionPhotoUrl ? (
+                  <PostIncidentReportPhoto
+                    photoUrl={postIncidentReport.actionPhotoUrl}
+                    className="max-h-36 w-full object-cover"
+                  />
+                ) : null}
               </div>
             ) : (
               <div className="rounded-lg border border-dashed border-slate-700 bg-slate-950/40 px-3 py-5 text-center">
