@@ -7,7 +7,7 @@
   ],
   "scripts": {
     "build:firebase": "npm run build --prefix packages/firebase",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package || true"
   },
   "devDependencies": {
     "@expo/cli": "54.0.23",
