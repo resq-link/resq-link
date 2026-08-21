@@ -342,3 +342,13 @@ export {
   type SaveIncidentTypeRuleInput,
 } from './incidents';
 
+export {
+  subscribeToSmsIntakes,
+  subscribeToSmsMessages,
+  type SmsIntake,
+  type SmsIntakeStatus,
+  type SmsMessage,
+  type SmsMessageStatus,
+  type SmsThread,
+} from './sms';
+

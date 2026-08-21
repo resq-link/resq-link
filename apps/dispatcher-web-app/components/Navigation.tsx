@@ -25,6 +25,7 @@ import {
   LogOut,
   User,
   ShieldAlert,
+  MessageSquare,
 } from "lucide-react";
 
 type NavBadgeKey = "intakeCount" | "pendingFootageCount";
@@ -53,6 +54,7 @@ const navGroups: NavGroup[] = [
     title: "OPERATIONS",
     items: [
       { href: "/intake", label: "Incident Intake", icon: ClipboardList, badgeKey: "intakeCount" as NavBadgeKey },
+      { href: "/sms", label: "SMS Intake", icon: MessageSquare },
       { href: "/incidents", label: "Active Incidents", icon: ShieldAlert },
       { href: "/footage-requests", label: "Footage Requests", icon: Video, badgeKey: "pendingFootageCount" as NavBadgeKey },
     ],

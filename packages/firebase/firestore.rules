@@ -157,6 +157,21 @@ service cloud.firestore {
         || (isCommandCenter() && resource.data.commandCenterAdminId == request.auth.uid);
     }
 
+    // SMS records are written only by the gateway Cloud Functions. Dispatcher-side
+    // accounts may read the operational queue; raw phone data is never public.
+    match /smsThreads/{threadId} {
+      allow read: if isCommandCenter() || isDispatcher() || isSuperAdmin();
+      allow write: if false;
+    }
+    match /smsMessages/{messageId} {
+      allow read: if isCommandCenter() || isDispatcher() || isSuperAdmin();
+      allow write: if false;
+    }
+    match /smsIntakes/{intakeId} {
+      allow read: if isCommandCenter() || isDispatcher() || isSuperAdmin();
+      allow write: if false;
+    }
+
     // Resources collection
     match /resources/{resourceId} {
       allow read: if isAuthenticated();

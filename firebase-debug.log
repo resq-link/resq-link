@@ -1,0 +1,1321 @@
+[debug] [2026-08-21T07:28:45.869Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:28:45.873Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:list --project city-rescue-dispatch
+[debug] [2026-08-21T07:28:45.874Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:28:45.874Z] Platform:      win32
+[debug] [2026-08-21T07:28:45.874Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:28:45.875Z] Time:          Fri Aug 21 2026 15:28:45 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:28:45.875Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:28:45.912Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:28:45.914Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:28:45.914Z] [iam] checking project city-rescue-dispatch for permissions ["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]
+[debug] [2026-08-21T07:28:45.919Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:28:45.919Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:28:45.921Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions [none]
+[debug] [2026-08-21T07:28:45.922Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions  x-goog-user-project=city-rescue-dispatch
+[debug] [2026-08-21T07:28:45.922Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:28:47.519Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions 200
+[debug] [2026-08-21T07:28:47.520Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:28:47.521Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:28:47.521Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:28:47.521Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions [none]
+[debug] [2026-08-21T07:28:48.472Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:28:48.472Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions {}
+[debug] [2026-08-21T07:28:48.473Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:28:48.473Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:28:48.473Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions filter=environment%3D%22GEN_2%22
+[debug] [2026-08-21T07:28:50.240Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:29:57.692Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:29:57.696Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:log --only smsGatewayInbound --project city-rescue-dispatch --lines 50
+[debug] [2026-08-21T07:29:57.696Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:29:57.696Z] Platform:      win32
+[debug] [2026-08-21T07:29:57.697Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:29:57.697Z] Time:          Fri Aug 21 2026 15:29:57 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:29:57.698Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:29:57.985Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:29:57.987Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:29:57.988Z] [iam] checking project city-rescue-dispatch for permissions ["firebase.projects.get","logging.logEntries.list","logging.logs.list"]
+[debug] [2026-08-21T07:29:57.992Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:29:57.992Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:29:57.995Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions [none]
+[debug] [2026-08-21T07:29:57.995Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions  x-goog-user-project=city-rescue-dispatch
+[debug] [2026-08-21T07:29:57.995Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["firebase.projects.get","logging.logEntries.list","logging.logs.list"]}
+[debug] [2026-08-21T07:29:59.365Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions 200
+[debug] [2026-08-21T07:29:59.365Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["firebase.projects.get","logging.logEntries.list","logging.logs.list"]}
+[debug] [2026-08-21T07:29:59.366Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:29:59.366Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:29:59.366Z] >>> [apiv2][query] POST https://logging.googleapis.com/v2/entries:list [none]
+[debug] [2026-08-21T07:29:59.366Z] >>> [apiv2][body] POST https://logging.googleapis.com/v2/entries:list {"resourceNames":["projects/city-rescue-dispatch"],"filter":"resource.type=\"cloud_function\" OR (resource.type=\"cloud_run_revision\" AND labels.\"goog-managed-by\"=\"cloudfunctions\")\n(resource.labels.function_name=\"smsGatewayInbound\" OR resource.labels.service_name=\"smsGatewayInbound\")","orderBy":"timestamp desc","pageSize":"50"}
+[debug] [2026-08-21T07:30:05.491Z] <<< [apiv2][status] POST https://logging.googleapis.com/v2/entries:list 200
+[debug] [2026-08-21T07:30:18.823Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:30:18.827Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_USERNAME --project city-rescue-dispatch
+[debug] [2026-08-21T07:30:18.828Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:30:18.828Z] Platform:      win32
+[debug] [2026-08-21T07:30:18.828Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:30:18.828Z] Time:          Fri Aug 21 2026 15:30:18 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:30:18.829Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:30:18.907Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:30:18.908Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:30:18.912Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:30:18.913Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:30:18.914Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_USERNAME/versions/latest:access [none]
+[debug] [2026-08-21T07:30:19.499Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_USERNAME/versions/latest:access 200
+[debug] [2026-08-21T07:30:20.660Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:30:20.665Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_PASSWORD --project city-rescue-dispatch
+[debug] [2026-08-21T07:30:20.666Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:30:20.666Z] Platform:      win32
+[debug] [2026-08-21T07:30:20.666Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:30:20.666Z] Time:          Fri Aug 21 2026 15:30:20 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:30:20.666Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:30:20.757Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:30:20.758Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:30:20.767Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:30:20.767Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:30:20.769Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_PASSWORD/versions/latest:access [none]
+[debug] [2026-08-21T07:30:21.278Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_PASSWORD/versions/latest:access 200
+[debug] [2026-08-21T07:30:22.389Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:30:22.393Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_BASE_URL --project city-rescue-dispatch
+[debug] [2026-08-21T07:30:22.393Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:30:22.393Z] Platform:      win32
+[debug] [2026-08-21T07:30:22.394Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:30:22.394Z] Time:          Fri Aug 21 2026 15:30:22 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:30:22.394Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:30:22.474Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:30:22.475Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:30:22.487Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:30:22.488Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:30:22.489Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_BASE_URL/versions/latest:access [none]
+[debug] [2026-08-21T07:30:22.983Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_BASE_URL/versions/latest:access 200
+[debug] [2026-08-21T07:30:24.102Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:30:24.105Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_WEBHOOK_SECRET --project city-rescue-dispatch
+[debug] [2026-08-21T07:30:24.106Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:30:24.106Z] Platform:      win32
+[debug] [2026-08-21T07:30:24.106Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:30:24.107Z] Time:          Fri Aug 21 2026 15:30:24 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:30:24.108Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:30:24.191Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:30:24.193Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:30:24.198Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:30:24.198Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:30:24.200Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET/versions/latest:access [none]
+[debug] [2026-08-21T07:30:24.634Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET/versions/latest:access 200
+[debug] [2026-08-21T07:30:35.427Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:30:35.431Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_USERNAME --project city-rescue-dispatch
+[debug] [2026-08-21T07:30:35.432Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:30:35.432Z] Platform:      win32
+[debug] [2026-08-21T07:30:35.432Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:30:35.432Z] Time:          Fri Aug 21 2026 15:30:35 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:30:35.433Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:30:35.506Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:30:35.508Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:30:35.512Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:30:35.512Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:30:35.514Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_USERNAME/versions/latest:access [none]
+[debug] [2026-08-21T07:30:35.984Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_USERNAME/versions/latest:access 200
+[debug] [2026-08-21T07:30:37.125Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:30:37.130Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_PASSWORD --project city-rescue-dispatch
+[debug] [2026-08-21T07:30:37.130Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:30:37.130Z] Platform:      win32
+[debug] [2026-08-21T07:30:37.131Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:30:37.131Z] Time:          Fri Aug 21 2026 15:30:37 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:30:37.132Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:30:37.227Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:30:37.229Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:30:37.234Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:30:37.234Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:30:37.237Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_PASSWORD/versions/latest:access [none]
+[debug] [2026-08-21T07:30:37.675Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_PASSWORD/versions/latest:access 200
+[debug] [2026-08-21T07:30:38.802Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:30:38.806Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_BASE_URL --project city-rescue-dispatch
+[debug] [2026-08-21T07:30:38.807Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:30:38.807Z] Platform:      win32
+[debug] [2026-08-21T07:30:38.807Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:30:38.808Z] Time:          Fri Aug 21 2026 15:30:38 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:30:38.808Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:30:38.902Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:30:38.904Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:30:38.908Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:30:38.909Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:30:38.910Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_BASE_URL/versions/latest:access [none]
+[debug] [2026-08-21T07:30:39.525Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_BASE_URL/versions/latest:access 200
+[debug] [2026-08-21T07:30:48.088Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:30:48.092Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_BASE_URL --project city-rescue-dispatch
+[debug] [2026-08-21T07:30:48.093Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:30:48.093Z] Platform:      win32
+[debug] [2026-08-21T07:30:48.093Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:30:48.094Z] Time:          Fri Aug 21 2026 15:30:48 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:30:48.094Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:30:48.165Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:30:48.166Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:30:48.171Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:30:48.171Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:30:48.172Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_BASE_URL/versions/latest:access [none]
+[debug] [2026-08-21T07:30:48.740Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_BASE_URL/versions/latest:access 200
+[debug] [2026-08-21T07:30:59.816Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:30:59.819Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_BASE_URL --project city-rescue-dispatch
+[debug] [2026-08-21T07:30:59.820Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:30:59.820Z] Platform:      win32
+[debug] [2026-08-21T07:30:59.820Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:30:59.821Z] Time:          Fri Aug 21 2026 15:30:59 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:30:59.821Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:30:59.892Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:30:59.894Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:30:59.902Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:30:59.902Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:30:59.904Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_BASE_URL/versions/latest:access [none]
+[debug] [2026-08-21T07:31:00.331Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_BASE_URL/versions/latest:access 200
+[debug] [2026-08-21T07:31:09.410Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:31:09.414Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_USERNAME --project city-rescue-dispatch
+[debug] [2026-08-21T07:31:09.414Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:31:09.415Z] Platform:      win32
+[debug] [2026-08-21T07:31:09.415Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:31:09.415Z] Time:          Fri Aug 21 2026 15:31:09 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:31:09.415Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:31:09.483Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:31:09.485Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:31:09.489Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:31:09.489Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:31:09.490Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_USERNAME/versions/latest:access [none]
+[debug] [2026-08-21T07:31:09.927Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_USERNAME/versions/latest:access 200
+[debug] [2026-08-21T07:31:11.128Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:31:11.133Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_PASSWORD --project city-rescue-dispatch
+[debug] [2026-08-21T07:31:11.133Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:31:11.134Z] Platform:      win32
+[debug] [2026-08-21T07:31:11.134Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:31:11.134Z] Time:          Fri Aug 21 2026 15:31:11 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:31:11.135Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:31:11.221Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:31:11.223Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:31:11.228Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:31:11.229Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:31:11.231Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_PASSWORD/versions/latest:access [none]
+[debug] [2026-08-21T07:31:11.754Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_PASSWORD/versions/latest:access 200
+[debug] [2026-08-21T07:31:12.859Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:31:12.863Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_BASE_URL --project city-rescue-dispatch
+[debug] [2026-08-21T07:31:12.863Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:31:12.863Z] Platform:      win32
+[debug] [2026-08-21T07:31:12.863Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:31:12.864Z] Time:          Fri Aug 21 2026 15:31:12 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:31:12.864Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:31:12.943Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:31:12.945Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:31:12.951Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:31:12.952Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:31:12.953Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_BASE_URL/versions/latest:access [none]
+[debug] [2026-08-21T07:31:13.431Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_BASE_URL/versions/latest:access 200
+[debug] [2026-08-21T07:31:35.852Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:31:35.856Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_USERNAME --project city-rescue-dispatch
+[debug] [2026-08-21T07:31:35.857Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:31:35.857Z] Platform:      win32
+[debug] [2026-08-21T07:31:35.857Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:31:35.858Z] Time:          Fri Aug 21 2026 15:31:35 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:31:35.858Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:31:35.930Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:31:35.931Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:31:35.935Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:31:35.935Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:31:35.937Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_USERNAME/versions/latest:access [none]
+[debug] [2026-08-21T07:31:36.380Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_USERNAME/versions/latest:access 200
+[debug] [2026-08-21T07:31:37.591Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:31:37.596Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_PASSWORD --project city-rescue-dispatch
+[debug] [2026-08-21T07:31:37.597Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:31:37.598Z] Platform:      win32
+[debug] [2026-08-21T07:31:37.598Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:31:37.598Z] Time:          Fri Aug 21 2026 15:31:37 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:31:37.599Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:31:37.686Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:31:37.688Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:31:37.692Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:31:37.692Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:31:37.694Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_PASSWORD/versions/latest:access [none]
+[debug] [2026-08-21T07:31:38.414Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_PASSWORD/versions/latest:access 200
+[debug] [2026-08-21T07:31:39.526Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:31:39.531Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_BASE_URL --project city-rescue-dispatch
+[debug] [2026-08-21T07:31:39.531Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:31:39.532Z] Platform:      win32
+[debug] [2026-08-21T07:31:39.532Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:31:39.532Z] Time:          Fri Aug 21 2026 15:31:39 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:31:39.532Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:31:39.612Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:31:39.613Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:31:39.617Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:31:39.617Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:31:39.619Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_BASE_URL/versions/latest:access [none]
+[debug] [2026-08-21T07:31:40.054Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_BASE_URL/versions/latest:access 200
+[debug] [2026-08-21T07:31:41.127Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:31:41.131Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_WEBHOOK_SECRET --project city-rescue-dispatch
+[debug] [2026-08-21T07:31:41.132Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:31:41.132Z] Platform:      win32
+[debug] [2026-08-21T07:31:41.132Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:31:41.132Z] Time:          Fri Aug 21 2026 15:31:41 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:31:41.133Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:31:41.215Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:31:41.217Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:31:41.222Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:31:41.222Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:31:41.224Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET/versions/latest:access [none]
+[debug] [2026-08-21T07:31:41.653Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET/versions/latest:access 200
+[debug] [2026-08-21T07:31:55.043Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:31:55.047Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_USERNAME --project city-rescue-dispatch
+[debug] [2026-08-21T07:31:55.048Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:31:55.048Z] Platform:      win32
+[debug] [2026-08-21T07:31:55.048Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:31:55.049Z] Time:          Fri Aug 21 2026 15:31:55 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:31:55.049Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:31:55.121Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:31:55.122Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:31:55.126Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:31:55.126Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:31:55.128Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_USERNAME/versions/latest:access [none]
+[debug] [2026-08-21T07:31:55.579Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_USERNAME/versions/latest:access 200
+[debug] [2026-08-21T07:31:56.781Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:31:56.786Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_PASSWORD --project city-rescue-dispatch
+[debug] [2026-08-21T07:31:56.787Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:31:56.788Z] Platform:      win32
+[debug] [2026-08-21T07:31:56.788Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:31:56.789Z] Time:          Fri Aug 21 2026 15:31:56 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:31:56.789Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:31:56.876Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:31:56.877Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:31:56.882Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:31:56.883Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:31:56.885Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_PASSWORD/versions/latest:access [none]
+[debug] [2026-08-21T07:31:57.337Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_PASSWORD/versions/latest:access 200
+[debug] [2026-08-21T07:31:58.428Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:31:58.432Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_BASE_URL --project city-rescue-dispatch
+[debug] [2026-08-21T07:31:58.432Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:31:58.432Z] Platform:      win32
+[debug] [2026-08-21T07:31:58.432Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:31:58.433Z] Time:          Fri Aug 21 2026 15:31:58 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:31:58.433Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:31:58.515Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:31:58.517Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:31:58.522Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:31:58.522Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:31:58.523Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_BASE_URL/versions/latest:access [none]
+[debug] [2026-08-21T07:31:59.200Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_BASE_URL/versions/latest:access 200
+[debug] [2026-08-21T07:32:00.296Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:32:00.300Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_WEBHOOK_SECRET --project city-rescue-dispatch
+[debug] [2026-08-21T07:32:00.301Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:32:00.301Z] Platform:      win32
+[debug] [2026-08-21T07:32:00.301Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:32:00.302Z] Time:          Fri Aug 21 2026 15:32:00 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:32:00.302Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:32:00.389Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:32:00.390Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:32:00.396Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:32:00.396Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:32:00.398Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET/versions/latest:access [none]
+[debug] [2026-08-21T07:32:01.077Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET/versions/latest:access 200
+[debug] [2026-08-21T07:32:13.698Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:32:13.702Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_USERNAME --project city-rescue-dispatch
+[debug] [2026-08-21T07:32:13.703Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:32:13.703Z] Platform:      win32
+[debug] [2026-08-21T07:32:13.703Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:32:13.703Z] Time:          Fri Aug 21 2026 15:32:13 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:32:13.703Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:32:13.774Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:32:13.775Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:32:13.779Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:32:13.779Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:32:13.781Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_USERNAME/versions/latest:access [none]
+[debug] [2026-08-21T07:32:14.327Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_USERNAME/versions/latest:access 200
+[debug] [2026-08-21T07:32:15.561Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:32:15.565Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_PASSWORD --project city-rescue-dispatch
+[debug] [2026-08-21T07:32:15.566Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:32:15.566Z] Platform:      win32
+[debug] [2026-08-21T07:32:15.566Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:32:15.567Z] Time:          Fri Aug 21 2026 15:32:15 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:32:15.567Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:32:15.644Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:32:15.647Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:32:15.652Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:32:15.652Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:32:15.654Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_PASSWORD/versions/latest:access [none]
+[debug] [2026-08-21T07:32:16.280Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_PASSWORD/versions/latest:access 200
+[debug] [2026-08-21T07:32:17.409Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:32:17.414Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_BASE_URL --project city-rescue-dispatch
+[debug] [2026-08-21T07:32:17.414Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:32:17.414Z] Platform:      win32
+[debug] [2026-08-21T07:32:17.415Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:32:17.415Z] Time:          Fri Aug 21 2026 15:32:17 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:32:17.415Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:32:17.507Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:32:17.508Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:32:17.513Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:32:17.513Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:32:17.515Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_BASE_URL/versions/latest:access [none]
+[debug] [2026-08-21T07:32:18.023Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_BASE_URL/versions/latest:access 200
+[debug] [2026-08-21T07:32:33.288Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:32:33.292Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_USERNAME --project city-rescue-dispatch
+[debug] [2026-08-21T07:32:33.292Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:32:33.292Z] Platform:      win32
+[debug] [2026-08-21T07:32:33.292Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:32:33.293Z] Time:          Fri Aug 21 2026 15:32:33 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:32:33.293Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:32:33.366Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:32:33.368Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:32:33.371Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:32:33.372Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:32:33.373Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_USERNAME/versions/latest:access [none]
+[debug] [2026-08-21T07:32:34.098Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_USERNAME/versions/latest:access 200
+[debug] [2026-08-21T07:32:35.300Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:32:35.304Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_PASSWORD --project city-rescue-dispatch
+[debug] [2026-08-21T07:32:35.305Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:32:35.305Z] Platform:      win32
+[debug] [2026-08-21T07:32:35.305Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:32:35.305Z] Time:          Fri Aug 21 2026 15:32:35 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:32:35.306Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:32:35.398Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:32:35.399Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:32:35.404Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:32:35.405Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:32:35.407Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_PASSWORD/versions/latest:access [none]
+[debug] [2026-08-21T07:32:35.859Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_PASSWORD/versions/latest:access 200
+[debug] [2026-08-21T07:32:37.001Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:32:37.005Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_BASE_URL --project city-rescue-dispatch
+[debug] [2026-08-21T07:32:37.006Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:32:37.006Z] Platform:      win32
+[debug] [2026-08-21T07:32:37.007Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:32:37.007Z] Time:          Fri Aug 21 2026 15:32:37 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:32:37.007Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:32:37.090Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:32:37.092Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:32:37.097Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:32:37.097Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:32:37.099Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_BASE_URL/versions/latest:access [none]
+[debug] [2026-08-21T07:32:37.513Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_BASE_URL/versions/latest:access 200
+[debug] [2026-08-21T07:32:38.620Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:32:38.623Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_WEBHOOK_SECRET --project city-rescue-dispatch
+[debug] [2026-08-21T07:32:38.624Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:32:38.624Z] Platform:      win32
+[debug] [2026-08-21T07:32:38.624Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:32:38.625Z] Time:          Fri Aug 21 2026 15:32:38 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:32:38.625Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:32:38.708Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:32:38.709Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:32:38.714Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:32:38.715Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:32:38.716Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET/versions/latest:access [none]
+[debug] [2026-08-21T07:32:39.223Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET/versions/latest:access 200
+[debug] [2026-08-21T07:32:52.638Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:32:52.643Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_USERNAME --project city-rescue-dispatch
+[debug] [2026-08-21T07:32:52.644Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:32:52.644Z] Platform:      win32
+[debug] [2026-08-21T07:32:52.644Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:32:52.644Z] Time:          Fri Aug 21 2026 15:32:52 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:32:52.645Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:32:52.722Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:32:52.724Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:32:52.727Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:32:52.728Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:32:52.729Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_USERNAME/versions/latest:access [none]
+[debug] [2026-08-21T07:32:53.158Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_USERNAME/versions/latest:access 200
+[debug] [2026-08-21T07:32:54.358Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:32:54.363Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_PASSWORD --project city-rescue-dispatch
+[debug] [2026-08-21T07:32:54.363Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:32:54.363Z] Platform:      win32
+[debug] [2026-08-21T07:32:54.364Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:32:54.364Z] Time:          Fri Aug 21 2026 15:32:54 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:32:54.364Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:32:54.450Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:32:54.452Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:32:54.457Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:32:54.457Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:32:54.459Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_PASSWORD/versions/latest:access [none]
+[debug] [2026-08-21T07:32:54.885Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_PASSWORD/versions/latest:access 200
+[debug] [2026-08-21T07:32:55.967Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:32:55.971Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_BASE_URL --project city-rescue-dispatch
+[debug] [2026-08-21T07:32:55.972Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:32:55.972Z] Platform:      win32
+[debug] [2026-08-21T07:32:55.972Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:32:55.972Z] Time:          Fri Aug 21 2026 15:32:55 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:32:55.973Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:32:56.050Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:32:56.052Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:32:56.058Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:32:56.058Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:32:56.060Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_BASE_URL/versions/latest:access [none]
+[debug] [2026-08-21T07:32:56.476Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_BASE_URL/versions/latest:access 200
+[debug] [2026-08-21T07:32:57.581Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:32:57.585Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_WEBHOOK_SECRET --project city-rescue-dispatch
+[debug] [2026-08-21T07:32:57.586Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:32:57.586Z] Platform:      win32
+[debug] [2026-08-21T07:32:57.586Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:32:57.587Z] Time:          Fri Aug 21 2026 15:32:57 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:32:57.587Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:32:57.671Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:32:57.673Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:32:57.679Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:32:57.679Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:32:57.681Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET/versions/latest:access [none]
+[debug] [2026-08-21T07:32:58.085Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET/versions/latest:access 200
+[debug] [2026-08-21T07:33:13.847Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:33:13.851Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_USERNAME --project city-rescue-dispatch
+[debug] [2026-08-21T07:33:13.852Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:33:13.852Z] Platform:      win32
+[debug] [2026-08-21T07:33:13.852Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:33:13.852Z] Time:          Fri Aug 21 2026 15:33:13 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:33:13.853Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:33:13.929Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:33:13.931Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:33:13.934Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:33:13.935Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:33:13.936Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_USERNAME/versions/latest:access [none]
+[debug] [2026-08-21T07:33:14.404Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_USERNAME/versions/latest:access 200
+[debug] [2026-08-21T07:33:15.571Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:33:15.576Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_PASSWORD --project city-rescue-dispatch
+[debug] [2026-08-21T07:33:15.577Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:33:15.577Z] Platform:      win32
+[debug] [2026-08-21T07:33:15.577Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:33:15.578Z] Time:          Fri Aug 21 2026 15:33:15 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:33:15.578Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:33:15.662Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:33:15.664Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:33:15.668Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:33:15.669Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:33:15.670Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_PASSWORD/versions/latest:access [none]
+[debug] [2026-08-21T07:33:16.110Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_PASSWORD/versions/latest:access 200
+[debug] [2026-08-21T07:33:17.239Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:33:17.242Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_BASE_URL --project city-rescue-dispatch
+[debug] [2026-08-21T07:33:17.243Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:33:17.244Z] Platform:      win32
+[debug] [2026-08-21T07:33:17.244Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:33:17.245Z] Time:          Fri Aug 21 2026 15:33:17 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:33:17.245Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:33:17.348Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:33:17.349Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:33:17.354Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:33:17.355Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:33:17.356Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_BASE_URL/versions/latest:access [none]
+[debug] [2026-08-21T07:33:17.779Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_BASE_URL/versions/latest:access 200
+[debug] [2026-08-21T07:33:18.867Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:33:18.871Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_WEBHOOK_SECRET --project city-rescue-dispatch
+[debug] [2026-08-21T07:33:18.872Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:33:18.872Z] Platform:      win32
+[debug] [2026-08-21T07:33:18.872Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:33:18.873Z] Time:          Fri Aug 21 2026 15:33:18 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:33:18.873Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:33:18.960Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:33:18.961Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:33:18.972Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:33:18.973Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:33:18.974Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET/versions/latest:access [none]
+[debug] [2026-08-21T07:33:19.396Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET/versions/latest:access 200
+[debug] [2026-08-21T07:33:28.464Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:33:28.468Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:log --only smsGatewayInbound --project city-rescue-dispatch --lines 12
+[debug] [2026-08-21T07:33:28.468Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:33:28.469Z] Platform:      win32
+[debug] [2026-08-21T07:33:28.469Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:33:28.469Z] Time:          Fri Aug 21 2026 15:33:28 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:33:28.469Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:33:28.489Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:33:28.491Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:33:28.492Z] [iam] checking project city-rescue-dispatch for permissions ["firebase.projects.get","logging.logEntries.list","logging.logs.list"]
+[debug] [2026-08-21T07:33:28.494Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:33:28.494Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:33:28.496Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions [none]
+[debug] [2026-08-21T07:33:28.496Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions  x-goog-user-project=city-rescue-dispatch
+[debug] [2026-08-21T07:33:28.496Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["firebase.projects.get","logging.logEntries.list","logging.logs.list"]}
+[debug] [2026-08-21T07:33:29.744Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions 200
+[debug] [2026-08-21T07:33:29.744Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["firebase.projects.get","logging.logEntries.list","logging.logs.list"]}
+[debug] [2026-08-21T07:33:29.746Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:33:29.746Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:33:29.746Z] >>> [apiv2][query] POST https://logging.googleapis.com/v2/entries:list [none]
+[debug] [2026-08-21T07:33:29.746Z] >>> [apiv2][body] POST https://logging.googleapis.com/v2/entries:list {"resourceNames":["projects/city-rescue-dispatch"],"filter":"resource.type=\"cloud_function\" OR (resource.type=\"cloud_run_revision\" AND labels.\"goog-managed-by\"=\"cloudfunctions\")\n(resource.labels.function_name=\"smsGatewayInbound\" OR resource.labels.service_name=\"smsGatewayInbound\")","orderBy":"timestamp desc","pageSize":"12"}
+[debug] [2026-08-21T07:33:31.101Z] <<< [apiv2][status] POST https://logging.googleapis.com/v2/entries:list 200
+[debug] [2026-08-21T07:34:55.093Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:34:55.097Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js login:ci
+[debug] [2026-08-21T07:34:55.098Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:34:55.098Z] Platform:      win32
+[debug] [2026-08-21T07:34:55.098Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:34:55.099Z] Time:          Fri Aug 21 2026 15:34:55 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:34:55.099Z] ----------------------------------------------------------------------
+[debug] 
+[error] 
+[error] Error: Cannot run login:ci in non-interactive mode.
+[debug] [2026-08-21T07:35:09.578Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:35:09.582Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:log --only smsGatewayInbound --project city-rescue-dispatch --lines 8
+[debug] [2026-08-21T07:35:09.582Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:35:09.582Z] Platform:      win32
+[debug] [2026-08-21T07:35:09.583Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:35:09.583Z] Time:          Fri Aug 21 2026 15:35:09 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:35:09.583Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:35:09.603Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:35:09.604Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:35:09.605Z] [iam] checking project city-rescue-dispatch for permissions ["firebase.projects.get","logging.logEntries.list","logging.logs.list"]
+[debug] [2026-08-21T07:35:09.608Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:35:09.609Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:35:09.611Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions [none]
+[debug] [2026-08-21T07:35:09.611Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions  x-goog-user-project=city-rescue-dispatch
+[debug] [2026-08-21T07:35:09.612Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["firebase.projects.get","logging.logEntries.list","logging.logs.list"]}
+[debug] [2026-08-21T07:35:10.835Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions 200
+[debug] [2026-08-21T07:35:10.836Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["firebase.projects.get","logging.logEntries.list","logging.logs.list"]}
+[debug] [2026-08-21T07:35:10.836Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:35:10.837Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:35:10.837Z] >>> [apiv2][query] POST https://logging.googleapis.com/v2/entries:list [none]
+[debug] [2026-08-21T07:35:10.837Z] >>> [apiv2][body] POST https://logging.googleapis.com/v2/entries:list {"resourceNames":["projects/city-rescue-dispatch"],"filter":"resource.type=\"cloud_function\" OR (resource.type=\"cloud_run_revision\" AND labels.\"goog-managed-by\"=\"cloudfunctions\")\n(resource.labels.function_name=\"smsGatewayInbound\" OR resource.labels.service_name=\"smsGatewayInbound\")","orderBy":"timestamp desc","pageSize":"8"}
+[debug] [2026-08-21T07:35:12.299Z] <<< [apiv2][status] POST https://logging.googleapis.com/v2/entries:list 200
+[debug] [2026-08-21T07:35:30.786Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:35:30.789Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_WEBHOOK_SECRET --project city-rescue-dispatch
+[debug] [2026-08-21T07:35:30.790Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:35:30.790Z] Platform:      win32
+[debug] [2026-08-21T07:35:30.790Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:35:30.791Z] Time:          Fri Aug 21 2026 15:35:30 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:35:30.791Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:35:30.864Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:35:30.866Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:35:30.869Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:35:30.869Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:35:30.871Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET/versions/latest:access [none]
+[debug] [2026-08-21T07:35:31.363Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET/versions/latest:access 200
+[debug] [2026-08-21T07:35:45.855Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:35:45.859Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_WEBHOOK_SECRET --project city-rescue-dispatch
+[debug] [2026-08-21T07:35:45.860Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:35:45.860Z] Platform:      win32
+[debug] [2026-08-21T07:35:45.860Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:35:45.860Z] Time:          Fri Aug 21 2026 15:35:45 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:35:45.860Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:35:45.937Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:35:45.939Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:35:45.944Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:35:45.944Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:35:45.946Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET/versions/latest:access [none]
+[debug] [2026-08-21T07:35:46.341Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET/versions/latest:access 200
+[debug] [2026-08-21T07:36:19.504Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:36:19.507Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:set SMS_GATEWAY_WEBHOOK_SECRET --data-file - --force --project city-rescue-dispatch
+[debug] [2026-08-21T07:36:19.508Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:36:19.508Z] Platform:      win32
+[debug] [2026-08-21T07:36:19.508Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:36:19.508Z] Time:          Fri Aug 21 2026 15:36:19 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:36:19.508Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:36:19.547Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:36:19.548Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:36:19.550Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:36:19.551Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:36:19.551Z] [iam] checking project city-rescue-dispatch for permissions ["firebase.projects.get","secretmanager.secrets.create","secretmanager.secrets.get","secretmanager.secrets.update","secretmanager.versions.add"]
+[debug] [2026-08-21T07:36:19.555Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:36:19.555Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:36:19.556Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions [none]
+[debug] [2026-08-21T07:36:19.557Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions  x-goog-user-project=city-rescue-dispatch
+[debug] [2026-08-21T07:36:19.557Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["firebase.projects.get","secretmanager.secrets.create","secretmanager.secrets.get","secretmanager.secrets.update","secretmanager.versions.add"]}
+[debug] [2026-08-21T07:36:20.631Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions 200
+[debug] [2026-08-21T07:36:20.631Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["firebase.projects.get","secretmanager.secrets.create","secretmanager.secrets.get","secretmanager.secrets.update","secretmanager.versions.add"]}
+[debug] [2026-08-21T07:36:20.634Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:36:20.634Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:36:20.634Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch [none]
+[debug] [2026-08-21T07:36:20.885Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch 200
+[debug] [2026-08-21T07:36:20.885Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch {"projectNumber":"665229808010","projectId":"city-rescue-dispatch","lifecycleState":"ACTIVE","name":"City Rescue Dispatch","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2025-12-04T10:30:11.608378Z"}
+[debug] [2026-08-21T07:36:20.887Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:36:20.887Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:36:20.887Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET [none]
+[debug] [2026-08-21T07:36:21.354Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET 200
+[debug] [2026-08-21T07:36:21.354Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET {"name":"projects/665229808010/secrets/SMS_GATEWAY_WEBHOOK_SECRET","replication":{"automatic":{}},"createTime":"2026-08-21T07:06:50.625156Z","labels":{"firebase-managed":"functions"},"etag":"\"16598947dc49be\""}
+[debug] [2026-08-21T07:36:21.355Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:36:21.355Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:36:21.355Z] >>> [apiv2][query] POST https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET:addVersion [none]
+[debug] [2026-08-21T07:36:21.356Z] >>> [apiv2][body] POST https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET:addVersion {"payload":{"data":""}}
+[debug] [2026-08-21T07:36:21.461Z] <<< [apiv2][status] POST https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET:addVersion 400
+[debug] [2026-08-21T07:36:21.461Z] <<< [apiv2][body] POST https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET:addVersion {"error":{"code":400,"message":"Secret Payload cannot be empty.","status":"INVALID_ARGUMENT"}}
+[error] 
+[error] Error: Request to https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET:addVersion had HTTP Error: 400, Secret Payload cannot be empty.
+[debug] [2026-08-21T07:36:21.466Z] Error Context: {
+  "body": {
+    "error": {
+      "code": 400,
+      "message": "Secret Payload cannot be empty.",
+      "status": "INVALID_ARGUMENT"
+    }
+  },
+  "response": {
+    "statusCode": 400
+  }
+}
+[debug] [2026-08-21T07:36:34.237Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:36:34.243Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:set SMS_GATEWAY_WEBHOOK_SECRET --data-file - --force --project city-rescue-dispatch
+[debug] [2026-08-21T07:36:34.244Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:36:34.245Z] Platform:      win32
+[debug] [2026-08-21T07:36:34.245Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:36:34.246Z] Time:          Fri Aug 21 2026 15:36:34 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:36:34.246Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:36:34.290Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:36:34.291Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:36:34.293Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:36:34.294Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:36:34.294Z] [iam] checking project city-rescue-dispatch for permissions ["firebase.projects.get","secretmanager.secrets.create","secretmanager.secrets.get","secretmanager.secrets.update","secretmanager.versions.add"]
+[debug] [2026-08-21T07:36:34.296Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:36:34.296Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:36:34.298Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions [none]
+[debug] [2026-08-21T07:36:34.298Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions  x-goog-user-project=city-rescue-dispatch
+[debug] [2026-08-21T07:36:34.299Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["firebase.projects.get","secretmanager.secrets.create","secretmanager.secrets.get","secretmanager.secrets.update","secretmanager.versions.add"]}
+[debug] [2026-08-21T07:36:35.395Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions 200
+[debug] [2026-08-21T07:36:35.396Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["firebase.projects.get","secretmanager.secrets.create","secretmanager.secrets.get","secretmanager.secrets.update","secretmanager.versions.add"]}
+[debug] [2026-08-21T07:36:35.399Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:36:35.399Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:36:35.400Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch [none]
+[debug] [2026-08-21T07:36:35.660Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch 200
+[debug] [2026-08-21T07:36:35.660Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch {"projectNumber":"665229808010","projectId":"city-rescue-dispatch","lifecycleState":"ACTIVE","name":"City Rescue Dispatch","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2025-12-04T10:30:11.608378Z"}
+[debug] [2026-08-21T07:36:35.662Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:36:35.662Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:36:35.662Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET [none]
+[debug] [2026-08-21T07:36:36.072Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET 200
+[debug] [2026-08-21T07:36:36.073Z] <<< [apiv2][body] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET {"name":"projects/665229808010/secrets/SMS_GATEWAY_WEBHOOK_SECRET","replication":{"automatic":{}},"createTime":"2026-08-21T07:06:50.625156Z","labels":{"firebase-managed":"functions"},"etag":"\"16598947dc49be\""}
+[debug] [2026-08-21T07:36:36.074Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:36:36.074Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:36:36.074Z] >>> [apiv2][query] POST https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET:addVersion [none]
+[debug] [2026-08-21T07:36:36.075Z] >>> [apiv2][body] POST https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET:addVersion {"payload":{"data":"NWVkNTgzNzk2ZTQ5MmQ5ZjAyNWI0ZTY4NGViOTAyZDMxZjVhZThjN2QwMTUxZWRjZGY4MmFkM2QyZjA5MjIzMw0K"}}
+[debug] [2026-08-21T07:36:38.402Z] <<< [apiv2][status] POST https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET:addVersion 200
+[debug] [2026-08-21T07:36:38.403Z] <<< [apiv2][body] POST https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET:addVersion {"name":"projects/665229808010/secrets/SMS_GATEWAY_WEBHOOK_SECRET/versions/3","createTime":"2026-08-21T07:36:38.254403Z","state":"ENABLED","replicationStatus":{"automatic":{}},"etag":"\"165989b25f6f43\""}
+[info] +  Created a new secret version projects/665229808010/secrets/SMS_GATEWAY_WEBHOOK_SECRET/versions/3 
+[debug] [2026-08-21T07:36:38.417Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:36:38.420Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:36:38.422Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions [none]
+[debug] [2026-08-21T07:36:39.463Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:36:39.463Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions {}
+[debug] [2026-08-21T07:36:39.464Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:36:39.465Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:36:39.469Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions filter=environment%3D%22GEN_2%22
+[debug] [2026-08-21T07:36:40.936Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:37:30.932Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:37:30.936Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:list --project city-rescue-dispatch
+[debug] [2026-08-21T07:37:30.937Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:37:30.937Z] Platform:      win32
+[debug] [2026-08-21T07:37:30.937Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:37:30.937Z] Time:          Fri Aug 21 2026 15:37:30 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:37:30.938Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:37:30.971Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:37:30.973Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:37:30.973Z] [iam] checking project city-rescue-dispatch for permissions ["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]
+[debug] [2026-08-21T07:37:30.976Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:37:30.976Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:37:30.978Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions [none]
+[debug] [2026-08-21T07:37:30.978Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions  x-goog-user-project=city-rescue-dispatch
+[debug] [2026-08-21T07:37:30.978Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:37:32.215Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions 200
+[debug] [2026-08-21T07:37:32.216Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:37:32.218Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:37:32.218Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:37:32.218Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions [none]
+[debug] [2026-08-21T07:37:32.998Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:37:32.999Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions {}
+[debug] [2026-08-21T07:37:33.000Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:37:33.000Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:37:33.000Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions filter=environment%3D%22GEN_2%22
+[debug] [2026-08-21T07:37:34.452Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:38:05.688Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:38:05.692Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:list --project city-rescue-dispatch
+[debug] [2026-08-21T07:38:05.692Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:38:05.692Z] Platform:      win32
+[debug] [2026-08-21T07:38:05.692Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:38:05.693Z] Time:          Fri Aug 21 2026 15:38:05 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:38:05.693Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:38:05.729Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:38:05.730Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:38:05.731Z] [iam] checking project city-rescue-dispatch for permissions ["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]
+[debug] [2026-08-21T07:38:05.733Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:38:05.733Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:38:05.735Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions [none]
+[debug] [2026-08-21T07:38:05.736Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions  x-goog-user-project=city-rescue-dispatch
+[debug] [2026-08-21T07:38:05.736Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:38:07.016Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions 200
+[debug] [2026-08-21T07:38:07.016Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:38:07.017Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:38:07.017Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:38:07.017Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions [none]
+[debug] [2026-08-21T07:38:07.889Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:38:07.890Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions {}
+[debug] [2026-08-21T07:38:07.891Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:38:07.891Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:38:07.892Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions filter=environment%3D%22GEN_2%22
+[debug] [2026-08-21T07:38:09.337Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:38:15.361Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:38:15.364Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:list --project city-rescue-dispatch
+[debug] [2026-08-21T07:38:15.365Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:38:15.365Z] Platform:      win32
+[debug] [2026-08-21T07:38:15.365Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:38:15.366Z] Time:          Fri Aug 21 2026 15:38:15 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:38:15.366Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:38:15.401Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:38:15.402Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:38:15.403Z] [iam] checking project city-rescue-dispatch for permissions ["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]
+[debug] [2026-08-21T07:38:15.405Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:38:15.406Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:38:15.408Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions [none]
+[debug] [2026-08-21T07:38:15.408Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions  x-goog-user-project=city-rescue-dispatch
+[debug] [2026-08-21T07:38:15.408Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:38:16.554Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions 200
+[debug] [2026-08-21T07:38:16.555Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:38:16.556Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:38:16.556Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:38:16.557Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions [none]
+[debug] [2026-08-21T07:38:17.542Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:38:17.542Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions {}
+[debug] [2026-08-21T07:38:17.543Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:38:17.543Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:38:17.544Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions filter=environment%3D%22GEN_2%22
+[debug] [2026-08-21T07:38:18.339Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:38:53.072Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:38:53.076Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:list --project city-rescue-dispatch
+[debug] [2026-08-21T07:38:53.076Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:38:53.077Z] Platform:      win32
+[debug] [2026-08-21T07:38:53.077Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:38:53.077Z] Time:          Fri Aug 21 2026 15:38:53 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:38:53.077Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:38:53.113Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:38:53.115Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:38:53.115Z] [iam] checking project city-rescue-dispatch for permissions ["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]
+[debug] [2026-08-21T07:38:53.118Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:38:53.119Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:38:53.121Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions [none]
+[debug] [2026-08-21T07:38:53.121Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions  x-goog-user-project=city-rescue-dispatch
+[debug] [2026-08-21T07:38:53.121Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:38:54.657Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions 200
+[debug] [2026-08-21T07:38:54.658Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:38:54.660Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:38:54.661Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:38:54.661Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions [none]
+[debug] [2026-08-21T07:38:55.519Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:38:55.520Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions {}
+[debug] [2026-08-21T07:38:55.520Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:38:55.521Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:38:55.521Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions filter=environment%3D%22GEN_2%22
+[debug] [2026-08-21T07:38:56.936Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:38:57.887Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:38:57.891Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:list --project city-rescue-dispatch
+[debug] [2026-08-21T07:38:57.892Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:38:57.892Z] Platform:      win32
+[debug] [2026-08-21T07:38:57.892Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:38:57.893Z] Time:          Fri Aug 21 2026 15:38:57 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:38:57.893Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:38:57.929Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:38:57.931Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:38:57.931Z] [iam] checking project city-rescue-dispatch for permissions ["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]
+[debug] [2026-08-21T07:38:57.935Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:38:57.935Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:38:57.936Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions [none]
+[debug] [2026-08-21T07:38:57.937Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions  x-goog-user-project=city-rescue-dispatch
+[debug] [2026-08-21T07:38:57.937Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:38:59.118Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions 200
+[debug] [2026-08-21T07:38:59.119Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:38:59.120Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:38:59.121Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:38:59.121Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions [none]
+[debug] [2026-08-21T07:39:00.342Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:39:00.342Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions {}
+[debug] [2026-08-21T07:39:00.343Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:39:00.343Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:39:00.343Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions filter=environment%3D%22GEN_2%22
+[debug] [2026-08-21T07:39:01.870Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:39:12.230Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:39:12.234Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_WEBHOOK_SECRET --project city-rescue-dispatch
+[debug] [2026-08-21T07:39:12.235Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:39:12.235Z] Platform:      win32
+[debug] [2026-08-21T07:39:12.235Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:39:12.236Z] Time:          Fri Aug 21 2026 15:39:12 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:39:12.236Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:39:12.307Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:39:12.309Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:39:12.313Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:39:12.314Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:39:12.315Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET/versions/latest:access [none]
+[debug] [2026-08-21T07:39:13.316Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET/versions/latest:access 200
+[debug] [2026-08-21T07:40:35.136Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:40:35.140Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:list --project city-rescue-dispatch
+[debug] [2026-08-21T07:40:35.141Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:40:35.141Z] Platform:      win32
+[debug] [2026-08-21T07:40:35.141Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:40:35.142Z] Time:          Fri Aug 21 2026 15:40:35 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:40:35.142Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:40:35.179Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:40:35.180Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:40:35.181Z] [iam] checking project city-rescue-dispatch for permissions ["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]
+[debug] [2026-08-21T07:40:35.184Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:40:35.184Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:40:35.186Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions [none]
+[debug] [2026-08-21T07:40:35.186Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions  x-goog-user-project=city-rescue-dispatch
+[debug] [2026-08-21T07:40:35.186Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:40:36.653Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions 200
+[debug] [2026-08-21T07:40:36.653Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:40:36.655Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:40:36.655Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:40:36.655Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions [none]
+[debug] [2026-08-21T07:40:37.891Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:40:37.892Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions {}
+[debug] [2026-08-21T07:40:37.892Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:40:37.892Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:40:37.893Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions filter=environment%3D%22GEN_2%22
+[debug] [2026-08-21T07:40:39.494Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:40:39.495Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions {"functions":[{"name":"projects/city-rescue-dispatch/locations/asia-southeast1/functions/sendSms","buildConfig":{"build":"projects/665229808010/locations/asia-southeast1/builds/9690a03f-21f7-49a4-9fd7-f3e4682c08f2","runtime":"nodejs20","entryPoint":"sendSms","source":{"storageSource":{"bucket":"gcf-v2-sources-665229808010-asia-southeast1","object":"sendSms/function-source.zip","generation":"1787297105447104"}},"environmentVariables":{"GOOGLE_NODE_RUN_SCRIPTS":""},"dockerRepository":"projects/city-rescue-dispatch/locations/asia-southeast1/repositories/gcf-artifacts","sourceProvenance":{"resolvedStorageSource":{"bucket":"gcf-v2-sources-665229808010-asia-southeast1","object":"sendSms/function-source.zip","generation":"1787297105447104"}},"dockerRegistry":"ARTIFACT_REGISTRY","serviceAccount":"projects/city-rescue-dispatch/serviceAccounts/665229808010-compute@developer.gserviceaccount.com","automaticUpdatePolicy":{}},"serviceConfig":{"service":"projects/city-rescue-dispatch/locations/asia-southeast1/services/sendsms","timeoutSeconds":60,"environmentVariables":{"FIREBASE_CONFIG":"{\"projectId\":\"city-rescue-dispatch\",\"storageBucket\":\"city-rescue-dispatch.firebasestorage.app\"}","GCLOUD_PROJECT":"city-rescue-dispatch","EVENTARC_CLOUD_EVENT_SOURCE":"projects/city-rescue-dispatch/locations/asia-southeast1/services/sendSms","FUNCTION_TARGET":"sendSms","LOG_EXECUTION_ID":"true","FUNCTION_SIGNATURE_TYPE":"http"},"maxInstanceCount":20,"ingressSettings":"ALLOW_ALL","uri":"https://sendsms-4di4rufyaa-as.a.run.app","serviceAccountEmail":"665229808010-compute@developer.gserviceaccount.com","availableMemory":"256Mi","allTrafficOnLatestRevision":true,"secretEnvironmentVariables":[{"key":"SMS_GATEWAY_USERNAME","projectId":"city-rescue-dispatch","secret":"SMS_GATEWAY_USERNAME","version":"2"},{"key":"SMS_GATEWAY_PASSWORD","projectId":"city-rescue-dispatch","secret":"SMS_GATEWAY_PASSWORD","version":"2"},{"key":"SMS_GATEWAY_BASE_URL","projectId":"city-rescue-dispatch","secret":"SMS_GATEWAY_BASE_URL","version":"1"}],"revision":"sendsms-00003-maf","maxInstanceRequestConcurrency":80,"availableCpu":"1"},"state":"ACTIVE","updateTime":"2026-08-21T07:25:14.117098653Z","labels":{"firebase-functions-hash":"0ec9d7f482d098ea696253f376e7f1a96b899ec5","deployment-tool":"cli-firebase","firebase-functions-codebase":"sms"},"environment":"GEN_2","url":"https://asia-southeast1-city-rescue-dispatch.cloudfunctions.net/sendSms","satisfiesPzs":true,"createTime":"2026-08-21T07:12:06.719357159Z","satisfiesPzi":true},{"name":"projects/city-rescue-dispatch/locations/asia-southeast1/functions/smsGatewayInbound","buildConfig":{"build":"projects/665229808010/locations/asia-southeast1/builds/47707474-46f7-4aae-aede-82ef85c6814d","runtime":"nodejs20","entryPoint":"smsGatewayInbound","source":{"storageSource":{"bucket":"gcf-v2-sources-665229808010-asia-southeast1","object":"smsGatewayInbound/function-source.zip","generation":"1787297845513146"}},"environmentVariables":{"GOOGLE_NODE_RUN_SCRIPTS":""},"dockerRepository":"projects/city-rescue-dispatch/locations/asia-southeast1/repositories/gcf-artifacts","sourceProvenance":{"resolvedStorageSource":{"bucket":"gcf-v2-sources-665229808010-asia-southeast1","object":"smsGatewayInbound/function-source.zip","generation":"1787297845513146"}},"dockerRegistry":"ARTIFACT_REGISTRY","serviceAccount":"projects/city-rescue-dispatch/serviceAccounts/665229808010-compute@developer.gserviceaccount.com","automaticUpdatePolicy":{}},"serviceConfig":{"service":"projects/city-rescue-dispatch/locations/asia-southeast1/services/smsgatewayinbound","timeoutSeconds":60,"environmentVariables":{"FIREBASE_CONFIG":"{\"projectId\":\"city-rescue-dispatch\",\"storageBucket\":\"city-rescue-dispatch.firebasestorage.app\"}","GCLOUD_PROJECT":"city-rescue-dispatch","EVENTARC_CLOUD_EVENT_SOURCE":"projects/city-rescue-dispatch/locations/asia-southeast1/services/smsGatewayInbound","FUNCTION_TARGET":"smsGatewayInbound","LOG_EXECUTION_ID":"true"},"maxInstanceCount":20,"ingressSettings":"ALLOW_ALL","uri":"https://smsgatewayinbound-4di4rufyaa-as.a.run.app","serviceAccountEmail":"665229808010-compute@developer.gserviceaccount.com","availableMemory":"256Mi","allTrafficOnLatestRevision":true,"secretEnvironmentVariables":[{"key":"SMS_GATEWAY_WEBHOOK_SECRET","projectId":"city-rescue-dispatch","secret":"SMS_GATEWAY_WEBHOOK_SECRET","version":"3"}],"revision":"smsgatewayinbound-00004-mug","maxInstanceRequestConcurrency":80,"availableCpu":"1"},"state":"DEPLOYING","updateTime":"2026-08-21T07:40:07.896626252Z","labels":{"firebase-functions-codebase":"sms","firebase-functions-hash":"634508c3b7f067ac26aee8fc4b9d728f49b6d020","deployment-tool":"cli-firebase"},"environment":"GEN_2","url":"https://asia-southeast1-city-rescue-dispatch.cloudfunctions.net/smsGatewayInbound","satisfiesPzs":true,"createTime":"2026-08-21T07:10:39.239431264Z","satisfiesPzi":true}]}
+[info] ┌───────────────────┬─────────┬─────────┬─────────────────┬────────┬──────────┐
+│ Function          │ Version │ Trigger │ Location        │ Memory │ Runtime  │
+├───────────────────┼─────────┼─────────┼─────────────────┼────────┼──────────┤
+│ sendSms           │ v2      │ https   │ asia-southeast1 │ 256    │ nodejs20 │
+├───────────────────┼─────────┼─────────┼─────────────────┼────────┼──────────┤
+│ smsGatewayInbound │ v2      │ https   │ asia-southeast1 │ 256    │ nodejs20 │
+└───────────────────┴─────────┴─────────┴─────────────────┴────────┴──────────┘
+[debug] [2026-08-21T07:40:39.524Z] Error: EPERM: operation not permitted, rename 'C:\Users\aamar\.config\configstore\firebase-tools.json.1953538052' -> 'C:\Users\aamar\.config\configstore\firebase-tools.json'
+    at Object.renameSync (node:fs:1020:11)
+    at Function.writeFileSync [as sync] (C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\write-file-atomic\index.js:244:8)
+    at set all (C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\configstore\index.js:61:20)
+    at Configstore.delete (C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\node_modules\configstore\index.js:101:12)
+    at process.<anonymous> (C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\cli.js:65:45)
+    at process.emit (node:events:518:28)
+    at process.exit (node:internal/process/per_thread:194:15)
+    at C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\command.js:131:25
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-08-21T07:40:39.483Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:40:39.487Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:list --project city-rescue-dispatch
+[debug] [2026-08-21T07:40:39.487Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:40:39.487Z] Platform:      win32
+[debug] [2026-08-21T07:40:39.488Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:40:39.488Z] Time:          Fri Aug 21 2026 15:40:39 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:40:39.488Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:40:39.528Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:40:39.530Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:40:39.530Z] [iam] checking project city-rescue-dispatch for permissions ["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]
+[debug] [2026-08-21T07:40:39.533Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:40:39.533Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:40:39.534Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions [none]
+[debug] [2026-08-21T07:40:39.535Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions  x-goog-user-project=city-rescue-dispatch
+[debug] [2026-08-21T07:40:39.535Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:40:41.677Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions 200
+[debug] [2026-08-21T07:40:41.678Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:40:41.679Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:40:41.679Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:40:41.679Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions [none]
+[debug] [2026-08-21T07:40:42.733Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:40:42.733Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions {}
+[debug] [2026-08-21T07:40:42.734Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:40:42.734Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:40:42.734Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions filter=environment%3D%22GEN_2%22
+[debug] [2026-08-21T07:40:44.249Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:41:17.145Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:41:17.150Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:list --project city-rescue-dispatch
+[debug] [2026-08-21T07:41:17.150Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:41:17.150Z] Platform:      win32
+[debug] [2026-08-21T07:41:17.151Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:41:17.151Z] Time:          Fri Aug 21 2026 15:41:17 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:41:17.151Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:41:17.185Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:41:17.187Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:41:17.187Z] [iam] checking project city-rescue-dispatch for permissions ["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]
+[debug] [2026-08-21T07:41:17.191Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:41:17.191Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:41:17.193Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions [none]
+[debug] [2026-08-21T07:41:17.193Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions  x-goog-user-project=city-rescue-dispatch
+[debug] [2026-08-21T07:41:17.193Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:41:17.960Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions 200
+[debug] [2026-08-21T07:41:17.961Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:41:17.962Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:41:17.962Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:41:17.962Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions [none]
+[debug] [2026-08-21T07:41:19.017Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:41:19.018Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions {}
+[debug] [2026-08-21T07:41:19.018Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:41:19.018Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:41:19.019Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions filter=environment%3D%22GEN_2%22
+[debug] [2026-08-21T07:41:20.678Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:41:29.615Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:41:29.618Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_WEBHOOK_SECRET --project city-rescue-dispatch
+[debug] [2026-08-21T07:41:29.619Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:41:29.619Z] Platform:      win32
+[debug] [2026-08-21T07:41:29.619Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:41:29.620Z] Time:          Fri Aug 21 2026 15:41:29 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:41:29.620Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:41:29.693Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:41:29.694Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:41:29.698Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:41:29.698Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:41:29.700Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET/versions/latest:access [none]
+[debug] [2026-08-21T07:41:30.106Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET/versions/latest:access 200
+[debug] [2026-08-21T07:43:00.426Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:43:00.430Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:list --project city-rescue-dispatch
+[debug] [2026-08-21T07:43:00.430Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:43:00.430Z] Platform:      win32
+[debug] [2026-08-21T07:43:00.431Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:43:00.431Z] Time:          Fri Aug 21 2026 15:43:00 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:43:00.431Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:43:00.467Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:43:00.468Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:43:00.468Z] [iam] checking project city-rescue-dispatch for permissions ["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]
+[debug] [2026-08-21T07:43:00.471Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:43:00.472Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:43:00.473Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions [none]
+[debug] [2026-08-21T07:43:00.473Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions  x-goog-user-project=city-rescue-dispatch
+[debug] [2026-08-21T07:43:00.474Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:43:00.987Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:43:00.991Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:list --project city-rescue-dispatch
+[debug] [2026-08-21T07:43:00.991Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:43:00.992Z] Platform:      win32
+[debug] [2026-08-21T07:43:00.992Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:43:00.992Z] Time:          Fri Aug 21 2026 15:43:00 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:43:00.992Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:43:01.026Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:43:01.028Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:43:01.028Z] [iam] checking project city-rescue-dispatch for permissions ["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]
+[debug] [2026-08-21T07:43:01.031Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:43:01.031Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:43:01.034Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions [none]
+[debug] [2026-08-21T07:43:01.034Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions  x-goog-user-project=city-rescue-dispatch
+[debug] [2026-08-21T07:43:01.034Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:43:01.761Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions 200
+[debug] [2026-08-21T07:43:01.762Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:43:01.764Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:43:01.764Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:43:01.764Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions [none]
+[debug] [2026-08-21T07:43:02.323Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions 200
+[debug] [2026-08-21T07:43:02.324Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:43:02.325Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:43:02.325Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:43:02.325Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions [none]
+[debug] [2026-08-21T07:43:02.827Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:43:02.827Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions {}
+[debug] [2026-08-21T07:43:02.828Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:43:02.828Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:43:02.829Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions filter=environment%3D%22GEN_2%22
+[debug] [2026-08-21T07:43:03.719Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:43:03.719Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions {}
+[debug] [2026-08-21T07:43:03.720Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:43:03.720Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:43:03.721Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions filter=environment%3D%22GEN_2%22
+[debug] [2026-08-21T07:43:04.276Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:43:05.162Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:43:30.306Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:43:30.309Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:list --project city-rescue-dispatch
+[debug] [2026-08-21T07:43:30.310Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:43:30.310Z] Platform:      win32
+[debug] [2026-08-21T07:43:30.311Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:43:30.311Z] Time:          Fri Aug 21 2026 15:43:30 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:43:30.311Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:43:30.345Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:43:30.347Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:43:30.347Z] [iam] checking project city-rescue-dispatch for permissions ["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]
+[debug] [2026-08-21T07:43:30.350Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:43:30.351Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:43:30.353Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions [none]
+[debug] [2026-08-21T07:43:30.353Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions  x-goog-user-project=city-rescue-dispatch
+[debug] [2026-08-21T07:43:30.353Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:43:32.073Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions 200
+[debug] [2026-08-21T07:43:32.074Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:43:32.075Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:43:32.075Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:43:32.075Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions [none]
+[debug] [2026-08-21T07:43:33.302Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:43:33.302Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions {}
+[debug] [2026-08-21T07:43:33.303Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:43:33.303Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:43:33.304Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions filter=environment%3D%22GEN_2%22
+[debug] [2026-08-21T07:43:34.745Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:44:00.250Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:44:00.254Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:list --project city-rescue-dispatch
+[debug] [2026-08-21T07:44:00.254Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:44:00.254Z] Platform:      win32
+[debug] [2026-08-21T07:44:00.255Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:44:00.255Z] Time:          Fri Aug 21 2026 15:44:00 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:44:00.255Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:44:00.291Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:44:00.294Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:44:00.295Z] [iam] checking project city-rescue-dispatch for permissions ["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]
+[debug] [2026-08-21T07:44:00.300Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:44:00.301Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:44:00.303Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions [none]
+[debug] [2026-08-21T07:44:00.303Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions  x-goog-user-project=city-rescue-dispatch
+[debug] [2026-08-21T07:44:00.303Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:44:00.933Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions 200
+[debug] [2026-08-21T07:44:00.934Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:44:00.936Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:44:00.936Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:44:00.936Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions [none]
+[debug] [2026-08-21T07:44:02.240Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:44:02.240Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions {}
+[debug] [2026-08-21T07:44:02.241Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:44:02.241Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:44:02.241Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions filter=environment%3D%22GEN_2%22
+[debug] [2026-08-21T07:44:03.713Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:44:13.070Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:44:13.073Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:list --project city-rescue-dispatch
+[debug] [2026-08-21T07:44:13.074Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:44:13.074Z] Platform:      win32
+[debug] [2026-08-21T07:44:13.074Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:44:13.075Z] Time:          Fri Aug 21 2026 15:44:13 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:44:13.075Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:44:13.109Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:44:13.111Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:44:13.111Z] [iam] checking project city-rescue-dispatch for permissions ["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]
+[debug] [2026-08-21T07:44:13.114Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:44:13.114Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:44:13.115Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions [none]
+[debug] [2026-08-21T07:44:13.116Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions  x-goog-user-project=city-rescue-dispatch
+[debug] [2026-08-21T07:44:13.116Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:44:15.220Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions 200
+[debug] [2026-08-21T07:44:15.220Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:44:15.221Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:44:15.222Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:44:15.222Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions [none]
+[debug] [2026-08-21T07:44:16.147Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:44:16.147Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions {}
+[debug] [2026-08-21T07:44:16.148Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:44:16.148Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:44:16.148Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions filter=environment%3D%22GEN_2%22
+[debug] [2026-08-21T07:44:17.576Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:44:28.137Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:44:28.140Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_WEBHOOK_SECRET --project city-rescue-dispatch
+[debug] [2026-08-21T07:44:28.141Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:44:28.141Z] Platform:      win32
+[debug] [2026-08-21T07:44:28.141Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:44:28.142Z] Time:          Fri Aug 21 2026 15:44:28 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:44:28.142Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:44:28.219Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:44:28.220Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:44:28.225Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:44:28.226Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:44:28.228Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET/versions/latest:access [none]
+[debug] [2026-08-21T07:44:28.605Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET/versions/latest:access 200
+[debug] [2026-08-21T07:44:42.959Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:44:42.963Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_USERNAME --project city-rescue-dispatch
+[debug] [2026-08-21T07:44:42.963Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:44:42.964Z] Platform:      win32
+[debug] [2026-08-21T07:44:42.964Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:44:42.965Z] Time:          Fri Aug 21 2026 15:44:42 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:44:42.965Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:44:43.033Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:44:43.034Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:44:43.039Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:44:43.039Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:44:43.040Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_USERNAME/versions/latest:access [none]
+[debug] [2026-08-21T07:44:43.422Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_USERNAME/versions/latest:access 200
+[debug] [2026-08-21T07:44:44.639Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:44:44.643Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_PASSWORD --project city-rescue-dispatch
+[debug] [2026-08-21T07:44:44.644Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:44:44.645Z] Platform:      win32
+[debug] [2026-08-21T07:44:44.645Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:44:44.646Z] Time:          Fri Aug 21 2026 15:44:44 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:44:44.646Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:44:44.732Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:44:44.733Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:44:44.768Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:44:44.769Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:44:44.770Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_PASSWORD/versions/latest:access [none]
+[debug] [2026-08-21T07:44:45.125Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_PASSWORD/versions/latest:access 200
+[debug] [2026-08-21T07:44:46.269Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:44:46.273Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_BASE_URL --project city-rescue-dispatch
+[debug] [2026-08-21T07:44:46.274Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:44:46.274Z] Platform:      win32
+[debug] [2026-08-21T07:44:46.274Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:44:46.275Z] Time:          Fri Aug 21 2026 15:44:46 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:44:46.275Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:44:46.360Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:44:46.362Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:44:46.377Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:44:46.378Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:44:46.380Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_BASE_URL/versions/latest:access [none]
+[debug] [2026-08-21T07:44:46.785Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_BASE_URL/versions/latest:access 200
+[debug] [2026-08-21T07:44:48.020Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:44:48.024Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:secrets:access SMS_GATEWAY_WEBHOOK_SECRET --project city-rescue-dispatch
+[debug] [2026-08-21T07:44:48.025Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:44:48.025Z] Platform:      win32
+[debug] [2026-08-21T07:44:48.025Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:44:48.026Z] Time:          Fri Aug 21 2026 15:44:48 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:44:48.026Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:44:48.103Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:44:48.104Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:44:48.109Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:44:48.109Z] Checked if tokens are valid: true, expires at: 1787299295774
+[debug] [2026-08-21T07:44:48.111Z] >>> [apiv2][query] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET/versions/latest:access [none]
+[debug] [2026-08-21T07:44:48.485Z] <<< [apiv2][status] GET https://secretmanager.googleapis.com/v1/projects/city-rescue-dispatch/secrets/SMS_GATEWAY_WEBHOOK_SECRET/versions/latest:access 200
+[debug] [2026-08-21T07:46:46.749Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:46:46.753Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:log --only smsGatewayInbound --project city-rescue-dispatch --lines 12
+[debug] [2026-08-21T07:46:46.754Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:46:46.754Z] Platform:      win32
+[debug] [2026-08-21T07:46:46.754Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:46:46.754Z] Time:          Fri Aug 21 2026 15:46:46 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:46:46.755Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:46:46.774Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:46:46.776Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:46:46.776Z] [iam] checking project city-rescue-dispatch for permissions ["firebase.projects.get","logging.logEntries.list","logging.logs.list"]
+[debug] [2026-08-21T07:46:46.779Z] Checked if tokens are valid: false, expires at: 1787299295774
+[debug] [2026-08-21T07:46:46.779Z] Checked if tokens are valid: false, expires at: 1787299295774
+[debug] [2026-08-21T07:46:46.779Z] > refreshing access token with scopes: []
+[debug] [2026-08-21T07:46:46.783Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-08-21T07:46:46.783Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-08-21T07:46:47.221Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-08-21T07:46:47.221Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-08-21T07:46:47.245Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions [none]
+[debug] [2026-08-21T07:46:47.245Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions  x-goog-user-project=city-rescue-dispatch
+[debug] [2026-08-21T07:46:47.245Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["firebase.projects.get","logging.logEntries.list","logging.logs.list"]}
+[debug] [2026-08-21T07:46:47.780Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions 200
+[debug] [2026-08-21T07:46:47.781Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["firebase.projects.get","logging.logEntries.list","logging.logs.list"]}
+[debug] [2026-08-21T07:46:47.782Z] Checked if tokens are valid: true, expires at: 1787302006222
+[debug] [2026-08-21T07:46:47.782Z] Checked if tokens are valid: true, expires at: 1787302006222
+[debug] [2026-08-21T07:46:47.783Z] >>> [apiv2][query] POST https://logging.googleapis.com/v2/entries:list [none]
+[debug] [2026-08-21T07:46:47.783Z] >>> [apiv2][body] POST https://logging.googleapis.com/v2/entries:list {"resourceNames":["projects/city-rescue-dispatch"],"filter":"resource.type=\"cloud_function\" OR (resource.type=\"cloud_run_revision\" AND labels.\"goog-managed-by\"=\"cloudfunctions\")\n(resource.labels.function_name=\"smsGatewayInbound\" OR resource.labels.service_name=\"smsGatewayInbound\")","orderBy":"timestamp desc","pageSize":"12"}
+[debug] [2026-08-21T07:46:49.695Z] <<< [apiv2][status] POST https://logging.googleapis.com/v2/entries:list 200
+[debug] [2026-08-21T07:48:33.735Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:48:33.738Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:log --only smsGatewayInbound --project city-rescue-dispatch --lines 20
+[debug] [2026-08-21T07:48:33.739Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:48:33.739Z] Platform:      win32
+[debug] [2026-08-21T07:48:33.739Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:48:33.740Z] Time:          Fri Aug 21 2026 15:48:33 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:48:33.740Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:48:33.763Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:48:33.764Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:48:33.765Z] [iam] checking project city-rescue-dispatch for permissions ["firebase.projects.get","logging.logEntries.list","logging.logs.list"]
+[debug] [2026-08-21T07:48:33.767Z] Checked if tokens are valid: true, expires at: 1787302006222
+[debug] [2026-08-21T07:48:33.768Z] Checked if tokens are valid: true, expires at: 1787302006222
+[debug] [2026-08-21T07:48:33.769Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions [none]
+[debug] [2026-08-21T07:48:33.770Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions  x-goog-user-project=city-rescue-dispatch
+[debug] [2026-08-21T07:48:33.770Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["firebase.projects.get","logging.logEntries.list","logging.logs.list"]}
+[debug] [2026-08-21T07:48:34.995Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions 200
+[debug] [2026-08-21T07:48:34.995Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["firebase.projects.get","logging.logEntries.list","logging.logs.list"]}
+[debug] [2026-08-21T07:48:34.996Z] Checked if tokens are valid: true, expires at: 1787302006222
+[debug] [2026-08-21T07:48:34.997Z] Checked if tokens are valid: true, expires at: 1787302006222
+[debug] [2026-08-21T07:48:34.997Z] >>> [apiv2][query] POST https://logging.googleapis.com/v2/entries:list [none]
+[debug] [2026-08-21T07:48:34.997Z] >>> [apiv2][body] POST https://logging.googleapis.com/v2/entries:list {"resourceNames":["projects/city-rescue-dispatch"],"filter":"resource.type=\"cloud_function\" OR (resource.type=\"cloud_run_revision\" AND labels.\"goog-managed-by\"=\"cloudfunctions\")\n(resource.labels.function_name=\"smsGatewayInbound\" OR resource.labels.service_name=\"smsGatewayInbound\")","orderBy":"timestamp desc","pageSize":"20"}
+[debug] [2026-08-21T07:48:36.410Z] <<< [apiv2][status] POST https://logging.googleapis.com/v2/entries:list 200
+[debug] [2026-08-21T07:55:54.381Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:55:54.385Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:list --project city-rescue-dispatch
+[debug] [2026-08-21T07:55:54.385Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:55:54.386Z] Platform:      win32
+[debug] [2026-08-21T07:55:54.386Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:55:54.386Z] Time:          Fri Aug 21 2026 15:55:54 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:55:54.386Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:55:54.427Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:55:54.429Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:55:54.430Z] [iam] checking project city-rescue-dispatch for permissions ["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]
+[debug] [2026-08-21T07:55:54.433Z] Checked if tokens are valid: true, expires at: 1787302006222
+[debug] [2026-08-21T07:55:54.433Z] Checked if tokens are valid: true, expires at: 1787302006222
+[debug] [2026-08-21T07:55:54.435Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions [none]
+[debug] [2026-08-21T07:55:54.435Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions  x-goog-user-project=city-rescue-dispatch
+[debug] [2026-08-21T07:55:54.435Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:56:04.892Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions 200
+[debug] [2026-08-21T07:56:04.894Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:56:04.897Z] Checked if tokens are valid: true, expires at: 1787302006222
+[debug] [2026-08-21T07:56:04.898Z] Checked if tokens are valid: true, expires at: 1787302006222
+[debug] [2026-08-21T07:56:04.898Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions [none]
+[debug] [2026-08-21T07:56:10.086Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:56:10.086Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions {}
+[debug] [2026-08-21T07:56:10.095Z] Checked if tokens are valid: true, expires at: 1787302006222
+[debug] [2026-08-21T07:56:10.096Z] Checked if tokens are valid: true, expires at: 1787302006222
+[debug] [2026-08-21T07:56:10.098Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions filter=environment%3D%22GEN_2%22
+[debug] [2026-08-21T07:56:12.339Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:56:52.314Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:56:52.318Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:list --project city-rescue-dispatch
+[debug] [2026-08-21T07:56:52.318Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:56:52.318Z] Platform:      win32
+[debug] [2026-08-21T07:56:52.319Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:56:52.319Z] Time:          Fri Aug 21 2026 15:56:52 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:56:52.319Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:56:52.352Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:56:52.353Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:56:52.354Z] [iam] checking project city-rescue-dispatch for permissions ["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]
+[debug] [2026-08-21T07:56:52.356Z] Checked if tokens are valid: true, expires at: 1787302006222
+[debug] [2026-08-21T07:56:52.356Z] Checked if tokens are valid: true, expires at: 1787302006222
+[debug] [2026-08-21T07:56:52.358Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions [none]
+[debug] [2026-08-21T07:56:52.358Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions  x-goog-user-project=city-rescue-dispatch
+[debug] [2026-08-21T07:56:52.358Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:56:53.973Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions 200
+[debug] [2026-08-21T07:56:53.973Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:56:53.975Z] Checked if tokens are valid: true, expires at: 1787302006222
+[debug] [2026-08-21T07:56:53.975Z] Checked if tokens are valid: true, expires at: 1787302006222
+[debug] [2026-08-21T07:56:53.975Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions [none]
+[debug] [2026-08-21T07:56:55.202Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:56:55.203Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions {}
+[debug] [2026-08-21T07:56:55.204Z] Checked if tokens are valid: true, expires at: 1787302006222
+[debug] [2026-08-21T07:56:55.204Z] Checked if tokens are valid: true, expires at: 1787302006222
+[debug] [2026-08-21T07:56:55.205Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions filter=environment%3D%22GEN_2%22
+[debug] [2026-08-21T07:56:56.745Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:57:03.687Z] ----------------------------------------------------------------------
+[debug] [2026-08-21T07:57:03.691Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\aamar\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js functions:list --project city-rescue-dispatch
+[debug] [2026-08-21T07:57:03.691Z] CLI Version:   15.18.0
+[debug] [2026-08-21T07:57:03.691Z] Platform:      win32
+[debug] [2026-08-21T07:57:03.692Z] Node Version:  v22.17.0
+[debug] [2026-08-21T07:57:03.692Z] Time:          Fri Aug 21 2026 15:57:03 GMT+0800 (Philippine Standard Time)
+[debug] [2026-08-21T07:57:03.692Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-21T07:57:03.729Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-21T07:57:03.731Z] > authorizing via signed-in user (innovationsspup@gmail.com)
+[debug] [2026-08-21T07:57:03.731Z] [iam] checking project city-rescue-dispatch for permissions ["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]
+[debug] [2026-08-21T07:57:03.734Z] Checked if tokens are valid: true, expires at: 1787302006222
+[debug] [2026-08-21T07:57:03.735Z] Checked if tokens are valid: true, expires at: 1787302006222
+[debug] [2026-08-21T07:57:03.736Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions [none]
+[debug] [2026-08-21T07:57:03.736Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions  x-goog-user-project=city-rescue-dispatch
+[debug] [2026-08-21T07:57:03.737Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:57:04.968Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions 200
+[debug] [2026-08-21T07:57:04.968Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-rescue-dispatch:testIamPermissions {"permissions":["cloudfunctions.functions.list","firebase.projects.get","run.services.list"]}
+[debug] [2026-08-21T07:57:04.970Z] Checked if tokens are valid: true, expires at: 1787302006222
+[debug] [2026-08-21T07:57:04.970Z] Checked if tokens are valid: true, expires at: 1787302006222
+[debug] [2026-08-21T07:57:04.971Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions [none]
+[debug] [2026-08-21T07:57:06.035Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions 200
+[debug] [2026-08-21T07:57:06.036Z] <<< [apiv2][body] GET https://cloudfunctions.googleapis.com/v1/projects/city-rescue-dispatch/locations/-/functions {}
+[debug] [2026-08-21T07:57:06.036Z] Checked if tokens are valid: true, expires at: 1787302006222
+[debug] [2026-08-21T07:57:06.036Z] Checked if tokens are valid: true, expires at: 1787302006222
+[debug] [2026-08-21T07:57:06.036Z] >>> [apiv2][query] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions filter=environment%3D%22GEN_2%22
+[debug] [2026-08-21T07:57:07.482Z] <<< [apiv2][status] GET https://cloudfunctions.googleapis.com/v2/projects/city-rescue-dispatch/locations/-/functions 200

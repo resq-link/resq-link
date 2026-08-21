@@ -533,6 +533,25 @@ function IntakeContent() {
   const [isLoadingResources, setIsLoadingResources] = useState(true);
   const incidentDateInputRef = useRef<HTMLInputElement | null>(null);
 
+  useEffect(() => {
+    if (searchParams.get("source") !== "sms") {
+      return;
+    }
+
+    const callerContact = searchParams.get("callerContact") ?? "";
+    const description = searchParams.get("description") ?? "";
+    setFormState((current) => ({
+      ...current,
+      source: "sms",
+      callerContact: callerContact || current.callerContact,
+      description: description || current.description,
+      notes: searchParams.get("smsThreadId")
+        ? `SMS intake thread: ${searchParams.get("smsThreadId")}`
+        : current.notes,
+    }));
+    setIsFormModalOpen(true);
+  }, [searchParams]);
+
   const selectedRule = useMemo<IncidentTypeRule | null>(
     () =>
       incidentRules.find((rule) => rule.id === formState.incidentSubtypeId) ||
