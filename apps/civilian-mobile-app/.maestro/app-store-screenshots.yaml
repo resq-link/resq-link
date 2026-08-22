@@ -1,0 +1,44 @@
+appId: com.tuguegarao.resqlink
+---
+- launchApp:
+    clearState: false
+- tapOn:
+    text: "Open"
+    optional: true
+- extendedWaitUntil:
+    visible: "Get Started"
+    timeout: 60000
+- takeScreenshot: 01-splash
+- tapOn: "Get Started"
+- extendedWaitUntil:
+    visible: "Sign In"
+    timeout: 20000
+- takeScreenshot: 02-login
+- tapOn: "your.email@example.com"
+- inputText: ${SCREENSHOT_EMAIL}
+- tapOn: "Enter your password"
+- inputText: ${SCREENSHOT_PASSWORD}
+- hideKeyboard
+- tapOn: "Sign In"
+- extendedWaitUntil:
+    visible: "Report Emergency"
+    timeout: 45000
+- takeScreenshot: 03-dashboard
+- tapOn:
+    point: "88%,94%"
+- extendedWaitUntil:
+    visible: "Settings"
+    timeout: 15000
+- takeScreenshot: 04-settings
+- tapOn: "Privacy & Security"
+- extendedWaitUntil:
+    visible: "Privacy policy"
+    timeout: 15000
+- takeScreenshot: 05-privacy-security
+- back
+- tapOn:
+    point: "15%,94%"
+- extendedWaitUntil:
+    visible: "Report Emergency"
+    timeout: 15000
+- takeScreenshot: 06-emergency-home

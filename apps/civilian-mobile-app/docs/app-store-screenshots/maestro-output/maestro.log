@@ -1,0 +1,556 @@
+23:04:42.945 [ INFO] MAESTRO.logSystemInfo: ---- System Info ----
+23:04:42.946 [ INFO] MAESTRO.logSystemInfo: Maestro Version: 1.39.1
+23:04:42.946 [ INFO] MAESTRO.logSystemInfo: CI: Undefined
+23:04:42.946 [ INFO] MAESTRO.logSystemInfo: OS Name: Mac OS X
+23:04:42.947 [ INFO] MAESTRO.logSystemInfo: OS Version: 26.6.2
+23:04:42.947 [ INFO] MAESTRO.logSystemInfo: Architecture: aarch64
+23:04:42.947 [ INFO] MAESTRO.logSystemInfo: Java Version: 17
+23:04:43.300 [ INFO] MAESTRO.logSystemInfo: Xcode Version: 26.6
+23:04:43.305 [ INFO] MAESTRO.logSystemInfo: Flutter Version: Undefined
+23:04:43.307 [ INFO] MAESTRO.logSystemInfo: Flutter Channel: Undefined
+23:04:43.307 [ INFO] MAESTRO.logSystemInfo: ---------------------
+23:04:44.240 [ INFO] maestro.cli.command.TestCommand.runShardSuite: [shard 1] Selected device 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85 using port 7001
+23:04:44.425 [TRACE] ios.xctest.XCTestIOSDevice.open: Opening a connection
+23:04:44.426 [TRACE] xcuitest.XCTestDriverClient.restartXCTestRunner: Restarting XCTest Runner (uninstalling, installing and starting)
+23:04:44.427 [TRACE] xcuitest.installer.LocalXCTestInstaller.uninstall$killXCTestRunnerProcess: Will attempt to stop all alive XCTest Runner processes before uninstalling
+23:04:44.813 [TRACE] xcuitest.installer.LocalXCTestInstaller.uninstall$killXCTestRunnerProcess: All XCTest Runner processes were stopped
+23:04:44.813 [TRACE] xcuitest.installer.LocalXCTestInstaller.uninstall: Uninstalling XCTest Runner from device 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85
+23:04:44.814 [ INFO] util.CommandLineUtils.runCommand: Running command line operation: [xcrun, simctl, uninstall, 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85, dev.mobile.maestro-driver-iosUITests.xctrunner]
+23:04:45.381 [TRACE] xcuitest.XCTestDriverClient.restartXCTestRunner: XCTest Runner uninstalled, will install and start it
+23:04:45.381 [ INFO] xcuitest.installer.LocalXCTestInstaller.start: start()
+23:04:45.381 [TRACE] xcuitest.installer.LocalXCTestInstaller.uninstall$killXCTestRunnerProcess: Will attempt to stop all alive XCTest Runner processes before uninstalling
+23:04:45.711 [TRACE] xcuitest.installer.LocalXCTestInstaller.uninstall$killXCTestRunnerProcess: All XCTest Runner processes were stopped
+23:04:45.711 [TRACE] xcuitest.installer.LocalXCTestInstaller.uninstall: Uninstalling XCTest Runner from device 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85
+23:04:45.711 [ INFO] util.CommandLineUtils.runCommand: Running command line operation: [xcrun, simctl, uninstall, 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85, dev.mobile.maestro-driver-iosUITests.xctrunner]
+23:04:45.848 [ INFO] xcuitest.installer.LocalXCTestInstaller.start: [Start] Install XCUITest runner on 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85
+23:04:46.223 [ INFO] xcuitest.installer.LocalXCTestInstaller.startXCTestRunner: [Start] Writing xctest run file
+23:04:46.225 [ INFO] xcuitest.installer.LocalXCTestInstaller.startXCTestRunner: [Done] Writing xctest run file
+23:04:46.225 [ INFO] xcuitest.installer.LocalXCTestInstaller.startXCTestRunner: Not able to find ui test runner app running, going to install now
+23:04:46.226 [ INFO] xcuitest.installer.LocalXCTestInstaller.startXCTestRunner: [Start] Writing maestro-driver-iosUITests-Runner app
+23:04:46.521 [ INFO] xcuitest.installer.LocalXCTestInstaller.startXCTestRunner: [Done] Writing maestro-driver-iosUITests-Runner app
+23:04:46.521 [ INFO] xcuitest.installer.LocalXCTestInstaller.startXCTestRunner: [Start] Writing maestro-driver-ios app
+23:04:46.531 [ INFO] xcuitest.installer.LocalXCTestInstaller.startXCTestRunner: [Done] Writing maestro-driver-ios app
+23:04:46.531 [ INFO] xcuitest.installer.LocalXCTestInstaller.startXCTestRunner: [Start] Running XcUITest with `xcodebuild test-without-building`
+23:04:46.532 [ INFO] util.CommandLineUtils.runCommand: Running command line operation: [xcodebuild, test-without-building, -xctestrun, /var/folders/xb/tfp80y750tx6fc9tzb8bkkb00000gn/T/2BFB96E9-651A-44B1-AE85-5AE78E1EBD85/maestro-driver-ios-config.xctestrun, -destination, id=2BFB96E9-651A-44B1-AE85-5AE78E1EBD85, -derivedDataPath, /var/folders/xb/tfp80y750tx6fc9tzb8bkkb00000gn/T/maestro_xctestrunner_xcodebuild_output2803584953374214664]
+23:04:46.536 [ INFO] xcuitest.installer.LocalXCTestInstaller.startXCTestRunner: [Done] Running XcUITest with `xcodebuild test-without-building`
+23:04:46.536 [ INFO] xcuitest.installer.LocalXCTestInstaller.start: [Done] Install XCUITest runner on 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85
+23:04:46.536 [ INFO] xcuitest.installer.LocalXCTestInstaller.start: [Start] Ensure XCUITest runner is running on 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85
+23:04:46.536 [ INFO] xcuitest.installer.LocalXCTestInstaller.ensureOpen: ensureOpen(): Will spend 120000 ms waiting for the channel to become alive
+23:04:52.132 [ INFO] xcuitest.installer.LocalXCTestInstaller.xcTestDriverStatusCheck: [Start] Perform XCUITest driver status check on 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85
+23:04:52.136 [ INFO] xcuitest.installer.LocalXCTestInstaller.xcTestDriverStatusCheck: [Failed] Perform XCUITest driver status check on 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85, exception: java.net.ConnectException: Failed to connect to /[0:0:0:0:0:0:0:1]:7001
+23:04:52.732 [ INFO] xcuitest.installer.LocalXCTestInstaller.xcTestDriverStatusCheck: [Start] Perform XCUITest driver status check on 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85
+23:04:52.732 [ INFO] xcuitest.installer.LocalXCTestInstaller.xcTestDriverStatusCheck: [Failed] Perform XCUITest driver status check on 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85, exception: java.net.ConnectException: Failed to connect to /[0:0:0:0:0:0:0:1]:7001
+23:04:53.307 [ INFO] xcuitest.installer.LocalXCTestInstaller.xcTestDriverStatusCheck: [Start] Perform XCUITest driver status check on 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85
+23:04:53.308 [ INFO] xcuitest.installer.LocalXCTestInstaller.xcTestDriverStatusCheck: [Failed] Perform XCUITest driver status check on 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85, exception: java.net.ConnectException: Failed to connect to /[0:0:0:0:0:0:0:1]:7001
+23:04:54.065 [ INFO] xcuitest.installer.LocalXCTestInstaller.xcTestDriverStatusCheck: [Start] Perform XCUITest driver status check on 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85
+23:04:54.067 [ INFO] xcuitest.installer.LocalXCTestInstaller.xcTestDriverStatusCheck: [Failed] Perform XCUITest driver status check on 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85, exception: java.net.ConnectException: Failed to connect to /[0:0:0:0:0:0:0:1]:7001
+23:04:54.774 [ INFO] xcuitest.installer.LocalXCTestInstaller.xcTestDriverStatusCheck: [Start] Perform XCUITest driver status check on 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85
+23:04:54.775 [ INFO] xcuitest.installer.LocalXCTestInstaller.xcTestDriverStatusCheck: [Failed] Perform XCUITest driver status check on 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85, exception: java.net.ConnectException: Failed to connect to /[0:0:0:0:0:0:0:1]:7001
+23:04:55.356 [ INFO] xcuitest.installer.LocalXCTestInstaller.xcTestDriverStatusCheck: [Start] Perform XCUITest driver status check on 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85
+23:04:55.358 [ INFO] xcuitest.installer.LocalXCTestInstaller.xcTestDriverStatusCheck: [Failed] Perform XCUITest driver status check on 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85, exception: java.net.ConnectException: Failed to connect to /[0:0:0:0:0:0:0:1]:7001
+23:04:55.912 [ INFO] xcuitest.installer.LocalXCTestInstaller.xcTestDriverStatusCheck: [Start] Perform XCUITest driver status check on 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85
+23:04:55.913 [ INFO] xcuitest.installer.LocalXCTestInstaller.xcTestDriverStatusCheck: [Failed] Perform XCUITest driver status check on 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85, exception: java.net.ConnectException: Failed to connect to /[0:0:0:0:0:0:0:1]:7001
+23:04:56.436 [ INFO] xcuitest.installer.LocalXCTestInstaller.xcTestDriverStatusCheck: [Start] Perform XCUITest driver status check on 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85
+23:04:56.437 [ INFO] xcuitest.installer.LocalXCTestInstaller.xcTestDriverStatusCheck: [Failed] Perform XCUITest driver status check on 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85, exception: java.net.ConnectException: Failed to connect to /[0:0:0:0:0:0:0:1]:7001
+23:04:56.966 [ INFO] xcuitest.installer.LocalXCTestInstaller.xcTestDriverStatusCheck: [Start] Perform XCUITest driver status check on 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85
+23:04:56.968 [ INFO] xcuitest.installer.LocalXCTestInstaller.xcTestDriverStatusCheck: [Failed] Perform XCUITest driver status check on 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85, exception: java.net.ConnectException: Failed to connect to /[0:0:0:0:0:0:0:1]:7001
+23:04:57.782 [ INFO] xcuitest.installer.LocalXCTestInstaller.xcTestDriverStatusCheck: [Start] Perform XCUITest driver status check on 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85
+23:04:57.784 [ INFO] xcuitest.installer.LocalXCTestInstaller.xcTestDriverStatusCheck: [Failed] Perform XCUITest driver status check on 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85, exception: java.net.ConnectException: Failed to connect to /[0:0:0:0:0:0:0:1]:7001
+23:04:58.347 [ INFO] xcuitest.installer.LocalXCTestInstaller.xcTestDriverStatusCheck: [Start] Perform XCUITest driver status check on 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85
+23:04:58.622 [ INFO] xcuitest.installer.LocalXCTestInstaller.xcTestDriverStatusCheck: [Done] Perform XCUITest driver status check on 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85
+23:04:58.622 [ INFO] xcuitest.installer.LocalXCTestInstaller.ensureOpen: ensureOpen() finished, is channel alive?: true
+23:04:58.622 [ INFO] xcuitest.installer.LocalXCTestInstaller.start: [Done] Ensure XCUITest runner is running on 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85
+23:04:58.660 [ INFO] maestro.Maestro.invoke: Getting device info
+23:04:58.892 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:04:58.893 [ INFO] maestro.Maestro.invoke: Got device info: DeviceInfo(platform=IOS, widthPixels=1320, heightPixels=2868, widthGrid=440, heightGrid=956)
+23:04:59.006 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Define variables RUNNING
+23:04:59.011 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Define variables metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(defineVariablesCommand=DefineVariablesCommand(env={MAESTRO_CLI_NO_ANALYTICS=1, MAESTRO_FILENAME=app-store-screenshots}, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:04:59.016 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Define variables COMPLETED
+23:04:59.016 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Apply configuration RUNNING
+23:04:59.017 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Apply configuration metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(applyConfigurationCommand=ApplyConfigurationCommand(config=MaestroConfig(appId=com.tuguegarao.resqlink, name=null, tags=[], ext={}, onFlowStart=null, onFlowComplete=null), label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:04:59.017 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Apply configuration COMPLETED
+23:04:59.017 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Launch app "com.tuguegarao.resqlink" RUNNING
+23:04:59.017 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Launch app "com.tuguegarao.resqlink" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(launchAppCommand=LaunchAppCommand(appId=com.tuguegarao.resqlink, clearState=false, clearKeychain=null, stopApp=null, permissions=null, launchArguments=null, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:04:59.018 [ INFO] util.CommandLineUtils.runCommand: Running command line operation: [/Users/spupinnovations/.maestro/deps/applesimutils, --byId, 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85, --bundle, com.tuguegarao.resqlink, --setPermissions, calendar=YES,camera=YES,contacts=YES,faceid=YES,homekit=YES,medialibrary=YES,microphone=YES,motion=YES,photos=YES,reminders=YES,siri=YES,speech=YES,userTracking=YES]
+23:04:59.467 [ INFO] util.CommandLineUtils.runCommand: Running command line operation: [xcrun, simctl, privacy, 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85, grant, location-always, com.tuguegarao.resqlink]
+23:04:59.664 [ INFO] maestro.Maestro.launchApp: Launching app com.tuguegarao.resqlink
+23:04:59.875 [ INFO] util.CommandLineUtils.runCommand: Running command line operation: [xcrun, simctl, spawn, 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85, launchctl, setenv, MAESTRO_SESSION_ID, 591a36fb-7291-4157-8a8d-eada03bf153b]
+23:05:00.520 [ INFO] util.CommandLineUtils.runCommand: Running command line operation: [xcrun, simctl, launch, 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85, com.tuguegarao.resqlink]
+23:05:00.801 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Launch app "com.tuguegarao.resqlink" COMPLETED
+23:05:00.803 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on (Optional) "Open" RUNNING
+23:05:00.810 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on (Optional) "Open" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(tapOnElementCommand=TapOnElementCommand(selector=ElementSelector(textRegex=Open, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=true, selected=null, checked=null, focused=null, childOf=null), retryIfNoChange=true, waitUntilVisible=false, longPress=false, repeat=null, waitToSettleTimeoutMs=null, label=null, optional=true)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:00.973 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:00.973 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:04.387 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 28
+23:05:04.388 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 28
+23:05:04.388 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on (Optional) "Open" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(tapOnElementCommand=TapOnElementCommand(selector=ElementSelector(textRegex=Open, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=true, selected=null, checked=null, focused=null, childOf=null), retryIfNoChange=true, waitUntilVisible=false, longPress=false, repeat=null, waitToSettleTimeoutMs=null, label=null, optional=true)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:04.470 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:04.470 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:05.080 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 28
+23:05:05.080 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 28
+23:05:05.080 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on (Optional) "Open" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(tapOnElementCommand=TapOnElementCommand(selector=ElementSelector(textRegex=Open, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=true, selected=null, checked=null, focused=null, childOf=null), retryIfNoChange=true, waitUntilVisible=false, longPress=false, repeat=null, waitToSettleTimeoutMs=null, label=null, optional=true)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:05.183 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:05.183 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:05.577 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 28
+23:05:05.577 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 28
+23:05:05.577 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on (Optional) "Open" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(tapOnElementCommand=TapOnElementCommand(selector=ElementSelector(textRegex=Open, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=true, selected=null, checked=null, focused=null, childOf=null), retryIfNoChange=true, waitUntilVisible=false, longPress=false, repeat=null, waitToSettleTimeoutMs=null, label=null, optional=true)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:05.700 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:05.700 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:06.100 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 28
+23:05:06.100 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 28
+23:05:06.101 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on (Optional) "Open" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(tapOnElementCommand=TapOnElementCommand(selector=ElementSelector(textRegex=Open, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=true, selected=null, checked=null, focused=null, childOf=null), retryIfNoChange=true, waitUntilVisible=false, longPress=false, repeat=null, waitToSettleTimeoutMs=null, label=null, optional=true)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:06.232 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:06.232 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:06.640 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 28
+23:05:06.641 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 28
+23:05:06.641 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on (Optional) "Open" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(tapOnElementCommand=TapOnElementCommand(selector=ElementSelector(textRegex=Open, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=true, selected=null, checked=null, focused=null, childOf=null), retryIfNoChange=true, waitUntilVisible=false, longPress=false, repeat=null, waitToSettleTimeoutMs=null, label=null, optional=true)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:06.758 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:06.759 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:07.054 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 28
+23:05:07.054 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 28
+23:05:07.055 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on (Optional) "Open" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(tapOnElementCommand=TapOnElementCommand(selector=ElementSelector(textRegex=Open, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=true, selected=null, checked=null, focused=null, childOf=null), retryIfNoChange=true, waitUntilVisible=false, longPress=false, repeat=null, waitToSettleTimeoutMs=null, label=null, optional=true)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:07.174 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:07.175 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:07.581 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 28
+23:05:07.581 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 28
+23:05:07.581 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on (Optional) "Open" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(tapOnElementCommand=TapOnElementCommand(selector=ElementSelector(textRegex=Open, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=true, selected=null, checked=null, focused=null, childOf=null), retryIfNoChange=true, waitUntilVisible=false, longPress=false, repeat=null, waitToSettleTimeoutMs=null, label=null, optional=true)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:07.687 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:07.687 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:07.986 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 28
+23:05:07.986 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 28
+23:05:07.986 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on (Optional) "Open" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(tapOnElementCommand=TapOnElementCommand(selector=ElementSelector(textRegex=Open, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=true, selected=null, checked=null, focused=null, childOf=null), retryIfNoChange=true, waitUntilVisible=false, longPress=false, repeat=null, waitToSettleTimeoutMs=null, label=null, optional=true)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:08.112 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:08.112 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:08.404 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 28
+23:05:08.404 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 28
+23:05:08.404 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on (Optional) "Open" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(tapOnElementCommand=TapOnElementCommand(selector=ElementSelector(textRegex=Open, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=true, selected=null, checked=null, focused=null, childOf=null), retryIfNoChange=true, waitUntilVisible=false, longPress=false, repeat=null, waitToSettleTimeoutMs=null, label=null, optional=true)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:08.405 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on (Optional) "Open" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(tapOnElementCommand=TapOnElementCommand(selector=ElementSelector(textRegex=Open, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=true, selected=null, checked=null, focused=null, childOf=null), retryIfNoChange=true, waitUntilVisible=false, longPress=false, repeat=null, waitToSettleTimeoutMs=null, label=null, optional=true)), logMessages=[], insight=Insight(message=Element not found: Text matching regex: Open, level=WARNING))
+23:05:08.405 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on (Optional) "Open" WARNED
+23:05:08.409 [ INFO] maestro.Maestro.takeScreenshot: Taking screenshot
+23:05:08.409 [TRACE] maestro.utils.ScreenshotUtils.takeScreenshot: Taking screenshot to output sink
+23:05:08.939 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Get Started" is visible RUNNING
+23:05:08.940 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Get Started" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Get Started, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=60000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:09.064 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:09.065 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:09.349 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 28
+23:05:09.350 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 28
+23:05:09.350 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Get Started" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Get Started, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=60000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:09.354 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Get Started" is visible COMPLETED
+23:05:09.354 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Take screenshot 01-splash RUNNING
+23:05:09.354 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Take screenshot 01-splash metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(takeScreenshotCommand=TakeScreenshotCommand(path=01-splash, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:09.354 [ INFO] maestro.Maestro.takeScreenshot: Taking screenshot to a file: 01-splash.png
+23:05:09.355 [TRACE] maestro.utils.ScreenshotUtils.takeScreenshot: Taking screenshot to output sink
+23:05:09.708 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Take screenshot 01-splash COMPLETED
+23:05:09.708 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on "Get Started" RUNNING
+23:05:09.708 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on "Get Started" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(tapOnElementCommand=TapOnElementCommand(selector=ElementSelector(textRegex=Get Started, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), retryIfNoChange=true, waitUntilVisible=false, longPress=false, repeat=null, waitToSettleTimeoutMs=null, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:09.782 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:09.782 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:10.080 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 28
+23:05:10.080 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 28
+23:05:10.080 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on "Get Started" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(tapOnElementCommand=TapOnElementCommand(selector=ElementSelector(textRegex=Get Started, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), retryIfNoChange=true, waitUntilVisible=false, longPress=false, repeat=null, waitToSettleTimeoutMs=null, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:10.081 [ INFO] maestro.Maestro.tap-BUbHBYE: Tapping on element:  UiElement(treeNode=TreeNode(attributes={accessibilityText=Get Started, title=, value=, text=, hintText=, resource-id=, bounds=[153,858][287,914], enabled=true, focused=false, selected=false, checked=false}, children=[], clickable=null, enabled=true, focused=false, checked=false, selected=false), bounds=Bounds(x=153, y=858, width=134, height=56))
+23:05:10.081 [ INFO] ios.IOSDevice.waitForAppToSettle-5RpGHs4: Waiting for animation to end with timeout 3000
+23:05:10.623 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Screen diff request finished with isScreenStatic = false
+23:05:10.624 [ INFO] ios.IOSDevice.invoke: screen static = false
+23:05:11.159 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Screen diff request finished with isScreenStatic = false
+23:05:11.160 [ INFO] ios.IOSDevice.invoke: screen static = false
+23:05:11.642 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Screen diff request finished with isScreenStatic = false
+23:05:11.642 [ INFO] ios.IOSDevice.invoke: screen static = false
+23:05:12.166 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Screen diff request finished with isScreenStatic = false
+23:05:12.167 [ INFO] ios.IOSDevice.invoke: screen static = false
+23:05:12.676 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Screen diff request finished with isScreenStatic = false
+23:05:12.676 [ INFO] ios.IOSDevice.invoke: screen static = false
+23:05:13.221 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Screen diff request finished with isScreenStatic = false
+23:05:13.221 [ INFO] ios.IOSDevice.invoke: screen static = false
+23:05:13.320 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:13.320 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:13.615 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 28
+23:05:13.615 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 28
+23:05:13.617 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on "Get Started" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(tapOnElementCommand=TapOnElementCommand(selector=ElementSelector(textRegex=Get Started, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), retryIfNoChange=true, waitUntilVisible=false, longPress=false, repeat=null, waitToSettleTimeoutMs=null, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:13.945 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:13.945 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:14.225 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 28
+23:05:14.225 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 28
+23:05:14.225 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on "Get Started" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(tapOnElementCommand=TapOnElementCommand(selector=ElementSelector(textRegex=Get Started, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), retryIfNoChange=true, waitUntilVisible=false, longPress=false, repeat=null, waitToSettleTimeoutMs=null, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:14.461 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:14.461 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:14.758 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 28
+23:05:14.758 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 28
+23:05:14.758 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on "Get Started" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(tapOnElementCommand=TapOnElementCommand(selector=ElementSelector(textRegex=Get Started, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), retryIfNoChange=true, waitUntilVisible=false, longPress=false, repeat=null, waitToSettleTimeoutMs=null, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:15.092 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:15.092 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:15.376 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 28
+23:05:15.376 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 28
+23:05:15.376 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on "Get Started" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(tapOnElementCommand=TapOnElementCommand(selector=ElementSelector(textRegex=Get Started, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), retryIfNoChange=true, waitUntilVisible=false, longPress=false, repeat=null, waitToSettleTimeoutMs=null, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:15.607 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:15.607 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:15.898 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 28
+23:05:15.898 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 28
+23:05:15.898 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on "Get Started" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(tapOnElementCommand=TapOnElementCommand(selector=ElementSelector(textRegex=Get Started, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), retryIfNoChange=true, waitUntilVisible=false, longPress=false, repeat=null, waitToSettleTimeoutMs=null, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:16.233 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:16.233 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:16.629 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 28
+23:05:16.629 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 28
+23:05:16.629 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on "Get Started" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(tapOnElementCommand=TapOnElementCommand(selector=ElementSelector(textRegex=Get Started, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), retryIfNoChange=true, waitUntilVisible=false, longPress=false, repeat=null, waitToSettleTimeoutMs=null, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:16.953 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:16.953 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:17.242 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 28
+23:05:17.242 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 28
+23:05:17.242 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on "Get Started" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(tapOnElementCommand=TapOnElementCommand(selector=ElementSelector(textRegex=Get Started, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), retryIfNoChange=true, waitUntilVisible=false, longPress=false, repeat=null, waitToSettleTimeoutMs=null, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:17.578 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:17.578 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:17.973 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 28
+23:05:17.973 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 28
+23:05:17.973 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on "Get Started" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(tapOnElementCommand=TapOnElementCommand(selector=ElementSelector(textRegex=Get Started, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), retryIfNoChange=true, waitUntilVisible=false, longPress=false, repeat=null, waitToSettleTimeoutMs=null, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:18.303 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:18.303 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:18.699 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 28
+23:05:18.699 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 28
+23:05:18.699 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on "Get Started" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(tapOnElementCommand=TapOnElementCommand(selector=ElementSelector(textRegex=Get Started, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), retryIfNoChange=true, waitUntilVisible=false, longPress=false, repeat=null, waitToSettleTimeoutMs=null, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:19.032 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:19.032 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:19.419 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 28
+23:05:19.419 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 28
+23:05:19.420 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on "Get Started" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(tapOnElementCommand=TapOnElementCommand(selector=ElementSelector(textRegex=Get Started, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), retryIfNoChange=true, waitUntilVisible=false, longPress=false, repeat=null, waitToSettleTimeoutMs=null, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:19.626 [ INFO] maestro.Maestro.tap-BUbHBYE: Refreshed element
+23:05:19.628 [ INFO] maestro.Maestro.screenshotBasedTap-hbl3e4M: Tapping at (220, 886) using screenshot based logic for wait
+23:05:20.232 [ INFO] ios.IOSDevice.waitForAppToSettle-5RpGHs4: Waiting for animation to end with timeout 3000
+23:05:20.678 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Screen diff request finished with isScreenStatic = false
+23:05:20.681 [ INFO] ios.IOSDevice.invoke: screen static = false
+23:05:21.080 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Screen diff request finished with isScreenStatic = false
+23:05:21.081 [ INFO] ios.IOSDevice.invoke: screen static = false
+23:05:21.479 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Screen diff request finished with isScreenStatic = true
+23:05:21.480 [ INFO] ios.IOSDevice.invoke: screen static = true
+23:05:21.480 [ INFO] maestro.Maestro.screenshotBasedTap-hbl3e4M: Something has changed in the UI judging by view hierarchy. Proceed.
+23:05:21.481 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on "Get Started" COMPLETED
+23:05:21.481 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Sign In" is visible RUNNING
+23:05:21.482 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Sign In" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Sign In, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=20000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:21.508 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:21.508 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:21.860 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:21.861 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:21.861 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Sign In" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Sign In, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=20000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:21.861 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Sign In" is visible COMPLETED
+23:05:21.862 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Take screenshot 02-login RUNNING
+23:05:21.862 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Take screenshot 02-login metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(takeScreenshotCommand=TakeScreenshotCommand(path=02-login, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:21.862 [ INFO] maestro.Maestro.takeScreenshot: Taking screenshot to a file: 02-login.png
+23:05:21.862 [TRACE] maestro.utils.ScreenshotUtils.takeScreenshot: Taking screenshot to output sink
+23:05:22.077 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Take screenshot 02-login COMPLETED
+23:05:22.077 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on "your.email@example.com" RUNNING
+23:05:22.077 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on "your.email@example.com" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(tapOnElementCommand=TapOnElementCommand(selector=ElementSelector(textRegex=your.email@example.com, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), retryIfNoChange=true, waitUntilVisible=false, longPress=false, repeat=null, waitToSettleTimeoutMs=null, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:22.136 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:22.136 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:22.455 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:22.455 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:22.455 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on "your.email@example.com" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(tapOnElementCommand=TapOnElementCommand(selector=ElementSelector(textRegex=your.email@example.com, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), retryIfNoChange=true, waitUntilVisible=false, longPress=false, repeat=null, waitToSettleTimeoutMs=null, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:22.456 [ INFO] maestro.Maestro.tap-BUbHBYE: Tapping on element:  UiElement(treeNode=TreeNode(attributes={accessibilityText=Email, title=, value=, text=, hintText=your.email@example.com, resource-id=, bounds=[38,316][401,369], enabled=true, focused=false, selected=false, checked=false}, children=[], clickable=null, enabled=true, focused=false, checked=false, selected=false), bounds=Bounds(x=38, y=316, width=363, height=53))
+23:05:22.457 [ INFO] ios.IOSDevice.waitForAppToSettle-5RpGHs4: Waiting for animation to end with timeout 3000
+23:05:22.860 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Screen diff request finished with isScreenStatic = false
+23:05:22.861 [ INFO] ios.IOSDevice.invoke: screen static = false
+23:05:23.294 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Screen diff request finished with isScreenStatic = true
+23:05:23.294 [ INFO] ios.IOSDevice.invoke: screen static = true
+23:05:23.295 [ INFO] maestro.Maestro.tap-BUbHBYE: Refreshed element
+23:05:23.295 [ INFO] maestro.Maestro.screenshotBasedTap-hbl3e4M: Tapping at (219, 342) using screenshot based logic for wait
+23:05:23.727 [ INFO] ios.IOSDevice.waitForAppToSettle-5RpGHs4: Waiting for animation to end with timeout 3000
+23:05:24.127 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Screen diff request finished with isScreenStatic = true
+23:05:24.127 [ INFO] ios.IOSDevice.invoke: screen static = true
+23:05:24.127 [ INFO] maestro.Maestro.screenshotBasedTap-hbl3e4M: Something has changed in the UI judging by view hierarchy. Proceed.
+23:05:24.129 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on "your.email@example.com" COMPLETED
+23:05:24.129 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Input text ${SCREENSHOT_EMAIL} RUNNING
+23:05:24.136 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Input text ${SCREENSHOT_EMAIL} metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(inputTextCommand=InputTextCommand(text=null, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:24.136 [ INFO] maestro.Maestro.inputText: Inputting text: null
+23:05:25.763 [ INFO] ios.IOSDevice.waitForAppToSettle-5RpGHs4: Waiting for animation to end with timeout 3000
+23:05:26.189 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Screen diff request finished with isScreenStatic = true
+23:05:26.189 [ INFO] ios.IOSDevice.invoke: screen static = true
+23:05:26.189 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Input text ${SCREENSHOT_EMAIL} COMPLETED
+23:05:26.189 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on "Enter your password" RUNNING
+23:05:26.189 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on "Enter your password" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(tapOnElementCommand=TapOnElementCommand(selector=ElementSelector(textRegex=Enter your password, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), retryIfNoChange=true, waitUntilVisible=false, longPress=false, repeat=null, waitToSettleTimeoutMs=null, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:26.310 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:26.310 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:26.766 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:26.767 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:26.767 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on "Enter your password" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(tapOnElementCommand=TapOnElementCommand(selector=ElementSelector(textRegex=Enter your password, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), retryIfNoChange=true, waitUntilVisible=false, longPress=false, repeat=null, waitToSettleTimeoutMs=null, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:26.768 [ INFO] maestro.Maestro.tap-BUbHBYE: Tapping on element:  UiElement(treeNode=TreeNode(attributes={accessibilityText=Password, title=, value=, text=, hintText=Enter your password, resource-id=, bounds=[38,421][401,474], enabled=true, focused=false, selected=false, checked=false}, children=[], clickable=null, enabled=true, focused=false, checked=false, selected=false), bounds=Bounds(x=38, y=421, width=363, height=53))
+23:05:26.768 [ INFO] ios.IOSDevice.waitForAppToSettle-5RpGHs4: Waiting for animation to end with timeout 3000
+23:05:27.098 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Screen diff request finished with isScreenStatic = true
+23:05:27.098 [ INFO] ios.IOSDevice.invoke: screen static = true
+23:05:27.099 [ INFO] maestro.Maestro.tap-BUbHBYE: Refreshed element
+23:05:27.099 [ INFO] maestro.Maestro.screenshotBasedTap-hbl3e4M: Tapping at (219, 447) using screenshot based logic for wait
+23:05:27.465 [ INFO] ios.IOSDevice.waitForAppToSettle-5RpGHs4: Waiting for animation to end with timeout 3000
+23:05:27.830 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Screen diff request finished with isScreenStatic = true
+23:05:27.831 [ INFO] ios.IOSDevice.invoke: screen static = true
+23:05:27.831 [ INFO] maestro.Maestro.screenshotBasedTap-hbl3e4M: Something has changed in the UI judging by view hierarchy. Proceed.
+23:05:27.831 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on "Enter your password" COMPLETED
+23:05:27.831 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Input text ${SCREENSHOT_PASSWORD} RUNNING
+23:05:27.836 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Input text ${SCREENSHOT_PASSWORD} metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(inputTextCommand=InputTextCommand(text=null, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:27.836 [ INFO] maestro.Maestro.inputText: Inputting text: null
+23:05:29.364 [ INFO] ios.IOSDevice.waitForAppToSettle-5RpGHs4: Waiting for animation to end with timeout 3000
+23:05:29.697 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Screen diff request finished with isScreenStatic = true
+23:05:29.697 [ INFO] ios.IOSDevice.invoke: screen static = true
+23:05:29.697 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Input text ${SCREENSHOT_PASSWORD} COMPLETED
+23:05:29.698 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Hide Keyboard RUNNING
+23:05:29.698 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Hide Keyboard metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(hideKeyboardCommand=HideKeyboardCommand()), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:29.698 [ INFO] maestro.Maestro.hideKeyboard: Hiding Keyboard
+23:05:29.849 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:29.850 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:30.290 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:30.290 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:30.290 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Hide Keyboard metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(hideKeyboardCommand=HideKeyboardCommand()), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:30.292 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:30.701 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:30.701 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:30.701 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Hide Keyboard metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(hideKeyboardCommand=HideKeyboardCommand()), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:30.702 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:31.121 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:31.121 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:31.121 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Hide Keyboard metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(hideKeyboardCommand=HideKeyboardCommand()), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:31.122 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:31.524 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:31.524 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:31.524 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Hide Keyboard metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(hideKeyboardCommand=HideKeyboardCommand()), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:31.525 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:31.936 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:31.936 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:31.936 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Hide Keyboard metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(hideKeyboardCommand=HideKeyboardCommand()), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:31.938 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:32.350 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:32.351 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:32.351 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Hide Keyboard metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(hideKeyboardCommand=HideKeyboardCommand()), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:32.409 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:32.410 [ INFO] ios.IOSDevice.waitForAppToSettle-5RpGHs4: Waiting for animation to end with timeout 3000
+23:05:32.790 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Screen diff request finished with isScreenStatic = true
+23:05:32.791 [ INFO] ios.IOSDevice.invoke: screen static = true
+23:05:33.563 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:34.017 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:34.017 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:34.017 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Hide Keyboard metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(hideKeyboardCommand=HideKeyboardCommand()), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:34.076 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:34.076 [ INFO] ios.IOSDevice.waitForAppToSettle-5RpGHs4: Waiting for animation to end with timeout 3000
+23:05:34.443 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Screen diff request finished with isScreenStatic = true
+23:05:34.444 [ INFO] ios.IOSDevice.invoke: screen static = true
+23:05:35.366 [ INFO] ios.IOSDevice.waitForAppToSettle-5RpGHs4: Waiting for animation to end with timeout 3000
+23:05:35.696 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Screen diff request finished with isScreenStatic = true
+23:05:35.696 [ INFO] ios.IOSDevice.invoke: screen static = true
+23:05:35.696 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Hide Keyboard COMPLETED
+23:05:35.697 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on "Sign In" RUNNING
+23:05:35.697 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on "Sign In" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(tapOnElementCommand=TapOnElementCommand(selector=ElementSelector(textRegex=Sign In, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), retryIfNoChange=true, waitUntilVisible=false, longPress=false, repeat=null, waitToSettleTimeoutMs=null, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:35.745 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:35.745 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:36.066 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:36.066 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:36.066 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on "Sign In" metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(tapOnElementCommand=TapOnElementCommand(selector=ElementSelector(textRegex=Sign In, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), retryIfNoChange=true, waitUntilVisible=false, longPress=false, repeat=null, waitToSettleTimeoutMs=null, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:36.067 [ INFO] maestro.Maestro.tap-BUbHBYE: Tapping on element:  UiElement(treeNode=TreeNode(attributes={accessibilityText=Sign In, title=, value=, text=, hintText=, resource-id=, bounds=[37,537][403,593], enabled=false, focused=false, selected=false, checked=false}, children=[], clickable=null, enabled=false, focused=false, checked=false, selected=false), bounds=Bounds(x=37, y=537, width=366, height=56))
+23:05:36.068 [ INFO] ios.IOSDevice.waitForAppToSettle-5RpGHs4: Waiting for animation to end with timeout 3000
+23:05:36.436 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Screen diff request finished with isScreenStatic = true
+23:05:36.437 [ INFO] ios.IOSDevice.invoke: screen static = true
+23:05:36.439 [ INFO] maestro.Maestro.tap-BUbHBYE: Refreshed element
+23:05:36.439 [ INFO] maestro.Maestro.screenshotBasedTap-hbl3e4M: Tapping at (220, 565) using screenshot based logic for wait
+23:05:36.805 [ INFO] ios.IOSDevice.waitForAppToSettle-5RpGHs4: Waiting for animation to end with timeout 3000
+23:05:37.185 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Screen diff request finished with isScreenStatic = true
+23:05:37.185 [ INFO] ios.IOSDevice.invoke: screen static = true
+23:05:37.185 [ INFO] maestro.Maestro.screenshotBasedTap-hbl3e4M: Something has changed in the UI judging by view hierarchy. Proceed.
+23:05:37.185 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Tap on "Sign In" COMPLETED
+23:05:37.190 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible RUNNING
+23:05:37.191 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:37.307 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:37.307 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:37.636 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:37.636 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:37.636 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:37.729 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:37.729 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:38.050 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:38.050 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:38.050 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:38.145 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:38.146 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:38.463 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:38.463 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:38.463 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:38.565 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:38.565 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:38.889 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:38.889 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:38.889 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:38.990 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:38.990 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:39.307 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:39.307 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:39.307 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:39.399 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:39.399 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:39.821 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:39.822 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:39.822 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:39.914 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:39.915 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:40.235 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:40.235 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:40.235 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:40.327 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:40.327 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:40.649 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:40.649 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:40.649 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:40.747 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:40.747 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:41.059 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:41.059 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:41.059 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:41.153 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:41.153 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:41.471 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:41.472 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:41.472 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:41.567 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:41.567 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:41.883 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:41.883 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:41.883 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:41.983 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:41.983 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:42.299 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:42.299 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:42.299 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:42.392 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:42.392 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:42.709 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:42.709 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:42.709 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:42.802 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:42.802 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:43.117 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:43.117 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:43.117 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:43.226 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:43.226 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:43.545 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:43.546 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:43.546 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:43.652 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:43.652 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:43.965 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:43.965 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:43.965 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:44.163 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:44.163 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:44.483 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:44.483 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:44.483 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:44.578 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:44.578 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:44.891 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:44.891 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:44.891 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:44.987 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:44.988 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:45.308 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:45.308 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:45.308 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:45.414 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:45.414 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:45.726 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:45.726 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:45.726 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:45.823 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:45.824 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:46.142 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:46.142 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:46.142 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:46.243 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:46.243 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:46.558 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:46.558 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:46.558 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:46.665 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:46.665 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:46.976 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:46.976 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:46.976 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:47.077 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:47.077 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:47.392 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:47.392 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:47.392 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:47.494 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:47.494 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:47.807 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:47.807 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:47.807 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:47.910 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:47.910 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:48.224 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:48.224 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:48.224 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:48.325 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:48.325 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:48.639 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:48.639 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:48.639 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:48.737 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:48.738 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:49.055 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:49.055 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:49.055 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:49.153 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:49.153 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:49.472 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:49.472 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:49.472 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:49.564 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:49.564 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:49.874 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:49.875 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:49.875 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:49.985 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:49.985 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:50.283 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:50.284 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:50.284 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:50.401 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:50.401 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:50.710 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:50.710 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:50.710 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:50.816 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:50.817 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:51.138 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:51.138 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:51.139 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:51.237 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:51.237 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:51.559 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:51.559 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:51.559 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:51.651 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:51.651 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:51.977 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:51.978 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:51.978 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:52.074 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:52.074 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:52.394 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:52.394 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:52.395 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:52.497 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:52.497 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:52.918 [TRACE] ios.xctest.XCTestIOSDevice.invoke: Depth received: 31
+23:05:52.919 [ INFO] ios.IOSDevice.viewHierarchy: Depth of the screen is 31
+23:05:52.919 [ INFO] maestro.cli.runner.MaestroCommandRunner.invoke: Assert that "Report Emergency" is visible metadata CommandMetadata(numberOfRuns=null, evaluatedCommand=MaestroCommand(assertConditionCommand=AssertConditionCommand(condition=Condition(platform=null, visible=ElementSelector(textRegex=Report Emergency, idRegex=null, size=null, below=null, above=null, leftOf=null, rightOf=null, containsChild=null, containsDescendants=null, traits=null, index=null, enabled=null, optional=false, selected=null, checked=null, focused=null, childOf=null), notVisible=null, scriptCondition=null, label=null), timeout=45000, label=null, optional=false)), logMessages=[], insight=Insight(message=, level=NONE))
+23:05:53.014 [ INFO] ios.xctest.XCTestIOSDevice.invoke: Device info DeviceInfo(widthPixels=1320, heightPixels=2868, widthPoints=440, heightPoints=956)
+23:05:53.014 [ INFO] ios.IOSDevice.viewHierarchy: Requesting view hierarchy of the screen
+23:05:53.462 [ INFO] maestro.Maestro.takeScreenshot: Taking screenshot
+23:05:53.464 [TRACE] maestro.utils.ScreenshotUtils.takeScreenshot: Taking screenshot to output sink
+23:05:53.477 [ INFO] xcuitest.api.NetworkErrorHandler.retryConnection: Got Network exception in application layer: xcuitest.api.NetworkException$ConnectionException: Connection error
+23:05:53.478 [ INFO] xcuitest.installer.LocalXCTestInstaller.start: start()
+23:05:53.478 [TRACE] xcuitest.installer.LocalXCTestInstaller.uninstall$killXCTestRunnerProcess: Will attempt to stop all alive XCTest Runner processes before uninstalling
+23:05:53.616 [ INFO] xcuitest.installer.LocalXCTestInstaller.close: [Start] Cleaning up the ui test runner files
+23:05:53.787 [TRACE] xcuitest.installer.LocalXCTestInstaller.uninstall$killXCTestRunnerProcess: Will attempt to stop all alive XCTest Runner processes before uninstalling
+23:05:54.059 [TRACE] xcuitest.installer.LocalXCTestInstaller.uninstall$killXCTestRunnerProcess: All XCTest Runner processes were stopped
+23:05:54.060 [TRACE] xcuitest.installer.LocalXCTestInstaller.uninstall: Uninstalling XCTest Runner from device 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85
+23:05:54.060 [ INFO] util.CommandLineUtils.runCommand: Running command line operation: [xcrun, simctl, uninstall, 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85, dev.mobile.maestro-driver-iosUITests.xctrunner]
+23:05:54.208 [TRACE] xcuitest.installer.LocalXCTestInstaller.uninstall$killXCTestRunnerProcess: All XCTest Runner processes were stopped
+23:05:54.208 [TRACE] xcuitest.installer.LocalXCTestInstaller.uninstall: Uninstalling XCTest Runner from device 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85
+23:05:54.208 [ INFO] util.CommandLineUtils.runCommand: Running command line operation: [xcrun, simctl, uninstall, 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85, dev.mobile.maestro-driver-iosUITests.xctrunner]
+23:05:54.613 [ INFO] xcuitest.installer.LocalXCTestInstaller.start: [Start] Install XCUITest runner on 2BFB96E9-651A-44B1-AE85-5AE78E1EBD85
+23:05:54.747 [ INFO] xcuitest.installer.LocalXCTestInstaller.close: [Done] Cleaning up the ui test runner files
