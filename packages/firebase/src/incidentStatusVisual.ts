@@ -91,6 +91,8 @@ const STATUS_ALIASES: Record<string, OperationalIncidentStatus> = {
   done: 'resolved',
   cancelled: 'cancelled',
   canceled: 'cancelled',
+  rejected: 'cancelled',
+  declined: 'cancelled',
 };
 
 /** Dot-only pulse animation tuning (shared web + mobile). */

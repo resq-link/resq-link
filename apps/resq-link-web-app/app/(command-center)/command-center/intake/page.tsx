@@ -24,6 +24,7 @@ import {
   OPERATIONAL_QUADRANTS,
   QUADRANT_LABELS,
   requestEmergencyAdditionalDetails,
+  rejectEmergencyReport,
   isLiveEmergencyReport,
   isLiveIncident,
   associateReportsWithIncident,
@@ -535,6 +536,9 @@ function IntakeContent() {
   const [isUpdatingExistingIncident, setIsUpdatingExistingIncident] = useState(false);
   const [pageError, setPageError] = useState<string | null>(null);
   const [pageSuccess, setPageSuccess] = useState<string | null>(null);
+  const [rejectingReport, setRejectingReport] = useState<EmergencyReport | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [isRejecting, setIsRejecting] = useState(false);
   const incidentDateInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -1057,8 +1061,34 @@ function IntakeContent() {
     }
   };
 
-  const handleRejectAppReport = async (report: EmergencyReport) => {
-    setPageSuccess(`Reject action for ${report.id?.slice(-6).toUpperCase() || "report"} is not wired yet.`);
+  const handleRejectAppReport = (report: EmergencyReport) => {
+    setRejectReason("");
+    setRejectingReport(report);
+  };
+
+  const handleConfirmRejectAppReport = async () => {
+    if (!rejectingReport?.id) return;
+    const reason = rejectReason.trim();
+    if (!reason) {
+      setPageError("A rejection reason is required.");
+      return;
+    }
+
+    setIsRejecting(true);
+    setPageError(null);
+    try {
+      await rejectEmergencyReport(rejectingReport.id, reason);
+      setSelectedQueueItem(null);
+      setRejectingReport(null);
+      setRejectReason("");
+      setPageSuccess(
+        `Report ${rejectingReport.id.slice(-6).toUpperCase()} was rejected and removed from Intake.`,
+      );
+    } catch (error: any) {
+      setPageError(error.message || "Failed to reject report.");
+    } finally {
+      setIsRejecting(false);
+    }
   };
 
   const handleMoveAppReportToHistory = async (report: EmergencyReport) => {
@@ -1545,6 +1575,64 @@ function IntakeContent() {
             </div>
           </div>
         </div>
+
+        {rejectingReport ? (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
+            <div
+              className="absolute inset-0"
+              onClick={() => {
+                if (!isRejecting) {
+                  setRejectingReport(null);
+                  setRejectReason("");
+                }
+              }}
+              aria-hidden="true"
+            />
+            <div className="relative z-10 w-full max-w-lg rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-2xl shadow-black/40">
+              <h2 className="text-lg font-semibold text-slate-100">Reject civilian report?</h2>
+              <p className="mt-2 text-sm text-slate-400">
+                Report{" "}
+                <span className="font-mono font-semibold text-slate-200">
+                  {rejectingReport.id?.slice(-6).toUpperCase()}
+                </span>{" "}
+                will leave the Intake queue. The civilian will see your reason.
+              </p>
+              <label className="mt-4 block">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  Reason
+                </span>
+                <textarea
+                  value={rejectReason}
+                  onChange={(event) => setRejectReason(event.target.value)}
+                  disabled={isRejecting}
+                  className="min-h-[104px] w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40"
+                  placeholder="e.g. Duplicate report, false alarm, insufficient information..."
+                />
+              </label>
+              <div className="mt-5 flex justify-end gap-2">
+                <button
+                  type="button"
+                  disabled={isRejecting}
+                  onClick={() => {
+                    setRejectingReport(null);
+                    setRejectReason("");
+                  }}
+                  className="h-10 rounded-lg border border-slate-700 px-4 text-sm font-semibold text-slate-300 hover:border-slate-500 hover:text-slate-100 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isRejecting || !rejectReason.trim()}
+                  onClick={() => void handleConfirmRejectAppReport()}
+                  className="h-10 rounded-lg bg-red-600 px-4 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-50"
+                >
+                  {isRejecting ? "Rejecting..." : "Reject Report"}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
 
         {isFormModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">

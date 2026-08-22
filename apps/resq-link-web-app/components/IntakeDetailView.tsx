@@ -695,7 +695,7 @@ export default function IntakeDetailView({
         <div className="flex items-center gap-3">
            {isEmergency && report && (
              <div className="hidden sm:flex items-center gap-2">
-               {!isResponderAssigned && !report?.incidentId && (
+                {!isResponderAssigned && !report?.incidentId && (
                   <button 
                     onClick={handleStartElevate}
                     className="h-8 px-3 flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-[10px] font-black text-white transition-all uppercase tracking-widest shadow-lg shadow-emerald-900/20"
@@ -705,13 +705,22 @@ export default function IntakeDetailView({
                   </button>
                 )}
 
-                <button 
-                  onClick={() => onReject?.(report)}
-                  className="h-8 px-3 flex items-center gap-2 rounded-lg border border-red-900/60 bg-red-950/20 hover:bg-red-950/40 text-[10px] font-black text-red-500 transition-all uppercase tracking-widest"
-                >
-                  <XCircle className="w-3 h-3" />
-                  Reject
-                </button>
+                {!report?.incidentId &&
+                  !report?.acceptedAt &&
+                  report?.status !== "enroute" &&
+                  report?.status !== "on_scene" &&
+                  report?.status !== "done" &&
+                  report?.status !== "resolved" &&
+                  report?.status !== "rejected" &&
+                  report?.status !== "cancelled" && (
+                  <button 
+                    onClick={() => onReject?.(report)}
+                    className="h-8 px-3 flex items-center gap-2 rounded-lg border border-red-900/60 bg-red-950/20 hover:bg-red-950/40 text-[10px] font-black text-red-500 transition-all uppercase tracking-widest"
+                  >
+                    <XCircle className="w-3 h-3" />
+                    Reject
+                  </button>
+                )}
 
                 {(incident?.touchdownAt || report?.touchdownAt) && (
                   <button 

@@ -50,6 +50,8 @@ const cancelledIncident = {
 const activeEmergency = { status: 'on_scene' } as Pick<EmergencyReport, 'status'>;
 const resolvedEmergency = { status: 'resolved' } as Pick<EmergencyReport, 'status'>;
 const doneEmergency = { status: 'done' } as Pick<EmergencyReport, 'status'>;
+const rejectedEmergency = { status: 'rejected' } as Pick<EmergencyReport, 'status'>;
+const cancelledEmergency = { status: 'cancelled' } as Pick<EmergencyReport, 'status'>;
 
 // TEST 1 — Active incident in live views, not in reports
 assert('TEST 1a: active incident is live', isLiveIncident(activeIncident));
@@ -79,7 +81,9 @@ assert('TEST 6a: on_scene emergency is live', isLiveEmergencyReport(activeEmerge
 assert('TEST 6b: resolved emergency not live', !isLiveEmergencyReport(resolvedEmergency));
 assert('TEST 6c: done emergency not live', !isLiveEmergencyReport(doneEmergency));
 assert('TEST 6d: resolved emergency in report pool', isResolvedEmergencyReport(resolvedEmergency));
-
+assert('TEST 6e: rejected emergency not live', !isLiveEmergencyReport(rejectedEmergency));
+assert('TEST 6f: cancelled emergency not live', !isLiveEmergencyReport(cancelledEmergency));
+assert('TEST 6g: rejected not resolved-for-reports', !isResolvedEmergencyReport(rejectedEmergency));
 const failed = results.filter((r) => !r.pass);
 for (const r of results) {
   const icon = r.pass ? 'PASS' : 'FAIL';

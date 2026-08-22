@@ -78,7 +78,7 @@ export interface EmergencyReport {
   responderAssessment?: ResponderAssessmentRecord | null;
   incidentId?: string | null; // Associated master incident (if any)
   primaryReportId?: string | null; // Primary report this is grouped under (report-to-report grouping)
-  status: 'pending' | 'linked' | 'enroute' | 'on_scene' | 'done' | 'active' | 'resolved'; // Support both old and new statuses for backward compatibility
+  status: 'pending' | 'linked' | 'enroute' | 'on_scene' | 'done' | 'active' | 'resolved' | 'rejected' | 'cancelled'; // Support both old and new statuses for backward compatibility
   priority?: IncidentPriority;
   /** Legacy alias — always mirrored to `priority` on write */
   priorityLevel?: IncidentPriority;
@@ -1078,6 +1078,89 @@ export async function declineCase(
   } catch (error: any) {
     console.error('Error declining case:', error);
     throw new Error(`Failed to decline case: ${error.message}`);
+  }
+}
+
+/**
+ * Reject a civilian emergency report from Intake (false alarm, invalid, spam, etc.).
+ * Removes it from the live queue and records a reason for the civilian.
+ */
+export async function rejectEmergencyReport(
+  reportId: string,
+  reason: string
+): Promise<EmergencyReport> {
+  try {
+    const currentUser = getFirebaseAuth().currentUser;
+    if (!currentUser) {
+      throw new Error('User must be authenticated to reject reports');
+    }
+
+    const normalizedReason = reason.trim();
+    if (!normalizedReason) {
+      throw new Error('Rejection reason is required');
+    }
+
+    const reportRef = doc(getFirebaseFirestore(), 'emergencies', reportId);
+    const reportDocSnap = await getDoc(reportRef);
+    if (!reportDocSnap.exists()) {
+      throw new Error('Emergency report not found');
+    }
+
+    const currentData = reportDocSnap.data();
+    const currentStatus = (currentData.status || 'pending') as string;
+
+    if (currentStatus === 'rejected' || currentStatus === 'cancelled') {
+      throw new Error('This report has already been rejected');
+    }
+
+    if (currentStatus === 'done' || currentStatus === 'resolved') {
+      throw new Error('Resolved reports cannot be rejected');
+    }
+
+    if (currentData.incidentId) {
+      throw new Error('Unlink or resolve the master incident before rejecting this report');
+    }
+
+    if (['enroute', 'on_scene'].includes(currentStatus) || currentData.acceptedAt) {
+      throw new Error('Reports already accepted by a responder cannot be rejected from Intake');
+    }
+
+    const rejectedAt = Timestamp.now();
+    const updateData = {
+      status: 'rejected',
+      dispatcherId: null,
+      responder: null,
+      assignedResponderId: null,
+      assignedAgency: null,
+      declinedByDispatcherId: currentUser.uid,
+      declinedByName: currentUser.displayName || currentUser.email || currentUser.uid,
+      declineReason: normalizedReason,
+      declinedAt: rejectedAt,
+      updatedAt: rejectedAt,
+    };
+
+    await updateDoc(reportRef, updateData);
+    await propagateUpdatesToSecondaries(reportId, {
+      status: 'rejected',
+      declineReason: normalizedReason,
+      declinedAt: rejectedAt,
+      declinedByDispatcherId: currentUser.uid,
+      declinedByName: currentUser.displayName || currentUser.email || currentUser.uid,
+      dispatcherId: null,
+      responder: null,
+      assignedResponderId: null,
+      assignedAgency: null,
+    });
+
+    const updatedDocSnap = await getDoc(reportRef);
+    if (!updatedDocSnap.exists()) {
+      throw new Error('Emergency report not found after update');
+    }
+
+    return convertFirestoreDoc(updatedDocSnap);
+  } catch (error: any) {
+    console.error('Error rejecting emergency report:', error);
+    throw new Error(`Failed to reject report: ${error.message}`);
   }
 }
 

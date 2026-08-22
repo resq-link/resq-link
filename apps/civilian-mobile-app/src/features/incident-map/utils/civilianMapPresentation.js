@@ -85,12 +85,14 @@ export function getCivilianStatusPresentation(report) {
   }
 
   if (normalized === "cancelled") {
+    const raw = (report.status || "").toLowerCase();
+    const isRejected = raw === "rejected" || raw === "declined";
     return {
       key: "completed",
-      label: "Cancelled",
-      dot: "#9CA3AF",
-      text: "#4B5563",
-      textDark: "#CBD5E1",
+      label: isRejected ? "Rejected" : "Cancelled",
+      dot: isRejected ? "#EF4444" : "#9CA3AF",
+      text: isRejected ? "#B91C1C" : "#4B5563",
+      textDark: isRejected ? "#FCA5A5" : "#CBD5E1",
       pulse: false,
     };
   }
@@ -260,7 +262,9 @@ export function buildCivilianActivityFeed(report) {
     push(
       "update",
       report.declinedAt || report.updatedAt,
-      "There is an update regarding your report. Please check incident details."
+      report.status === "rejected" || report.status === "cancelled"
+        ? `Your report was rejected: ${report.declineReason}`
+        : report.declineReason
     );
   }
 

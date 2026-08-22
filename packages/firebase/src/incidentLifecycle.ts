@@ -41,7 +41,12 @@ export function isLiveEmergencyReport(
   report: Pick<EmergencyReport, 'status'>
 ): boolean {
   const status = report.status;
-  return status !== 'done' && status !== 'resolved';
+  return (
+    status !== 'done' &&
+    status !== 'resolved' &&
+    status !== 'rejected' &&
+    status !== 'cancelled'
+  );
 }
 
 /** App emergency completed — eligible for reporting when converted. */

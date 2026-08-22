@@ -64,7 +64,12 @@ function getCreatedAtMs(report: EmergencyReport): number {
 }
 
 function isActiveEmergency(report: EmergencyReport): boolean {
-  return report.status !== 'done' && report.status !== 'resolved'
+  return (
+    report.status !== 'done' &&
+    report.status !== 'resolved' &&
+    report.status !== 'rejected' &&
+    report.status !== 'cancelled'
+  )
 }
 
 function reportPriority(report: EmergencyReport): IncidentPriority {
