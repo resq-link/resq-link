@@ -13,8 +13,6 @@ import { useFonts } from "expo-font";
 import { normalizeOperationalStatus } from "@packages/firebase";
 import CustomButton from "@/components/CustomButton";
 import { useAppTheme } from "@/hooks/useAppTheme";
-import { isActiveReport } from "@/features/history/constants";
-import LiveIncidentMapCard from "@/features/emergency/components/confirmation/LiveIncidentMapCard";
 import IncidentStatusSection from "@/features/emergency/components/confirmation/IncidentStatusSection";
 import IncidentDetailsCard from "@/features/emergency/components/confirmation/IncidentDetailsCard";
 import { subscribeToEmergencyReport } from "@packages/firebase";
@@ -29,7 +27,7 @@ export default function EmergencyConfirmationScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { colors, isLight } = useAppTheme();
+  const { colors } = useAppTheme();
   const reportId = typeof params.reportId === "string" ? params.reportId : "";
 
   const [report, setReport] = useState(null);
@@ -47,10 +45,6 @@ export default function EmergencyConfirmationScreen() {
     }
     return subscribeToEmergencyReport(reportId, setReport);
   }, [reportId]);
-
-  const showLiveMap = Boolean(
-    reportId && report && isActiveReport(report.status)
-  );
 
   const isClosedIncident = useMemo(() => {
     if (!report) return false;
@@ -113,17 +107,6 @@ export default function EmergencyConfirmationScreen() {
           ]}
         >
           <IncidentStatusSection report={report} colors={colors} />
-
-          {showLiveMap ? (
-            <>
-              <SectionDivider color={colors.border} />
-              <LiveIncidentMapCard
-                reportId={reportId}
-                colors={colors}
-                isLight={isLight}
-              />
-            </>
-          ) : null}
 
           {report ? (
             <>

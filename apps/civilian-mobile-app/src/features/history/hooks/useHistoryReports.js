@@ -7,7 +7,6 @@ import {
   filterReports,
   normalizeHistoryReport,
   searchReports,
-  splitActiveFromHistory,
   groupReportsByTimeline,
 } from "@/features/history/utils";
 
@@ -63,9 +62,8 @@ export function useHistoryReports() {
   const processed = useMemo(() => {
     const searched = searchReports(reports, searchQuery);
     const filtered = filterReports(searched, statusFilter, typeFilter);
-    const { active, rest } = splitActiveFromHistory(filtered);
-    const sections = groupReportsByTimeline(rest);
-    return { active, sections, totalCount: filtered.length };
+    const sections = groupReportsByTimeline(filtered);
+    return { sections, totalCount: filtered.length };
   }, [reports, searchQuery, statusFilter, typeFilter]);
 
   return {
@@ -78,7 +76,6 @@ export function useHistoryReports() {
     setStatusFilter,
     typeFilter,
     setTypeFilter,
-    activeReport: processed.active,
     sections: processed.sections,
     totalCount: processed.totalCount,
     isEmpty: !loading && reports.length === 0,

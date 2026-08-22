@@ -17,7 +17,6 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 import HistoryHeader from "@/features/history/components/HistoryHeader";
 import SearchBar from "@/features/history/components/SearchBar";
 import FilterChips from "@/features/history/components/FilterChips";
-import ActiveIncidentCard from "@/features/history/components/ActiveIncidentCard";
 import IncidentHistoryCard from "@/features/history/components/IncidentHistoryCard";
 import TimelineSectionHeader from "@/features/history/components/TimelineSectionHeader";
 import EmptyHistoryState from "@/features/history/components/EmptyHistoryState";
@@ -93,16 +92,6 @@ export default function HistoryScreen() {
     []
   );
 
-  const ListHeader = useCallback(() => {
-    if (!history.activeReport) return null;
-    return (
-      <ActiveIncidentCard
-        report={history.activeReport}
-        onPress={() => openReport(history.activeReport)}
-      />
-    );
-  }, [history.activeReport, openReport]);
-
   const ListEmpty = useCallback(() => {
     if (history.loading) return null;
     return (
@@ -162,9 +151,8 @@ export default function HistoryScreen() {
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           renderSectionHeader={renderSectionHeader}
-          ListHeaderComponent={ListHeader}
           ListEmptyComponent={
-            history.sections.length === 0 && !history.activeReport ? ListEmpty : null
+            history.sections.length === 0 ? ListEmpty : null
           }
           stickySectionHeadersEnabled={false}
           showsVerticalScrollIndicator={false}
@@ -172,8 +160,7 @@ export default function HistoryScreen() {
             paddingHorizontal: 16,
             paddingTop: 8,
             paddingBottom: getBottomNavHeight(insets) + 20,
-            flexGrow:
-              history.sections.length === 0 && !history.activeReport ? 1 : undefined,
+            flexGrow: history.sections.length === 0 ? 1 : undefined,
           }}
           refreshControl={
             <RefreshControl

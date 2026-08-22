@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from "react";
-import { View, StyleSheet } from "react-native";
+import { View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -32,7 +32,7 @@ function Bone({ boneStyle, style }) {
   return <Animated.View style={[boneStyle, style, animatedStyle]} />;
 }
 
-function SkeletonCard({ styles, cardShell, featured = false }) {
+function SkeletonCard({ styles, cardShell }) {
   return (
     <View style={[styles.card, cardShell]}>
       <Bone boneStyle={styles.bone} style={styles.accent} />
@@ -40,7 +40,6 @@ function SkeletonCard({ styles, cardShell, featured = false }) {
         <View style={styles.header}>
           <Bone boneStyle={styles.bone} style={styles.icon} />
           <View style={styles.headerText}>
-            {featured ? <Bone boneStyle={styles.bone} style={styles.live} /> : null}
             <Bone boneStyle={styles.bone} style={styles.title} />
             <Bone boneStyle={styles.bone} style={styles.subtitle} />
           </View>
@@ -57,10 +56,6 @@ export default function HistorySkeleton() {
   const { historyTheme } = useAppTheme();
   const cardShell = useMemo(
     () => createHistoryCardShell(historyTheme),
-    [historyTheme]
-  );
-  const featuredShell = useMemo(
-    () => createHistoryCardShell(historyTheme, { featured: true }),
     [historyTheme]
   );
 
@@ -99,11 +94,6 @@ export default function HistorySkeleton() {
         height: 44,
         borderRadius: 14,
       },
-      live: {
-        width: 52,
-        height: 16,
-        borderRadius: 999,
-      },
       title: {
         height: 16,
         width: "58%",
@@ -133,7 +123,6 @@ export default function HistorySkeleton() {
 
   return (
     <View style={styles.wrap}>
-      <SkeletonCard styles={styles} cardShell={featuredShell} featured />
       {[0, 1, 2, 3].map((i) => (
         <SkeletonCard key={i} styles={styles} cardShell={cardShell} />
       ))}

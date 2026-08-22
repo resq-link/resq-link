@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -28,11 +28,10 @@ import {
   Clock,
   Contact,
   History,
-  Map,
   MapPin,
   Navigation,
   PhoneCall,
-  ShieldAlert,
+  Siren,
 } from "lucide-react-native";
 import {
   Inter_400Regular,
@@ -45,15 +44,15 @@ import { UI_MODE, mockData } from "@/services/api";
 import {
   getUserEmergencyReports,
   getAllEmergencyReports,
-  normalizeOperationalStatus,
 } from "@packages/firebase";
-import StatusChip from "@/features/history/components/StatusChip";
-import { getIncidentMeta } from "@/features/history/constants";
+import {
+  getIncidentMeta,
+  isActiveReport,
+  isArchivedStatus,
+} from "@/features/history/constants";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { openEmergencyHotline } from "@/utils/emergencyHotline";
 import { useSOS } from "@/hooks/useSOS";
-
-const ACTIVE_INCIDENT_STATUSES = new Set(["pending", "active", "on_scene"]);
 
 const typography = {
   display: 32,
@@ -63,9 +62,6 @@ const typography = {
   caption: 13,
   badge: 12,
 };
-
-const CARD_RADIUS = 20;
-const CARD_PADDING = 16;
 
 /** 8px spacing grid for compact dashboard sections */
 const S = 8;
@@ -80,18 +76,6 @@ const SHORT_LABELS = {
 };
 
 const getShortLabel = (type) => SHORT_LABELS[type] || "Emergency";
-
-const getIncidentLabel = (type) => {
-  const typeMap = {
-    fire: "Fire",
-    medical: "Medical Emergency",
-    vehicular_accident: "Vehicular Accident",
-    police_emergency: "Police Emergency",
-    electrical_powerline_hazard: "Electrical / Powerline Hazard",
-    other_emergency: "Other Emergency",
-  };
-  return typeMap[type] || "Emergency";
-};
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
@@ -157,32 +141,14 @@ function usePressScale() {
   return { animatedStyle, onPressIn, onPressOut };
 }
 
-function DashboardCard({ children, style, theme }) {
-  return (
-    <View
-      style={[
-        styles.card,
-        {
-          backgroundColor: theme.card,
-          borderColor: theme.border,
-          shadowColor: theme.shadow,
-        },
-        style,
-      ]}
-    >
-      {children}
-    </View>
-  );
-}
-
 function SectionHeader({ title, actionLabel, onAction, theme }) {
   return (
     <View style={styles.sectionHeader}>
       <Text style={[styles.sectionTitle, { color: theme.text }]}>{title}</Text>
       {actionLabel && onAction ? (
         <Pressable onPress={onAction} hitSlop={8} accessibilityRole="button">
-          <Text style={[styles.sectionAction, { color: theme.primaryGreen }]}>
-            {actionLabel}
+          <Text style={[styles.sectionAction, { color: theme.emergency }]}>
+            {actionLabel} ›
           </Text>
         </Pressable>
       ) : null}
@@ -201,7 +167,7 @@ function DashboardHeader({ displayName, userInitial, theme, onNotifications, onP
     <View style={styles.header}>
       <View style={styles.headerTextBlock}>
         <Text style={[styles.greeting, { color: theme.textSecondary }]}>
-          {getGreeting()}
+          {getGreeting()},
         </Text>
         <Text style={[styles.userName, { color: theme.text }]} numberOfLines={1}>
           {displayName}
@@ -211,19 +177,22 @@ function DashboardHeader({ displayName, userInitial, theme, onNotifications, onP
       <View style={styles.headerActions}>
         <Pressable
           onPress={onNotifications}
-          style={[styles.headerIconBtn, { backgroundColor: theme.surface }]}
+          style={[styles.headerIconBtn, { backgroundColor: theme.card }]}
           accessibilityLabel="Notifications"
           accessibilityRole="button"
         >
           <Bell size={20} color={theme.text} strokeWidth={2} />
+          <View
+            style={[styles.notifBadge, { backgroundColor: theme.emergency }]}
+          />
         </Pressable>
         <Pressable
           onPress={onProfile}
-          style={[styles.avatarBtn, { backgroundColor: theme.surface, borderColor: theme.border }]}
+          style={[styles.avatarBtn, { backgroundColor: theme.primaryGreen }]}
           accessibilityLabel="Open profile"
           accessibilityRole="button"
         >
-          <Text style={[styles.avatarText, { color: theme.primaryGreen }]}>
+          <Text style={[styles.avatarText, { color: theme.onPrimary }]}>
             {userInitial}
           </Text>
         </Pressable>
@@ -236,44 +205,36 @@ function ReportEmergencyCard({ onReport, theme }) {
   const { animatedStyle, onPressIn, onPressOut } = usePressScale();
 
   return (
-    <View
-      style={[
-        styles.reportCard,
-        {
-          backgroundColor: theme.card,
-          borderColor: theme.border,
-          shadowColor: theme.shadow,
-        },
-      ]}
+    <LinearGradient
+      colors={[theme.emergency, theme.emergencyGradientEnd]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={[styles.reportCard, { shadowColor: theme.emergency }]}
     >
-      <View style={styles.reportHeader}>
-        <View
-          style={[styles.reportIconWrap, { backgroundColor: theme.emergencySoft }]}
-        >
-          <ShieldAlert size={20} color={theme.emergency} strokeWidth={2.2} />
-        </View>
-        <View style={styles.reportCopy}>
+      <View style={styles.reportTop}>
+        <View style={styles.reportCopyCol}>
           <View style={styles.reportTitleRow}>
             <Text
-              style={[styles.reportTitle, { color: theme.text }]}
+              style={[styles.reportTitle, { color: theme.onEmergency }]}
               accessibilityRole="header"
             >
               Report Emergency
             </Text>
-            <View
-              style={[styles.reportPill, { backgroundColor: theme.emergencySoft }]}
-            >
-              <Text style={[styles.reportPillText, { color: theme.emergency }]}>
+            <View style={styles.reportPill}>
+              <Text style={[styles.reportPillText, { color: theme.onEmergency }]}>
                 24/7
               </Text>
             </View>
           </View>
           <Text
-            style={[styles.reportSubtitle, { color: theme.textSecondary }]}
+            style={[styles.reportSubtitle, { color: "rgba(255,255,255,0.88)" }]}
             numberOfLines={2}
           >
             Alert responders and share your location instantly.
           </Text>
+        </View>
+        <View style={styles.sirenWrap}>
+          <Siren size={52} color="rgba(255,255,255,0.95)" strokeWidth={1.6} />
         </View>
       </View>
 
@@ -281,124 +242,29 @@ function ReportEmergencyCard({ onReport, theme }) {
         onPress={onReport}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
-        style={[
-          styles.reportCtaOuter,
-          animatedStyle,
-          Platform.OS === "ios" ? { shadowColor: theme.emergency } : null,
-        ]}
+        style={[styles.reportCta, animatedStyle]}
         accessibilityRole="button"
         accessibilityLabel="Report emergency now"
       >
-        <LinearGradient
-          colors={[theme.emergency, theme.emergencyGradientEnd]}
-          start={{ x: 0, y: 0.5 }}
-          end={{ x: 1, y: 0.5 }}
-          style={styles.reportCta}
-        >
-          <AlertTriangle size={17} color={theme.onEmergency} strokeWidth={2.4} />
-          <Text style={[styles.reportCtaText, { color: theme.onEmergency }]}>
-            Report Now
-          </Text>
-        </LinearGradient>
+        <AlertTriangle size={17} color={theme.emergency} strokeWidth={2.4} />
+        <Text style={[styles.reportCtaText, { color: theme.emergency }]}>
+          Report Now
+        </Text>
       </AnimatedPressable>
-    </View>
+    </LinearGradient>
   );
 }
 
-function ActiveIncidentCard({ report, theme, onTrackLive, onViewDetails }) {
-  const meta = getIncidentMeta(report.incidentType, report.typeProfile);
-  const IncidentIcon = meta.Icon;
-  const trackAnim = usePressScale();
-
-  return (
-    <DashboardCard theme={theme} style={styles.activeCard}>
-      <View style={styles.activeTopRow}>
-        <View style={[styles.activeIconBadge, { backgroundColor: meta.iconBg }]}>
-          <IncidentIcon size={18} color={meta.iconColor} strokeWidth={2.2} />
-        </View>
-
-        <View style={styles.activeBody}>
-          <View style={styles.activeTitleRow}>
-            <Text
-              style={[styles.activeType, { color: theme.text }]}
-              numberOfLines={1}
-            >
-              {getIncidentLabel(report.incidentType)}
-            </Text>
-            <StatusChip status={report.status} size="md" />
-          </View>
-
-          <View style={styles.activeMetaLine}>
-            <Clock size={13} color={theme.mutedIcon} strokeWidth={2} />
-            <Text
-              style={[styles.activeMetaText, { color: theme.textSecondary }]}
-              numberOfLines={1}
-            >
-              Reported {formatDate(report.createdAt)}
-            </Text>
-          </View>
-
-          {report.locationText ? (
-            <View style={styles.activeMetaLine}>
-              <MapPin size={13} color={theme.mutedIcon} strokeWidth={2} />
-              <Text
-                style={[styles.activeMetaText, { color: theme.textSecondary }]}
-                numberOfLines={1}
-              >
-                {report.locationText}
-              </Text>
-            </View>
-          ) : null}
-        </View>
-      </View>
-
-      <View style={styles.activeActions}>
-        <AnimatedPressable
-          onPress={onTrackLive}
-          onPressIn={trackAnim.onPressIn}
-          onPressOut={trackAnim.onPressOut}
-          style={[
-            styles.trackLiveOuter,
-            trackAnim.animatedStyle,
-            Platform.OS === "ios" ? { shadowColor: theme.primaryGreen } : null,
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel="View live tracking"
-        >
-          <LinearGradient
-            colors={[theme.primaryGreen, theme.primaryGreen]}
-            start={{ x: 0, y: 0.5 }}
-            end={{ x: 1, y: 0.5 }}
-            style={styles.trackLiveBtn}
-          >
-            <Navigation size={16} color={theme.onPrimary} strokeWidth={2.4} />
-            <Text style={[styles.trackLiveText, { color: theme.onPrimary }]}>
-              View Live Tracking
-            </Text>
-          </LinearGradient>
-        </AnimatedPressable>
-
-        <Pressable
-          onPress={onViewDetails}
-          style={({ pressed }) => [
-            styles.detailsBtn,
-            pressed && { opacity: 0.72 },
-          ]}
-          accessibilityRole="button"
-          accessibilityLabel="View incident details"
-          hitSlop={6}
-        >
-          <Text style={[styles.detailsBtnText, { color: theme.textSecondary }]}>
-            View Details
-          </Text>
-          <ChevronRight size={15} color={theme.mutedIcon} strokeWidth={2.4} />
-        </Pressable>
-      </View>
-    </DashboardCard>
-  );
-}
-
-function QuickPrimaryButton({ label, icon: Icon, color, bg, onPress, disabled, theme }) {
+function QuickPrimaryButton({
+  label,
+  subtitle,
+  icon: Icon,
+  color,
+  bg,
+  onPress,
+  disabled,
+  theme,
+}) {
   const { animatedStyle, onPressIn, onPressOut } = usePressScale();
   return (
     <AnimatedPressable
@@ -408,22 +274,37 @@ function QuickPrimaryButton({ label, icon: Icon, color, bg, onPress, disabled, t
       disabled={disabled}
       style={[
         styles.quickPrimaryBtn,
-        { backgroundColor: theme.card, borderColor: theme.border },
+        {
+          backgroundColor: theme.card,
+          borderColor: theme.border,
+          shadowColor: theme.shadow,
+        },
         animatedStyle,
         disabled && { opacity: 0.55 },
       ]}
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={`${label}, ${subtitle}`}
     >
       <View style={[styles.quickPrimaryIcon, { backgroundColor: bg }]}>
-        <Icon size={18} color={color} strokeWidth={2.2} />
+        <Icon size={22} color={color} strokeWidth={2.2} />
       </View>
       <Text style={[styles.quickPrimaryLabel, { color: theme.text }]}>{label}</Text>
+      <Text style={[styles.quickPrimarySub, { color: theme.mutedText }]}>
+        {subtitle}
+      </Text>
     </AnimatedPressable>
   );
 }
 
-function QuickSecondaryButton({ label, icon: Icon, color, bg, onPress, theme }) {
+function QuickSecondaryButton({
+  label,
+  subtitle,
+  icon: Icon,
+  color,
+  bg,
+  onPress,
+  theme,
+}) {
   const { animatedStyle, onPressIn, onPressOut } = usePressScale();
   return (
     <AnimatedPressable
@@ -432,17 +313,27 @@ function QuickSecondaryButton({ label, icon: Icon, color, bg, onPress, theme }) 
       onPressOut={onPressOut}
       style={[
         styles.quickSecondaryBtn,
-        { backgroundColor: theme.card, borderColor: theme.border },
+        {
+          backgroundColor: theme.card,
+          borderColor: theme.border,
+          shadowColor: theme.shadow,
+        },
         animatedStyle,
       ]}
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={`${label}, ${subtitle}`}
     >
       <View style={[styles.quickSecondaryIcon, { backgroundColor: bg }]}>
-        <Icon size={16} color={color} strokeWidth={2} />
+        <Icon size={18} color={color} strokeWidth={2} />
       </View>
-      <Text style={[styles.quickSecondaryLabel, { color: theme.textSecondary }]}>
+      <Text style={[styles.quickSecondaryLabel, { color: theme.text }]} numberOfLines={1}>
         {label}
+      </Text>
+      <Text
+        style={[styles.quickSecondarySub, { color: theme.mutedText }]}
+        numberOfLines={1}
+      >
+        {subtitle}
       </Text>
     </AnimatedPressable>
   );
@@ -462,6 +353,7 @@ function QuickActionsPanel({
       <View style={styles.quickPrimaryRow}>
         <QuickPrimaryButton
           label="SOS"
+          subtitle="Send Alert"
           icon={AlertCircle}
           color={theme.emergency}
           bg={theme.emergencySoft}
@@ -471,6 +363,7 @@ function QuickActionsPanel({
         />
         <QuickPrimaryButton
           label="Call 911"
+          subtitle="Emergency Call"
           icon={PhoneCall}
           color={theme.primaryGreen}
           bg={theme.primaryGreenSoft}
@@ -481,7 +374,8 @@ function QuickActionsPanel({
       <View style={styles.quickSecondaryRow}>
         <QuickSecondaryButton
           label="Map"
-          icon={Map}
+          subtitle="View Live Map"
+          icon={MapPin}
           color={theme.accentBlue}
           bg={theme.accentBlueSoft}
           onPress={onMap}
@@ -489,6 +383,7 @@ function QuickActionsPanel({
         />
         <QuickSecondaryButton
           label="Contacts"
+          subtitle="Emergency Contacts"
           icon={Contact}
           color={theme.accentPurple}
           bg={theme.accentPurpleSoft}
@@ -497,12 +392,51 @@ function QuickActionsPanel({
         />
         <QuickSecondaryButton
           label="History"
+          subtitle="Past Alerts"
           icon={History}
-          color={theme.primaryGreen}
-          bg={theme.primaryGreenSoft}
+          color={theme.warning}
+          bg={theme.warningSoft}
           onPress={onHistory}
           theme={theme}
         />
+      </View>
+    </View>
+  );
+}
+
+function MiniMapStub({ pinColor }) {
+  const { isLight } = useAppTheme();
+  const road = isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.08)";
+  const block = isLight ? "rgba(0,0,0,0.04)" : "rgba(255,255,255,0.06)";
+
+  return (
+    <View
+      style={[
+        styles.mapStub,
+        { backgroundColor: isLight ? "#EEF1F5" : "#1A1E24" },
+      ]}
+    >
+      <View style={[styles.mapRoadH, { top: "32%", backgroundColor: road }]} />
+      <View style={[styles.mapRoadH, { top: "62%", backgroundColor: road }]} />
+      <View style={[styles.mapRoadV, { left: "28%", backgroundColor: road }]} />
+      <View style={[styles.mapRoadV, { left: "68%", backgroundColor: road }]} />
+      <View style={[styles.mapBlock, { top: 10, left: 12, backgroundColor: block }]} />
+      <View
+        style={[
+          styles.mapBlock,
+          { top: 10, right: 14, width: 36, backgroundColor: block },
+        ]}
+      />
+      <View
+        style={[
+          styles.mapBlock,
+          { bottom: 14, left: 40, width: 48, backgroundColor: block },
+        ]}
+      />
+      <View style={styles.mapPinCenter}>
+        <View style={[styles.mapPinOuter, { backgroundColor: pinColor }]}>
+          <MapPin size={14} color="#FFFFFF" strokeWidth={2.4} />
+        </View>
       </View>
     </View>
   );
@@ -512,7 +446,7 @@ function NearbyStrip({ reports, theme, onPressCard, onSeeAll }) {
   return (
     <View style={styles.stripSection}>
       <SectionHeader
-        title="Nearby"
+        title="Nearby Incidents"
         actionLabel={reports.length > 0 ? "See all" : undefined}
         onAction={reports.length > 0 ? onSeeAll : undefined}
         theme={theme}
@@ -521,7 +455,11 @@ function NearbyStrip({ reports, theme, onPressCard, onSeeAll }) {
         <View
           style={[
             styles.stripEmpty,
-            { backgroundColor: theme.card, borderColor: theme.border },
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.border,
+              shadowColor: theme.shadow,
+            },
           ]}
         >
           <Navigation size={16} color={theme.mutedIcon} strokeWidth={2} />
@@ -539,6 +477,14 @@ function NearbyStrip({ reports, theme, onPressCard, onSeeAll }) {
           {reports.map((report) => {
             const meta = getIncidentMeta(report.incidentType, report.typeProfile);
             const Icon = meta.Icon;
+            const active = isActiveReport(report.status);
+            const resolved = isArchivedStatus(report.status);
+            const statusLabel = active ? "Active" : resolved ? "Resolved" : "Active";
+            const statusBg = active
+              ? theme.emergencySoft
+              : theme.primaryGreenSoft;
+            const statusColor = active ? theme.emergency : theme.primaryGreen;
+            const pinColor = active ? theme.emergency : theme.primaryGreen;
             const distanceLabel =
               report.distance != null
                 ? formatDistance(report.distance)
@@ -553,29 +499,38 @@ function NearbyStrip({ reports, theme, onPressCard, onSeeAll }) {
                   {
                     backgroundColor: theme.card,
                     borderColor: theme.border,
-                    opacity: pressed ? 0.88 : 1,
+                    shadowColor: theme.shadow,
+                    opacity: pressed ? 0.9 : 1,
                   },
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel={`${getShortLabel(report.incidentType)}, ${distanceLabel}`}
+                accessibilityLabel={`${getShortLabel(report.incidentType)}, ${distanceLabel}, ${statusLabel}`}
               >
-                <View style={[styles.nearbyIcon, { backgroundColor: meta.iconBg }]}>
-                  <Icon size={14} color={meta.iconColor} strokeWidth={2} />
+                <View style={styles.nearbyHeader}>
+                  <View style={[styles.nearbyIcon, { backgroundColor: meta.iconBg }]}>
+                    <Icon size={13} color={meta.iconColor} strokeWidth={2.2} />
+                  </View>
+                  <Text
+                    style={[styles.nearbyTitle, { color: meta.iconColor }]}
+                    numberOfLines={1}
+                  >
+                    {getShortLabel(report.incidentType)}
+                  </Text>
+                  <Text
+                    style={[styles.nearbyMeta, { color: theme.mutedText }]}
+                    numberOfLines={1}
+                  >
+                    {distanceLabel}
+                  </Text>
                 </View>
-                <Text
-                  style={[styles.nearbyTitle, { color: theme.text }]}
-                  numberOfLines={1}
-                >
-                  {getShortLabel(report.incidentType)}
-                </Text>
-                <Text
-                  style={[styles.nearbyMeta, { color: theme.mutedText }]}
-                  numberOfLines={1}
-                >
-                  {distanceLabel}
-                </Text>
-                <View style={styles.nearbyStatus}>
-                  <StatusChip status={report.status} size="sm" />
+
+                <MiniMapStub pinColor={pinColor} />
+
+                <View style={[styles.nearbyStatusBar, { backgroundColor: statusBg }]}>
+                  <View style={[styles.nearbyStatusDot, { backgroundColor: statusColor }]} />
+                  <Text style={[styles.nearbyStatusText, { color: statusColor }]}>
+                    {statusLabel}
+                  </Text>
                 </View>
               </Pressable>
             );
@@ -592,7 +547,7 @@ function RecentList({ reports, theme, onPressRow, onSeeAll }) {
   return (
     <View style={styles.recentSection}>
       <SectionHeader
-        title="Recent"
+        title="Recent Activity"
         actionLabel={reports.length > 0 ? "See all" : undefined}
         onAction={reports.length > 0 ? onSeeAll : undefined}
         theme={theme}
@@ -601,7 +556,11 @@ function RecentList({ reports, theme, onPressRow, onSeeAll }) {
         <View
           style={[
             styles.stripEmpty,
-            { backgroundColor: theme.card, borderColor: theme.border },
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.border,
+              shadowColor: theme.shadow,
+            },
           ]}
         >
           <Clock size={16} color={theme.mutedIcon} strokeWidth={2} />
@@ -613,13 +572,17 @@ function RecentList({ reports, theme, onPressRow, onSeeAll }) {
         <View
           style={[
             styles.recentList,
-            { backgroundColor: theme.card, borderColor: theme.border },
+            {
+              backgroundColor: theme.card,
+              borderColor: theme.border,
+              shadowColor: theme.shadow,
+            },
           ]}
         >
           {items.map((report, index) => {
-            const meta = getIncidentMeta(report.incidentType, report.typeProfile);
-            const Icon = meta.Icon;
             const isLast = index === items.length - 1;
+            const location =
+              report.locationText || getShortLabel(report.incidentType);
 
             return (
               <Pressable
@@ -634,21 +597,34 @@ function RecentList({ reports, theme, onPressRow, onSeeAll }) {
                   pressed && { opacity: 0.75 },
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel={`${getShortLabel(report.incidentType)}, ${formatDate(report.createdAt)}`}
+                accessibilityLabel={`Emergency Alert, ${location}, ${formatDate(report.createdAt)}`}
               >
-                <View style={[styles.recentIcon, { backgroundColor: meta.iconBg }]}>
-                  <Icon size={14} color={meta.iconColor} strokeWidth={2} />
-                </View>
-                <Text
-                  style={[styles.recentTitle, { color: theme.text }]}
-                  numberOfLines={1}
+                <View
+                  style={[
+                    styles.recentIcon,
+                    { backgroundColor: theme.primaryGreenSoft },
+                  ]}
                 >
-                  {getShortLabel(report.incidentType)}
-                </Text>
+                  <Bell size={16} color={theme.primaryGreen} strokeWidth={2.2} />
+                </View>
+                <View style={styles.recentCopy}>
+                  <Text
+                    style={[styles.recentTitle, { color: theme.text }]}
+                    numberOfLines={1}
+                  >
+                    Emergency Alert
+                  </Text>
+                  <Text
+                    style={[styles.recentLocation, { color: theme.mutedText }]}
+                    numberOfLines={1}
+                  >
+                    {location}
+                  </Text>
+                </View>
                 <Text style={[styles.recentTime, { color: theme.mutedText }]}>
                   {formatDate(report.createdAt)}
                 </Text>
-                <ChevronRight size={14} color={theme.mutedIcon} strokeWidth={2} />
+                <ChevronRight size={16} color={theme.mutedIcon} strokeWidth={2} />
               </Pressable>
             );
           })}
@@ -769,21 +745,21 @@ export default function DashboardScreen() {
             id: "nearby-1",
             incidentType: "fire",
             locationText: "456 Oak Ave",
-            status: "pending",
+            status: "active",
             createdAt: new Date(Date.now() - 1800000),
-            latitude: userLocation.latitude + 0.02,
-            longitude: userLocation.longitude + 0.02,
-            distance: 2.3,
+            latitude: userLocation.latitude + 0.002,
+            longitude: userLocation.longitude + 0.002,
+            distance: 0.23,
           },
           {
             id: "nearby-2",
             incidentType: "medical",
             locationText: "789 Pine Rd",
-            status: "active",
+            status: "resolved",
             createdAt: new Date(Date.now() - 3600000),
-            latitude: userLocation.latitude - 0.03,
-            longitude: userLocation.longitude + 0.04,
-            distance: 5.1,
+            latitude: userLocation.latitude - 0.004,
+            longitude: userLocation.longitude + 0.003,
+            distance: 0.41,
           },
         ];
         setNearbyReports(mockReports);
@@ -830,28 +806,12 @@ export default function DashboardScreen() {
     transform: [{ translateY: screenTranslateY.value }],
   }));
 
-  const activeIncident = useMemo(() => {
-    return (
-      recentReports.find((report) =>
-        ACTIVE_INCIDENT_STATUSES.has(normalizeOperationalStatus(report.status))
-      ) ?? null
-    );
-  }, [recentReports]);
-
   if (!fontsLoaded) {
     return null;
   }
 
   const displayName = user?.name || "John Doe";
   const userInitial = displayName.trim().charAt(0).toUpperCase();
-
-  const openLiveMap = (report) => {
-    if (!report?.id) return;
-    router.push({
-      pathname: "/responder-map",
-      params: { reportId: report.id },
-    });
-  };
 
   const openDetails = (report) => {
     if (!report?.id) return;
@@ -896,18 +856,6 @@ export default function DashboardScreen() {
             onReport={() => router.push("/emergency-form")}
           />
 
-          {activeIncident ? (
-            <View style={styles.section}>
-              <SectionHeader title="Active Incident" theme={theme} />
-              <ActiveIncidentCard
-                report={activeIncident}
-                theme={theme}
-                onTrackLive={() => openLiveMap(activeIncident)}
-                onViewDetails={() => openDetails(activeIncident)}
-              />
-            </View>
-          ) : null}
-
           <View style={styles.sectionCompact}>
             <SectionHeader title="Quick Actions" theme={theme} />
             <QuickActionsPanel
@@ -924,7 +872,7 @@ export default function DashboardScreen() {
           <NearbyStrip
             reports={nearbyReports}
             theme={theme}
-            onPressCard={openLiveMap}
+            onPressCard={openDetails}
             onSeeAll={() => router.push("/responder-map")}
           />
 
@@ -947,20 +895,11 @@ const styles = StyleSheet.create({
   flex: {
     flex: 1,
   },
-  card: {
-    borderRadius: CARD_RADIUS,
-    padding: CARD_PADDING,
-    borderWidth: 1,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: Platform.OS === "ios" ? 0.1 : 0.16,
-    shadowRadius: 14,
-    elevation: 4,
-  },
   header: {
     flexDirection: "row",
     alignItems: "flex-start",
     justifyContent: "space-between",
-    marginBottom: 24,
+    marginBottom: 20,
   },
   headerTextBlock: {
     flex: 1,
@@ -992,6 +931,24 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 6,
+      },
+      android: { elevation: 2 },
+    }),
+  },
+  notifBadge: {
+    position: "absolute",
+    top: 10,
+    right: 11,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: "#FFFFFF",
   },
   avatarBtn: {
     width: 44,
@@ -999,46 +956,40 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
   },
   avatarText: {
     fontFamily: "Inter_700Bold",
     fontSize: typography.body,
   },
   reportCard: {
-    borderRadius: CARD_RADIUS,
-    borderWidth: 1,
-    padding: 14,
+    borderRadius: 22,
+    padding: 16,
     marginBottom: 4,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: Platform.OS === "ios" ? 0.08 : 0.12,
-    shadowRadius: 10,
-    elevation: 3,
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.22,
+        shadowRadius: 16,
+      },
+      android: { elevation: 6 },
+    }),
   },
-  reportHeader: {
+  reportTop: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 12,
-    marginBottom: 12,
+    marginBottom: 16,
   },
-  reportIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  reportCopy: {
+  reportCopyCol: {
     flex: 1,
     minWidth: 0,
+    paddingRight: 8,
   },
   reportTitleRow: {
     flexDirection: "row",
     alignItems: "center",
     flexWrap: "wrap",
     gap: 8,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   reportTitle: {
     fontFamily: "Inter_700Bold",
@@ -1049,6 +1000,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.22)",
   },
   reportPillText: {
     fontFamily: "Inter_600SemiBold",
@@ -1061,41 +1013,38 @@ const styles = StyleSheet.create({
     fontSize: typography.caption + 1,
     lineHeight: 18,
   },
-  reportCtaOuter: {
-    borderRadius: 14,
-    overflow: "hidden",
-    ...(Platform.OS === "ios"
-      ? {
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.18,
-          shadowRadius: 8,
-        }
-      : { elevation: 2 }),
+  sirenWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: "rgba(255,255,255,0.14)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 4,
   },
   reportCta: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    minHeight: 46,
+    minHeight: 48,
     paddingHorizontal: 18,
+    borderRadius: 14,
+    backgroundColor: "#FFFFFF",
   },
   reportCtaText: {
     fontFamily: "Inter_700Bold",
     fontSize: typography.body,
     letterSpacing: 0.15,
   },
-  section: {
-    marginTop: 20,
-  },
   sectionCompact: {
-    marginTop: S * 2,
+    marginTop: S * 2.5,
   },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: S,
+    marginBottom: S * 1.25,
   },
   sectionTitle: {
     fontFamily: "Inter_700Bold",
@@ -1106,119 +1055,45 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     fontSize: typography.caption + 1,
   },
-  activeCard: {
-    gap: 12,
-    padding: 14,
-  },
-  activeTopRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-  },
-  activeIconBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  activeBody: {
-    flex: 1,
-    minWidth: 0,
-    gap: 4,
-  },
-  activeTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-    marginBottom: 2,
-  },
-  activeType: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: typography.body,
-    letterSpacing: -0.2,
-    flex: 1,
-  },
-  activeMetaLine: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  activeMetaText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: typography.caption,
-    flex: 1,
-  },
-  activeActions: {
-    gap: 8,
-  },
-  trackLiveOuter: {
-    borderRadius: 14,
-    overflow: "hidden",
-    ...(Platform.OS === "ios"
-      ? {
-          shadowOffset: { width: 0, height: 3 },
-          shadowOpacity: 0.14,
-          shadowRadius: 6,
-        }
-      : { elevation: 2 }),
-  },
-  trackLiveBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    minHeight: 44,
-    paddingHorizontal: 16,
-  },
-  trackLiveText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: typography.caption + 1,
-    letterSpacing: 0.1,
-  },
-  detailsBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 2,
-    minHeight: 36,
-    paddingVertical: 4,
-  },
-  detailsBtnText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: typography.caption,
-  },
   quickPanel: {
-    gap: S,
+    gap: S * 1.25,
   },
   quickPrimaryRow: {
     flexDirection: "row",
-    gap: S,
+    gap: S * 1.25,
   },
   quickPrimaryBtn: {
     flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: S,
-    minHeight: 44,
-    paddingHorizontal: S * 1.5,
-    paddingVertical: S,
-    borderRadius: 12,
+    alignItems: "flex-start",
+    paddingHorizontal: S * 1.75,
+    paddingVertical: S * 1.75,
+    borderRadius: 16,
     borderWidth: 1,
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
+      },
+      android: { elevation: 2 },
+    }),
   },
   quickPrimaryIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
+    marginBottom: 10,
   },
   quickPrimaryLabel: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 14,
-    flex: 1,
+    fontFamily: "Inter_700Bold",
+    fontSize: 15,
+    marginBottom: 2,
+  },
+  quickPrimarySub: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
   },
   quickSecondaryRow: {
     flexDirection: "row",
@@ -1228,34 +1103,50 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    minHeight: 44,
-    paddingVertical: S,
+    minHeight: 108,
+    paddingVertical: S * 1.5,
     paddingHorizontal: S / 2,
-    borderRadius: 10,
+    borderRadius: 16,
     borderWidth: 1,
-    gap: 4,
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
+      },
+      android: { elevation: 2 },
+    }),
   },
   quickSecondaryIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
+    marginBottom: 8,
   },
   quickSecondaryLabel: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 11,
+    fontFamily: "Inter_700Bold",
+    fontSize: 13,
+    marginBottom: 2,
+    textAlign: "center",
+  },
+  quickSecondarySub: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 10,
+    textAlign: "center",
+    paddingHorizontal: 2,
   },
   stripSection: {
-    marginTop: S * 2,
+    marginTop: S * 2.5,
   },
   stripEmpty: {
     flexDirection: "row",
     alignItems: "center",
     gap: S,
-    minHeight: 44,
+    minHeight: 52,
     paddingHorizontal: S * 1.5,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
   },
   stripEmptyText: {
@@ -1263,61 +1154,147 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   nearbyScroll: {
-    gap: S,
+    gap: 12,
     paddingRight: S,
+    paddingBottom: 2,
   },
   nearbyCard: {
-    width: 120,
-    padding: S,
-    borderRadius: 12,
+    width: 178,
+    borderRadius: 16,
     borderWidth: 1,
-    gap: 4,
+    overflow: "hidden",
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
+      },
+      android: { elevation: 2 },
+    }),
+  },
+  nearbyHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingTop: 10,
+    paddingBottom: 8,
   },
   nearbyIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
   },
   nearbyTitle: {
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Inter_700Bold",
     fontSize: 13,
+    flexShrink: 0,
   },
   nearbyMeta: {
     fontFamily: "Inter_400Regular",
     fontSize: 11,
+    flex: 1,
+    textAlign: "right",
   },
-  nearbyStatus: {
-    marginTop: 2,
+  mapStub: {
+    height: 88,
+    marginHorizontal: 10,
+    borderRadius: 12,
+    overflow: "hidden",
+    position: "relative",
+  },
+  mapRoadH: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    height: 5,
+  },
+  mapRoadV: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    width: 5,
+  },
+  mapBlock: {
+    position: "absolute",
+    width: 42,
+    height: 28,
+    borderRadius: 4,
+  },
+  mapPinCenter: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  mapPinOuter: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  nearbyStatusBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 10,
+    paddingVertical: 9,
+  },
+  nearbyStatusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+  },
+  nearbyStatusText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 12,
   },
   recentSection: {
-    marginTop: S * 2,
+    marginTop: S * 2.5,
   },
   recentList: {
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     overflow: "hidden",
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
+      },
+      android: { elevation: 2 },
+    }),
   },
   recentRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: S,
-    minHeight: 44,
-    paddingHorizontal: S * 1.5,
-    paddingVertical: S,
+    gap: 10,
+    minHeight: 64,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   recentIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
   },
-  recentTitle: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 14,
+  recentCopy: {
     flex: 1,
+    minWidth: 0,
+  },
+  recentTitle: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 14,
+    marginBottom: 2,
+  },
+  recentLocation: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
   },
   recentTime: {
     fontFamily: "Inter_400Regular",

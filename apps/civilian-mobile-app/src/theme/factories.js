@@ -192,6 +192,7 @@ export function createDashboardTheme(isLight, colors = createBaseColors(isLight)
     emergencySoft: colors.emergencyMuted,
     emergencyMuted: colors.emergencySoft,
     warning: colors.warning,
+    warningSoft: colors.warningMuted,
     accentBlue: colors.accentBlue,
     accentBlueSoft: colors.accentBlueSoft,
     accentPurpleSoft: colors.accentPurpleSoft,
