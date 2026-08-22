@@ -47,6 +47,7 @@ apps/responder-mobile-app/app.json
 .cache
 *.tsbuildinfo
 .expo/
+**/.next/
 
 # IntelliJ based IDEs
 .idea

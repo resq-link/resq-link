@@ -8,28 +8,16 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter, usePathname } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
   Easing,
   interpolate,
   useAnimatedStyle,
   useSharedValue,
-  withRepeat,
-  withSequence,
   withSpring,
   withTiming,
 } from "react-native-reanimated";
-import {
-  House,
-  Map,
-  Clock3,
-  Settings,
-  AlertCircle,
-  PhoneCall,
-} from "lucide-react-native";
-import { useSOS } from "@/hooks/useSOS";
+import { House, Map, Clock3, Settings } from "lucide-react-native";
 import { useAppTheme } from "@/hooks/useAppTheme";
-import { openEmergencyHotline } from "@/utils/emergencyHotline";
 import { HIDE_NAV_SCREENS } from "@/constants/routes";
 import {
   getBottomNavInset,
@@ -39,16 +27,6 @@ import {
 const ICON_SIZE = 22;
 const ICON_STROKE = 2;
 const TAB_MIN_TOUCH = 44;
-
-/** Semantic action colors — emergency UI only. */
-const actionColors = {
-  sosStart: "#FF5A52",
-  sosEnd: "#FF3B30",
-  sosShadow: "rgba(255, 59, 48, 0.45)",
-  callStart: "#34C759",
-  callEnd: "#7CFF4D",
-  callShadow: "rgba(52, 199, 89, 0.35)",
-};
 
 const NAV_ITEMS = [
   {
@@ -165,115 +143,12 @@ function NavTab({ item, active, onPress, theme }) {
   );
 }
 
-function CallActionButton({ onPress, disabled, theme }) {
-  const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  return (
-    <AnimatedPressable
-      onPress={onPress}
-      disabled={disabled}
-      onPressIn={() => {
-        if (!disabled) scale.value = withSpring(0.92, { damping: 14, stiffness: 360 });
-      }}
-      onPressOut={() => {
-        scale.value = withSpring(1, { damping: 12, stiffness: 300 });
-      }}
-      style={[styles.callButtonWrap, animatedStyle, disabled && styles.actionDisabled]}
-      accessibilityRole="button"
-      accessibilityLabel="Call emergency hotline"
-      accessibilityState={{ disabled, busy: disabled }}
-      android_ripple={
-        disabled ? undefined : { color: "rgba(13, 15, 18, 0.15)", borderless: true }
-      }
-    >
-      <LinearGradient
-        colors={[actionColors.callStart, actionColors.callEnd]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[
-          styles.callButton,
-          {
-            shadowColor: actionColors.callShadow,
-            borderColor: theme.actionBorder,
-          },
-        ]}
-      >
-        <PhoneCall
-          size={22}
-          color={theme.callIcon}
-          strokeWidth={2.4}
-        />
-      </LinearGradient>
-    </AnimatedPressable>
-  );
-}
-
-function SOSActionButton({ onPress, disabled, theme }) {
-  const scale = useSharedValue(1);
-  const pulse = useSharedValue(1);
-
-  useEffect(() => {
-    pulse.value = withRepeat(
-      withSequence(
-        withTiming(1.035, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
-        withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.sin) })
-      ),
-      -1,
-      false
-    );
-  }, [pulse]);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value * pulse.value }],
-  }));
-
-  return (
-    <AnimatedPressable
-      onPress={onPress}
-      disabled={disabled}
-      onPressIn={() => {
-        if (!disabled) scale.value = withSpring(0.9, { damping: 12, stiffness: 340 });
-      }}
-      onPressOut={() => {
-        scale.value = withSpring(1, { damping: 12, stiffness: 300 });
-      }}
-      style={[styles.sosButtonWrap, animatedStyle, disabled && styles.actionDisabled]}
-      accessibilityRole="button"
-      accessibilityLabel="Trigger SOS emergency"
-      accessibilityState={{ disabled, busy: disabled }}
-      android_ripple={
-        disabled ? undefined : { color: "rgba(255, 255, 255, 0.2)", borderless: true }
-      }
-    >
-      <LinearGradient
-        colors={[actionColors.sosStart, actionColors.sosEnd]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[
-          styles.sosButton,
-          {
-            shadowColor: actionColors.sosShadow,
-            borderColor: theme.sosBorder,
-          },
-        ]}
-      >
-        <AlertCircle size={22} color="#FFFFFF" strokeWidth={2.4} />
-      </LinearGradient>
-    </AnimatedPressable>
-  );
-}
-
 export default function CustomBottomNav() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const pathname = usePathname();
   const { width: screenW } = useWindowDimensions();
-  const { handleSOS, sosLoading } = useSOS();
-  const { colors, navTheme: theme } = useAppTheme();
+  const { navTheme: theme } = useAppTheme();
   const mountOpacity = useSharedValue(0);
   const mountTranslateY = useSharedValue(16);
 
@@ -301,11 +176,6 @@ export default function CustomBottomNav() {
   if (shouldHide) {
     return null;
   }
-
-  const tabSplitIndex = Math.ceil(NAV_ITEMS.length / 2);
-
-  const leftTabs = NAV_ITEMS.slice(0, tabSplitIndex);
-  const rightTabs = NAV_ITEMS.slice(tabSplitIndex);
 
   const bottomInset = getBottomNavInset(insets);
   const topCornerRadius = screenW >= 768 ? 24 : 20;
@@ -341,46 +211,15 @@ export default function CustomBottomNav() {
             },
           ]}
         >
-          <View style={styles.tabGroup}>
-            {leftTabs.map((item) => (
-              <NavTab
-                key={item.key}
-                item={item}
-                active={item.isActive(pathname)}
-                onPress={() => router.push(item.route)}
-                theme={theme}
-              />
-            ))}
-          </View>
-
-          <View style={styles.emergencyRow}>
-            <CallActionButton
-              onPress={openEmergencyHotline}
+          {NAV_ITEMS.map((item) => (
+            <NavTab
+              key={item.key}
+              item={item}
+              active={item.isActive(pathname)}
+              onPress={() => router.push(item.route)}
               theme={theme}
             />
-            <SOSActionButton
-              onPress={handleSOS}
-              disabled={sosLoading}
-              theme={theme}
-            />
-          </View>
-
-          <View
-            style={[
-              styles.tabGroup,
-              rightTabs.length === 1 && styles.tabGroupSingle,
-            ]}
-          >
-            {rightTabs.map((item) => (
-              <NavTab
-                key={item.key}
-                item={item}
-                active={item.isActive(pathname)}
-                onPress={() => router.push(item.route)}
-                theme={theme}
-              />
-            ))}
-          </View>
+          ))}
         </View>
       </View>
     </Animated.View>
@@ -395,43 +234,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     zIndex: 999,
   },
-  emergencyRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    flexShrink: 0,
-    paddingHorizontal: 2,
-  },
-  callButtonWrap: {},
-  callButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.28,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  sosButtonWrap: {},
-  sosButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2.5,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.38,
-    shadowRadius: 14,
-    elevation: 12,
-  },
-  actionDisabled: {
-    opacity: 0.55,
-  },
   navBar: {
     width: "100%",
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -445,14 +247,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 8,
     paddingTop: 12,
-  },
-  tabGroup: {
-    flex: 1,
-    flexDirection: "row",
-    justifyContent: "space-evenly",
-  },
-  tabGroupSingle: {
-    justifyContent: "center",
   },
   tab: {
     minWidth: 40,

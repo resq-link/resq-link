@@ -13,6 +13,8 @@ import {
 } from "@expo-google-fonts/inter";
 import useUserStore from "@/stores/userStore";
 import CustomBottomNav from "@/components/CustomBottomNav";
+import ShakeSOSListener from "@/components/ShakeSOSListener";
+import SOSConfirmationModal from "@/components/SOSConfirmationModal";
 import { AppThemeProvider } from "@/theme/AppThemeProvider";
 import {
   useImmersiveAndroidNavigation,
@@ -71,6 +73,8 @@ export default function RootLayout() {
               <Stack.Screen name="(settings)" />
             </Stack>
             <CustomBottomNav />
+            <ShakeSOSListener />
+            <SOSConfirmationModal />
           </View>
         </GestureHandlerRootView>
       </AppThemeProvider>
