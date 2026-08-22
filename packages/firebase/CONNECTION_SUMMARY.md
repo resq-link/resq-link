@@ -7,7 +7,7 @@
 1. ✅ Created `packages/firebase` package with Firebase initialization and auth functions
 2. ✅ Added package dependency to all three apps:
    - `apps/civilian-mobile-app/package.json`
-   - `apps/dispatcher-web-app/package.json`
+   - `apps/resq-link-web-app/package.json`
    - `apps/responder-mobile-app/package.json`
 3. ✅ Installed packages in all three apps
 4. ✅ Created integration guides for each app
@@ -59,7 +59,7 @@ EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 EXPO_PUBLIC_FIREBASE_APP_ID=your_app_id
 ```
 
-**For Next.js (dispatcher-web-app):**
+**For Next.js (resq-link-web-app):**
 Create `.env.local` file:
 
 ```env
@@ -85,7 +85,7 @@ npm run build
 See the integration guides in each app:
 
 - `apps/civilian-mobile-app/FIREBASE_INTEGRATION.md`
-- `apps/dispatcher-web-app/FIREBASE_INTEGRATION.md`
+- `apps/resq-link-web-app/FIREBASE_INTEGRATION.md`
 
 ## Usage by App Type
 

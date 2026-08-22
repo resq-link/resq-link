@@ -17,7 +17,7 @@ Shared Firebase package for RESCUE mobile applications.
 
 This package is used by:
 
-- `apps/dispatcher-web-app` (Next.js)
+- `apps/resq-link-web-app` (Next.js — Command Center + Super Admin)
 - `apps/civilian-mobile-app` (Expo/React Native)
 - `apps/responder-mobile-app` (Expo/React Native)
 
@@ -25,7 +25,7 @@ This package is used by:
 
 Since this is a local package, add it to each app's `package.json`:
 
-**For apps/dispatcher-web-app:**
+**For apps/resq-link-web-app:**
 
 ```json
 {
@@ -74,7 +74,7 @@ npm run build
 
 3. Configure environment variables in each app:
 
-### For Next.js (apps/dispatcher-web-app):
+### For Next.js (apps/resq-link-web-app):
 
 ```env
 NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key

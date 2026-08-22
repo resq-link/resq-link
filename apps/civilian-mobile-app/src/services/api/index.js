@@ -67,8 +67,13 @@ const getApiBaseUrl = () => {
 
 const API_BASE_URL = getApiBaseUrl();
 
-/** Super-admin Next.js app (email OTP / KYC APIs). Defaults to port 3001. */
+/** Unified RESQ-LINK web app (email OTP / password-reset APIs). Defaults to port 3000. */
 const getOtpApiBaseUrl = () => {
+  const dedicatedUrl = process.env.EXPO_PUBLIC_OTP_API_URL;
+  if (dedicatedUrl) {
+    return trimTrailingSlash(dedicatedUrl);
+  }
+
   const envUrl = process.env.EXPO_PUBLIC_API_URL;
   if (envUrl) {
     return trimTrailingSlash(envUrl);
@@ -76,14 +81,14 @@ const getOtpApiBaseUrl = () => {
 
   const devHostIp = getDebuggerHostIp();
   if (devHostIp) {
-    return `http://${devHostIp}:3001`;
+    return `http://${devHostIp}:3000`;
   }
 
   if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:3001';
+    return 'http://10.0.2.2:3000';
   }
 
-  return 'http://localhost:3001';
+  return 'http://localhost:3000';
 };
 
 export const OTP_API_BASE_URL = getOtpApiBaseUrl();

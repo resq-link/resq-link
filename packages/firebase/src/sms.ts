@@ -1,4 +1,4 @@
-import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, type Timestamp } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, where, type Timestamp } from 'firebase/firestore';
 import { getFirebaseFirestore } from './config';
 
 export type SmsMessageStatus = 'received' | 'queued' | 'sent' | 'delivered' | 'failed';
@@ -16,7 +16,11 @@ export const defaultSmsQuickReplies = [
 
 const map = <T>(id: string, data: Record<string, unknown>) => ({ id, ...data }) as T;
 export const subscribeToSmsIntakes = (callback: (items: SmsIntake[]) => void) => onSnapshot(query(collection(getFirebaseFirestore(), 'smsIntakes'), orderBy('updatedAt', 'desc')), snap => callback(snap.docs.map(doc => map<SmsIntake>(doc.id, doc.data()))));
-export const subscribeToSmsMessages = (threadId: string, callback: (items: SmsMessage[]) => void) => onSnapshot(query(collection(getFirebaseFirestore(), 'smsMessages'), orderBy('createdAt', 'asc')), snap => callback(snap.docs.map(doc => map<SmsMessage>(doc.id, doc.data())).filter(message => message.threadId === threadId)));
+export const subscribeToSmsMessages = (threadId: string, callback: (items: SmsMessage[]) => void) => onSnapshot(query(collection(getFirebaseFirestore(), 'smsMessages'), where('threadId', '==', threadId)), snap => callback(snap.docs.map(doc => map<SmsMessage>(doc.id, doc.data())).sort((left, right) => {
+  const leftTime = left.createdAt instanceof Date ? left.createdAt.getTime() : typeof left.createdAt === 'object' && left.createdAt && 'toMillis' in left.createdAt ? left.createdAt.toMillis() : 0;
+  const rightTime = right.createdAt instanceof Date ? right.createdAt.getTime() : typeof right.createdAt === 'object' && right.createdAt && 'toMillis' in right.createdAt ? right.createdAt.toMillis() : 0;
+  return leftTime - rightTime;
+})));
 export const subscribeToSmsQuickReplies = (callback: (items: SmsQuickReply[]) => void) => onSnapshot(query(collection(getFirebaseFirestore(), 'smsQuickReplies'), orderBy('sortOrder', 'asc')), snap => callback(snap.docs.map(item => map<SmsQuickReply>(item.id, item.data()))));
 export const createSmsQuickReply = async (input: Omit<SmsQuickReply, 'id'>) => addDoc(collection(getFirebaseFirestore(), 'smsQuickReplies'), { ...input, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
 export const deleteSmsQuickReply = async (id: string) => deleteDoc(doc(getFirebaseFirestore(), 'smsQuickReplies', id));

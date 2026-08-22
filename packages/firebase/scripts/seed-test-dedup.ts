@@ -91,7 +91,7 @@ async function seed() {
   console.log("Seed successful! Master Incident ID:", incidentRef.id, "Emergency Report ID:", reportRef.id);
   
   console.log("\n*** TESTING INSTRUCTIONS ***");
-  console.log("1. Open the Dispatcher Web App (http://localhost:3000)");
+  console.log("1. Open RESQ-LINK Web (http://localhost:3000) and go to /command-center/intake");
   console.log(`2. Log in with the account we just created:`);
   console.log(`   Email: ${email}`);
   console.log(`   Password: ${password}`);

@@ -30,6 +30,25 @@ service cloud.firestore {
              exists(/databases/$(database)/documents/admins/$(request.auth.uid));
     }
     
+    // Administrative audit trail — Super Admin may read; only Admin SDK may write.
+    // Incident, emergency, SMS, call-session, and footage rules are intentionally unchanged
+    // in this pass to avoid breaking Dispatcher / Civilian / Responder apps.
+    match /auditLogs/{logId} {
+      allow read: if isSuperAdmin();
+      allow write: if false;
+    }
+
+    // Super Admin awareness notifications — Admin SDK only (API routes enforce auth).
+    match /adminNotifications/{notificationId} {
+      allow read, write: if false;
+    }
+
+    // Agency directory — Admin SDK only for privileged mutations.
+    match /agencies/{agencyId} {
+      allow read: if isSuperAdmin() || isCommandCenter() || isDispatcher();
+      allow write: if false;
+    }
+
     // Admins collection - only super admins can read (used for auth check)
     match /admins/{userId} {
       allow read: if isOwner(userId) || isSuperAdmin();

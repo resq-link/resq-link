@@ -143,7 +143,6 @@ export function subscribeToDispatcherLocations(
           }
         });
 
-        console.log(`📍 Received ${locations.length} dispatcher locations`);
         callback(locations);
       },
       (error) => {

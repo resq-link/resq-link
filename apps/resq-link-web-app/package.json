@@ -1,0 +1,48 @@
+{
+  "name": "resq-link-web-app",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\"",
+    "clean:cache": "node -e \"require('fs').rmSync('.next/cache',{recursive:true,force:true})\"",
+    "dev": "next dev",
+    "dev:turbo": "next dev --turbopack",
+    "dev:fresh": "npm run clean && next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@packages/firebase": "file:../../packages/firebase",
+    "agora-rtc-sdk-ng": "^4.24.3",
+    "agora-token": "^2.0.5",
+    "firebase-admin": "^10.3.0",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
+    "leaflet": "^1.9.4",
+    "lucide-react": "^0.562.0",
+    "next": "^15.5.18",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-leaflet": "^5.0.0",
+    "react-markdown": "^10.1.0",
+    "resend": "^6.21.0",
+    "xlsx": "^0.18.5"
+  },
+  "overrides": {
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@types/leaflet": "^1.9.8",
+    "@types/node": "^20.11.0",
+    "@types/react": "~19.1.10",
+    "@types/react-dom": "~19.1.10",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9.17.0",
+    "eslint-config-next": "^15.1.0",
+    "postcss": "8.5.10",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.3.3"
+  }
+}
