@@ -13,7 +13,9 @@
       "bundleIdentifier": "com.tuguegarao.resqlink.responder",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSMicrophoneUsageDescription": "Allow RESQ-Link Responder to use your microphone for emergency voice calls.",
+        "NSCameraUsageDescription": "RESQ-Link Responder uses the camera to capture post-incident scene photos you choose to attach to reports.",
+        "NSPhotoLibraryUsageDescription": "RESQ-Link Responder uses your photo library so you can attach scene photos to incident reports.",
+        "NSLocationWhenInUseUsageDescription": "RESQ-Link Responder uses your location to share live GPS with dispatch when enabled and to navigate to incident locations.",
         "UIBackgroundModes": [
           "remote-notification",
           "audio"
@@ -26,14 +28,20 @@
         "backgroundColor": "#ffffff"
       },
       "permissions": [
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.VIBRATE",
         "android.permission.WAKE_LOCK",
         "android.permission.ACCESS_NOTIFICATION_POLICY"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.READ_CONTACTS",
+        "android.permission.WRITE_CONTACTS",
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR"
       ],
       "package": "com.tuguegarao.resqlink.responder"
     },
@@ -54,12 +62,13 @@
       ],
       "expo-font",
       "expo-secure-store",
+      "expo-web-browser",
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location to view emergency locations.",
-          "locationAlwaysPermission": "Allow $(PRODUCT_NAME) to use your location to view emergency locations.",
-          "locationWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location to view emergency locations."
+          "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to share your live location with dispatch and navigate to emergency incidents.",
+          "locationAlwaysPermission": "Allow $(PRODUCT_NAME) to share your live location with dispatch and navigate to emergency incidents.",
+          "locationWhenInUsePermission": "Allow $(PRODUCT_NAME) to share your live location with dispatch and navigate to emergency incidents."
         }
       ],
       [
@@ -70,6 +79,13 @@
           "sounds": [
             "./assets/sounds/incident_alarm.wav"
           ]
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to access photos so you can attach scene images to incident reports.",
+          "cameraPermission": "Allow $(PRODUCT_NAME) to use the camera to capture post-incident scene photos."
         }
       ]
     ],
@@ -85,7 +101,6 @@
         "origin": false,
         "sitemap": false
       },
-      "apiUrl": "http://localhost:3000",
       "uiMode": false,
       "eas": {
         "projectId": "12355ad0-d170-4727-9799-dba31b6d403b"

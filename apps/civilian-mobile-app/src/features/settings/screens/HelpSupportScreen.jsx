@@ -11,6 +11,7 @@ import {
 } from "@expo-google-fonts/inter";
 import { useFonts } from "expo-font";
 import { useAppTheme } from "@/hooks/useAppTheme";
+import { SUPPORT_CONTACT_EMAIL } from "@/constants/legal";
 
 export default function HelpSupportScreen() {
   const insets = useSafeAreaInsets();
@@ -28,7 +29,7 @@ export default function HelpSupportScreen() {
   }
 
   const openEmail = async () => {
-    const url = "mailto:support@rescueapp.local?subject=RESCUE%20Support";
+    const url = `mailto:${SUPPORT_CONTACT_EMAIL}?subject=${encodeURIComponent("RESQ-Link Support")}`;
     const canOpen = await Linking.canOpenURL(url);
     if (!canOpen) {
       Alert.alert("Not available", "No email app available on this device.");

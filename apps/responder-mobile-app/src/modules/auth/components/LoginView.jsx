@@ -23,6 +23,8 @@ import ErrorAlert from "@/components/feedback/ErrorAlert";
 import useUserStore from "@/store/userStore";
 import { signInDispatcherWithVerification } from "@/services/auth/dispatcherAuth";
 import { spacing, useResqTheme } from "@/theme";
+import { LEGAL_URLS } from "@/constants/legal";
+import { openLegalDocument } from "@/utils/openLegalDocument";
 
 export default function LoginView() {
   const { t, statusBarStyle } = useResqTheme();
@@ -239,6 +241,13 @@ export default function LoginView() {
           textAlign: "center",
           opacity: 0.85,
         },
+        footerLink: {
+          fontFamily: "Inter_600SemiBold",
+          fontSize: 12,
+          lineHeight: 18,
+          color: t.accent,
+          textDecorationLine: "underline",
+        },
       }),
     [t]
   );
@@ -442,8 +451,13 @@ export default function LoginView() {
               </Pressable>
 
               <Text style={styles.footerNote}>
-                For authorized responders only. Need help? Contact your dispatch
-                admin.
+                For authorized responders only. Need help? Contact your dispatch admin.{" "}
+                <Text
+                  style={[styles.footerLink]}
+                  onPress={() => openLegalDocument(LEGAL_URLS.privacyPolicy)}
+                >
+                  Privacy policy
+                </Text>
               </Text>
             </View>
           </View>

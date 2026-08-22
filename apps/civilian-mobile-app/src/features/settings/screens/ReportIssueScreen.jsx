@@ -19,6 +19,7 @@ import {
 } from "@expo-google-fonts/inter";
 import { useFonts } from "expo-font";
 import { useAppTheme } from "@/hooks/useAppTheme";
+import { SUPPORT_CONTACT_EMAIL } from "@/constants/legal";
 
 export default function ReportIssueScreen() {
   const insets = useSafeAreaInsets();
@@ -43,7 +44,7 @@ export default function ReportIssueScreen() {
       return;
     }
 
-    const mailtoUrl = `mailto:support@rescueapp.local?subject=${encodeURIComponent(
+    const mailtoUrl = `mailto:${SUPPORT_CONTACT_EMAIL}?subject=${encodeURIComponent(
       `[Issue] ${subject.trim()}`
     )}&body=${encodeURIComponent(details.trim())}`;
 

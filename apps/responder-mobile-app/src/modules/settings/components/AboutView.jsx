@@ -12,9 +12,11 @@ import {
 import { useFonts } from "expo-font";
 import Constants from "expo-constants";
 import { spacing, useResqTheme } from "@/theme";
+import { LEGAL_URLS } from "@/constants/legal";
+import { openLegalDocument } from "@/utils/openLegalDocument";
 
 export default function AboutView() {
-  const { colors, statusBarStyle } = useResqTheme();
+  const { colors, t, statusBarStyle } = useResqTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -68,9 +70,16 @@ export default function AboutView() {
           fontSize: 15,
           color: colors.textSecondary,
           lineHeight: 22,
+          marginBottom: spacing.xl,
+        },
+        link: {
+          fontFamily: "Inter_600SemiBold",
+          fontSize: 15,
+          color: t.accent,
+          marginBottom: 12,
         },
       }),
-    [colors]
+    [colors, t]
   );
 
   const appVersion = Constants.expoConfig?.version ?? "1.0.0";
@@ -98,12 +107,20 @@ export default function AboutView() {
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.appName}>RESCUE Responder</Text>
+        <Text style={styles.appName}>RESQ-Link Responder</Text>
         <Text style={styles.version}>Version {appVersion}</Text>
         <Text style={styles.description}>
-          Emergency responder app for BFP, Police, and other first responders.
-          View assigned cases, update status, and navigate to incident
-          locations.
+          Field responder app for verified emergency personnel. View assigned incidents, share live location with
+          dispatch, submit post-incident reports, and coordinate through operational messaging.
+        </Text>
+        <Text style={styles.link} onPress={() => openLegalDocument(LEGAL_URLS.privacyPolicy)}>
+          Privacy policy
+        </Text>
+        <Text style={styles.link} onPress={() => openLegalDocument(LEGAL_URLS.dataPrivacyNotice)}>
+          Data privacy notice
+        </Text>
+        <Text style={styles.link} onPress={() => openLegalDocument(LEGAL_URLS.termsOfUse)}>
+          Terms of use
         </Text>
       </View>
     </View>

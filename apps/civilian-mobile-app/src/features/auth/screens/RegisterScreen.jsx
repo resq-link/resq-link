@@ -28,6 +28,8 @@ import useUserStore from "@/stores/userStore";
 import { UI_MODE } from "@/services/api";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { GOV_ID_TYPES } from "@/features/auth/constants/govIdTypes";
+import KycPrivacyNotice from "@/features/legal/components/KycPrivacyNotice";
+import LegalConsentCheckbox from "@/features/legal/components/LegalConsentCheckbox";
 import {
   isValidPhilippinePhone,
   normalizePhilippinePhone,
@@ -67,6 +69,7 @@ export default function RegisterScreen() {
   const [govIdType, setGovIdType] = useState("");
   const [idMenuOpen, setIdMenuOpen] = useState(false);
   const [idPhotoUri, setIdPhotoUri] = useState("");
+  const [acceptedLegal, setAcceptedLegal] = useState(false);
   const [locating, setLocating] = useState(false);
   const [showHeaderBorder, setShowHeaderBorder] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -92,7 +95,7 @@ export default function RegisterScreen() {
     return validEmail && password.length >= 6 && password === confirmPassword;
   }, [email, password, confirmPassword]);
 
-  const canSubmit = Boolean(govIdType && idPhotoUri);
+  const canSubmit = Boolean(govIdType && idPhotoUri && acceptedLegal);
 
   if (!fontsLoaded) {
     return null;
@@ -372,8 +375,19 @@ export default function RegisterScreen() {
               required
               autoCapitalize="words"
             />
+            <Text
+              style={{
+                fontFamily: "Inter_400Regular",
+                fontSize: 12,
+                lineHeight: 17,
+                color: colors.textSecondary,
+                marginTop: -8,
+                marginBottom: 8,
+              }}
+            >
+              Optional: we use your location only to suggest your address. See our Privacy Policy for details.
+            </Text>
             <TouchableOpacity
-              onPress={handleUseCurrentLocation}
               disabled={locating}
               style={{
                 flexDirection: "row",
@@ -455,6 +469,7 @@ export default function RegisterScreen() {
 
         {step === 3 && (
           <>
+            <KycPrivacyNotice colors={colors} theme={theme} />
             <Text
               style={{
                 fontFamily: "Inter_600SemiBold",
@@ -605,6 +620,12 @@ export default function RegisterScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
+            <LegalConsentCheckbox
+              checked={acceptedLegal}
+              onToggle={() => setAcceptedLegal((value) => !value)}
+              colors={colors}
+              theme={theme}
+            />
             <CustomButton
               title="Submit & verify email"
               onPress={handleSubmit}

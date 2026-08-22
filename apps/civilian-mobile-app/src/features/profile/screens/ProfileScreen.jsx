@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   StyleSheet,
-  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -137,14 +136,6 @@ export default function ProfileScreen() {
     [router]
   );
 
-  const handleEditProfile = useCallback(() => {
-    Alert.alert(
-      "Edit Profile",
-      "Profile editing will be available in a future update.",
-      [{ text: "OK" }]
-    );
-  }, []);
-
   const handleLogout = useCallback(async () => {
     await logout();
     router.replace("/login");
@@ -182,12 +173,7 @@ export default function ProfileScreen() {
         </Animated.View>
 
         <View style={styles.block}>
-          <SettingsProfileHeader
-            user={user}
-            theme={theme}
-            onEditProfile={handleEditProfile}
-            index={0}
-          />
+          <SettingsProfileHeader user={user} theme={theme} index={0} />
         </View>
 
         <View style={styles.block}>

@@ -82,6 +82,7 @@ function SettingsProfileHeader({ user, theme, onEditProfile, index = 0 }) {
           </View>
         </View>
 
+        {onEditProfile ? (
         <Pressable
           onPress={onEditProfile}
           style={({ pressed }) => [
@@ -94,10 +95,10 @@ function SettingsProfileHeader({ user, theme, onEditProfile, index = 0 }) {
           ]}
           accessibilityRole="button"
           accessibilityLabel="Edit profile"
-          accessibilityHint="Profile editing coming soon"
         >
           <Pencil size={15} color={theme.textSecondary} strokeWidth={2.2} />
         </Pressable>
+        ) : null}
       </View>
     </Animated.View>
   );

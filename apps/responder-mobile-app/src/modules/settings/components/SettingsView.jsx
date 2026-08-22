@@ -563,7 +563,9 @@ export default function SettingsView() {
           <SettingsNavRow
             icon={UserPen}
             label="Profile"
-            onPress={() => router.push("/support/help-support")}
+            onPress={() =>
+              Alert.alert("Profile", `${roleLabel} · ${DC.unitLabel}\n\n${emailLine}`)
+            }
           />
           <SettingsNavRow
             icon={Building2}
@@ -575,7 +577,7 @@ export default function SettingsView() {
           <SettingsNavRow
             icon={KeyRound}
             label="Security"
-            onPress={() => router.push("/support/help-support")}
+            onPress={() => router.push("/support/privacy-security")}
             isLast
           />
         </SectionCard>
@@ -598,7 +600,7 @@ export default function SettingsView() {
         <SectionCard title="Appearance">
           <View style={styles.appearanceBody}>
             <Text style={styles.appearanceCaption}>
-              Light, dark, or match this device — for the demo walkthrough.
+              Light, dark, or match this device.
             </Text>
             <View style={styles.appearanceRow}>
               {appearanceOptions.map(({ id, label }) => {
@@ -638,8 +640,13 @@ export default function SettingsView() {
         <SectionCard title="About">
           <SettingsNavRow
             icon={Info}
-            label="About RES.Q"
+            label="About RESQ-Link"
             onPress={() => router.push("/support/about")}
+          />
+          <SettingsNavRow
+            icon={KeyRound}
+            label="Privacy & Security"
+            onPress={() => router.push("/support/privacy-security")}
             isLast
           />
         </SectionCard>

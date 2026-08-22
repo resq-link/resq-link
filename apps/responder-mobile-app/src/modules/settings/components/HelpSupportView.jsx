@@ -18,6 +18,7 @@ import {
 } from "@expo-google-fonts/inter";
 import { useFonts } from "expo-font";
 import { spacing, radii, useResqTheme } from "@/theme";
+import { SUPPORT_CONTACT_EMAIL } from "@/constants/legal";
 
 export default function HelpSupportView() {
   const { colors, t, statusBarStyle } = useResqTheme();
@@ -97,7 +98,7 @@ export default function HelpSupportView() {
   );
 
   const openEmail = async () => {
-    const url = "mailto:support@rescue.ph?subject=RESCUE%20Responder%20Support";
+    const url = `mailto:${SUPPORT_CONTACT_EMAIL}?subject=${encodeURIComponent("RESQ-Link Responder Support")}`;
     const canOpen = await Linking.canOpenURL(url);
     if (!canOpen) {
       Alert.alert("Not available", "No email app available.");

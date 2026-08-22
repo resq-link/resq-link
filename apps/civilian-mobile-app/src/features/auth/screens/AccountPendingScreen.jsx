@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text } from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
@@ -14,6 +14,8 @@ import CustomButton from "@/components/CustomButton";
 import useUserStore from "@/stores/userStore";
 import { UI_MODE } from "@/services/api";
 import { useAppTheme } from "@/hooks/useAppTheme";
+import { LEGAL_URLS } from "@/constants/legal";
+import { openLegalDocument } from "@/utils/openLegalDocument";
 
 export default function AccountPendingScreen() {
   const insets = useSafeAreaInsets();
@@ -84,12 +86,29 @@ export default function AccountPendingScreen() {
           fontSize: 16,
           lineHeight: 24,
           color: colors.textSecondary,
-          marginBottom: 32,
+          marginBottom: 16,
         }}
       >
         Your email is verified. A super admin will review your government ID and
         personal details. This can take up to 24 hours. You will be able to sign
         in once your KYC is approved.
+      </Text>
+      <Text
+        style={{
+          fontFamily: "Inter_400Regular",
+          fontSize: 14,
+          lineHeight: 21,
+          color: colors.textSecondary,
+          marginBottom: 32,
+        }}
+      >
+        Your ID is stored securely and used only for verification.{" "}
+        <Text
+          style={{ fontFamily: "Inter_600SemiBold", color: theme.link, textDecorationLine: "underline" }}
+          onPress={() => openLegalDocument(LEGAL_URLS.privacyPolicy, "Privacy policy")}
+        >
+          Privacy policy
+        </Text>
       </Text>
       <CustomButton
         title="Sign out"
