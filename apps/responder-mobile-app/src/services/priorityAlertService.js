@@ -26,7 +26,7 @@ let audioModeReady = false;
 /**
  * Play through the silent switch and keep sounding when back-grounded — a
  * dispatch alarm the responder cannot hear is worthless. Mixing rather than
- * ducking so an in-progress Agora voice call is not interrupted.
+ * interrupting lets other app audio duck briefly while the alarm plays.
  */
 async function ensureAudioMode() {
   if (audioModeReady) return;

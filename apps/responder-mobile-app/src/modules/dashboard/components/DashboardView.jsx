@@ -48,7 +48,6 @@ import { useOnlineResponderCount } from "@/modules/dashboard/hooks/useOnlineResp
 import { useResponderDuty } from "@/modules/dashboard/hooks/useResponderDuty";
 import DutyResourceCard from "@/modules/dashboard/components/DutyResourceCard";
 import { useDashboardLocationTracking } from "@/modules/dashboard/hooks/useDashboardLocationTracking";
-import ResponderCallPanel from "@/modules/calls/components/ResponderCallPanel";
 import {
   formatResponderName,
   initialsFromEmail,
@@ -247,7 +246,6 @@ export default function DashboardView() {
 
   return (
     <View style={styles.root}>
-      <ResponderCallPanel responderId={authUid} />
       <StatusBar
         style={resolvedScheme === "dark" ? "light" : "dark"}
         backgroundColor={D.bgBottom}

@@ -35,7 +35,7 @@ const nextConfig = {
   allowedDevOrigins: getAllowedDevOrigins(),
   // Monorepo: avoid inferring wrong workspace root when multiple lockfiles exist
   outputFileTracingRoot: path.join(__dirname, "../.."),
-  serverExternalPackages: ["firebase-admin", "agora-rtc-sdk-ng", "resend"],
+  serverExternalPackages: ["firebase-admin", "resend"],
   // React Strict Mode double-invokes mount/layout effects in development.
   // With react-leaflet + Next 15, this can trigger duplicate
   // Leaflet initialization on the same container ("Map container is already initialized").
@@ -91,7 +91,6 @@ const nextConfig = {
       { source: "/api/admin/stats", destination: "/api/stats/overview" },
       { source: "/api/admin/command-centers/update", destination: "/api/command-centers/update" },
       { source: "/api/admin/teams/list", destination: "/api/teams/list" },
-      { source: "/api/command-center/agora/token", destination: "/api/agora/token" },
       { source: "/api/command-center/agent/chat", destination: "/api/agent/chat" },
       { source: "/api/command-center/team-members/create", destination: "/api/create-team-member" },
       { source: "/api/public/email-otp/send", destination: "/api/email-otp/send" },
