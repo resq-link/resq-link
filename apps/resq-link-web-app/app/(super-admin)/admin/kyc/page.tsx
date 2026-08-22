@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Loader2, X } from 'lucide-react';
 import { DataTable } from '@/components/data-table/DataTable';
 import { TableSearch } from '@/components/data-table/TableSearch';
@@ -31,6 +32,20 @@ export default function KycPage() {
   const [approveOpen, setApproveOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [busy, setBusy] = useState(false);
+  const [previewMounted, setPreviewMounted] = useState(false);
+
+  useEffect(() => {
+    setPreviewMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!previewUrl) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setPreviewUrl(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [previewUrl]);
 
   useEffect(() => {
     if (!selected) {
@@ -210,15 +225,33 @@ export default function KycPage() {
         ) : null}
       </Drawer>
 
-      {previewUrl ? (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80 p-6">
-          <button type="button" onClick={() => setPreviewUrl(null)} className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white" aria-label="Close preview">
-            <X size={20} />
-          </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={previewUrl} alt="Government ID" className="max-h-[90vh] max-w-full rounded-lg" />
-        </div>
-      ) : null}
+      {previewUrl && previewMounted
+        ? createPortal(
+            <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 p-6">
+              <button
+                type="button"
+                aria-label="Close preview"
+                className="absolute inset-0"
+                onClick={() => setPreviewUrl(null)}
+              />
+              <button
+                type="button"
+                onClick={() => setPreviewUrl(null)}
+                className="absolute right-4 top-4 z-10 rounded-full bg-white/10 p-2 text-white hover:bg-white/20"
+                aria-label="Close preview"
+              >
+                <X size={20} />
+              </button>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previewUrl}
+                alt="Government ID"
+                className="relative z-10 max-h-[90vh] max-w-full rounded-lg object-contain shadow-2xl"
+              />
+            </div>,
+            document.body
+          )
+        : null}
 
       <Dialog open={approveOpen} title="Approve applicant?" onClose={() => !busy && setApproveOpen(false)}>
         <p className="text-sm text-slate-600">

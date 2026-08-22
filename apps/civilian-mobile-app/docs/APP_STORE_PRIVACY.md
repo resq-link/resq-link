@@ -37,8 +37,8 @@ Declare data **linked to the user** unless you use anonymous-only analytics with
 
 ```
 DEMO ACCOUNT (pre-approved KYC — approve in Super Admin before submission):
-  Email: civilian@test.com
-  Password: (your demo password — enter only in App Store Connect, not in git)
+  Email: civilian@rescue.com
+  Password: Test123
   Firestore users/{uid} status must be: active
   Approve at: https://www.resq-link.com/admin/kyc (super-admin login required)
 

@@ -36,3 +36,9 @@ app-example
 
 caches/
 public/
+
+# App Store assets (not needed for cloud build)
+docs/app-store-screenshots/
+.maestro/
+01-splash.png
+02-login.png

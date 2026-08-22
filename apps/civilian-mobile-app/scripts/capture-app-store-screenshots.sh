@@ -4,7 +4,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT_DIR="$ROOT/docs/app-store-screenshots"
-EMAIL="${SCREENSHOT_EMAIL:-civilian@test.com}"
+EMAIL="${SCREENSHOT_EMAIL:-civilian@rescue.com}"
 PASSWORD="${SCREENSHOT_PASSWORD:-}"
 
 if [[ -z "$PASSWORD" ]]; then
