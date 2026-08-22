@@ -10,9 +10,9 @@ const getApiBaseUrl = () => {
   }
   if (Constants.expoConfig?.hostUri) {
     const [ip] = Constants.expoConfig.hostUri.split(":");
-    return `http://${ip}:4000`;
+    return `http://${ip}:3000`;
   }
-  return "http://localhost:4000";
+  return "http://localhost:3000";
 };
 
 export const getAgoraAppId = () =>

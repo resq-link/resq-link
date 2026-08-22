@@ -17,6 +17,10 @@ export {
   onAuthStateChanged,
   signOut,
   signInWithEmailAndPassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updatePassword,
+  updateProfile,
 } from 'firebase/auth';
 
 // Export authentication functions

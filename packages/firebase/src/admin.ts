@@ -5,7 +5,6 @@
  */
 
 import * as admin from 'firebase-admin';
-import type { DispatcherRole } from './auth';
 
 // Initialize Admin SDK
 function getAdminApp(): admin.app.App {
@@ -30,7 +29,7 @@ function getAdminApp(): admin.app.App {
   }
 
   throw new Error(
-    'Firebase Admin SDK needs credentials. Add to apps/super-admin-web-app/.env.local:\n' +
+    'Firebase Admin SDK needs credentials. Add to apps/resq-link-web-app/.env.local:\n' +
     '  GOOGLE_APPLICATION_CREDENTIALS=./service-account-key.json\n' +
     '  OR FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}\n' +
     'Get the key from Firebase Console → Project Settings → Service Accounts → Generate new private key.'
@@ -49,7 +48,8 @@ export interface CreateDispatcherInput {
   fullName?: string;
   email: string;
   password: string;
-  role: DispatcherRole;
+  /** Legacy agency code stored on `dispatchers.role` (e.g. BFP). */
+  role: string;
   designation?: string | null;
   teamCode?: string | null;
   teamLabel?: string | null;
@@ -94,6 +94,10 @@ export async function createDispatcherAccountAdmin(input: CreateDispatcherInput)
     active: true,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
+  const claimRole = String(designation || 'dispatcher').toLowerCase().includes('responder')
+    ? 'responder'
+    : 'dispatcher';
+  await setRoleClaimsSafe(userRecord.uid, { role: claimRole, agency: role });
   return { uid: userRecord.uid };
 }
 
@@ -107,8 +111,10 @@ export async function createCommandCenterAccountAdmin(input: CreateCommandCenter
     email,
     name,
     location,
+    disabled: false,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
+  await setRoleClaimsSafe(userRecord.uid, { role: 'command_center' });
   return { uid: userRecord.uid };
 }
 
@@ -126,9 +132,11 @@ export async function createCivilianAccountAdmin(input: CreateCivilianInput): Pr
     address,
     role: 'civilian',
     status: 'active',
+    disabled: false,
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
+  await setRoleClaimsSafe(userRecord.uid, { role: 'civilian' });
   return { uid: userRecord.uid };
 }
 
@@ -160,6 +168,93 @@ export function getAdminFirestore(): admin.firestore.Firestore {
   return adminFirestore();
 }
 
+export function getAdminAuth(): admin.auth.Auth {
+  return adminAuth();
+}
+
 export function emailOtpDocId(email: string): string {
   return email.trim().toLowerCase().replace(/\//g, '_');
+}
+
+export type PlatformRole = 'super_admin' | 'command_center' | 'dispatcher' | 'responder' | 'civilian';
+
+export type AuditAction =
+  | 'account.create.dispatcher'
+  | 'account.create.responder'
+  | 'account.create.civilian'
+  | 'account.create.command_center'
+  | 'account.disable'
+  | 'account.enable'
+  | 'account.update_staff'
+  | 'account.reset_password'
+  | 'command_center.update'
+  | 'kyc.approve'
+  | 'kyc.reject'
+  | 'agency.create'
+  | 'agency.update'
+  | 'agency.disable'
+  | 'agency.enable'
+  | 'admin.profile.update'
+  | 'admin.password.change';
+
+export interface WriteAuditLogInput {
+  actorUid: string;
+  actorEmail?: string | null;
+  action: AuditAction;
+  targetUid?: string | null;
+  targetLabel?: string | null;
+  targetCollection?: string | null;
+  reason?: string | null;
+  metadata?: Record<string, unknown> | null;
+}
+
+function stripUndefined<T extends Record<string, unknown>>(value: T): T {
+  const next: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (entry !== undefined) {
+      next[key] = entry;
+    }
+  }
+  return next as T;
+}
+
+async function setRoleClaimsSafe(
+  uid: string,
+  claims: { role: PlatformRole; agency?: string }
+): Promise<void> {
+  try {
+    const existing = await adminAuth().getUser(uid);
+    const previous = (existing.customClaims || {}) as Record<string, unknown>;
+    await adminAuth().setCustomUserClaims(uid, stripUndefined({
+      ...previous,
+      role: claims.role,
+      agency: claims.agency,
+    }));
+  } catch (error) {
+    console.error('Failed to set custom claims', { uid, error });
+  }
+}
+
+export async function setAccountRoleClaims(
+  uid: string,
+  claims: { role: PlatformRole; agency?: string }
+): Promise<void> {
+  await setRoleClaimsSafe(uid, claims);
+}
+
+export async function writeAuditLog(input: WriteAuditLogInput): Promise<string> {
+  const ref = await adminFirestore().collection('auditLogs').add(
+    stripUndefined({
+      actorUid: input.actorUid,
+      actorEmail: input.actorEmail || null,
+      action: input.action,
+      targetUid: input.targetUid || null,
+      targetLabel: input.targetLabel || null,
+      targetCollection: input.targetCollection || null,
+      reason: input.reason || null,
+      metadata: input.metadata || null,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    })
+  );
+  return ref.id;
 }

@@ -67,7 +67,7 @@
         "origin": false,
         "sitemap": false
       },
-      "apiUrl": "http://localhost:4000",
+      "apiUrl": "http://localhost:3000",
       "uiMode": false,
       "eas": {
         "projectId": "12355ad0-d170-4727-9799-dba31b6d403b"

@@ -4,7 +4,7 @@
 
 ### 1. Install the package
 
-Add to `apps/dispatcher-web-app/package.json`:
+Add to `apps/resq-link-web-app/package.json`:
 
 ```json
 {
@@ -17,7 +17,7 @@ Add to `apps/dispatcher-web-app/package.json`:
 Then run:
 
 ```bash
-cd apps/dispatcher-web-app
+cd apps/resq-link-web-app
 npm install
 ```
 
@@ -37,7 +37,7 @@ NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 ### 3. Use in your code
 
 ```typescript
-// apps/dispatcher-web-app/app/login/page.tsx
+// apps/resq-link-web-app/app/login/page.tsx
 import {
   createCommandCenterAccount,
   signInCommandCenter

@@ -7,6 +7,9 @@
   ],
   "scripts": {
     "build:firebase": "npm run build --prefix packages/firebase",
+    "dev:web": "npm run dev --workspace=resq-link-web-app",
+    "build:web": "npm run build --workspace=resq-link-web-app",
+    "start:web": "npm run start --workspace=resq-link-web-app",
     "postinstall": "patch-package || true"
   },
   "devDependencies": {

@@ -1,0 +1,7 @@
+{
+  "framework": "nextjs",
+  "installCommand": "cd ../.. && npm install --ignore-scripts --workspace=@packages/firebase --workspace=resq-link-web-app --include-workspace-root",
+  "buildCommand": "npm run build --prefix ../../packages/firebase && npm run build",
+  "outputDirectory": ".next",
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- . ../../packages/firebase ../../package-lock.json ../../package.json"
+}

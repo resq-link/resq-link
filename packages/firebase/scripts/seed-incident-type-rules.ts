@@ -5,8 +5,8 @@ const repoRoot = resolve(__dirname, '../../..');
 for (const envPath of [
   resolve(__dirname, '../.env'),
   resolve(repoRoot, '.env'),
-  resolve(repoRoot, 'apps/dispatcher-web-app/.env'),
-  resolve(repoRoot, 'apps/super-admin-web-app/.env'),
+  resolve(repoRoot, 'apps/resq-link-web-app/.env'),
+  resolve(repoRoot, 'apps/resq-link-web-app/.env.local'),
 ]) {
   dotenv.config({ path: envPath });
 }
