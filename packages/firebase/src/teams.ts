@@ -6,8 +6,8 @@ import {
   getDocs,
   limit,
   onSnapshot,
-  orderBy,
   query,
+  setDoc,
   Timestamp,
   updateDoc,
   type DocumentData,
@@ -110,9 +110,12 @@ export async function deleteTeam(teamId: string): Promise<void> {
 export async function getAllTeams(limitCount: number = 50): Promise<TeamRecord[]> {
   ensureAuthenticated();
   const teamsRef = collection(getFirebaseFirestore(), 'teams');
-  const q = query(teamsRef, orderBy('label', 'asc'), limit(limitCount));
+  const q = query(teamsRef, limit(limitCount));
   const snapshot = await getDocs(q);
-  return snapshot.docs.map(convertFirestoreDoc).filter((team) => team.isActive !== false);
+  return snapshot.docs
+    .map(convertFirestoreDoc)
+    .filter((team) => team.isActive !== false)
+    .sort((left, right) => left.label.localeCompare(right.label));
 }
 
 function isPermissionDenied(error: any): boolean {
@@ -131,19 +134,17 @@ export function subscribeToTeams(
   limitCount: number = 50
 ): () => void {
   try {
-    const currentUser = getFirebaseAuth().currentUser;
-    if (!currentUser) {
-      callback([]);
-      return () => {};
-    }
-
     const teamsRef = collection(getFirebaseFirestore(), 'teams');
-    const q = query(teamsRef, orderBy('label', 'asc'), limit(limitCount));
+    // Avoid orderBy('label') so docs missing `label` still appear; sort client-side.
+    const q = query(teamsRef, limit(limitCount));
 
     return onSnapshot(
       q,
       (snapshot: QuerySnapshot) => {
-        callback(snapshot.docs.map(convertFirestoreDoc));
+        const teams = snapshot.docs
+          .map(convertFirestoreDoc)
+          .sort((left, right) => left.label.localeCompare(right.label));
+        callback(teams);
       },
       (error) => {
         if (isPermissionDenied(error)) {
@@ -165,6 +166,7 @@ export function subscribeToTeams(
 
 /**
  * Idempotently ensure the four default operational teams exist in Firestore.
+ * Prefer stable document IDs (= code) so resolveTeamById(code) also works.
  */
 export async function ensureDefaultOperationalTeams(): Promise<TeamRecord[]> {
   ensureAuthenticated();
@@ -196,7 +198,8 @@ export async function ensureDefaultOperationalTeams(): Promise<TeamRecord[]> {
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     };
-    const docRef = await addDoc(teamsRef, payload);
+    const docRef = doc(teamsRef, template.code);
+    await setDoc(docRef, payload, { merge: true });
     ensured.push({
       ...payload,
       id: docRef.id,

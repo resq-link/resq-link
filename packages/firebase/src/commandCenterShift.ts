@@ -6,7 +6,12 @@ import {
   type DocumentData,
 } from 'firebase/firestore';
 import { getFirebaseAuth, getFirebaseFirestore } from './config';
-import { resolveTeamById, buildAssignedTeamSnapshot, type AssignedTeamSnapshot } from './operationalTeams';
+import {
+  resolveTeamById,
+  resolveTeamByCode,
+  buildAssignedTeamSnapshot,
+  type AssignedTeamSnapshot,
+} from './operationalTeams';
 
 export interface CurrentTeamOnDutyState {
   teamId: string;
@@ -49,17 +54,23 @@ export function subscribeToCommandCenterCurrentTeamOnDuty(
     return () => {};
   }
 
-  const ref = doc(getFirebaseFirestore(), 'commandCenters', commandCenterId);
-  return onSnapshot(
-    ref,
-    (snapshot) => {
-      callback(snapshot.exists() ? toCurrentTeamState(snapshot.data()) : null);
-    },
-    (error) => {
-      console.error('Error subscribing to current team on duty:', error);
-      callback(null);
-    }
-  );
+  try {
+    const ref = doc(getFirebaseFirestore(), 'commandCenters', commandCenterId);
+    return onSnapshot(
+      ref,
+      (snapshot) => {
+        callback(snapshot.exists() ? toCurrentTeamState(snapshot.data()) : null);
+      },
+      (error) => {
+        console.error('Error subscribing to current team on duty:', error);
+        callback(null);
+      }
+    );
+  } catch (error) {
+    console.error('Error setting up current team on duty subscription:', error);
+    callback(null);
+    return () => {};
+  }
 }
 
 export async function setCommandCenterCurrentTeamOnDuty(
@@ -67,9 +78,12 @@ export async function setCommandCenterCurrentTeamOnDuty(
   options?: { setByName?: string | null }
 ): Promise<CurrentTeamOnDutyState> {
   const user = ensureAuthenticated();
-  const team = await resolveTeamById(teamId);
+  const trimmed = teamId.trim();
+  const team =
+    (await resolveTeamById(trimmed)) ||
+    (await resolveTeamByCode(trimmed));
   if (!team?.id) {
-    throw new Error('Operational team not found.');
+    throw new Error('Operational team not found. Open Teams and ensure Whiskey/X-ray/Yankee/Zulu exist.');
   }
 
   const timestamp = Timestamp.now();

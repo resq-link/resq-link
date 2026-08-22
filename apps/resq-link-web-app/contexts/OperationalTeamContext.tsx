@@ -45,9 +45,11 @@ type OperationalTeamContextValue = {
 const OperationalTeamContext = createContext<OperationalTeamContextValue | null>(null)
 
 const LIST_FILTER_KEY = 'resq-link-list-team-filter'
+const LOAD_TIMEOUT_MS = 10_000
 
 export function OperationalTeamProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth()
+  const userId = user?.uid ?? null
   const [teams, setTeams] = useState<TeamRecord[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [currentTeamOnDuty, setCurrentTeamOnDutyState] = useState<CurrentTeamOnDutyState | null>(null)
@@ -66,7 +68,7 @@ export function OperationalTeamProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    if (!user) {
+    if (!userId) {
       setTeams([])
       setCurrentTeamOnDutyState(null)
       setIsLoading(false)
@@ -75,29 +77,65 @@ export function OperationalTeamProvider({ children }: { children: ReactNode }) {
     }
 
     let cancelled = false
+    setIsLoading(true)
+    setIsCurrentTeamLoading(true)
 
-    ensureDefaultOperationalTeams().catch((error) => {
-      console.warn('Could not seed default operational teams:', error)
-    })
-
-    const unsubscribeTeams = subscribeToTeams((nextTeams) => {
+    const clearLoadingSafely = () => {
       if (cancelled) return
-      setTeams(sortTeamsByOrder(nextTeams.filter((team) => team.isActive !== false)))
       setIsLoading(false)
-    })
-
-    const unsubscribeShift = subscribeToCommandCenterCurrentTeamOnDuty(user.uid, (state) => {
-      if (cancelled) return
-      setCurrentTeamOnDutyState(state)
       setIsCurrentTeamLoading(false)
-    })
+    }
+
+    const timeoutId = window.setTimeout(clearLoadingSafely, LOAD_TIMEOUT_MS)
+
+    ensureDefaultOperationalTeams()
+      .then((seeded) => {
+        if (cancelled || seeded.length === 0) return
+        // If the live subscription is slow/empty, show seeded teams immediately.
+        setTeams((current) =>
+          current.length > 0 ? current : sortTeamsByOrder(seeded.filter((team) => team.isActive !== false))
+        )
+        setIsLoading(false)
+      })
+      .catch((error) => {
+        console.warn('Could not seed default operational teams:', error)
+      })
+
+    let unsubscribeTeams = () => {}
+    let unsubscribeShift = () => {}
+
+    try {
+      unsubscribeTeams = subscribeToTeams((nextTeams) => {
+        if (cancelled) return
+        setTeams(sortTeamsByOrder(nextTeams.filter((team) => team.isActive !== false)))
+        setIsLoading(false)
+      })
+    } catch (error) {
+      console.error('Failed to subscribe to teams:', error)
+      if (!cancelled) setIsLoading(false)
+    }
+
+    try {
+      unsubscribeShift = subscribeToCommandCenterCurrentTeamOnDuty(userId, (state) => {
+        if (cancelled) return
+        setCurrentTeamOnDutyState(state)
+        setIsCurrentTeamLoading(false)
+      })
+    } catch (error) {
+      console.error('Failed to subscribe to current team on duty:', error)
+      if (!cancelled) {
+        setCurrentTeamOnDutyState(null)
+        setIsCurrentTeamLoading(false)
+      }
+    }
 
     return () => {
       cancelled = true
+      window.clearTimeout(timeoutId)
       unsubscribeTeams()
       unsubscribeShift()
     }
-  }, [user])
+  }, [userId])
 
   const setCurrentTeamOnDuty = useCallback(
     async (teamId: string) => {

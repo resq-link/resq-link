@@ -10,12 +10,21 @@ export const useAuth = () => {
   const { isReady, auth, setAuth } = useAuthStore();
 
   const initiate = useCallback(() => {
-    SecureStore.getItemAsync(authKey).then((stored) => {
-      useAuthStore.setState({
-        auth: stored ? JSON.parse(stored) : null,
-        isReady: true,
+    SecureStore.getItemAsync(authKey)
+      .then((stored) => {
+        let auth = null;
+        if (stored) {
+          try {
+            auth = JSON.parse(stored);
+          } catch {
+            auth = null;
+          }
+        }
+        useAuthStore.setState({ auth, isReady: true });
+      })
+      .catch(() => {
+        useAuthStore.setState({ auth: null, isReady: true });
       });
-    });
   }, []);
 
   const signOut = useCallback(() => {

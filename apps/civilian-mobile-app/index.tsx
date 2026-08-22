@@ -1,3 +1,4 @@
+import "react-native-gesture-handler";
 import "./src/utils/configureDevLogBox";
 
 import "react-native-url-polyfill/auto";

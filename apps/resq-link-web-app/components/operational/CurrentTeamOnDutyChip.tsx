@@ -20,6 +20,7 @@ type CurrentTeamOnDutyChipProps = {
 export default function CurrentTeamOnDutyChip({ variant = 'chip' }: CurrentTeamOnDutyChipProps) {
   const {
     teams,
+    isLoading: teamsLoading,
     currentTeamOnDuty,
     isCurrentTeamLoading,
     isSavingCurrentTeam,
@@ -41,6 +42,7 @@ export default function CurrentTeamOnDutyChip({ variant = 'chip' }: CurrentTeamO
     <ChangeTeamOnDutyModal
       isOpen={isModalOpen}
       teams={teams}
+      teamsLoading={teamsLoading}
       currentTeamName={currentTeamOnDuty?.teamName ?? null}
       currentTeamId={currentTeamOnDuty?.teamId ?? null}
       isSaving={isSavingCurrentTeam}

@@ -49,6 +49,8 @@
     </dict>
     <key>NSCameraUsageDescription</key>
     <string>RESQ-Link uses the camera to photograph your government ID for identity verification and to attach images to emergency reports you choose to submit.</string>
+    <key>NSContactsUsageDescription</key>
+    <string>RESQ-Link does not access your contacts. This description is required because a bundled system library references the Contacts API; the app never reads or stores contact information.</string>
     <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
     <string>RESQ-Link uses your location to attach accurate coordinates to emergency reports and to help fill your registration address when you choose to use current location.</string>
     <key>NSLocationAlwaysUsageDescription</key>

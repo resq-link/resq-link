@@ -538,6 +538,7 @@ function IntakeContent() {
   const [pageSuccess, setPageSuccess] = useState<string | null>(null);
   const [rejectingReport, setRejectingReport] = useState<EmergencyReport | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [rejectError, setRejectError] = useState<string | null>(null);
   const [isRejecting, setIsRejecting] = useState(false);
   const incidentDateInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -1063,29 +1064,34 @@ function IntakeContent() {
 
   const handleRejectAppReport = (report: EmergencyReport) => {
     setRejectReason("");
+    setRejectError(null);
     setRejectingReport(report);
   };
 
   const handleConfirmRejectAppReport = async () => {
-    if (!rejectingReport?.id) return;
+    if (!rejectingReport?.id) {
+      setRejectError("This report is missing an ID and cannot be rejected.");
+      return;
+    }
     const reason = rejectReason.trim();
     if (!reason) {
-      setPageError("A rejection reason is required.");
+      setRejectError("A rejection reason is required.");
       return;
     }
 
     setIsRejecting(true);
+    setRejectError(null);
     setPageError(null);
     try {
       await rejectEmergencyReport(rejectingReport.id, reason);
+      const shortId = rejectingReport.id.slice(-6).toUpperCase();
       setSelectedQueueItem(null);
       setRejectingReport(null);
       setRejectReason("");
-      setPageSuccess(
-        `Report ${rejectingReport.id.slice(-6).toUpperCase()} was rejected and removed from Intake.`,
-      );
+      setRejectError(null);
+      setPageSuccess(`Report ${shortId} was rejected and removed from Intake.`);
     } catch (error: any) {
-      setPageError(error.message || "Failed to reject report.");
+      setRejectError(error.message || "Failed to reject report.");
     } finally {
       setIsRejecting(false);
     }
@@ -1577,13 +1583,14 @@ function IntakeContent() {
         </div>
 
         {rejectingReport ? (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
             <div
               className="absolute inset-0"
               onClick={() => {
                 if (!isRejecting) {
                   setRejectingReport(null);
                   setRejectReason("");
+                  setRejectError(null);
                 }
               }}
               aria-hidden="true"
@@ -1593,7 +1600,7 @@ function IntakeContent() {
               <p className="mt-2 text-sm text-slate-400">
                 Report{" "}
                 <span className="font-mono font-semibold text-slate-200">
-                  {rejectingReport.id?.slice(-6).toUpperCase()}
+                  {rejectingReport.id?.slice(-6).toUpperCase() || "—"}
                 </span>{" "}
                 will leave the Intake queue. The civilian will see your reason.
               </p>
@@ -1603,12 +1610,20 @@ function IntakeContent() {
                 </span>
                 <textarea
                   value={rejectReason}
-                  onChange={(event) => setRejectReason(event.target.value)}
+                  onChange={(event) => {
+                    setRejectReason(event.target.value);
+                    if (rejectError) setRejectError(null);
+                  }}
                   disabled={isRejecting}
                   className="min-h-[104px] w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-red-500/40"
                   placeholder="e.g. Duplicate report, false alarm, insufficient information..."
                 />
               </label>
+              {rejectError ? (
+                <p className="mt-3 rounded-lg border border-red-900/60 bg-red-950/40 px-3 py-2 text-sm text-red-300">
+                  {rejectError}
+                </p>
+              ) : null}
               <div className="mt-5 flex justify-end gap-2">
                 <button
                   type="button"
@@ -1616,6 +1631,7 @@ function IntakeContent() {
                   onClick={() => {
                     setRejectingReport(null);
                     setRejectReason("");
+                    setRejectError(null);
                   }}
                   className="h-10 rounded-lg border border-slate-700 px-4 text-sm font-semibold text-slate-300 hover:border-slate-500 hover:text-slate-100 disabled:opacity-50"
                 >

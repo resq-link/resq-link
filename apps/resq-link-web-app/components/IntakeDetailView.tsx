@@ -706,7 +706,6 @@ export default function IntakeDetailView({
                 )}
 
                 {!report?.incidentId &&
-                  !report?.acceptedAt &&
                   report?.status !== "enroute" &&
                   report?.status !== "on_scene" &&
                   report?.status !== "done" &&

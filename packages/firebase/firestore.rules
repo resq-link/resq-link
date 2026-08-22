@@ -14,8 +14,11 @@ service cloud.firestore {
     
     // Helper function to check if user is a command center user
     function isCommandCenter() {
-      return isAuthenticated() && 
-             exists(/databases/$(database)/documents/commandCenters/$(request.auth.uid));
+      return isAuthenticated() && (
+        exists(/databases/$(database)/documents/commandCenters/$(request.auth.uid)) ||
+        request.auth.token.role == 'command_center' ||
+        request.auth.token.isCommandCenter == true
+      );
     }
     
     // Helper function to check if user is a dispatcher

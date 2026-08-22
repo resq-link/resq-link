@@ -195,8 +195,12 @@ config.transformer = {
   ...config.transformer,
   getTransformOptions: async (entryPoints, options) => {
     if (options.dev === false) {
-      fs.rmSync(cacheDir, { recursive: true, force: true });
-      fs.mkdirSync(cacheDir);
+      try {
+        fs.rmSync(cacheDir, { recursive: true, force: true });
+      } catch {
+        // cache dir may be mid-write
+      }
+      fs.mkdirSync(cacheDir, { recursive: true });
     }
     return await originalGetTransformOptions(entryPoints, options);
   },

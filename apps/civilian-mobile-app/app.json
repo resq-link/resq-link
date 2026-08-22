@@ -11,11 +11,15 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.tuguegarao.resqlink",
+      "entitlements": {
+        "aps-environment": "production"
+      },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "RESQ-Link uses the camera to photograph your government ID for identity verification and to attach images to emergency reports you choose to submit.",
         "NSPhotoLibraryUsageDescription": "RESQ-Link uses your photo library so you can upload a government ID photo for identity verification or attach images to emergency reports.",
-        "NSLocationWhenInUseUsageDescription": "RESQ-Link uses your location to attach accurate coordinates to emergency reports and to help fill your registration address when you choose to use current location."
+        "NSLocationWhenInUseUsageDescription": "RESQ-Link uses your location to attach accurate coordinates to emergency reports and to help fill your registration address when you choose to use current location.",
+        "NSContactsUsageDescription": "RESQ-Link does not access your contacts. This description is required because a bundled system library references the Contacts API; the app never reads or stores contact information."
       }
     },
     "android": {

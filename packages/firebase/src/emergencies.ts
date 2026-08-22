@@ -1121,11 +1121,13 @@ export async function rejectEmergencyReport(
       throw new Error('Unlink or resolve the master incident before rejecting this report');
     }
 
-    if (['enroute', 'on_scene'].includes(currentStatus) || currentData.acceptedAt) {
+    if (['enroute', 'on_scene'].includes(currentStatus)) {
       throw new Error('Reports already accepted by a responder cannot be rejected from Intake');
     }
 
     const rejectedAt = Timestamp.now();
+    const declinedByName =
+      currentUser.displayName || currentUser.email || currentUser.uid;
     const updateData = {
       status: 'rejected',
       dispatcherId: null,
@@ -1133,23 +1135,28 @@ export async function rejectEmergencyReport(
       assignedResponderId: null,
       assignedAgency: null,
       declinedByDispatcherId: currentUser.uid,
-      declinedByName: currentUser.displayName || currentUser.email || currentUser.uid,
+      declinedByName,
       declineReason: normalizedReason,
       declinedAt: rejectedAt,
       updatedAt: rejectedAt,
     };
 
+    // Primary update must succeed; secondary propagation is best-effort and must
+    // not block Intake UI (queries can hang on missing indexes / network).
     await updateDoc(reportRef, updateData);
-    await propagateUpdatesToSecondaries(reportId, {
+
+    void propagateUpdatesToSecondaries(reportId, {
       status: 'rejected',
       declineReason: normalizedReason,
       declinedAt: rejectedAt,
       declinedByDispatcherId: currentUser.uid,
-      declinedByName: currentUser.displayName || currentUser.email || currentUser.uid,
+      declinedByName,
       dispatcherId: null,
       responder: null,
       assignedResponderId: null,
       assignedAgency: null,
+    }).catch((error) => {
+      console.error('Error propagating reject to secondary reports:', error);
     });
 
     const updatedDocSnap = await getDoc(reportRef);
@@ -1160,7 +1167,11 @@ export async function rejectEmergencyReport(
     return convertFirestoreDoc(updatedDocSnap);
   } catch (error: any) {
     console.error('Error rejecting emergency report:', error);
-    throw new Error(`Failed to reject report: ${error.message}`);
+    const message =
+      error?.code === 'permission-denied'
+        ? 'Permission denied. Sign in again as a command-center user and retry.'
+        : error?.message || 'Unknown error';
+    throw new Error(`Failed to reject report: ${message}`);
   }
 }
 
