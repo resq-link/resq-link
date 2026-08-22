@@ -16,6 +16,7 @@ export default function CommandCenterGuard({ children }: { children: React.React
       router.replace(routes.login)
       return
     }
+    if (workspace === null) return
     if (workspace === 'super_admin') {
       router.replace(routes.admin.dashboard)
       return
@@ -25,7 +26,7 @@ export default function CommandCenterGuard({ children }: { children: React.React
     }
   }, [user, workspace, loading, router])
 
-  if (loading) {
+  if (loading || (user && workspace === null)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-950">
         <InlineLoader label="Verifying access..." />

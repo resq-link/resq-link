@@ -4,35 +4,19 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { getFirebaseAuth, type User, onAuthStateChanged, signOut as firebaseSignOut } from '@packages/firebase'
 import { useRouter } from 'next/navigation'
 import { routes } from '@/lib/routes'
+import { clearAuthSession, syncAuthSession } from '@/lib/authSession'
 import type { WebWorkspace } from '@/lib/workspace'
 
 interface AuthContextType {
   user: User | null
   workspace: WebWorkspace | null
+  /** True while Firebase auth or workspace resolution is still in progress. */
   loading: boolean
   signOut: () => Promise<void>
   refreshWorkspace: () => Promise<WebWorkspace | null>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
-
-async function establishWorkspace(user: User | null): Promise<WebWorkspace | null> {
-  if (!user) {
-    await fetch('/api/auth/session', { method: 'DELETE' })
-    return null
-  }
-
-  const token = await user.getIdToken()
-  const response = await fetch('/api/auth/session', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  const data = (await response.json().catch(() => null)) as { workspace?: WebWorkspace } | null
-  if (!response.ok) {
-    return 'unauthorized'
-  }
-  return data?.workspace ?? 'unauthorized'
-}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -41,16 +25,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
 
   const refreshWorkspace = useCallback(async () => {
-    const nextWorkspace = await establishWorkspace(getFirebaseAuth().currentUser)
-    setWorkspace(nextWorkspace)
-    return nextWorkspace
+    const currentUser = getFirebaseAuth().currentUser
+    if (!currentUser) {
+      setWorkspace(null)
+      await clearAuthSession()
+      return null
+    }
+
+    setLoading(true)
+    try {
+      const token = await currentUser.getIdToken(true)
+      const nextWorkspace = await syncAuthSession(token)
+      setWorkspace(nextWorkspace)
+      return nextWorkspace
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(getFirebaseAuth(), async (nextUser) => {
+      setLoading(true)
       setUser(nextUser)
+
       try {
-        const nextWorkspace = await establishWorkspace(nextUser)
+        if (!nextUser) {
+          setWorkspace(null)
+          await clearAuthSession()
+          return
+        }
+
+        const token = await nextUser.getIdToken()
+        const nextWorkspace = await syncAuthSession(token)
         setWorkspace(nextWorkspace)
       } catch (error) {
         console.error('Failed to resolve workspace', error)
@@ -66,8 +72,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     try {
       await firebaseSignOut(getFirebaseAuth())
+      setUser(null)
       setWorkspace(null)
-      await fetch('/api/auth/session', { method: 'DELETE' })
+      await clearAuthSession()
       router.push(routes.login)
     } catch (error) {
       console.error('Error signing out:', error)

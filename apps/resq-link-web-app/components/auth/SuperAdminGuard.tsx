@@ -16,6 +16,7 @@ export default function SuperAdminGuard({ children }: { children: React.ReactNod
       router.replace(routes.login)
       return
     }
+    if (workspace === null) return
     if (workspace === 'command_center') {
       router.replace(routes.commandCenter.overview)
       return
@@ -25,7 +26,7 @@ export default function SuperAdminGuard({ children }: { children: React.ReactNod
     }
   }, [user, workspace, loading, router])
 
-  if (loading) {
+  if (loading || (user && workspace === null)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-100">
         <InlineLoader label="Verifying access..." />

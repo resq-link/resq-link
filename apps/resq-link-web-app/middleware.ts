@@ -6,13 +6,9 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const workspace = request.cookies.get(WORKSPACE_COOKIE)?.value
 
+  // /login is always reachable so users can switch roles on the shared sign-in page.
+  // Post-login routing is handled client-side after fresh workspace resolution.
   if (pathname === routes.login) {
-    if (workspace === 'super_admin') {
-      return NextResponse.redirect(new URL(routes.admin.dashboard, request.url))
-    }
-    if (workspace === 'command_center') {
-      return NextResponse.redirect(new URL(routes.commandCenter.overview, request.url))
-    }
     return NextResponse.next()
   }
 

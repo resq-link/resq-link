@@ -18,16 +18,17 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
       router.replace(routes.login)
       return
     }
+    if (workspace === null) return
     if (workspace === 'unauthorized') {
       router.replace(routes.accessDenied)
       return
     }
-    if (workspace && workspace !== required) {
+    if (workspace !== required) {
       router.replace(workspace === 'super_admin' ? routes.admin.dashboard : routes.commandCenter.overview)
     }
-  }, [user, workspace, loading, required, router])
+  }, [user, workspace, loading, required, router, pathname])
 
-  if (loading) {
+  if (loading || (user && workspace === null)) {
     return <InlineLoader label="Verifying access..." />
   }
 

@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import { AdminSidebar } from './AdminSidebar'
 import { AdminHeader } from './AdminHeader'
-import ProtectedRoute from '@/components/ProtectedRoute'
+import SuperAdminGuard from '@/components/auth/SuperAdminGuard'
 import NavigationProgress from '@/components/NavigationProgress'
 import RouteEnter from '@/components/RouteEnter'
 
@@ -51,9 +51,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
           <AdminHeader onOpenMenu={() => setMobileOpen(true)} />
         </div>
         <main className="relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
-          <ProtectedRoute>
+          <SuperAdminGuard>
             <RouteEnter>{children}</RouteEnter>
-          </ProtectedRoute>
+          </SuperAdminGuard>
         </main>
       </div>
     </div>

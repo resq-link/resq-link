@@ -15,6 +15,7 @@ import { resolve } from 'path';
 dotenv.config({ path: resolve(__dirname, '../.env') });
 
 import * as admin from 'firebase-admin';
+import { setAccountRoleClaims } from '../src/admin';
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'superadmin@rescue.ph';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'SuperAdmin2024!';
@@ -71,6 +72,7 @@ async function createFirstAdmin() {
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       role: 'super_admin',
     });
+    await setAccountRoleClaims(userRecord.uid, { role: 'super_admin' });
 
     console.log('✅ Success! Super admin account created:');
     console.log(`   Email: ${ADMIN_EMAIL}`);
@@ -87,6 +89,7 @@ async function createFirstAdmin() {
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           role: 'super_admin',
         });
+        await setAccountRoleClaims(user.uid, { role: 'super_admin' });
         console.log('   Added existing user to admins collection.');
       }
     } else {

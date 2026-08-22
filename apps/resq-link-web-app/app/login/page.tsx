@@ -6,16 +6,8 @@ import { getFirebaseAuth, signInWithEmailAndPassword, signOut } from '@packages/
 import { useAuth } from '@/contexts/AuthContext'
 import { LoginView } from '@/components/auth/LoginView'
 import { mapLoginError } from '@/lib/loginErrors'
-import { routes } from '@/lib/routes'
-import { homeForWorkspace, type WebWorkspace } from '@/lib/workspace'
-
-function destinationForWorkspace(workspace: WebWorkspace, nextPath: string | null): string {
-  const home = homeForWorkspace(workspace)
-  if (!nextPath || !nextPath.startsWith('/') || nextPath.startsWith('//')) return home
-  if (workspace === 'super_admin' && nextPath.startsWith(routes.admin.root)) return nextPath
-  if (workspace === 'command_center' && nextPath.startsWith(routes.commandCenter.root)) return nextPath
-  return home
-}
+import { destinationForWorkspace, navigateAfterLogin } from '@/lib/authRouting'
+import { clearAuthSession } from '@/lib/authSession'
 
 function LoginPageInner() {
   const [email, setEmail] = useState('')
@@ -30,6 +22,7 @@ function LoginPageInner() {
   useEffect(() => {
     if (authLoading) return
     if (!user) return
+    if (workspace === null) return
 
     if (workspace === 'super_admin' || workspace === 'command_center') {
       router.replace(destinationForWorkspace(workspace, nextPath))
@@ -46,14 +39,15 @@ function LoginPageInner() {
     setError('')
     setLoading(true)
     try {
+      await clearAuthSession()
       await signInWithEmailAndPassword(getFirebaseAuth(), email.trim(), password)
       const nextWorkspace = await refreshWorkspace()
       if (nextWorkspace === 'super_admin' || nextWorkspace === 'command_center') {
-        router.replace(destinationForWorkspace(nextWorkspace, nextPath))
+        navigateAfterLogin(nextWorkspace, nextPath)
         return
       }
       await signOut(getFirebaseAuth())
-      await fetch('/api/auth/session', { method: 'DELETE' })
+      await clearAuthSession()
       setError('You do not have access to this workspace.')
     } catch (err: unknown) {
       setError(mapLoginError(err))
@@ -63,7 +57,9 @@ function LoginPageInner() {
   }
 
   const checkingSession =
-    authLoading || Boolean(user && (workspace === 'super_admin' || workspace === 'command_center'))
+    authLoading ||
+    Boolean(user && workspace === null) ||
+    Boolean(user && (workspace === 'super_admin' || workspace === 'command_center'))
 
   return (
     <LoginView
