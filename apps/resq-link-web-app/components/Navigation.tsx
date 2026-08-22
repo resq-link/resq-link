@@ -9,7 +9,6 @@ import { useDispatcherData } from "@/contexts/DispatcherDataContext";
 import { routes } from "@/lib/routes";
 import AppShellWidgets from "@/components/AppShellWidgets";
 import AlarmControl from "@/components/AlarmControl";
-import ProtectedRoute from "@/components/ProtectedRoute";
 import RoutePrefetcher from "@/components/RoutePrefetcher";
 import NavigationProgress from "@/components/NavigationProgress";
 import RouteEnter from "@/components/RouteEnter";
@@ -440,9 +439,7 @@ export default function Navigation({ children }: NavigationProps) {
 
         <div className="relative flex-1 min-h-0">
           <NavigationProgress />
-          <ProtectedRoute>
-            <RouteEnter>{children}</RouteEnter>
-          </ProtectedRoute>
+          <RouteEnter>{children}</RouteEnter>
         </div>
       </div>
       <RoutePrefetcher />

@@ -14,6 +14,16 @@ const COMMAND_CENTER_CLAIM_ROLES = new Set([
 
 const SUPER_ADMIN_CLAIM_ROLES = new Set(['super_admin', 'superadmin', 'platform_admin'])
 
+export type WorkspaceResolution = {
+  workspace: WebWorkspace
+  uid: string
+  adminDoc: boolean
+  adminByEmail: boolean
+  superAdminClaim: boolean
+  commandCenterDoc: boolean
+  commandCenterClaim: boolean
+}
+
 function normalizeClaim(value: unknown): string {
   return typeof value === 'string' ? value.trim().toLowerCase().replace(/[\s-]/g, '_') : ''
 }
@@ -69,16 +79,18 @@ async function isAdminByEmail(email: string | null | undefined): Promise<boolean
  * 2. Command Center (`commandCenters/{uid}` or command_center claims)
  * 3. unauthorized
  */
-export async function resolveWebWorkspace(
+export async function resolveWebWorkspaceWithMeta(
   uid: string,
   token?: DecodedIdToken | null
-): Promise<WebWorkspace> {
-  const [adminDoc, commandCenterDoc, adminByEmail, superAdminClaim] = await Promise.all([
-    isAdmin(uid),
-    isCommandCenterAccount(uid),
-    isAdminByEmail(token?.email),
-    Promise.resolve(superAdminFromClaims(token)),
-  ])
+): Promise<WorkspaceResolution> {
+  const [adminDoc, commandCenterDoc, adminByEmail, superAdminClaim, commandCenterClaim] =
+    await Promise.all([
+      isAdmin(uid),
+      isCommandCenterAccount(uid),
+      isAdminByEmail(token?.email),
+      Promise.resolve(superAdminFromClaims(token)),
+      Promise.resolve(commandCenterFromClaims(token)),
+    ])
 
   const isSuperAdmin = adminDoc || adminByEmail || superAdminClaim
 
@@ -89,8 +101,25 @@ export async function resolveWebWorkspace(
     )
   }
 
-  if (isSuperAdmin) return 'super_admin'
-  if (commandCenterDoc) return 'command_center'
-  if (commandCenterFromClaims(token)) return 'command_center'
-  return 'unauthorized'
+  let workspace: WebWorkspace = 'unauthorized'
+  if (isSuperAdmin) workspace = 'super_admin'
+  else if (commandCenterDoc || commandCenterClaim) workspace = 'command_center'
+
+  return {
+    workspace,
+    uid,
+    adminDoc,
+    adminByEmail,
+    superAdminClaim,
+    commandCenterDoc,
+    commandCenterClaim,
+  }
+}
+
+export async function resolveWebWorkspace(
+  uid: string,
+  token?: DecodedIdToken | null
+): Promise<WebWorkspace> {
+  const result = await resolveWebWorkspaceWithMeta(uid, token)
+  return result.workspace
 }

@@ -17,10 +17,17 @@ function LoginPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const nextPath = searchParams.get('next')
-  const { user, workspace, loading: authLoading, refreshWorkspace, signOut: contextSignOut } = useAuth()
+  const {
+    user,
+    workspace,
+    authLoading,
+    workspaceLoading,
+    refreshWorkspace,
+    signOut: contextSignOut,
+  } = useAuth()
 
   useEffect(() => {
-    if (authLoading) return
+    if (authLoading || workspaceLoading) return
     if (!user) return
     if (workspace === null) return
 
@@ -33,7 +40,7 @@ function LoginPageInner() {
       void contextSignOut()
       setError('You do not have access to this workspace.')
     }
-  }, [authLoading, user, workspace, router, contextSignOut, nextPath])
+  }, [authLoading, workspaceLoading, user, workspace, router, contextSignOut, nextPath])
 
   const handleSubmit = async () => {
     setError('')
@@ -58,6 +65,7 @@ function LoginPageInner() {
 
   const checkingSession =
     authLoading ||
+    workspaceLoading ||
     Boolean(user && workspace === null) ||
     Boolean(user && (workspace === 'super_admin' || workspace === 'command_center'))
 

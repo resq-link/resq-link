@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyIdToken } from '@packages/firebase/admin'
-import { resolveWebWorkspace } from '@/lib/server/resolveWebWorkspace'
+import { resolveWebWorkspaceWithMeta } from '@/lib/server/resolveWebWorkspace'
 import { WORKSPACE_COOKIE } from '@/lib/routes'
-import type { WebWorkspace } from '@/lib/workspace'
+import { homeForWorkspace, type WebWorkspace } from '@/lib/workspace'
 
 function cookieOptions() {
   return {
@@ -23,15 +23,26 @@ export async function POST(request: NextRequest) {
     }
 
     const decoded = await verifyIdToken(token)
-    const workspace = await resolveWebWorkspace(decoded.uid, decoded)
-    const response = NextResponse.json({ workspace })
+    const resolution = await resolveWebWorkspaceWithMeta(decoded.uid, decoded)
+    const response = NextResponse.json({
+      workspace: resolution.workspace,
+      resolution: {
+        uid: resolution.uid,
+        adminDoc: resolution.adminDoc,
+        adminByEmail: resolution.adminByEmail,
+        superAdminClaim: resolution.superAdminClaim,
+        commandCenterDoc: resolution.commandCenterDoc,
+        commandCenterClaim: resolution.commandCenterClaim,
+        redirectTarget: homeForWorkspace(resolution.workspace),
+      },
+    })
 
-    if (workspace === 'unauthorized') {
+    if (resolution.workspace === 'unauthorized') {
       response.cookies.delete(WORKSPACE_COOKIE)
       return response
     }
 
-    response.cookies.set(WORKSPACE_COOKIE, workspace, cookieOptions())
+    response.cookies.set(WORKSPACE_COOKIE, resolution.workspace, cookieOptions())
     return response
   } catch (error) {
     console.error('auth session failed', error)

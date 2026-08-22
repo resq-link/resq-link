@@ -161,6 +161,20 @@ async function main() {
     `${commandBlocked.status} → ${commandBlocked.location}`
   );
 
+  const legacyIntakeBlocked = await jsonOrText(await request('/intake', { cookie: adminCookie }));
+  record(
+    'Super Admin cannot open legacy /intake',
+    (legacyIntakeBlocked.status === 307 || legacyIntakeBlocked.status === 302) &&
+      Boolean(legacyIntakeBlocked.location && legacyIntakeBlocked.location.includes('/admin')),
+    `${legacyIntakeBlocked.status} → ${legacyIntakeBlocked.location}`
+  );
+
+  record(
+    'Super Admin session resolves redirectTarget to /admin/dashboard',
+    sessionBody.json?.resolution?.redirectTarget === '/admin/dashboard',
+    `redirectTarget=${sessionBody.json?.resolution?.redirectTarget || 'missing'}`
+  );
+
   const endpoints = [
     ['GET', '/api/stats/overview?section=core'],
     ['GET', '/api/stats/overview?section=activity'],
@@ -270,8 +284,17 @@ async function main() {
   record(
     'Command Center cannot access /admin/*',
     (commandOnAdmin.status === 307 || commandOnAdmin.status === 302) &&
-      Boolean(commandOnAdmin.location && commandOnAdmin.location.includes('/command-center')),
+      Boolean(
+        commandOnAdmin.location &&
+          (commandOnAdmin.location.includes('/command-center') || commandOnAdmin.location.includes('/intake'))
+      ),
     `${commandOnAdmin.status} → ${commandOnAdmin.location}`
+  );
+
+  record(
+    'Command Center session resolves redirectTarget to /command-center/intake',
+    commandSessionBody.json?.resolution?.redirectTarget === '/command-center/intake',
+    `redirectTarget=${commandSessionBody.json?.resolution?.redirectTarget || 'missing'}`
   );
 
   const commandApi = await jsonOrText(await request('/api/stats/overview', { token: commandToken }));

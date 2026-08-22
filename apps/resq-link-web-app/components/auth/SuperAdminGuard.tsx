@@ -18,7 +18,7 @@ export default function SuperAdminGuard({ children }: { children: React.ReactNod
     }
     if (workspace === null) return
     if (workspace === 'command_center') {
-      router.replace(routes.commandCenter.overview)
+      router.replace(routes.commandCenter.intake)
       return
     }
     if (workspace !== 'super_admin') {

@@ -57,22 +57,9 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   async redirects() {
-    // Temporary compatibility for Command Center bookmarks and internal links.
-    // Canonical routes now live under /command-center/*.
+    // Legacy dispatcher bookmarks are gated in middleware (workspace check first),
+    // then rewritten to canonical /command-center/* routes there.
     return [
-      { source: "/dashboard", destination: "/command-center/overview", permanent: false },
-      { source: "/overview", destination: "/command-center/overview", permanent: false },
-      { source: "/map", destination: "/command-center/map", permanent: false },
-      { source: "/intake", destination: "/command-center/intake", permanent: false },
-      { source: "/sms", destination: "/command-center/sms", permanent: false },
-      { source: "/incidents", destination: "/command-center/incidents", permanent: false },
-      { source: "/footage-requests", destination: "/command-center/footage-requests", permanent: false },
-      { source: "/resources", destination: "/command-center/resources", permanent: false },
-      { source: "/teams", destination: "/command-center/teams", permanent: false },
-      { source: "/report", destination: "/command-center/report", permanent: false },
-      { source: "/report/incidents", destination: "/command-center/report/incidents", permanent: false },
-      { source: "/history", destination: "/command-center/history", permanent: false },
-      { source: "/incident-management", destination: "/command-center/incident-management", permanent: false },
       { source: "/admin", destination: "/admin/dashboard", permanent: false },
       { source: "/admin/profile", destination: "/admin/settings", permanent: false },
     ];

@@ -5,26 +5,24 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/contexts/AuthContext'
 import { routes } from '@/lib/routes'
 
-const PREFETCH_ROUTES = [
-  routes.commandCenter.overview,
-  routes.commandCenter.intake,
-  routes.commandCenter.sms,
-  routes.commandCenter.incidents,
-  routes.commandCenter.footageRequests,
-] as const
-
 export default function RoutePrefetcher() {
-  const { user } = useAuth()
+  const { user, workspace } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (!user) return
-    // In development, prefetch compiles each route through webpack/turbopack and
-    // contends with the route the dispatcher is actually opening.
+    if (!user || workspace !== 'command_center') return
     if (process.env.NODE_ENV !== 'production') return
 
+    const prefetchRoutes = [
+      routes.commandCenter.intake,
+      routes.commandCenter.overview,
+      routes.commandCenter.sms,
+      routes.commandCenter.incidents,
+      routes.commandCenter.footageRequests,
+    ] as const
+
     const prefetch = () => {
-      PREFETCH_ROUTES.forEach((href) => {
+      prefetchRoutes.forEach((href) => {
         void router.prefetch(href)
       })
     }
@@ -37,7 +35,7 @@ export default function RoutePrefetcher() {
 
     const timer = window.setTimeout(prefetch, 800)
     return () => window.clearTimeout(timer)
-  }, [router, user])
+  }, [router, user, workspace])
 
   return null
 }

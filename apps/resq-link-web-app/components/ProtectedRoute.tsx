@@ -24,7 +24,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
       return
     }
     if (workspace !== required) {
-      router.replace(workspace === 'super_admin' ? routes.admin.dashboard : routes.commandCenter.overview)
+      router.replace(workspace === 'super_admin' ? routes.admin.dashboard : routes.commandCenter.intake)
     }
   }, [user, workspace, loading, required, router, pathname])
 
