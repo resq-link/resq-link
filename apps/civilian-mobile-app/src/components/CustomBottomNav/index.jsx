@@ -28,8 +28,8 @@ import {
   PhoneCall,
 } from "lucide-react-native";
 import { useSOS } from "@/hooks/useSOS";
-import { useDispatcherCall } from "@/hooks/useDispatcherCall";
 import { useAppTheme } from "@/hooks/useAppTheme";
+import { openEmergencyHotline } from "@/utils/emergencyHotline";
 import { HIDE_NAV_SCREENS } from "@/constants/routes";
 import {
   getBottomNavInset,
@@ -184,7 +184,7 @@ function CallActionButton({ onPress, disabled, theme }) {
       }}
       style={[styles.callButtonWrap, animatedStyle, disabled && styles.actionDisabled]}
       accessibilityRole="button"
-      accessibilityLabel="Call command center"
+      accessibilityLabel="Call emergency hotline"
       accessibilityState={{ disabled, busy: disabled }}
       android_ripple={
         disabled ? undefined : { color: "rgba(13, 15, 18, 0.15)", borderless: true }
@@ -273,7 +273,6 @@ export default function CustomBottomNav() {
   const pathname = usePathname();
   const { width: screenW } = useWindowDimensions();
   const { handleSOS, sosLoading } = useSOS();
-  const { handleDispatcherCall, callLoading } = useDispatcherCall();
   const { colors, navTheme: theme } = useAppTheme();
   const mountOpacity = useSharedValue(0);
   const mountTranslateY = useSharedValue(16);
@@ -356,8 +355,7 @@ export default function CustomBottomNav() {
 
           <View style={styles.emergencyRow}>
             <CallActionButton
-              onPress={handleDispatcherCall}
-              disabled={callLoading}
+              onPress={openEmergencyHotline}
               theme={theme}
             />
             <SOSActionButton

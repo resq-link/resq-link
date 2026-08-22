@@ -17,16 +17,7 @@ import { isActiveReport } from "@/features/history/constants";
 import LiveIncidentMapCard from "@/features/emergency/components/confirmation/LiveIncidentMapCard";
 import IncidentStatusSection from "@/features/emergency/components/confirmation/IncidentStatusSection";
 import IncidentDetailsCard from "@/features/emergency/components/confirmation/IncidentDetailsCard";
-import VoiceCallSection from "@/features/emergency/components/confirmation/VoiceCallSection";
-import {
-  endIncidentCallSession,
-  failIncidentCallSession,
-  markIncidentCallConnected,
-  startIncidentCallSession,
-  subscribeToIncidentCallSessions,
-  subscribeToEmergencyReport,
-} from "@packages/firebase";
-import { useAgoraVoiceCall } from "@/hooks/useAgoraVoiceCall";
+import { subscribeToEmergencyReport } from "@packages/firebase";
 
 function SectionDivider({ color }) {
   return (
@@ -42,9 +33,6 @@ export default function EmergencyConfirmationScreen() {
   const reportId = typeof params.reportId === "string" ? params.reportId : "";
 
   const [report, setReport] = useState(null);
-  const [callSession, setCallSession] = useState(null);
-  const [callError, setCallError] = useState("");
-  const voiceCall = useAgoraVoiceCall();
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -60,62 +48,6 @@ export default function EmergencyConfirmationScreen() {
     return subscribeToEmergencyReport(reportId, setReport);
   }, [reportId]);
 
-  useEffect(() => {
-    if (!report?.incidentId) {
-      setCallSession(null);
-      return;
-    }
-
-    return subscribeToIncidentCallSessions(report.incidentId, (sessions) => {
-      const ownUserId = report.userId;
-      const activeSession = sessions.find(
-        (session) =>
-          session.callerUserId === ownUserId &&
-          ["ringing", "accepted", "connected"].includes(session.status)
-      );
-      setCallSession(activeSession || null);
-    });
-  }, [report?.incidentId, report?.userId]);
-
-  const handleStartCall = async () => {
-    const callIncidentId = report?.incidentId || (reportId ? `report_${reportId}` : "");
-    if (!callIncidentId) {
-      setCallError("Report ID is missing.");
-      return;
-    }
-
-    setCallError("");
-    try {
-      const session = await startIncidentCallSession({
-        incidentId: callIncidentId,
-        responderUserId: report.assignedResponderId || null,
-        assignedResponderId: report.assignedResponderId || null,
-      });
-      setCallSession(session);
-      await voiceCall.join({
-        incidentId: session.incidentId,
-        channelName: session.channelName,
-        onRemoteJoined: () => markIncidentCallConnected(session.id).catch(console.error),
-        onError: (error) => {
-          if (session.id) {
-            failIncidentCallSession(session.id, error?.message).catch(console.error);
-          }
-        },
-      });
-    } catch (error) {
-      setCallError(error.message || "Voice call failed. Your report remains submitted.");
-    }
-  };
-
-  const handleEndCall = async () => {
-    const sessionId = callSession?.id;
-    await voiceCall.leave();
-    if (sessionId) {
-      await endIncidentCallSession(sessionId).catch(console.error);
-    }
-    setCallSession(null);
-  };
-
   const showLiveMap = Boolean(
     reportId && report && isActiveReport(report.status)
   );
@@ -125,10 +57,6 @@ export default function EmergencyConfirmationScreen() {
     const normalized = normalizeOperationalStatus(report.status);
     return normalized === "resolved" || normalized === "cancelled";
   }, [report]);
-
-  const canStartVoiceCall = Boolean(report?.incidentId || reportId);
-  const activeCallStatus = callSession?.status || voiceCall.phase;
-  const callIsLinkedToIncident = Boolean(report?.incidentId);
 
   const handleBack = useCallback(() => {
     if (router.canGoBack()) {
@@ -203,21 +131,6 @@ export default function EmergencyConfirmationScreen() {
               <IncidentDetailsCard report={report} colors={colors} />
             </>
           ) : null}
-
-          <SectionDivider color={colors.border} />
-
-          <VoiceCallSection
-            colors={colors}
-            isLight={isLight}
-            canStartVoiceCall={canStartVoiceCall}
-            activeCallStatus={activeCallStatus}
-            callSession={callSession}
-            callIsLinkedToIncident={callIsLinkedToIncident}
-            callError={callError}
-            voiceCall={voiceCall}
-            onStartCall={handleStartCall}
-            onEndCall={handleEndCall}
-          />
 
           {isClosedIncident ? (
             <>

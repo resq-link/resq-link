@@ -312,5 +312,4 @@ export function canCancelCivilianReport(report) {
   return normalized === "pending" && !report.viewedAt && !report.acceptedAt;
 }
 
-/** National emergency hotline — used for Call Emergency Hotline action. */
-export const EMERGENCY_HOTLINE = "911";
+export { EMERGENCY_HOTLINE } from "@/utils/emergencyHotline";

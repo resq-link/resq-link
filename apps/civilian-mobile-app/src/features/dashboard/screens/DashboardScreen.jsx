@@ -50,7 +50,7 @@ import {
 import StatusChip from "@/features/history/components/StatusChip";
 import { getIncidentMeta } from "@/features/history/constants";
 import { useAppTheme } from "@/hooks/useAppTheme";
-import { useDispatcherCall } from "@/hooks/useDispatcherCall";
+import { openEmergencyHotline } from "@/utils/emergencyHotline";
 import { useSOS } from "@/hooks/useSOS";
 
 const ACTIVE_INCIDENT_STATUSES = new Set(["pending", "active", "on_scene"]);
@@ -451,12 +451,11 @@ function QuickSecondaryButton({ label, icon: Icon, color, bg, onPress, theme }) 
 function QuickActionsPanel({
   theme,
   onSOS,
-  onCall,
+  onHotline,
   onMap,
   onContacts,
   onHistory,
   sosLoading,
-  callLoading,
 }) {
   return (
     <View style={styles.quickPanel}>
@@ -471,12 +470,11 @@ function QuickActionsPanel({
           theme={theme}
         />
         <QuickPrimaryButton
-          label="Call Dispatcher"
+          label="Call 911"
           icon={PhoneCall}
           color={theme.primaryGreen}
           bg={theme.primaryGreenSoft}
-          onPress={onCall}
-          disabled={callLoading}
+          onPress={onHotline}
           theme={theme}
         />
       </View>
@@ -664,7 +662,6 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user } = useUserStore();
-  const { handleDispatcherCall, callLoading } = useDispatcherCall();
   const { handleSOS, sosLoading } = useSOS();
   const [recentReports, setRecentReports] = useState([]);
   const [nearbyReports, setNearbyReports] = useState([]);
@@ -916,12 +913,11 @@ export default function DashboardScreen() {
             <QuickActionsPanel
               theme={theme}
               onSOS={handleSOS}
-              onCall={handleDispatcherCall}
+              onHotline={openEmergencyHotline}
               onMap={() => router.push("/responder-map")}
               onContacts={() => router.push("/help-support")}
               onHistory={() => router.push("/(tabs)/history")}
               sosLoading={sosLoading}
-              callLoading={callLoading}
             />
           </View>
 
