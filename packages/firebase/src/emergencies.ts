@@ -7,6 +7,7 @@ import {
   limit,
   getDocs,
   getDoc,
+  getDocFromCache,
   onSnapshot,
   Timestamp,
   DocumentData,
@@ -1101,7 +1102,19 @@ export async function rejectEmergencyReport(
     }
 
     const reportRef = doc(getFirebaseFirestore(), 'emergencies', reportId);
-    const reportDocSnap = await getDoc(reportRef);
+
+    // Prefer cache so Intake reject does not wait on a server round-trip for data
+    // we already have open in the UI.
+    let reportDocSnap;
+    try {
+      reportDocSnap = await getDocFromCache(reportRef);
+    } catch {
+      reportDocSnap = await getDoc(reportRef);
+    }
+    if (!reportDocSnap.exists()) {
+      // Cache miss / empty — fall back to server once.
+      reportDocSnap = await getDoc(reportRef);
+    }
     if (!reportDocSnap.exists()) {
       throw new Error('Emergency report not found');
     }
@@ -1129,7 +1142,7 @@ export async function rejectEmergencyReport(
     const declinedByName =
       currentUser.displayName || currentUser.email || currentUser.uid;
     const updateData = {
-      status: 'rejected',
+      status: 'rejected' as const,
       dispatcherId: null,
       responder: null,
       assignedResponderId: null,
@@ -1141,8 +1154,8 @@ export async function rejectEmergencyReport(
       updatedAt: rejectedAt,
     };
 
-    // Primary update must succeed; secondary propagation is best-effort and must
-    // not block Intake UI (queries can hang on missing indexes / network).
+    // Do not await secondary propagation — it can stall the UI.
+    // Do not re-fetch after write — return merged local data immediately after ack.
     await updateDoc(reportRef, updateData);
 
     void propagateUpdatesToSecondaries(reportId, {
@@ -1159,12 +1172,10 @@ export async function rejectEmergencyReport(
       console.error('Error propagating reject to secondary reports:', error);
     });
 
-    const updatedDocSnap = await getDoc(reportRef);
-    if (!updatedDocSnap.exists()) {
-      throw new Error('Emergency report not found after update');
-    }
-
-    return convertFirestoreDoc(updatedDocSnap);
+    return convertFirestoreDoc({
+      id: reportId,
+      data: () => ({ ...currentData, ...updateData }),
+    });
   } catch (error: any) {
     console.error('Error rejecting emergency report:', error);
     const message =

@@ -521,9 +521,34 @@ function IntakeContent() {
   });
 
   const appEmergencyReports = useMemo(
-    () => emergencyReports.filter(isLiveEmergencyReport),
-    [emergencyReports],
+    () =>
+      emergencyReports.filter(
+        (report) =>
+          isLiveEmergencyReport(report) &&
+          !(report.id && optimisticallyRejectedIds.has(report.id)),
+      ),
+    [emergencyReports, optimisticallyRejectedIds],
   );
+
+  // Drop optimistic reject IDs once the live listener confirms they left the queue.
+  useEffect(() => {
+    if (optimisticallyRejectedIds.size === 0) return;
+    setOptimisticallyRejectedIds((prev) => {
+      let changed = false;
+      const next = new Set<string>();
+      for (const id of prev) {
+        const stillLive = emergencyReports.some(
+          (report) => report.id === id && isLiveEmergencyReport(report),
+        );
+        if (stillLive) {
+          next.add(id);
+        } else {
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [emergencyReports, optimisticallyRejectedIds.size]);
   const recentIncidents = incidents;
   const [barangayGeojson, setBarangayGeojson] =
     useState<BarangayFeatureCollection | null>(null);
@@ -540,6 +565,9 @@ function IntakeContent() {
   const [rejectReason, setRejectReason] = useState("");
   const [rejectError, setRejectError] = useState<string | null>(null);
   const [isRejecting, setIsRejecting] = useState(false);
+  const [optimisticallyRejectedIds, setOptimisticallyRejectedIds] = useState<Set<string>>(
+    () => new Set(),
+  );
   const incidentDateInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -1068,7 +1096,7 @@ function IntakeContent() {
     setRejectingReport(report);
   };
 
-  const handleConfirmRejectAppReport = async () => {
+  const handleConfirmRejectAppReport = () => {
     if (!rejectingReport?.id) {
       setRejectError("This report is missing an ID and cannot be rejected.");
       return;
@@ -1079,22 +1107,32 @@ function IntakeContent() {
       return;
     }
 
-    setIsRejecting(true);
+    const reportId = rejectingReport.id;
+    const shortId = reportId.slice(-6).toUpperCase();
+
+    // Optimistic UI: close immediately and hide from queue before Firestore ack.
     setRejectError(null);
     setPageError(null);
-    try {
-      await rejectEmergencyReport(rejectingReport.id, reason);
-      const shortId = rejectingReport.id.slice(-6).toUpperCase();
-      setSelectedQueueItem(null);
-      setRejectingReport(null);
-      setRejectReason("");
-      setRejectError(null);
-      setPageSuccess(`Report ${shortId} was rejected and removed from Intake.`);
-    } catch (error: any) {
-      setRejectError(error.message || "Failed to reject report.");
-    } finally {
-      setIsRejecting(false);
-    }
+    setSelectedQueueItem(null);
+    setRejectingReport(null);
+    setRejectReason("");
+    setIsRejecting(false);
+    setOptimisticallyRejectedIds((prev) => {
+      const next = new Set(prev);
+      next.add(reportId);
+      return next;
+    });
+    setPageSuccess(`Report ${shortId} rejected.`);
+
+    void rejectEmergencyReport(reportId, reason).catch((error: any) => {
+      setOptimisticallyRejectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(reportId);
+        return next;
+      });
+      setPageSuccess(null);
+      setPageError(error?.message || "Failed to reject report.");
+    });
   };
 
   const handleMoveAppReportToHistory = async (report: EmergencyReport) => {
@@ -1640,7 +1678,7 @@ function IntakeContent() {
                 <button
                   type="button"
                   disabled={isRejecting || !rejectReason.trim()}
-                  onClick={() => void handleConfirmRejectAppReport()}
+                  onClick={() => handleConfirmRejectAppReport()}
                   className="h-10 rounded-lg bg-red-600 px-4 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-50"
                 >
                   {isRejecting ? "Rejecting..." : "Reject Report"}
