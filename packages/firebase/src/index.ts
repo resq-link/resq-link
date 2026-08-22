@@ -264,9 +264,12 @@ export {
 
 // Operational messaging
 export {
+  countUnreadThreads,
   createDirectChat,
   createGroupChat,
   getMessagingParticipants,
+  isThreadUnread,
+  markThreadRead,
   sendChatMessage,
   subscribeToChatMessages,
   subscribeToChatThreads,

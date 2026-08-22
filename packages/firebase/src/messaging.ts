@@ -38,6 +38,8 @@ export interface ChatThreadRecord {
   lastMessageAt?: Date | Timestamp | null;
   createdAt?: Date | Timestamp;
   updatedAt?: Date | Timestamp;
+  /** Per-user read watermark, keyed by uid. */
+  readAt?: Record<string, Date | Timestamp | null>;
 }
 
 export interface ChatMessageRecord {
@@ -129,6 +131,7 @@ const toThreadRecord = (snapshot: DocumentData): ChatThreadRecord => {
     lastMessageAt: toDateValue(data.lastMessageAt),
     createdAt: toDateValue(data.createdAt) || new Date(),
     updatedAt: toDateValue(data.updatedAt) || undefined,
+    readAt: data.readAt || {},
   };
 };
 
@@ -212,10 +215,54 @@ async function createThread(input: {
   };
 }
 
+/**
+ * Find the existing one-to-one thread with this participant, if any.
+ *
+ * Filtered client-side off a single array-contains query so no composite index
+ * is required; a user's thread count is small enough for this to be cheap.
+ */
+async function findDirectChat(
+  currentUserId: string,
+  participantId: string
+): Promise<ChatThreadRecord | null> {
+  const snapshot = await getDocs(
+    query(
+      collection(getFirebaseFirestore(), 'chatThreads'),
+      where('participantIds', 'array-contains', currentUserId)
+    )
+  );
+
+  const match = snapshot.docs
+    .map(toThreadRecord)
+    .find(
+      (thread) =>
+        thread.type === 'direct' &&
+        thread.participantIds.length === 2 &&
+        thread.participantIds.includes(participantId)
+    );
+
+  return match ?? null;
+}
+
+/**
+ * Open the direct chat with this participant, reusing the existing thread.
+ *
+ * Previously this always created a new thread, so tapping a name twice split
+ * the conversation across duplicates — and a reply could land in a thread the
+ * other side was not looking at.
+ */
 export async function createDirectChat(participantId: string): Promise<ChatThreadRecord> {
+  const currentUser = ensureAuthenticated();
+  const normalizedId = participantId.trim();
+
+  if (normalizedId && normalizedId !== currentUser.uid) {
+    const existing = await findDirectChat(currentUser.uid, normalizedId);
+    if (existing) return existing;
+  }
+
   return createThread({
     type: 'direct',
-    participantIds: [participantId],
+    participantIds: [normalizedId],
   });
 }
 
@@ -340,6 +387,9 @@ export async function sendChatMessage(threadId: string, text: string): Promise<C
     lastMessageText: normalizedText,
     lastMessageAt: timestamp,
     updatedAt: timestamp,
+    // Stamp the sender's own watermark so their message never shows as unread
+    // to themselves.
+    [`readAt.${currentUser.uid}`]: timestamp,
   });
 
   return {
@@ -366,4 +416,55 @@ export async function getMessagingParticipants(): Promise<ChatParticipant[]> {
   });
 
   return participants.sort((left, right) => left.name.localeCompare(right.name));
+}
+
+
+/**
+ * Mark a thread as read up to now for the signed-in user.
+ *
+ * Read state lives in a `readAt` map on the thread rather than a subcollection
+ * so a single thread snapshot tells each client what is unread — no extra
+ * listener per thread. Writing it keeps participantIds/participantRoles/
+ * createdByUserId untouched, so the existing update rule already permits it.
+ */
+export async function markThreadRead(threadId: string): Promise<void> {
+  const currentUser = getFirebaseAuth().currentUser;
+  if (!currentUser || !threadId) return;
+
+  try {
+    await updateDoc(doc(getFirebaseFirestore(), 'chatThreads', threadId), {
+      [`readAt.${currentUser.uid}`]: Timestamp.now(),
+    });
+  } catch (error) {
+    // Read receipts are not worth surfacing to the user or blocking the UI.
+    console.error('Error marking thread read:', error);
+  }
+}
+
+/**
+ * Whether a thread holds messages this user has not seen.
+ *
+ * A thread with no messages is never unread, and a user's own message never
+ * marks their own thread unread because sending stamps their readAt.
+ */
+export function isThreadUnread(
+  thread: Pick<ChatThreadRecord, 'lastMessageAt' | 'readAt'> | null | undefined,
+  userId: string | null | undefined
+): boolean {
+  if (!thread || !userId) return false;
+  const lastMessage = toMillis(thread.lastMessageAt);
+  if (lastMessage === 0) return false;
+  return lastMessage > toMillis(thread.readAt?.[userId]);
+}
+
+/** How many of these threads carry unread messages for this user. */
+export function countUnreadThreads(
+  threads: ChatThreadRecord[],
+  userId: string | null | undefined
+): number {
+  if (!userId) return 0;
+  return threads.reduce(
+    (total, thread) => (isThreadUnread(thread, userId) ? total + 1 : total),
+    0
+  );
 }

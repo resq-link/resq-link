@@ -14,8 +14,11 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MessageCircle, Plus, Send, X } from "lucide-react-native";
 import {
+  countUnreadThreads,
   createDirectChat,
   getMessagingParticipants,
+  isThreadUnread,
+  markThreadRead,
   sendChatMessage,
   subscribeToChatMessages,
   subscribeToChatThreads,
@@ -117,6 +120,18 @@ export default function ResponderMessagingWidget() {
     });
   }, [isOpen, messages]);
 
+  const unreadCount = useMemo(
+    () => countUnreadThreads(threads, user?.uid),
+    [threads, user?.uid]
+  );
+
+  // Clear unread only for the thread actually on screen. messages.length is a
+  // dependency so a message arriving while it is open is marked read too.
+  useEffect(() => {
+    if (!isOpen || !selectedThreadId) return;
+    void markThreadRead(selectedThreadId);
+  }, [isOpen, selectedThreadId, messages.length]);
+
   const selectedThread = threads.find((thread) => thread.id === selectedThreadId) || null;
 
   const handleCreateDirect = async (participantId) => {
@@ -156,9 +171,20 @@ export default function ResponderMessagingWidget() {
         activeOpacity={0.88}
         onPress={() => setIsOpen(true)}
         style={[styles.launcher, { bottom: insets.bottom + 92 }]}
-        accessibilityLabel="Open operational messages"
+        accessibilityLabel={
+          unreadCount > 0
+            ? `Open operational messages, ${unreadCount} unread`
+            : "Open operational messages"
+        }
       >
         <MessageCircle size={24} color="#06111f" strokeWidth={2.4} />
+        {unreadCount > 0 ? (
+          <View style={styles.unreadBadge}>
+            <Text style={styles.unreadBadgeText}>
+              {unreadCount > 9 ? "9+" : String(unreadCount)}
+            </Text>
+          </View>
+        ) : null}
       </TouchableOpacity>
 
       <Modal visible={isOpen} animationType="slide" transparent={false} onRequestClose={() => setIsOpen(false)}>
@@ -228,15 +254,26 @@ export default function ResponderMessagingWidget() {
                 ListEmptyComponent={<Text style={styles.emptyText}>No chats yet.</Text>}
                 renderItem={({ item }) => {
                   const selected = selectedThreadId === item.id;
+                  const unread = isThreadUnread(item, user.uid);
                   return (
                     <TouchableOpacity
                       activeOpacity={0.86}
                       onPress={() => setSelectedThreadId(item.id || null)}
                       style={[styles.threadItem, selected && styles.threadItemActive]}
                     >
-                      <Text style={[styles.threadTitle, selected && styles.threadTitleActive]} numberOfLines={1}>
-                        {getThreadLabel(item, user.uid)}
-                      </Text>
+                      <View style={styles.threadTitleRow}>
+                        {unread ? <View style={styles.threadUnreadDot} /> : null}
+                        <Text
+                          style={[
+                            styles.threadTitle,
+                            selected && styles.threadTitleActive,
+                            unread && styles.threadTitleUnread,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {getThreadLabel(item, user.uid)}
+                        </Text>
+                      </View>
                       <Text style={styles.threadPreview} numberOfLines={1}>
                         {getThreadSubtitle(item, user.uid)}
                       </Text>
@@ -324,6 +361,25 @@ export default function ResponderMessagingWidget() {
 
 function createStyles(palette) {
   return StyleSheet.create({
+    unreadBadge: {
+      position: "absolute",
+      top: -3,
+      right: -3,
+      minWidth: 22,
+      height: 22,
+      borderRadius: 11,
+      paddingHorizontal: 5,
+      backgroundColor: "#ef4444",
+      borderWidth: 2,
+      borderColor: palette.background ?? "#06111f",
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    unreadBadgeText: {
+      color: "#ffffff",
+      fontSize: 11,
+      fontWeight: "800",
+    },
     launcher: {
       position: "absolute",
       right: 18,
@@ -426,6 +482,20 @@ function createStyles(palette) {
       borderBottomWidth: 1,
       borderBottomColor: palette.cardBorder,
       padding: 8,
+    },
+    threadTitleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 7,
+    },
+    threadUnreadDot: {
+      width: 8,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: "#ef4444",
+    },
+    threadTitleUnread: {
+      fontWeight: "800",
     },
     threadItem: {
       borderRadius: 16,

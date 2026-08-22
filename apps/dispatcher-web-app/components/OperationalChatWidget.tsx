@@ -5,9 +5,12 @@ import { usePathname } from 'next/navigation'
 import { Check, ChevronDown, Loader2, MessageCircle, Plus, Send, Users, X } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import {
+  countUnreadThreads,
   createDirectChat,
   createGroupChat,
   getMessagingParticipants,
+  isThreadUnread,
+  markThreadRead,
   sendChatMessage,
   subscribeToChatMessages,
   subscribeToChatThreads,
@@ -76,14 +79,17 @@ export default function OperationalChatWidget() {
   const [isSaving, setIsSaving] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
 
+  // Subscribe whenever a dispatcher is signed in, not only while the panel is
+  // open — otherwise an incoming responder message is invisible until someone
+  // happens to open the widget, which is exactly how messages got missed.
   useEffect(() => {
-    if (!user || !isOpen) return
+    if (!user) return
     const unsubscribe = subscribeToChatThreads((items) => {
       setThreads(items)
       setSelectedThreadId((current) => current || items[0]?.id || null)
     })
     return unsubscribe
-  }, [user, isOpen])
+  }, [user])
 
   useEffect(() => {
     if (!user || !isOpen) return
@@ -157,6 +163,19 @@ export default function OperationalChatWidget() {
       setIsSaving(false)
     }
   }
+
+  const unreadCount = useMemo(
+    () => countUnreadThreads(threads, user?.uid),
+    [threads, user?.uid]
+  )
+
+  // Only clear unread for a thread the dispatcher is actually looking at.
+  // Keyed on messages.length too, so a message arriving while the thread is
+  // open is marked read rather than lighting the badge behind their back.
+  useEffect(() => {
+    if (!isOpen || !selectedThreadId) return
+    void markThreadRead(selectedThreadId)
+  }, [isOpen, selectedThreadId, messages.length])
 
   const handleSend = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -277,7 +296,23 @@ export default function OperationalChatWidget() {
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="truncate text-sm font-bold">{getThreadLabel(thread, user.uid)}</span>
+                      <span className="flex min-w-0 items-center gap-2">
+                        {isThreadUnread(thread, user.uid) && (
+                          <span
+                            className="h-2 w-2 shrink-0 rounded-full bg-red-500"
+                            aria-label="Unread messages"
+                          />
+                        )}
+                        <span
+                          className={`truncate text-sm ${
+                            isThreadUnread(thread, user.uid)
+                              ? 'font-black text-slate-100'
+                              : 'font-bold'
+                          }`}
+                        >
+                          {getThreadLabel(thread, user.uid)}
+                        </span>
+                      </span>
                       <span className="text-[10px] uppercase tracking-wider text-slate-500">{thread.type}</span>
                     </div>
                     <p className="mt-1 truncate text-xs text-slate-500">{getThreadSubtitle(thread, user.uid)}</p>
@@ -364,14 +399,28 @@ export default function OperationalChatWidget() {
         type="button"
         onClick={() => setIsOpen((current) => !current)}
         className="fixed bottom-24 right-4 z-50 flex h-14 items-center gap-3 rounded-2xl border border-sky-400/30 bg-slate-900/95 px-4 text-slate-100 shadow-2xl shadow-black/30 backdrop-blur-xl transition-all hover:-translate-y-0.5 hover:border-sky-300 hover:bg-slate-800 sm:right-6"
-        aria-label={isOpen ? 'Collapse operational messages' : 'Open operational messages'}
+        aria-label={
+          isOpen
+            ? 'Collapse operational messages'
+            : `Open operational messages${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`
+        }
       >
-        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500 text-slate-950">
+        <span className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500 text-slate-950">
           {isOpen ? <ChevronDown size={20} aria-hidden /> : <MessageCircle size={20} aria-hidden />}
+          {!isOpen && unreadCount > 0 && (
+            <span
+              className="absolute -right-1.5 -top-1.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full border-2 border-slate-900 bg-red-500 px-1 text-[10px] font-black text-white"
+              aria-hidden
+            >
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
         </span>
         <span className="hidden flex-col items-start leading-none sm:flex">
           <span className="text-xs font-black uppercase tracking-[0.18em]">Messages</span>
-          <span className="mt-1 text-[10px] font-semibold text-slate-500">Ops chat</span>
+          <span className="mt-1 text-[10px] font-semibold text-slate-500">
+            {unreadCount > 0 ? `${unreadCount} unread` : 'Ops chat'}
+          </span>
         </span>
       </button>
     </>
