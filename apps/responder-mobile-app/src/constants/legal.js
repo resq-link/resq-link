@@ -9,5 +9,5 @@ export const LEGAL_URLS = {
   contact: `${LEGAL_BASE_URL}/contact`,
 };
 
-export const PRIVACY_CONTACT_EMAIL = "privacy@resq-link.com";
-export const SUPPORT_CONTACT_EMAIL = "privacy@resq-link.com";
+export const PRIVACY_CONTACT_EMAIL = "mvgumabay@spup.edu.ph";
+export const SUPPORT_CONTACT_EMAIL = "mvgumabay@spup.edu.ph";

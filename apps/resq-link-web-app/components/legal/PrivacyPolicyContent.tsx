@@ -164,8 +164,8 @@ export default function PrivacyPolicyContent() {
         </ul>
         <p>
           To exercise these rights, contact us at{' '}
-          <a href="mailto:privacy@resq-link.com" className="text-primary-400 underline-offset-2 hover:underline">
-            privacy@resq-link.com
+          <a href="mailto:mvgumabay@spup.edu.ph" className="text-primary-400 underline-offset-2 hover:underline">
+            mvgumabay@spup.edu.ph
           </a>
           . We may need to verify your identity before fulfilling requests. We will respond within the timeframes required
           by applicable law.
@@ -217,8 +217,8 @@ export default function PrivacyPolicyContent() {
         <p>
           <strong>RESQ-Link Privacy Office</strong><br />
           Email:{' '}
-          <a href="mailto:privacy@resq-link.com" className="text-primary-400 underline-offset-2 hover:underline">
-            privacy@resq-link.com
+          <a href="mailto:mvgumabay@spup.edu.ph" className="text-primary-400 underline-offset-2 hover:underline">
+            mvgumabay@spup.edu.ph
           </a>
           <br />
           Web:{' '}

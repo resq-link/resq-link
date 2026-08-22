@@ -19,8 +19,8 @@ export default function DataPrivacyNoticeContent() {
         </p>
         <p>
           <strong>Data Protection contact:</strong>{' '}
-          <a href="mailto:privacy@resq-link.com" className="text-primary-400 underline-offset-2 hover:underline">
-            privacy@resq-link.com
+          <a href="mailto:mvgumabay@spup.edu.ph" className="text-primary-400 underline-offset-2 hover:underline">
+            mvgumabay@spup.edu.ph
           </a>
         </p>
       </LegalSection>
@@ -90,8 +90,8 @@ export default function DataPrivacyNoticeContent() {
         </ul>
         <p>
           Submit requests to{' '}
-          <a href="mailto:privacy@resq-link.com" className="text-primary-400 underline-offset-2 hover:underline">
-            privacy@resq-link.com
+          <a href="mailto:mvgumabay@spup.edu.ph" className="text-primary-400 underline-offset-2 hover:underline">
+            mvgumabay@spup.edu.ph
           </a>
           . We may verify your identity before acting on a request.
         </p>
@@ -133,8 +133,8 @@ export default function DataPrivacyNoticeContent() {
       <LegalSection title="Questions and NPC complaints">
         <p>
           Privacy inquiries:{' '}
-          <a href="mailto:privacy@resq-link.com" className="text-primary-400 underline-offset-2 hover:underline">
-            privacy@resq-link.com
+          <a href="mailto:mvgumabay@spup.edu.ph" className="text-primary-400 underline-offset-2 hover:underline">
+            mvgumabay@spup.edu.ph
           </a>
         </p>
         <p>

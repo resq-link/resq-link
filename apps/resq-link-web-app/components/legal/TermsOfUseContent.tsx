@@ -128,8 +128,8 @@ export default function TermsOfUseContent() {
       <LegalSection title="14. Contact">
         <p>
           Questions about these Terms:{' '}
-          <a href="mailto:privacy@resq-link.com" className="text-primary-400 underline-offset-2 hover:underline">
-            privacy@resq-link.com
+          <a href="mailto:mvgumabay@spup.edu.ph" className="text-primary-400 underline-offset-2 hover:underline">
+            mvgumabay@spup.edu.ph
           </a>
           {' '}or{' '}
           <a href="/contact" className="text-primary-400 underline-offset-2 hover:underline">

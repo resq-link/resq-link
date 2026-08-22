@@ -14,8 +14,8 @@ export default function ContactPage() {
           <h2 className="mt-4 font-semibold text-slate-100">Platform support</h2>
           <p className="mt-2 text-sm leading-6">
             Email{' '}
-            <a href="mailto:privacy@resq-link.com" className="text-primary-400 hover:underline">
-              privacy@resq-link.com
+            <a href="mailto:mvgumabay@spup.edu.ph" className="text-primary-400 hover:underline">
+              mvgumabay@spup.edu.ph
             </a>{' '}
             for account, verification, or general assistance.
           </p>
@@ -25,8 +25,8 @@ export default function ContactPage() {
           <h2 className="mt-4 font-semibold text-slate-100">Privacy & data requests</h2>
           <p className="mt-2 text-sm leading-6">
             Data subject requests under the Philippine Data Privacy Act:{' '}
-            <a href="mailto:privacy@resq-link.com" className="text-primary-400 hover:underline">
-              privacy@resq-link.com
+            <a href="mailto:mvgumabay@spup.edu.ph" className="text-primary-400 hover:underline">
+              mvgumabay@spup.edu.ph
             </a>
             . See our{' '}
             <a href="/data-privacy" className="text-primary-400 hover:underline">
