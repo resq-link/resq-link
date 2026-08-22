@@ -1,62 +1,138 @@
-import { useEffect, useRef } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import useUserStore from "@/store/userStore";
 import { useAssignedEmergencies } from "@/modules/incidents/hooks/useAssignedEmergencies";
 import {
+  PRIORITY_RANK,
+  acknowledgeIncidentAlert,
   normalizePriority,
   requiresForcedAlert,
 } from "@packages/firebase";
 import {
   playPriorityAlert,
+  releaseAlertResources,
   stopPriorityAlerts,
   shouldAlertForIncident,
 } from "@/services/priorityAlertService";
+import {
+  dismissIncidentNotifications,
+  registerForIncidentPush,
+  unregisterIncidentPush,
+} from "@/services/pushNotificationService";
+import IncidentAlertModal from "@/modules/incidents/components/IncidentAlertModal";
+
+const IncidentAlertContext = createContext({
+  activeAlert: null,
+  acknowledge: async () => {},
+  isAcknowledging: false,
+});
+
+export const useIncidentAlert = () => useContext(IncidentAlertContext);
 
 /**
- * Plays tiered haptic alerts when new assigned incidents arrive (responder field ops).
+ * Drives the assignment alarm: haptics, looping sound, and the blocking
+ * acknowledge sheet.
+ *
+ * State-driven rather than event-driven on purpose. The alarm reflects "is
+ * there an unacknowledged incident assigned to me right now", so it also
+ * resumes correctly after an app restart or a reconnect — an alert that goes
+ * quiet because the process died is exactly the failure this feature exists to
+ * prevent.
  */
 export default function PriorityAlertProvider({ children }) {
   const { user } = useUserStore();
   const { cases } = useAssignedEmergencies(user?.uid);
-  const seenIdsRef = useRef(new Set());
-  const initialLoadRef = useRef(true);
+  const [isAcknowledging, setIsAcknowledging] = useState(false);
+  const alarmingIdRef = useRef(null);
 
+  // Register this device for remote push while a responder is signed in.
+  // Token removal is handled by the sign-out effect below, not by cleanup here,
+  // so a re-render never detaches a still-signed-in device.
   useEffect(() => {
-    if (!user?.uid) {
-      stopPriorityAlerts();
-      seenIdsRef.current = new Set();
-      initialLoadRef.current = true;
+    if (!user?.uid) return;
+    void registerForIncidentPush().catch(() => {});
+  }, [user?.uid]);
+
+  /** Unacknowledged, still-open incidents assigned to this responder. */
+  const alertingCases = useMemo(() => {
+    if (!user?.uid) return [];
+    return cases
+      .filter((c) => c.resolutionStatus === "open" && c.status !== "resolved")
+      .filter((c) => c.id && shouldAlertForIncident(c, user.uid))
+      .sort(
+        (a, b) =>
+          (PRIORITY_RANK[normalizePriority(b.priority)] ?? 0) -
+          (PRIORITY_RANK[normalizePriority(a.priority)] ?? 0)
+      );
+  }, [cases, user?.uid]);
+
+  const activeAlert = alertingCases[0] ?? null;
+
+  // Start, switch, or stop the alarm as the top unacknowledged incident changes.
+  useEffect(() => {
+    if (!user?.uid || !activeAlert) {
+      if (alarmingIdRef.current) {
+        alarmingIdRef.current = null;
+        void stopPriorityAlerts();
+      }
       return;
     }
 
-    const openCases = cases.filter(
-      (c) => c.resolutionStatus === "open" && c.status !== "resolved"
-    );
+    if (alarmingIdRef.current === activeAlert.id) return;
 
-    if (!initialLoadRef.current) {
-      openCases.forEach((incident) => {
-        if (!incident.id || seenIdsRef.current.has(incident.id)) return;
-        if (!shouldAlertForIncident(incident)) return;
-        seenIdsRef.current.add(incident.id);
-        const priority = normalizePriority(incident.priority);
-        void playPriorityAlert(priority, {
-          intensified: requiresForcedAlert(priority),
-        });
-      });
-    } else {
-      initialLoadRef.current = false;
-    }
-
-    openCases.forEach((c) => {
-      if (c.id) seenIdsRef.current.add(c.id);
+    alarmingIdRef.current = activeAlert.id;
+    const priority = normalizePriority(activeAlert.priority);
+    void playPriorityAlert(priority, {
+      intensified: requiresForcedAlert(priority),
     });
+  }, [activeAlert, user?.uid]);
 
-    const needsRepeat = openCases.some((c) => shouldAlertForIncident(c));
-    if (!needsRepeat) {
-      stopPriorityAlerts();
+  // Signing out must silence the device and detach its push token.
+  useEffect(() => {
+    if (user?.uid) return;
+    alarmingIdRef.current = null;
+    void stopPriorityAlerts();
+    void unregisterIncidentPush();
+  }, [user?.uid]);
+
+  useEffect(() => () => releaseAlertResources(), []);
+
+  const acknowledge = useCallback(async () => {
+    const incidentId = activeAlert?.id;
+    if (!incidentId) return;
+
+    setIsAcknowledging(true);
+    // Silence immediately — the responder has demonstrably seen it, and waiting
+    // on the network round-trip would keep the alarm going for no reason.
+    alarmingIdRef.current = null;
+    await stopPriorityAlerts();
+
+    try {
+      await acknowledgeIncidentAlert(incidentId);
+      void dismissIncidentNotifications(incidentId);
+    } catch (error) {
+      // The write failed, so the snapshot will still list this incident as
+      // unacknowledged and the alarm will resume on the next tick. That is the
+      // right outcome: an unrecorded acknowledgement should not stay silent.
+      alarmingIdRef.current = null;
+      console.warn("[alert] Failed to acknowledge:", error?.message ?? error);
+    } finally {
+      setIsAcknowledging(false);
     }
-  }, [cases, user?.uid]);
+  }, [activeAlert?.id]);
 
-  useEffect(() => () => stopPriorityAlerts(), []);
+  const value = useMemo(
+    () => ({ activeAlert, acknowledge, isAcknowledging }),
+    [activeAlert, acknowledge, isAcknowledging]
+  );
 
-  return children;
+  return (
+    <IncidentAlertContext.Provider value={value}>
+      {children}
+      <IncidentAlertModal
+        incident={activeAlert}
+        onAcknowledge={acknowledge}
+        isAcknowledging={isAcknowledging}
+      />
+    </IncidentAlertContext.Provider>
+  );
 }

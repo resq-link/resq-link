@@ -1,5 +1,6 @@
 import {
   Timestamp,
+  arrayUnion,
   addDoc,
   collection,
   doc,
@@ -97,6 +98,8 @@ export interface IncidentRecord {
   acknowledgedAt?: Date | Timestamp | null;
   acknowledgedBy?: string | null;
   acknowledgedByDispatcherId?: string | null;
+  responderAlertAcknowledgedBy?: string[];
+  responderAlertAcknowledgedAt?: Date | Timestamp | null;
   escalationLevel?: number;
   lastAlertAt?: Date | Timestamp | null;
   supervisorNotifiedAt?: Date | Timestamp | null;
@@ -347,6 +350,12 @@ const toIncidentRecord = (snapshot: DocumentData): IncidentRecord => {
     acknowledgedAt: data.acknowledgedAt?.toDate ? data.acknowledgedAt.toDate() : null,
     acknowledgedBy: data.acknowledgedBy || null,
     acknowledgedByDispatcherId: data.acknowledgedByDispatcherId || null,
+    responderAlertAcknowledgedBy: Array.isArray(data.responderAlertAcknowledgedBy)
+      ? data.responderAlertAcknowledgedBy
+      : [],
+    responderAlertAcknowledgedAt: data.responderAlertAcknowledgedAt?.toDate
+      ? data.responderAlertAcknowledgedAt.toDate()
+      : null,
     escalationLevel: typeof data.escalationLevel === 'number' ? data.escalationLevel : 0,
     lastAlertAt: data.lastAlertAt?.toDate ? data.lastAlertAt.toDate() : null,
     supervisorNotifiedAt: data.supervisorNotifiedAt?.toDate
@@ -1686,4 +1695,41 @@ export async function declineIncident(
   
   const updatedSnap = await getDoc(incidentRef);
   return updatedSnap.data() as IncidentRecord;
+}
+
+
+/**
+ * Responder-side alert acknowledgement.
+ *
+ * Kept separate from the dispatcher's `alertAcknowledged` on purpose: a
+ * dispatcher clearing their console must not silence the alarm on a responder's
+ * phone. Because an incident can carry several responders, this records who
+ * acknowledged rather than a single flag, so each device stops only when that
+ * responder has actually seen it.
+ */
+export async function acknowledgeIncidentAlert(incidentId: string): Promise<void> {
+  const currentUser = ensureAuthenticated();
+  const incidentRef = doc(getFirebaseFirestore(), 'incidents', incidentId);
+  const snap = await getDoc(incidentRef);
+  if (!snap.exists()) throw new Error('Incident not found');
+
+  const incident = snap.data() as IncidentRecord;
+  if (!(incident.assignedResourceIds || []).includes(currentUser.uid)) {
+    throw new Error('Only an assigned responder can acknowledge this alert');
+  }
+
+  await updateDoc(incidentRef, {
+    responderAlertAcknowledgedBy: arrayUnion(currentUser.uid),
+    responderAlertAcknowledgedAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+  });
+}
+
+/** Has this responder already acknowledged the alert for this incident? */
+export function hasResponderAcknowledgedAlert(
+  incident: Pick<IncidentRecord, 'responderAlertAcknowledgedBy'> | null | undefined,
+  responderId: string | null | undefined
+): boolean {
+  if (!incident || !responderId) return false;
+  return (incident.responderAlertAcknowledgedBy || []).includes(responderId);
 }
