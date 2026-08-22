@@ -50,6 +50,8 @@ export interface ResourceRecord {
   stationLongitude?: number | null;
   currentLatitude?: number | null;
   currentLongitude?: number | null;
+  /** When currentLatitude/Longitude were last reported by the crewing responder. */
+  lastLocationAt?: Date | Timestamp | null;
   primaryResponderId?: string | null;
   assignedResponderIds?: string[];
   assignedResponderId?: string | null;
@@ -79,6 +81,7 @@ const convertFirestoreDoc = (snapshot: DocumentData): ResourceRecord => {
     stationLongitude: data.stationLongitude ?? null,
     currentLatitude: data.currentLatitude ?? null,
     currentLongitude: data.currentLongitude ?? null,
+    lastLocationAt: data.lastLocationAt?.toDate ? data.lastLocationAt.toDate() : null,
     primaryResponderId: data.primaryResponderId || data.assignedResponderId || null,
     assignedResponderIds: Array.isArray(data.assignedResponderIds)
       ? data.assignedResponderIds.filter((id: unknown): id is string => typeof id === 'string' && id.trim().length > 0)

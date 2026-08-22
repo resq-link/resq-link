@@ -374,3 +374,14 @@ export {
   removeResponderPushToken,
 } from './pushTokens';
 export type { PushPlatform, ResponderPushToken } from './pushTokens';
+
+// Responder duty — which vehicle a responder is crewing
+export {
+  startResponderDuty,
+  endResponderDuty,
+  subscribeToResponderDuty,
+  updateResourceLocation,
+  isPrimaryResponder,
+  getResourceCrewIds,
+} from "./responderDuty";
+export type { ResponderDutyState } from "./responderDuty";

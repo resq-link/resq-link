@@ -45,6 +45,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/query/queryKeys";
 import { useAssignedEmergencies } from "@/modules/incidents/hooks/useAssignedEmergencies";
 import { useOnlineResponderCount } from "@/modules/dashboard/hooks/useOnlineResponderCount";
+import { useResponderDuty } from "@/modules/dashboard/hooks/useResponderDuty";
+import DutyResourceCard from "@/modules/dashboard/components/DutyResourceCard";
 import { useDashboardLocationTracking } from "@/modules/dashboard/hooks/useDashboardLocationTracking";
 import ResponderCallPanel from "@/modules/calls/components/ResponderCallPanel";
 import {
@@ -116,6 +118,7 @@ export default function DashboardView() {
   );
 
   const { count: onlineResponderCount } = useOnlineResponderCount(!!user);
+  const duty = useResponderDuty(authUid);
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -180,7 +183,8 @@ export default function DashboardView() {
   }, [user, router]);
 
   useDashboardLocationTracking(
-    !!(user && getFirebaseAuth().currentUser && !locationPaused)
+    !!(user && getFirebaseAuth().currentUser && !locationPaused),
+    { resourceId: duty.duty.resourceId, isPrimary: duty.isPrimary },
   );
 
   useFocusEffect(
@@ -389,6 +393,20 @@ export default function DashboardView() {
               iconWellBg={D.statCardOnlineIconBg}
             />
           </View>
+        </View>
+
+        <View style={{ paddingHorizontal: spacing.lg }}>
+          <DutyResourceCard
+            D={D}
+            activeResource={duty.activeResource}
+            claimableResources={duty.claimableResources}
+            isPrimary={duty.isPrimary}
+            isSaving={duty.isSaving}
+            error={duty.error}
+            clearError={duty.clearError}
+            onGoOnDuty={duty.goOnDuty}
+            onGoOffDuty={duty.goOffDuty}
+          />
         </View>
 
         <View style={[styles.mainBlock, { paddingHorizontal: spacing.lg }]}>
