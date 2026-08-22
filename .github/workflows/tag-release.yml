@@ -1,7 +1,9 @@
 name: Tag from release
+
+# Requires a `release` branch and CI_PUSH_TOKEN secret in repo settings.
 on:
   push:
-    branches: [ release ]
+    branches: [release]
 
 concurrency:
   group: tag-${{ github.ref }}
@@ -10,12 +12,11 @@ concurrency:
 jobs:
   tag:
     name: Auto Tag Release
-    runs-on: warp-ubuntu-2204-x64-4x
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          # Use the PAT so that pushes from this job can trigger other workflows
           token: ${{ secrets.CI_PUSH_TOKEN }}
           fetch-depth: 1
           fetch-tags: true
@@ -42,4 +43,3 @@ jobs:
         run: |
           git tag -a "${{ steps.calc.outputs.tag }}" -m "Release ${{ steps.calc.outputs.tag }} from ${GITHUB_SHA}"
           git push origin "${{ steps.calc.outputs.tag }}"
-
