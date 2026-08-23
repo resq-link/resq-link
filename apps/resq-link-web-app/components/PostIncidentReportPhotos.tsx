@@ -1,46 +1,63 @@
 'use client';
 
-import PostIncidentReportPhoto from '@/components/PostIncidentReportPhoto';
+import IncidentScenePhotos from '@/components/incident-media/IncidentScenePhotos';
 
 type PostIncidentReportPhotosProps = {
+  /** Pre-migration on-scene photo stored in postIncidentReport.photoUrl */
+  onScenePhotoUrl?: string | null;
   actionPhotoUrl?: string | null;
-  /** Pre-migration post-report photoUrl — shown read-only when distinct from action photo */
-  legacyPhotoUrl?: string | null;
+  onScenePhotoBy?: string | null;
 };
 
 export default function PostIncidentReportPhotos({
+  onScenePhotoUrl,
   actionPhotoUrl,
-  legacyPhotoUrl,
+  onScenePhotoBy,
 }: PostIncidentReportPhotosProps) {
-  const showLegacy =
-    Boolean(legacyPhotoUrl?.trim()) && legacyPhotoUrl?.trim() !== actionPhotoUrl?.trim();
+  const onScene = onScenePhotoUrl?.trim() || null;
+  const action = actionPhotoUrl?.trim() || null;
 
-  if (!actionPhotoUrl?.trim() && !showLegacy) {
+  if (!onScene && !action) {
     return (
-      <p className="text-[11px] italic text-slate-500">No action photo submitted.</p>
+      <div className="border-t border-slate-800/60 pt-3">
+        <p className="text-[11px] italic text-slate-500">No responder photos submitted.</p>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-3">
-      {actionPhotoUrl?.trim() ? (
-        <PostIncidentReportPhoto photoUrl={actionPhotoUrl} label="Action Photo" compact />
-      ) : (
-        <p className="text-[11px] italic text-slate-500">No action photo submitted.</p>
-      )}
-
-      {showLegacy ? (
-        <div className="rounded-lg border border-dashed border-slate-700/80 bg-slate-950/40 p-2">
-          <p className="mb-2 text-[9px] font-bold uppercase tracking-widest text-slate-500">
-            Legacy report photo (read-only)
-          </p>
-          <PostIncidentReportPhoto photoUrl={legacyPhotoUrl} label="Legacy report photo" compact hideHint />
-        </div>
-      ) : null}
-
-      {actionPhotoUrl?.trim() || showLegacy ? (
-        <p className="text-[10px] text-slate-500">Click to view full image</p>
-      ) : null}
+    <div className="border-t border-slate-800/60 pt-3">
+      <div className="flex flex-row flex-nowrap items-start gap-4 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:thin]">
+        {onScene ? (
+          <div className="shrink-0">
+            <IncidentScenePhotos
+              imageUrls={[onScene]}
+              title="On-Scene Photo"
+              layout="row"
+              hideHint
+              photoAltLabel="On-scene photo"
+            />
+            {onScenePhotoBy ? (
+              <p className="mt-1 text-[10px] text-slate-500">
+                By{' '}
+                <span className="font-medium text-slate-400">{onScenePhotoBy}</span>
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+        {action ? (
+          <div className="shrink-0">
+            <IncidentScenePhotos
+              imageUrls={[action]}
+              title="Action Photo"
+              layout="row"
+              hideHint
+              photoAltLabel="Action photo"
+            />
+          </div>
+        ) : null}
+      </div>
+      <p className="mt-2 text-[10px] text-slate-500">Click to view full image</p>
     </div>
   );
 }

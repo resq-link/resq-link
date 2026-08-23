@@ -454,6 +454,21 @@ export default function IntakeDetailView({
     );
   }, [report?.postIncidentReport, incident?.postIncidentReport, associatedReports]);
 
+  const responderOnScenePhotoUrl = useMemo(() => {
+    const fromAssessment = sceneAssessmentContext.assessment?.scenePhotoUrl?.trim() || null;
+    if (fromAssessment) return fromAssessment;
+
+    const legacyPhoto = postIncidentReport?.photoUrl?.trim() || null;
+    const actionPhoto = postIncidentReport?.actionPhotoUrl?.trim() || null;
+    if (legacyPhoto && legacyPhoto !== actionPhoto) return legacyPhoto;
+
+    return null;
+  }, [
+    sceneAssessmentContext.assessment?.scenePhotoUrl,
+    postIncidentReport?.photoUrl,
+    postIncidentReport?.actionPhotoUrl,
+  ]);
+
   const showPostReportSection = useMemo(() => {
     const status = report?.status || incident?.status;
     const resolutionStatus = incident?.resolutionStatus;
@@ -1235,12 +1250,12 @@ export default function IntakeDetailView({
                 </div>
 
                 <PostIncidentReportPhotos
+                  onScenePhotoUrl={responderOnScenePhotoUrl}
                   actionPhotoUrl={postIncidentReport.actionPhotoUrl}
-                  legacyPhotoUrl={
-                    postIncidentReport.photoUrl &&
-                    postIncidentReport.photoUrl !== postIncidentReport.actionPhotoUrl
-                      ? postIncidentReport.photoUrl
-                      : null
+                  onScenePhotoBy={
+                    sceneAssessmentContext.assessment?.updatedByName ||
+                    postIncidentReport.submittedByName ||
+                    null
                   }
                 />
               </div>
@@ -1269,6 +1284,7 @@ export default function IntakeDetailView({
               !sceneAssessmentContext.assessment &&
               (item?.channel === "incident" ? incidentsLoading : false)
             }
+            hideScenePhoto={Boolean(postIncidentReport && responderOnScenePhotoUrl)}
           />
         </DetailSection>
 

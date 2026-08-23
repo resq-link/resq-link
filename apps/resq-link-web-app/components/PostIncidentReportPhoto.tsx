@@ -12,7 +12,7 @@ type PostIncidentReportPhotoProps = {
 
 export default function PostIncidentReportPhoto({
   photoUrl,
-  label = 'Scene photo',
+  label = 'Action Photo',
   compact = false,
   className,
   hideHint = false,

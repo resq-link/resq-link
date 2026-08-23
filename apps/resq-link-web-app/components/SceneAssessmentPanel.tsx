@@ -15,6 +15,8 @@ type SceneAssessmentPanelProps = {
   isLoading?: boolean;
   error?: string | null;
   onRetry?: () => void;
+  /** When the on-scene photo is shown in Post Report, hide it here to avoid duplication */
+  hideScenePhoto?: boolean;
 };
 
 const getDateLabel = (value: unknown) => {
@@ -34,6 +36,7 @@ export default function SceneAssessmentPanel({
   isLoading = false,
   error = null,
   onRetry,
+  hideScenePhoto = false,
 }: SceneAssessmentPanelProps) {
   const entries = useMemo(
     () => getSceneAssessmentEntries(assessment, incidentType),
@@ -83,9 +86,9 @@ export default function SceneAssessmentPanel({
 
   return (
     <div>
-      {assessment?.updatedAt || assessment?.updatedByName ? (
+      {assessment?.updatedAt || (assessment?.updatedByName && !assessment?.scenePhotoUrl) ? (
         <div className="mb-3 space-y-0.5 text-xs text-emerald-400">
-          {assessment.updatedByName ? (
+          {assessment.updatedByName && !assessment.scenePhotoUrl ? (
             <p>
               Submitted by{' '}
               <span className="font-medium text-emerald-300">{assessment.updatedByName}</span>
@@ -108,18 +111,29 @@ export default function SceneAssessmentPanel({
         ))}
       </div>
 
-      <div className="mt-4 border-t border-slate-800/80 pt-3">
-        {assessment?.scenePhotoUrl ? (
-          <IncidentScenePhotos
-            imageUrls={[assessment.scenePhotoUrl]}
-            title="On-Scene Photo"
-            layout="stack"
-            emptyMessage=""
-          />
-        ) : (
-          <p className="text-[11px] italic text-slate-500">No on-scene photo submitted.</p>
-        )}
-      </div>
+      {!hideScenePhoto ? (
+        <div className="mt-4 border-t border-slate-800/80 pt-3">
+          {assessment?.scenePhotoUrl ? (
+            <div>
+              <IncidentScenePhotos
+                imageUrls={[assessment.scenePhotoUrl]}
+                title="On-Scene Photo"
+                layout="row"
+                emptyMessage=""
+                photoAltLabel="On-scene photo"
+              />
+              {assessment.updatedByName ? (
+                <p className="mt-1 text-[10px] text-slate-500">
+                  By{' '}
+                  <span className="font-medium text-slate-400">{assessment.updatedByName}</span>
+                </p>
+              ) : null}
+            </div>
+          ) : (
+            <p className="text-[11px] italic text-slate-500">No on-scene photo submitted.</p>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }

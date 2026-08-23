@@ -19,6 +19,8 @@ type IncidentScenePhotosProps = {
   compact?: boolean;
   /** Hide the "Click to view full image" hint (use when grouped with other photos) */
   hideHint?: boolean;
+  /** Accessible label for thumbnails (defaults to "Scene photo") */
+  photoAltLabel?: string;
   onViewerOpenChange?: (open: boolean) => void;
 };
 
@@ -36,6 +38,7 @@ function ScenePhotoThumbnail({
   onOpen,
   compact = false,
   inRow = false,
+  photoAltLabel = 'Scene photo',
 }: {
   url: string;
   index: number;
@@ -43,9 +46,10 @@ function ScenePhotoThumbnail({
   onOpen: () => void;
   compact?: boolean;
   inRow?: boolean;
+  photoAltLabel?: string;
 }) {
   const { src, loadFailed, isLoading, handleLoad, handleError, retry } = useIncidentPhotoUrl(url);
-  const alt = total === 1 ? 'Scene photo' : `Scene photo ${index + 1}`;
+  const alt = total === 1 ? photoAltLabel : `${photoAltLabel} ${index + 1}`;
   const sizeClass = inRow
     ? compact
       ? PREVIEW_SIZE.rowCompact
@@ -61,7 +65,7 @@ function ScenePhotoThumbnail({
           inRow ? 'w-[11rem] shrink-0' : 'w-full max-w-sm'
         }`}
       >
-        <p className="text-xs font-medium text-slate-400">Unable to load scene photo</p>
+        <p className="text-xs font-medium text-slate-400">Unable to load photo</p>
         <button
           type="button"
           onClick={retry}
@@ -159,6 +163,7 @@ export default function IncidentScenePhotos({
   layout = 'stack',
   compact = false,
   hideHint = false,
+  photoAltLabel = 'Scene photo',
   onViewerOpenChange,
 }: IncidentScenePhotosProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -196,6 +201,7 @@ export default function IncidentScenePhotos({
             total={imageUrls.length}
             compact={compact}
             inRow={inRow}
+            photoAltLabel={photoAltLabel}
             onOpen={() => setLightboxIndex(index)}
           />
         ))}
