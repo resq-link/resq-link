@@ -14,7 +14,7 @@ In-app: **Settings → Security** or **Settings → About → Privacy & Security
 
 | Field | Value |
 |-------|--------|
-| App name | RESQ-Link Responder |
+| App name | RESQ Responder |
 | Bundle ID | `com.tuguegarao.resqlink.responder` |
 | ASC App ID | `6804334951` |
 | EAS project | `12355ad0-d170-4727-9799-dba31b6d403b` |
