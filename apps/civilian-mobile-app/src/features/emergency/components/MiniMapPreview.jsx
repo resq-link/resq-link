@@ -1,10 +1,13 @@
 import React, { memo } from "react";
 import { View, Text } from "react-native";
-import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
+import MapView, { Marker } from "react-native-maps";
 import { MapPin } from "lucide-react-native";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useThemedStyles } from "@/hooks/useThemedStyles";
-import { canRenderGoogleMapsProvider } from "@/utils/nativeMapConfig";
+import {
+  canRenderGoogleMapsProvider,
+  getNativeMapProvider,
+} from "@/utils/nativeMapConfig";
 
 function MiniMapPreview({ latitude, longitude, mapRegion, onPin, interactive = false }) {
   const { reportTheme } = useAppTheme();
@@ -58,7 +61,7 @@ function MiniMapPreview({ latitude, longitude, mapRegion, onPin, interactive = f
 
   return (
     <MapView
-      provider={PROVIDER_GOOGLE}
+      provider={getNativeMapProvider()}
       style={styles.map}
       region={mapRegion}
       scrollEnabled={interactive}

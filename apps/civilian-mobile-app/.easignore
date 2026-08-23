@@ -9,7 +9,11 @@ dist/
 web-build/
 expo-env.d.ts
 
-# Native
+# Native projects — generate on EAS via prebuild (match responder-mobile-app)
+/ios/
+/android/
+
+# Native signing artifacts
 *.orig.*
 *.jks
 *.p8

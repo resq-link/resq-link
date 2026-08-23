@@ -62,6 +62,10 @@ resolve_firebase_value() {
       for src in EXPO_PUBLIC_FIREBASE_APP_ID FIREBASE_APP_ID; do
         get_env "$src" 2>/dev/null && return 0
       done ;;
+    GOOGLE_MAPS_API_KEY)
+      for src in EXPO_PUBLIC_GOOGLE_MAPS_API_KEY GOOGLE_MAPS_API_KEY; do
+        get_env "$src" 2>/dev/null && return 0
+      done ;;
   esac
   return 1
 }
@@ -73,6 +77,7 @@ EAS_NAMES=(
   FIREBASE_STORAGE_BUCKET
   FIREBASE_MESSAGING_SENDER_ID
   FIREBASE_APP_ID
+  GOOGLE_MAPS_API_KEY
 )
 
 cd "$ROOT"

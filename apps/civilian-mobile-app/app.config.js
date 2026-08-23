@@ -54,15 +54,39 @@ module.exports = ({ config }) => {
 
   const plugins = (baseConfig.plugins ?? []).filter((plugin) => {
     const name = Array.isArray(plugin) ? plugin[0] : plugin;
-    return name !== 'expo-navigation-bar';
+    return name !== 'expo-navigation-bar' && name !== 'react-native-maps';
   });
+
+  if (googleMapsApiKey) {
+    plugins.push([
+      'react-native-maps',
+      {
+        iosGoogleMapsApiKey: googleMapsApiKey,
+        androidGoogleMapsApiKey: googleMapsApiKey,
+      },
+    ]);
+  }
 
   if (isAndroidBuild) {
     plugins.push(navigationBarPlugin);
   }
 
+  const androidConfig = googleMapsApiKey
+    ? {
+        ...baseConfig.android,
+        config: {
+          ...baseConfig.android?.config,
+          googleMaps: {
+            ...baseConfig.android?.config?.googleMaps,
+            apiKey: googleMapsApiKey,
+          },
+        },
+      }
+    : baseConfig.android;
+
   return {
     ...baseConfig,
+    android: androidConfig,
     plugins,
     extra: {
       ...baseConfig.extra,
