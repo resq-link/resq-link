@@ -6,7 +6,7 @@ import {
   getDoc,
   updateDoc,
 } from 'firebase/firestore';
-import { getFirebaseAuth, getFirebaseFirestore } from './config';
+import { getFirebaseAuth, getFirebaseFirestore, waitForFirebaseAuthUser } from './config';
 
 /**
  * Expo push tokens for responder devices.
@@ -32,12 +32,12 @@ export type CivilianPushToken = {
   updatedAt: Timestamp | Date | null;
 };
 
-const ensureAuthenticated = () => {
-  const currentUser = getFirebaseAuth().currentUser;
-  if (!currentUser) {
-    throw new Error('User must be authenticated to manage push tokens');
-  }
-  return currentUser;
+const resolveAuthUid = async (explicitUid?: string): Promise<string | null> => {
+  if (explicitUid?.trim()) return explicitUid.trim();
+  const auth = getFirebaseAuth();
+  if (auth.currentUser?.uid) return auth.currentUser.uid;
+  const user = await waitForFirebaseAuthUser();
+  return user?.uid || null;
 };
 
 const dispatcherRef = (uid: string) => doc(getFirebaseFirestore(), 'dispatchers', uid);
@@ -64,13 +64,19 @@ const readUserTokens = async (uid: string): Promise<CivilianPushToken[]> => {
  */
 export async function saveResponderPushToken(
   token: string,
-  platform: PushPlatform
+  platform: PushPlatform,
+  explicitUid?: string
 ): Promise<void> {
   const trimmed = token.trim();
   if (!trimmed) return;
 
-  const currentUser = ensureAuthenticated();
-  const existing = await readTokens(currentUser.uid);
+  const uid = await resolveAuthUid(explicitUid);
+  if (!uid) {
+    console.warn('[pushTokens] No authenticated responder found to save push token.');
+    return;
+  }
+
+  const existing = await readTokens(uid);
   const match = existing.find((entry) => entry?.token === trimmed);
   if (match && match.platform === platform) {
     return;
@@ -78,12 +84,12 @@ export async function saveResponderPushToken(
 
   const stale = existing.filter((entry) => entry?.token === trimmed);
   if (stale.length > 0) {
-    await updateDoc(dispatcherRef(currentUser.uid), {
+    await updateDoc(dispatcherRef(uid), {
       pushTokens: arrayRemove(...stale),
     });
   }
 
-  await updateDoc(dispatcherRef(currentUser.uid), {
+  await updateDoc(dispatcherRef(uid), {
     pushTokens: arrayUnion({
       token: trimmed,
       platform,
@@ -94,19 +100,19 @@ export async function saveResponderPushToken(
 }
 
 /** Drop this device's token — call on sign-out so alerts stop reaching it. */
-export async function removeResponderPushToken(token: string): Promise<void> {
+export async function removeResponderPushToken(token: string, explicitUid?: string): Promise<void> {
   const trimmed = token.trim();
   if (!trimmed) return;
 
-  const currentUser = getFirebaseAuth().currentUser;
-  if (!currentUser) return;
+  const uid = await resolveAuthUid(explicitUid);
+  if (!uid) return;
 
-  const stale = (await readTokens(currentUser.uid)).filter(
+  const stale = (await readTokens(uid)).filter(
     (entry) => entry?.token === trimmed
   );
   if (stale.length === 0) return;
 
-  await updateDoc(dispatcherRef(currentUser.uid), {
+  await updateDoc(dispatcherRef(uid), {
     pushTokens: arrayRemove(...stale),
   });
 }
@@ -117,13 +123,19 @@ export async function removeResponderPushToken(token: string): Promise<void> {
  */
 export async function saveCivilianPushToken(
   token: string,
-  platform: PushPlatform
+  platform: PushPlatform,
+  explicitUid?: string
 ): Promise<void> {
   const trimmed = token.trim();
   if (!trimmed) return;
 
-  const currentUser = ensureAuthenticated();
-  const existing = await readUserTokens(currentUser.uid);
+  const uid = await resolveAuthUid(explicitUid);
+  if (!uid) {
+    console.warn('[pushTokens] No authenticated civilian user found to save push token.');
+    return;
+  }
+
+  const existing = await readUserTokens(uid);
   const match = existing.find((entry) => entry?.token === trimmed);
   if (match && match.platform === platform) {
     return;
@@ -131,12 +143,12 @@ export async function saveCivilianPushToken(
 
   const stale = existing.filter((entry) => entry?.token === trimmed);
   if (stale.length > 0) {
-    await updateDoc(userRef(currentUser.uid), {
+    await updateDoc(userRef(uid), {
       pushTokens: arrayRemove(...stale),
     });
   }
 
-  await updateDoc(userRef(currentUser.uid), {
+  await updateDoc(userRef(uid), {
     pushTokens: arrayUnion({
       token: trimmed,
       platform,
@@ -147,20 +159,21 @@ export async function saveCivilianPushToken(
 }
 
 /** Drop this device's token for civilian — call on sign-out. */
-export async function removeCivilianPushToken(token: string): Promise<void> {
+export async function removeCivilianPushToken(token: string, explicitUid?: string): Promise<void> {
   const trimmed = token.trim();
   if (!trimmed) return;
 
-  const currentUser = getFirebaseAuth().currentUser;
-  if (!currentUser) return;
+  const uid = await resolveAuthUid(explicitUid);
+  if (!uid) return;
 
-  const stale = (await readUserTokens(currentUser.uid)).filter(
+  const stale = (await readUserTokens(uid)).filter(
     (entry) => entry?.token === trimmed
   );
   if (stale.length === 0) return;
 
-  await updateDoc(userRef(currentUser.uid), {
+  await updateDoc(userRef(uid), {
     pushTokens: arrayRemove(...stale),
   });
 }
+
 

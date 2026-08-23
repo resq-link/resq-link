@@ -59,15 +59,13 @@ export default function RootLayout() {
 
   // Register push notifications when civilian user is authenticated
   useEffect(() => {
-    if (!user?.uid) return;
-    void registerForCivilianPush().catch(() => {});
-  }, [user?.uid]);
-
-  // Unregister token on logout
-  useEffect(() => {
-    if (user?.uid) return;
-    void unregisterCivilianPush().catch(() => {});
-  }, [user?.uid]);
+    const uid = user?.uid || user?.id;
+    if (uid) {
+      void registerForCivilianPush(uid).catch((err) => {
+        console.warn("[civilian-push] register error:", err);
+      });
+    }
+  }, [user?.uid, user?.id]);
 
   // Handle cold-start and background notification taps
   useEffect(() => {

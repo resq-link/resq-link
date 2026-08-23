@@ -18,8 +18,8 @@ const RATE = 44100;
 const AMPLITUDE = 0.72;
 const FADE_S = 0.006; // click-free edges on every beep
 
-/** [frequencyHz | 0 for silence, durationSeconds] */
-const PATTERN = [
+/** Single 2-second cycle [frequencyHz | 0 for silence, durationSeconds] */
+const CYCLE = [
   [880, 0.35],
   [0, 0.15],
   [1175, 0.35],
@@ -29,6 +29,9 @@ const PATTERN = [
   [1175, 0.35],
   [0, 0.15],
 ];
+
+// Repeat 14 times = 28 seconds total (within APNs & Android 30s notification sound limit)
+const PATTERN = Array.from({ length: 14 }, () => CYCLE).flat();
 
 const samples = [];
 for (const [freq, seconds] of PATTERN) {

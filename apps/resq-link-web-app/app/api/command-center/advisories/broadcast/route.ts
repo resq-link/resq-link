@@ -55,41 +55,54 @@ export async function POST(request: NextRequest) {
       ? advisory.targetBarangays.map((b: string) => b.trim().toLowerCase())
       : [];
 
-    // Query civilian users with push tokens
-    const usersSnapshot = await db.collection('users').get();
+    // Query mobile devices (both civilian users and responders/dispatchers)
+    const [usersSnapshot, dispatchersSnapshot] = await Promise.all([
+      db.collection('users').get(),
+      db.collection('dispatchers').get(),
+    ]);
 
-    const messages: ExpoMessage[] = [];
-    const tokenOwners = new Map<string, string>(); // token -> userId
+    const civilianMessages: ExpoMessage[] = [];
+    const responderMessages: ExpoMessage[] = [];
+    const tokenOwners = new Map<string, { uid: string; collection: 'users' | 'dispatchers' }>();
 
-    usersSnapshot.forEach((userDoc) => {
-      const userData = userDoc.data();
-      const rawTokens = userData.pushTokens;
+    const prefix =
+      severity === 'critical'
+        ? '🚨 [CRITICAL ADVISORY] '
+        : severity === 'severe'
+        ? '⚠️ [SEVERE WARNING] '
+        : severity === 'moderate'
+        ? '📢 [ADVISORY] '
+        : 'ℹ️ [NOTICE] ';
+
+    const processDocTokens = (
+      docSnap: FirebaseFirestore.QueryDocumentSnapshot,
+      collectionName: 'users' | 'dispatchers',
+      targetList: ExpoMessage[]
+    ) => {
+      const data = docSnap.data();
+      const rawTokens = data.pushTokens;
       if (!Array.isArray(rawTokens) || rawTokens.length === 0) return;
 
-      // Check barangay targeting if scope is not 'all'
-      if (targetScope === 'barangay' && targetBarangays.length > 0) {
-        const userBarangay = String(userData.barangay || userData.address || '').toLowerCase();
+      // Check barangay targeting if scope is 'barangay' and targeting civilian users
+      if (collectionName === 'users' && targetScope === 'barangay' && targetBarangays.length > 0) {
+        const userBarangay = String(data.barangay || data.address || '').toLowerCase();
         const matches = targetBarangays.some((target) => userBarangay.includes(target));
         if (!matches) return;
       }
 
-      const tokens: StoredToken[] = rawTokens.filter(
-        (t) => t?.token && typeof t.token === 'string' && t.token.startsWith('ExponentPushToken')
-      );
+      // Collect tokens (supports both { token: "..." } objects and raw string tokens)
+      const tokenStrings: string[] = [];
+      rawTokens.forEach((t) => {
+        const val = typeof t === 'string' ? t.trim() : typeof t?.token === 'string' ? t.token.trim() : '';
+        if (val && !tokenStrings.includes(val) && !tokenOwners.has(val)) {
+          tokenStrings.push(val);
+        }
+      });
 
-      const prefix =
-        severity === 'critical'
-          ? '🚨 [CRITICAL ADVISORY] '
-          : severity === 'severe'
-          ? '⚠️ [SEVERE WARNING] '
-          : severity === 'moderate'
-          ? '📢 [ADVISORY] '
-          : 'ℹ️ [NOTICE] ';
-
-      tokens.forEach((entry) => {
-        tokenOwners.set(entry.token, userDoc.id);
-        messages.push({
-          to: entry.token,
+      tokenStrings.forEach((tokenStr) => {
+        tokenOwners.set(tokenStr, { uid: docSnap.id, collection: collectionName });
+        targetList.push({
+          to: tokenStr,
           title: `${prefix}${title}`,
           body: summary,
           data: {
@@ -108,9 +121,14 @@ export async function POST(request: NextRequest) {
           ttl: 86400,
         });
       });
-    });
+    };
 
-    if (messages.length === 0) {
+    usersSnapshot.forEach((docSnap) => processDocTokens(docSnap, 'users', civilianMessages));
+    dispatchersSnapshot.forEach((docSnap) => processDocTokens(docSnap, 'dispatchers', responderMessages));
+
+    const totalRecipients = civilianMessages.length + responderMessages.length;
+
+    if (totalRecipients === 0) {
       await advisoryDocRef.update({
         'pushNotification.sent': true,
         'pushNotification.sentAt': admin.firestore.FieldValue.serverTimestamp(),
@@ -125,72 +143,76 @@ export async function POST(request: NextRequest) {
         totalRecipients: 0,
         successCount: 0,
         failureCount: 0,
-        message: 'No registered civilian push devices found matching target criteria.',
+        message: 'No registered push devices found matching target criteria.',
       });
     }
 
-    // Batch send to Expo
+    // Batch send to Expo separated by target app experience
     let successCount = 0;
     let failureCount = 0;
     let deadTokensPruned = 0;
 
-    for (let i = 0; i < messages.length; i += BATCH_SIZE) {
-      const batch = messages.slice(i, i + BATCH_SIZE);
-      try {
-        const res = await fetch(EXPO_PUSH_URL, {
-          method: 'POST',
-          headers: {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(batch),
-        });
+    const messageGroups = [civilianMessages, responderMessages].filter((g) => g.length > 0);
 
-        if (!res.ok) {
-          console.error('[advisory-broadcast] Expo push batch error status:', res.status);
-          failureCount += batch.length;
-          continue;
-        }
+    for (const group of messageGroups) {
+      for (let i = 0; i < group.length; i += BATCH_SIZE) {
+        const batch = group.slice(i, i + BATCH_SIZE);
+        try {
+          const res = await fetch(EXPO_PUSH_URL, {
+            method: 'POST',
+            headers: {
+              Accept: 'application/json',
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(batch),
+          });
 
-        const data = (await res.json()) as {
-          data?: Array<{ status: string; details?: { error?: string } }>;
-        };
+          if (!res.ok) {
+            console.error('[advisory-broadcast] Expo push batch error status:', res.status);
+            failureCount += batch.length;
+            continue;
+          }
 
-        const tickets = data.data || [];
-        for (let t = 0; t < tickets.length; t++) {
-          const ticket = tickets[t];
-          const token = batch[t]?.to;
+          const data = (await res.json()) as {
+            data?: Array<{ status: string; details?: { error?: string } }>;
+          };
 
-          if (ticket?.status === 'ok') {
-            successCount++;
-          } else {
-            failureCount++;
-            if (ticket?.details?.error === 'DeviceNotRegistered' && token) {
-              const userId = tokenOwners.get(token);
-              if (userId) {
-                try {
-                  const userRef = db.collection('users').doc(userId);
-                  const uSnap = await userRef.get();
-                  if (uSnap.exists) {
-                    const existing = uSnap.get('pushTokens') || [];
-                    const stale = existing.filter((e: StoredToken) => e?.token === token);
-                    if (stale.length > 0) {
-                      await userRef.update({
-                        pushTokens: admin.firestore.FieldValue.arrayRemove(...stale),
-                      });
-                      deadTokensPruned++;
+          const tickets = data.data || [];
+          for (let t = 0; t < tickets.length; t++) {
+            const ticket = tickets[t];
+            const token = batch[t]?.to;
+
+            if (ticket?.status === 'ok') {
+              successCount++;
+            } else {
+              failureCount++;
+              if (ticket?.details?.error === 'DeviceNotRegistered' && token) {
+                const ownerInfo = tokenOwners.get(token);
+                if (ownerInfo) {
+                  try {
+                    const targetRef = db.collection(ownerInfo.collection).doc(ownerInfo.uid);
+                    const tSnap = await targetRef.get();
+                    if (tSnap.exists) {
+                      const existing = tSnap.get('pushTokens') || [];
+                      const stale = existing.filter((e: StoredToken) => (typeof e === 'string' ? e : e?.token) === token);
+                      if (stale.length > 0) {
+                        await targetRef.update({
+                          pushTokens: admin.firestore.FieldValue.arrayRemove(...stale),
+                        });
+                        deadTokensPruned++;
+                      }
                     }
+                  } catch (err) {
+                    console.warn('[advisory-broadcast] Failed pruning dead token:', err);
                   }
-                } catch (err) {
-                  console.warn('[advisory-broadcast] Failed pruning dead token:', err);
                 }
               }
             }
           }
+        } catch (batchErr) {
+          console.error('[advisory-broadcast] Batch dispatch network error:', batchErr);
+          failureCount += batch.length;
         }
-      } catch (batchErr) {
-        console.error('[advisory-broadcast] Batch dispatch network error:', batchErr);
-        failureCount += batch.length;
       }
     }
 
@@ -198,7 +220,7 @@ export async function POST(request: NextRequest) {
     await advisoryDocRef.update({
       'pushNotification.sent': true,
       'pushNotification.sentAt': admin.firestore.FieldValue.serverTimestamp(),
-      'pushNotification.totalRecipients': messages.length,
+      'pushNotification.totalRecipients': totalRecipients,
       'pushNotification.successCount': successCount,
       'pushNotification.failureCount': failureCount,
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -215,7 +237,7 @@ export async function POST(request: NextRequest) {
       metadata: {
         severity,
         targetScope,
-        totalRecipients: messages.length,
+        totalRecipients,
         successCount,
         failureCount,
         deadTokensPruned,
@@ -224,7 +246,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      totalRecipients: messages.length,
+      totalRecipients,
       successCount,
       failureCount,
       deadTokensPruned,

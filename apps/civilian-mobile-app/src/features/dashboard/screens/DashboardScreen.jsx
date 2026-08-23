@@ -55,6 +55,7 @@ import {
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { openEmergencyHotline } from "@/utils/emergencyHotline";
 import { useSOS } from "@/hooks/useSOS";
+import { registerForCivilianPush } from "@/services/civilianPushNotificationService";
 
 const typography = {
   display: 32,
@@ -691,6 +692,9 @@ export default function DashboardScreen() {
 
   useEffect(() => {
     if (userId) {
+      void registerForCivilianPush(userId).catch((err) => {
+        console.warn("[civilian-dashboard] Push registration check:", err);
+      });
       fetchUserLocation();
       fetchRecentReports();
     }
