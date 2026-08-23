@@ -42,7 +42,8 @@
         "android.permission.READ_CALENDAR",
         "android.permission.WRITE_CALENDAR"
       ],
-      "package": "com.tuguegarao.resqlink"
+      "package": "com.tuguegarao.resqlink",
+      "googleServicesFile": "./google-services.json"
     },
     "plugins": [
       [
