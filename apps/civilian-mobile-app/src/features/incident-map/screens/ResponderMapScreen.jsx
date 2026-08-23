@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
+import MapView from "react-native-maps";
 import BottomSheet, { BottomSheetBackdrop } from "@gorhom/bottom-sheet";
 import * as Haptics from "expo-haptics";
 import { MapPin } from "lucide-react-native";
@@ -29,7 +29,10 @@ import {
   getMarkerDistanceLabel,
 } from "@/features/incident-map/components/MapMarkers";
 import { coordFrom } from "@/features/incident-map/utils/mapUtils";
-import { canRenderGoogleMapsProvider } from "@/utils/nativeMapConfig";
+import {
+  canRenderNativeMap,
+  getNativeMapProvider,
+} from "@/utils/nativeMapConfig";
 
 const DEFAULT_REGION = {
   latitude: 17.6132,
@@ -53,7 +56,8 @@ export default function ResponderMapScreen() {
   const focusReportId =
     typeof params.reportId === "string" ? params.reportId : undefined;
   const { colors, isLight, mapTheme: theme } = useAppTheme();
-  const canRenderMap = canRenderGoogleMapsProvider();
+  const canRenderMap = canRenderNativeMap();
+  const mapProvider = getNativeMapProvider();
   const mapRef = useRef(null);
   const sheetRef = useRef(null);
   const reduceMotionRef = useRef(false);
@@ -258,7 +262,7 @@ export default function ResponderMapScreen() {
         {canRenderMap ? (
           <MapView
             ref={mapRef}
-            provider={PROVIDER_GOOGLE}
+            provider={mapProvider}
             style={StyleSheet.absoluteFill}
             initialRegion={initialRegion}
             showsUserLocation

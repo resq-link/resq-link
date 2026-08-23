@@ -65,6 +65,14 @@ module.exports = ({ config }) => {
         ...baseConfig.ios?.entitlements,
         'aps-environment': 'production',
       },
+      ...(googleMapsApiKey
+        ? {
+            config: {
+              ...baseConfig.ios?.config,
+              googleMapsApiKey,
+            },
+          }
+        : null),
     },
     android: {
       ...androidConfig,

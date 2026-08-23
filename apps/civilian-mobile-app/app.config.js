@@ -61,9 +61,34 @@ module.exports = ({ config }) => {
     plugins.push(navigationBarPlugin);
   }
 
+  const androidConfig = googleMapsApiKey
+    ? {
+        ...baseConfig.android,
+        config: {
+          ...baseConfig.android?.config,
+          googleMaps: {
+            ...baseConfig.android?.config?.googleMaps,
+            apiKey: googleMapsApiKey,
+          },
+        },
+      }
+    : baseConfig.android;
+
   return {
     ...baseConfig,
     plugins,
+    ios: {
+      ...baseConfig.ios,
+      ...(googleMapsApiKey
+        ? {
+            config: {
+              ...baseConfig.ios?.config,
+              googleMapsApiKey,
+            },
+          }
+        : null),
+    },
+    android: androidConfig,
     extra: {
       ...baseConfig.extra,
       firebase: {

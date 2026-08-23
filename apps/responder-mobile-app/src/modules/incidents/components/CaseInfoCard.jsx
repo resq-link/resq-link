@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import * as Location from "expo-location";
 import { BlurView } from "expo-blur";
-import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
+import MapView, { Marker } from "react-native-maps";
 import {
   ArrowLeft,
   Check,
@@ -38,7 +38,10 @@ import ReporterSection from "./ReporterSection";
 import CaseStatusBadge from "./CaseStatusBadge";
 import ErrorAlert from "@/components/feedback/ErrorAlert";
 import { radii, spacing, useResqTheme } from "@/theme";
-import { canRenderGoogleMapsProvider } from "@/utils/nativeMapConfig";
+import {
+  canRenderNativeMap,
+  getNativeMapProvider,
+} from "@/utils/nativeMapConfig";
 
 const TOUCHDOWN_RADIUS_METERS = 10;
 
@@ -285,7 +288,8 @@ export default function CaseInfoCard({
   };
 
   const hasPinnedLocation = isValidCoordinate(caseData.latitude, caseData.longitude);
-  const canRenderMapPreview = hasPinnedLocation && canRenderGoogleMapsProvider();
+  const canRenderMapPreview = hasPinnedLocation && canRenderNativeMap();
+  const mapProvider = getNativeMapProvider();
 
   const touchdownDistanceMeters =
     hasPinnedLocation && responderLocation
@@ -881,7 +885,7 @@ export default function CaseInfoCard({
         <View style={styles.mapStage}>
           {canRenderMapPreview ? (
             <MapView
-              provider={PROVIDER_GOOGLE}
+              provider={mapProvider}
               style={styles.map}
               region={mapRegion}
               scrollEnabled={true}
