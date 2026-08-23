@@ -98,8 +98,8 @@ const INCIDENT_VISUALS = {
 /** Profile refinements when `other_emergency` carries a subtype */
 const PROFILE_VISUALS = {
   flood: {
-    label: "Flood Rescue",
-    shortLabel: "Flood",
+    label: "Natural Disaster",
+    shortLabel: "Natural Disaster",
     Icon: Waves,
     iconColor: "#06B6D4",
     gradient: ["#0284C7", "#06B6D4"],

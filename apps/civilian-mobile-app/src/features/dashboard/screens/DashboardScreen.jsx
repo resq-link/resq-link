@@ -68,16 +68,21 @@ const typography = {
 /** 8px spacing grid for compact dashboard sections */
 const S = 8;
 
-const SHORT_LABELS = {
-  fire: "Fire",
-  medical: "Medical",
-  vehicular_accident: "Accident",
-  police_emergency: "Police",
-  electrical_powerline_hazard: "Electrical",
-  other_emergency: "Emergency",
-};
+const getNearbyIncidentLabel = (incidentType, typeProfile) =>
+  getIncidentMeta(incidentType, typeProfile).shortLabel;
 
-const getShortLabel = (type) => SHORT_LABELS[type] || "Emergency";
+const NEARBY_STRIP_INCIDENT_TYPES = new Set([
+  "fire",
+  "vehicular_accident",
+  "electrical_powerline_hazard",
+]);
+
+/** Nearby strip: Fire, Accident, Natural Disaster (flood), Hazard only */
+const isNearbyStripReport = (report) => {
+  const incidentType = report?.incidentType;
+  if (NEARBY_STRIP_INCIDENT_TYPES.has(incidentType)) return true;
+  return incidentType === "other_emergency" && report?.typeProfile === "flood";
+};
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
   if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
@@ -506,17 +511,17 @@ function NearbyStrip({ reports, theme, onPressCard, onSeeAll }) {
                   },
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel={`${getShortLabel(report.incidentType)}, ${distanceLabel}, ${statusLabel}`}
+                accessibilityLabel={`${getNearbyIncidentLabel(report.incidentType, report.typeProfile)}, ${distanceLabel}, ${statusLabel}`}
               >
                 <View style={styles.nearbyHeader}>
-                  <View style={[styles.nearbyIcon, { backgroundColor: meta.iconBg }]}>
+                  <View style={[styles.nearbyIcon, { backgroundColor: meta.badgeBg }]}>
                     <Icon size={13} color={meta.iconColor} strokeWidth={2.2} />
                   </View>
                   <Text
                     style={[styles.nearbyTitle, { color: meta.iconColor }]}
                     numberOfLines={1}
                   >
-                    {getShortLabel(report.incidentType)}
+                    {getNearbyIncidentLabel(report.incidentType, report.typeProfile)}
                   </Text>
                   <Text
                     style={[styles.nearbyMeta, { color: theme.mutedText }]}
@@ -584,7 +589,8 @@ function RecentList({ reports, theme, onPressRow, onSeeAll }) {
           {items.map((report, index) => {
             const isLast = index === items.length - 1;
             const location =
-              report.locationText || getShortLabel(report.incidentType);
+              report.locationText ||
+              getNearbyIncidentLabel(report.incidentType, report.typeProfile);
 
             return (
               <Pressable
@@ -769,7 +775,28 @@ export default function DashboardScreen() {
           },
           {
             id: "nearby-2",
-            incidentType: "medical",
+            incidentType: "vehicular_accident",
+            locationText: "Junction of Main St & 5th Ave",
+            status: "active",
+            createdAt: new Date(Date.now() - 2400000),
+            latitude: userLocation.latitude - 0.003,
+            longitude: userLocation.longitude + 0.001,
+            distance: 0.31,
+          },
+          {
+            id: "nearby-3",
+            incidentType: "other_emergency",
+            typeProfile: "flood",
+            locationText: "Riverside Barangay Hall",
+            status: "pending",
+            createdAt: new Date(Date.now() - 3000000),
+            latitude: userLocation.latitude + 0.001,
+            longitude: userLocation.longitude - 0.004,
+            distance: 0.38,
+          },
+          {
+            id: "nearby-4",
+            incidentType: "electrical_powerline_hazard",
             locationText: "789 Pine Rd",
             status: "resolved",
             createdAt: new Date(Date.now() - 3600000),
@@ -788,6 +815,7 @@ export default function DashboardScreen() {
       const nearby = allReports
         .filter(
           (report) =>
+            isNearbyStripReport(report) &&
             report.userId !== resolvedUserId &&
             report.latitude &&
             report.longitude
