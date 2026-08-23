@@ -12,10 +12,18 @@
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EAS_SKIP_AUTO_FINGERPRINT": "1"
+      }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "6804334951",
+        "bundleIdentifier": "com.tuguegarao.resqlink.responder"
+      }
+    }
   }
 }

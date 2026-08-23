@@ -134,6 +134,15 @@ export async function playPriorityAlert(priority, options = {}) {
     return;
   }
 
+  if (level === "medium" && requiresRepeatingAlert(level)) {
+    // Softer cadence than high/critical, but still repeats until acknowledge.
+    const run = () => playPriorityPattern("medium");
+    await run();
+    void startAlarmSound();
+    highRepeatTimer = setInterval(run, 6000);
+    return;
+  }
+
   await playPriorityPattern(level);
 }
 
@@ -144,12 +153,12 @@ export async function playPriorityAlert(priority, options = {}) {
  * dispatcher-side `alertAcknowledged`: a dispatcher clearing their console must
  * not silence a phone in the field.
  *
- * Only newly assigned / not-yet-accepted work should alarm. Cases already
- * en route or on scene are being handled — spamming CRITICAL over the detail
- * screen is noise, not a safety signal.
+ * Only on-duty responders are alarmed, and only for newly assigned /
+ * not-yet-accepted work. Cases already en route or on scene are being handled.
  */
-export function shouldAlertForIncident(incident, responderId) {
+export function shouldAlertForIncident(incident, responderId, options = {}) {
   if (!incident) return false;
+  if (!options.isOnDuty) return false;
   if (hasResponderAcknowledgedAlert(incident, responderId)) return false;
 
   const status = String(incident.status || "").toLowerCase();

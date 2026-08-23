@@ -25,7 +25,8 @@ import { ResqThemeProvider } from "@/theme";
 import ResponderMessagingWidget from "@/modules/messaging/components/ResponderMessagingWidget";
 import PriorityAlertProvider from "@/providers/PriorityAlertProvider";
 
-SplashScreen.preventAutoHideAsync();
+// Do not call SplashScreen.preventAutoHideAsync() at module scope.
+// On TestFlight (New Arch), that TurboModule void call can SIGABRT before JS catch runs.
 
 export default function RootLayout() {
   const { loadUser, user } = useUserStore();
@@ -72,7 +73,7 @@ export default function RootLayout() {
 
   useEffect(() => {
     if (fontsLoaded) {
-      SplashScreen.hideAsync();
+      SplashScreen.hideAsync().catch(() => {});
     }
   }, [fontsLoaded]);
 

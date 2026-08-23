@@ -21,9 +21,6 @@ import {
   applyImmersiveAndroidNavigationBar,
 } from "@/hooks/useImmersiveAndroidNavigation";
 
-// Never let splash native errors abort the app (TestFlight SIGABRT in TurboModules).
-SplashScreen.preventAutoHideAsync().catch(() => {});
-
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -47,6 +44,7 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
+    // Skip preventAutoHideAsync — native ObjC exceptions abort before JS .catch() runs.
     initiate();
     loadUser();
   }, [initiate, loadUser]);

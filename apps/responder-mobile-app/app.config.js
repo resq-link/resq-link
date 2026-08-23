@@ -57,7 +57,19 @@ module.exports = ({ config }) => {
 
   return {
     ...baseConfig,
-    android: androidConfig,
+    ios: {
+      ...baseConfig.ios,
+      bundleIdentifier: 'com.tuguegarao.resqlink.responder',
+      supportsTablet: baseConfig.ios?.supportsTablet ?? true,
+      entitlements: {
+        ...baseConfig.ios?.entitlements,
+        'aps-environment': 'production',
+      },
+    },
+    android: {
+      ...androidConfig,
+      package: 'com.tuguegarao.resqlink.responder',
+    },
     extra: {
       ...baseConfig.extra,
       firebase: {

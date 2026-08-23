@@ -5,6 +5,7 @@ import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { logger, setGlobalOptions } from 'firebase-functions/v2';
 import {
   ALARM_SOUND,
+  ALERT_CATEGORY,
   ALERT_CHANNEL,
   loadResponderTokens,
   sendExpoPush,
@@ -15,10 +16,10 @@ initializeApp();
 setGlobalOptions({ region: 'asia-southeast1', maxInstances: 10 });
 
 /**
- * Priorities that warrant waking a responder's phone. Medium and low still
- * appear in-app but do not fire an alarm push.
+ * Priorities that warrant waking a responder's phone while on duty.
+ * Low stays in-app only.
  */
-const ALARM_PRIORITIES = new Set(['critical', 'high']);
+const ALARM_PRIORITIES = new Set(['critical', 'high', 'medium']);
 
 /**
  * How long to keep re-sending an unacknowledged alert.
@@ -32,7 +33,7 @@ const REMINDER_WINDOW_MINUTES = 20;
 /** iOS cannot loop a remote sound, so reminders stand in for a continuous alarm. */
 const REMINDER_INTERVAL_SECONDS = 60;
 
-type IncidentData = FirebaseFirestore.DocumentData;
+type IncidentData = Record<string, any>;
 
 const priorityOf = (incident: IncidentData): string =>
   String(incident?.priority ?? incident?.priorityLevel ?? '').toLowerCase();
@@ -42,17 +43,28 @@ const isOpen = (incident: IncidentData): boolean =>
   incident?.resolutionStatus !== 'resolved' &&
   incident?.resolutionStatus !== 'cancelled';
 
+/** Skip cases the responder is already working — no need to keep alarming. */
+const isStillAssignable = (incident: IncidentData): boolean => {
+  const status = String(incident?.status ?? '').toLowerCase();
+  return !['enroute', 'on_scene', 'resolved', 'done', 'unresolved'].includes(status);
+};
+
 const titleFor = (incident: IncidentData): string => {
   const priority = priorityOf(incident).toUpperCase();
   const type =
     incident?.incidentTypeLabel ||
     incident?.incidentSubtypeLabel ||
+    incident?.incidentCategory ||
     'Incident';
   return `${priority ? `${priority} · ` : ''}${type}`;
 };
 
 const bodyFor = (incident: IncidentData): string => {
-  const place = incident?.address || incident?.barangay || 'Location on map';
+  const place =
+    incident?.locationText ||
+    incident?.address ||
+    incident?.barangay ||
+    'Location on map';
   const ref = incident?.referenceNumber ? ` (${incident.referenceNumber})` : '';
   return `Dispatched to you${ref} — ${place}`;
 };
@@ -71,9 +83,11 @@ const buildMessage = (
     priority: priorityOf(incident),
     referenceNumber: incident?.referenceNumber ?? null,
     isReminder,
+    action: 'incident_alert',
   },
   sound: ALARM_SOUND,
   channelId: ALERT_CHANNEL,
+  categoryId: ALERT_CATEGORY,
   priority: 'high',
   // time-sensitive breaks through Focus without the Critical Alerts entitlement.
   interruptionLevel: 'time-sensitive',
@@ -82,6 +96,7 @@ const buildMessage = (
 
 /**
  * Fan an alert out to the given responders. Returns how many messages landed.
+ * Off-duty responders are dropped inside loadResponderTokens.
  */
 async function alertResponders(
   incidentId: string,
@@ -91,7 +106,7 @@ async function alertResponders(
 ): Promise<number> {
   const targets = await loadResponderTokens(responderIds);
   if (targets.length === 0) {
-    logger.info('No push tokens for responders', { incidentId, responderIds });
+    logger.info('No on-duty push targets for responders', { incidentId, responderIds });
     return 0;
   }
 
@@ -115,7 +130,8 @@ async function alertResponders(
  *
  * Triggers on the assignment write in `dispatchIncidentResources`, which merges
  * bound responder uids into `assignedResourceIds`. Only genuinely new ids are
- * alerted, so unrelated incident edits never re-notify.
+ * alerted, so unrelated incident edits never re-notify. Only on-duty responders
+ * receive a push.
  */
 export const onIncidentAssigned = onDocumentUpdated(
   'incidents/{incidentId}',
@@ -126,7 +142,7 @@ export const onIncidentAssigned = onDocumentUpdated(
 
     const incidentId = event.params.incidentId;
 
-    if (!isOpen(after)) return;
+    if (!isOpen(after) || !isStillAssignable(after)) return;
     if (!ALARM_PRIORITIES.has(priorityOf(after))) return;
 
     const previous = new Set<string>(
@@ -140,7 +156,8 @@ export const onIncidentAssigned = onDocumentUpdated(
     if (newlyAssigned.length === 0) return;
 
     // assignedResourceIds mixes resource ids and responder uids; loadResponderTokens
-    // silently drops anything without a dispatchers/{uid} doc carrying tokens.
+    // silently drops anything without a dispatchers/{uid} doc carrying tokens,
+    // and also drops responders who are not currently on duty.
     await alertResponders(incidentId, after, newlyAssigned, false);
 
     await event.data!.after.ref.update({
@@ -155,6 +172,7 @@ export const onIncidentAssigned = onDocumentUpdated(
  * This is what makes the alert "repeat until acknowledged" on iOS, where a
  * remote push cannot loop its own sound. Android already loops via its channel,
  * but the reminder also covers a device that was offline at dispatch time.
+ * Off-duty responders are skipped.
  */
 export const resendUnacknowledgedAlerts = onSchedule(
   {
@@ -184,7 +202,7 @@ export const resendUnacknowledgedAlerts = onSchedule(
 
     for (const doc of snapshot.docs) {
       const incident = doc.data();
-      if (!isOpen(incident)) continue;
+      if (!isOpen(incident) || !isStillAssignable(incident)) continue;
       if (!ALARM_PRIORITIES.has(priorityOf(incident))) continue;
 
       const assigned: string[] = Array.isArray(incident.assignedResourceIds)

@@ -3,6 +3,7 @@ import * as Device from "expo-device";
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 import {
+  acknowledgeIncidentAlert,
   saveResponderPushToken,
   removeResponderPushToken,
 } from "@packages/firebase";
@@ -19,15 +20,24 @@ import {
  *   entitlement, so the Cloud Function re-sends at intervals while the alert is
  *   unacknowledged, and the in-app loop takes over once the app is opened.
  *
+ * Tray actions (Acknowledge / View) are registered via a notification category
+ * that must match `ALERT_CATEGORY` on the Cloud Function payload.
+ *
  * The looping audio itself lives in `priorityAlertService`; this module only
- * covers registration, the channel, and the OS-level notification.
+ * covers registration, the channel, categories, and OS-level notification I/O.
  */
 
 export const INCIDENT_ALERT_CHANNEL = "incident-alerts";
+/** Must match functions/src/expoPush.ts ALERT_CATEGORY. */
+export const INCIDENT_ALERT_CATEGORY = "incident-alert";
+export const ACKNOWLEDGE_ACTION = "ACKNOWLEDGE";
+export const VIEW_ACTION = "VIEW";
 /** Must match the bundled file in assets/sounds and app.json's expo-notifications plugin. */
 export const ALARM_SOUND = "incident_alarm.wav";
 
 let cachedToken = null;
+let categoriesReady = false;
+let responseSubscription = null;
 
 // An assignment has to break through whatever the responder is doing, so the
 // banner and sound fire even when the app is already in the foreground.
@@ -50,7 +60,7 @@ export async function ensureIncidentAlertChannel() {
 
   await Notifications.setNotificationChannelAsync(INCIDENT_ALERT_CHANNEL, {
     name: "Incident assignments",
-    description: "Alarms for incidents dispatched to you.",
+    description: "Alarms for incidents dispatched to you while on duty.",
     importance: Notifications.AndroidImportance.MAX,
     sound: ALARM_SOUND,
     vibrationPattern: [0, 400, 200, 400, 200, 400],
@@ -59,6 +69,40 @@ export async function ensureIncidentAlertChannel() {
     lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     showBadge: true,
   });
+}
+
+/**
+ * Register tray actions so a responder can acknowledge without opening the app.
+ * iOS shows these as notification buttons; Android as action chips.
+ */
+export async function ensureIncidentAlertCategory() {
+  if (categoriesReady) return;
+  try {
+    await Notifications.setNotificationCategoryAsync(INCIDENT_ALERT_CATEGORY, [
+      {
+        identifier: ACKNOWLEDGE_ACTION,
+        buttonTitle: "Acknowledge",
+        options: {
+          opensAppToForeground: false,
+          isAuthenticationRequired: false,
+          isDestructive: false,
+        },
+      },
+      {
+        identifier: VIEW_ACTION,
+        buttonTitle: "View case",
+        options: {
+          opensAppToForeground: true,
+        },
+      },
+    ]);
+    categoriesReady = true;
+  } catch (error) {
+    console.warn(
+      "[push] Failed to register notification category:",
+      error?.message ?? error
+    );
+  }
 }
 
 const resolveProjectId = () =>
@@ -76,6 +120,7 @@ const resolveProjectId = () =>
  */
 export async function registerForIncidentPush() {
   await ensureIncidentAlertChannel();
+  await ensureIncidentAlertCategory();
 
   if (!Device.isDevice) {
     // Simulators cannot receive remote push.
@@ -155,4 +200,68 @@ export async function dismissIncidentNotifications(incidentId) {
   } catch {
     // Dismissal is best-effort; a stale banner is not worth surfacing.
   }
+}
+
+async function acknowledgeFromNotification(incidentId) {
+  if (!incidentId || incidentId === "undefined" || incidentId === "null") return;
+  try {
+    await acknowledgeIncidentAlert(incidentId);
+    await dismissIncidentNotifications(incidentId);
+  } catch (error) {
+    console.warn(
+      "[push] Failed to acknowledge from notification action:",
+      error?.message ?? error
+    );
+  }
+}
+
+/**
+ * Handle tray actions (Acknowledge / View) and cold-start taps.
+ *
+ * `onView` is optional — when the responder taps View or the banner itself,
+ * the host can navigate to the case after acknowledging.
+ */
+export function subscribeToIncidentNotificationActions({ onView } = {}) {
+  if (responseSubscription) {
+    responseSubscription.remove();
+    responseSubscription = null;
+  }
+
+  const handleResponse = async (response) => {
+    if (!response) return;
+    const actionId = response.actionIdentifier;
+    const data = response.notification?.request?.content?.data ?? {};
+    const incidentId = typeof data.incidentId === "string" ? data.incidentId : null;
+    if (!incidentId) return;
+
+    // Default tap and Acknowledge both clear the alarm; View also opens the case.
+    if (
+      actionId === ACKNOWLEDGE_ACTION ||
+      actionId === VIEW_ACTION ||
+      actionId === Notifications.DEFAULT_ACTION_IDENTIFIER
+    ) {
+      await acknowledgeFromNotification(incidentId);
+    }
+
+    if (
+      (actionId === VIEW_ACTION || actionId === Notifications.DEFAULT_ACTION_IDENTIFIER) &&
+      typeof onView === "function"
+    ) {
+      onView(incidentId);
+    }
+  };
+
+  responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
+    void handleResponse(response);
+  });
+
+  // Cold start: the OS may have buffered the action that launched the app.
+  void Notifications.getLastNotificationResponseAsync().then((response) => {
+    if (response) void handleResponse(response);
+  });
+
+  return () => {
+    responseSubscription?.remove();
+    responseSubscription = null;
+  };
 }

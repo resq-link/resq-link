@@ -39,8 +39,9 @@ service-account*.json
 apps/*/city-rescue-dispatch-firebase-adminsdk-*.json
 
 # local Expo app config overrides
-apps/civilian-mobile-app/app.json
-apps/responder-mobile-app/app.json
+# Keep app.json tracked/uploaded for EAS prebuild (bundle IDs, plugins, icons).
+# apps/civilian-mobile-app/app.json
+# apps/responder-mobile-app/app.json
 
 # caches
 .eslintcache

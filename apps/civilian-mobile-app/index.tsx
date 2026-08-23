@@ -9,27 +9,36 @@ import "expo-router/entry";
 import { App } from "expo-router/build/qualified-entry";
 import type { ReactNode } from "react";
 import { AppRegistry } from "react-native";
-import { DeviceErrorBoundaryWrapper } from "./__create/DeviceErrorBoundary";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { RootErrorBoundary } from "./src/components/RootErrorBoundary";
-import AnythingMenu from "./src/lib/create/anything-menu";
 
-function AnythingMenuWrapper({ children }: { children: ReactNode }) {
-  return <AnythingMenu>{children}</AnythingMenu>;
+const isAnythingApp =
+  process.env.EXPO_PUBLIC_IS_ANYTHING_APP === JSON.stringify(true);
+
+function RootWrapper({ children }: { children: ReactNode }) {
+  return <SafeAreaProvider>{children}</SafeAreaProvider>;
 }
 
 function WrapperComponentProvider({ children }: { children: ReactNode }) {
-  const content = <AnythingMenuWrapper>{children}</AnythingMenuWrapper>;
+  let content: ReactNode = <RootWrapper>{children}</RootWrapper>;
 
-  // Always wrap with RootErrorBoundary so release/TestFlight builds
-  // recover from uncaught JS errors instead of crashing.
-  if (__DEV__) {
-    return (
-      <RootErrorBoundary>
-        <DeviceErrorBoundaryWrapper>{content}</DeviceErrorBoundaryWrapper>
-      </RootErrorBoundary>
+  if (isAnythingApp) {
+    // Lazy-load Create Anything tooling only when that flag is on.
+    // Production RESQ-Link must never import anything-menu (native TurboModule abort).
+    const AnythingMenu = require("./src/lib/create/anything-menu").default;
+    content = <AnythingMenu>{children}</AnythingMenu>;
+  } else if (__DEV__) {
+    const {
+      DeviceErrorBoundaryWrapper,
+    } = require("./__create/DeviceErrorBoundary");
+    content = (
+      <DeviceErrorBoundaryWrapper>
+        <RootWrapper>{children}</RootWrapper>
+      </DeviceErrorBoundaryWrapper>
     );
   }
 
+  // Always wrap so release/TestFlight recovers from uncaught JS errors.
   return <RootErrorBoundary>{content}</RootErrorBoundary>;
 }
 

@@ -8,6 +8,8 @@ const BATCH_SIZE = 100;
 export const ALERT_CHANNEL = 'incident-alerts';
 /** Must match the bundled asset and the client's notification channel. */
 export const ALARM_SOUND = 'incident_alarm.wav';
+/** Must match the category registered in the responder app for tray actions. */
+export const ALERT_CATEGORY = 'incident-alert';
 
 export type StoredToken = {
   token: string;
@@ -46,9 +48,12 @@ export async function loadResponderTokens(
   const targets: PushTarget[] = [];
   snaps.forEach((snap, index) => {
     if (!snap.exists) return;
+    // Off-duty responders must not be woken — duty is mirrored on the
+    // dispatcher doc as onDutyResourceId when they claim a vehicle.
+    if (!snap.get('onDutyResourceId')) return;
     const raw = snap.get('pushTokens');
     const tokens: StoredToken[] = Array.isArray(raw)
-      ? raw.filter((entry) => typeof entry?.token === 'string' && entry.token)
+      ? raw.filter((entry) => entry?.token && typeof entry.token === 'string')
       : [];
     if (tokens.length > 0) {
       targets.push({ responderId: responderIds[index], tokens });
