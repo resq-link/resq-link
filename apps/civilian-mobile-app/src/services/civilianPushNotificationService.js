@@ -1,13 +1,14 @@
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import Constants from "expo-constants";
-import { Platform } from "react-native";
+import { Platform, PermissionsAndroid } from "react-native";
 import {
   saveCivilianPushToken,
   removeCivilianPushToken,
 } from "@packages/firebase";
 
 export const EMERGENCY_UPDATE_CHANNEL = "emergency-updates";
+export const CIVILIAN_ALERT_CHANNEL = "civilian-alerts";
 
 let cachedToken = null;
 let responseSubscription = null;
@@ -15,6 +16,7 @@ let responseSubscription = null;
 // Present alert banner, sound, and badge even if app is in foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
+    shouldShowAlert: true,
     shouldShowBanner: true,
     shouldShowList: true,
     shouldPlaySound: true,
@@ -23,24 +25,39 @@ Notifications.setNotificationHandler({
 });
 
 /**
- * Configure high-priority Android notification channel for emergency updates.
+ * Configure MAX-importance Android notification channels for advisories and emergency updates.
  */
-export async function ensureCivilianNotificationChannel() {
+export async function ensureCivilianNotificationChannels() {
   if (Platform.OS !== "android") return;
 
   try {
+    // 1. Channel for Public Advisories & Broadcasts
+    await Notifications.setNotificationChannelAsync(CIVILIAN_ALERT_CHANNEL, {
+      name: "Public Advisories & Bulletins",
+      description: "Critical city-wide advisories, weather warnings, and safety notices.",
+      importance: Notifications.AndroidImportance.MAX,
+      sound: "default",
+      enableVibrate: true,
+      vibrationPattern: [0, 350, 150, 350],
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+      showBadge: true,
+      bypassDnd: true,
+    });
+
+    // 2. Channel for Emergency Report Updates
     await Notifications.setNotificationChannelAsync(EMERGENCY_UPDATE_CHANNEL, {
-      name: "Emergency updates",
-      description: "Real-time updates and status changes for your reported emergencies.",
-      importance: Notifications.AndroidImportance.HIGH,
+      name: "Emergency Report Updates",
+      description: "Real-time dispatch and status updates for your reported emergencies.",
+      importance: Notifications.AndroidImportance.MAX,
       sound: "default",
       enableVibrate: true,
       vibrationPattern: [0, 250, 250, 250],
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
       showBadge: true,
+      bypassDnd: true,
     });
   } catch (error) {
-    console.warn("[civilian-push] Failed to set notification channel:", error?.message ?? error);
+    console.warn("[civilian-push] Failed to set notification channels:", error?.message ?? error);
   }
 }
 
@@ -53,11 +70,27 @@ const resolveProjectId = () =>
  * Request notification permissions, fetch Expo push token, and save to Firestore users/{uid}.
  */
 export async function registerForCivilianPush(explicitUid = null) {
-  await ensureCivilianNotificationChannel();
+  await ensureCivilianNotificationChannels();
 
   if (!Device.isDevice) {
     // Simulators cannot receive remote push notifications
     return null;
+  }
+
+  // Check Android 13+ (API 33+) runtime POST_NOTIFICATIONS permission
+  if (Platform.OS === "android" && Platform.Version >= 33) {
+    try {
+      const granted = await PermissionsAndroid.check(
+        PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
+      );
+      if (!granted) {
+        await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
+        );
+      }
+    } catch (permErr) {
+      console.warn("[civilian-push] Android runtime permission request failed:", permErr);
+    }
   }
 
   const existing = await Notifications.getPermissionsAsync();
@@ -75,6 +108,7 @@ export async function registerForCivilianPush(explicitUid = null) {
   }
 
   if (status !== "granted") {
+    console.warn("[civilian-push] Notification permission not granted (status:", status, ")");
     return null;
   }
 
@@ -99,6 +133,7 @@ export async function registerForCivilianPush(explicitUid = null) {
     return null;
   }
 }
+
 
 /**
  * Detach this device's token on sign-out.

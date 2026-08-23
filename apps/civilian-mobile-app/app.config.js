@@ -70,16 +70,6 @@ module.exports = ({ config }) => {
     return name !== 'expo-navigation-bar' && name !== 'react-native-maps';
   });
 
-  if (googleMapsApiKey) {
-    plugins.push([
-      'react-native-maps',
-      {
-        iosGoogleMapsApiKey: googleMapsApiKey,
-        androidGoogleMapsApiKey: googleMapsApiKey,
-      },
-    ]);
-  }
-
   if (isAndroidBuild) {
     plugins.push(navigationBarPlugin);
   }
