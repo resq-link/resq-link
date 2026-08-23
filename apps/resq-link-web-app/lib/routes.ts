@@ -17,6 +17,7 @@ export const routes = {
     reportIncidents: '/command-center/report/incidents',
     history: '/command-center/history',
     incidentManagement: '/command-center/incident-management',
+    advisories: '/command-center/advisories',
   },
 
   admin: {
@@ -25,7 +26,6 @@ export const routes = {
     dispatchers: '/admin/dispatchers',
     responders: '/admin/responders',
     civilians: '/admin/civilians',
-    commandCenters: '/admin/command-centers',
     kyc: '/admin/kyc',
     audit: '/admin/audit',
     notifications: '/admin/notifications',

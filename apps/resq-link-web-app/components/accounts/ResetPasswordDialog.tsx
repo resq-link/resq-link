@@ -31,17 +31,17 @@ export function ResetPasswordDialog({
         }
       }}
     >
-      <p className="text-sm text-slate-600">
-        Set a new password for <span className="font-medium text-slate-900">{accountLabel}</span>.
+      <p className="text-sm text-admin-fg-muted">
+        Set a new password for <span className="font-medium text-admin-fg">{accountLabel}</span>.
       </p>
       <label className="mt-4 block">
-        <span className="mb-1 block text-sm font-medium text-slate-700">New password</span>
+        <span className="mb-1 block text-sm font-medium text-admin-fg-muted">New password</span>
         <input
           type="password"
           minLength={6}
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm transition-colors duration-admin focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+          className="h-10 w-full rounded-lg border border-admin-border px-3 text-sm transition-colors duration-admin focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
         />
       </label>
       <div className="mt-5 flex justify-end gap-2">

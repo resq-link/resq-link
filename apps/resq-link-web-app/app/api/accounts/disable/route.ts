@@ -3,16 +3,15 @@ import * as admin from 'firebase-admin';
 import { getAdminFirestore } from '@packages/firebase/admin';
 import { requireSuperAdmin } from '@/lib/requireSuperAdmin';
 import { recordAudit } from '@/lib/server/audit';
-import { notifySuperAdmins } from '@/lib/server/adminNotifications';
 import {
   assertNotSuperAdmin,
   httpErrorStatus,
   resolveManagedAccount,
   setAuthDisabled,
 } from '@/lib/server/accounts';
+import { assertDestructiveAccountActionAllowed } from '@/lib/server/accountClassification';
 import type { ManagedAccountType } from '@/lib/accountTypes';
 import { publicErrorMessage } from '@/lib/errors';
-import { routes } from '@/lib/routes';
 
 const ACCOUNT_TYPES: ManagedAccountType[] = [
   'dispatcher',
@@ -39,9 +38,18 @@ export async function POST(request: NextRequest) {
     }
 
     await assertNotSuperAdmin(uid);
+    const gate = await assertDestructiveAccountActionAllowed({
+      uid,
+      accountType,
+      action: 'disable',
+    });
     const account = await resolveManagedAccount(uid, accountType);
 
-    await setAuthDisabled(uid, true);
+    try {
+      await setAuthDisabled(uid, true);
+    } catch (error: unknown) {
+      if (httpErrorStatus(error) !== 404) throw error;
+    }
 
     const db = getAdminFirestore();
     if (account.collection === 'dispatchers') {
@@ -78,26 +86,12 @@ export async function POST(request: NextRequest) {
       targetLabel: account.label,
       targetCollection: account.collection,
       reason,
-      metadata: { accountType, previousActive: true },
-    });
-
-    const targetUrl =
-      accountType === 'dispatcher'
-        ? routes.admin.dispatchers
-        : accountType === 'responder'
-          ? routes.admin.responders
-          : accountType === 'civilian'
-            ? routes.admin.civilians
-            : routes.admin.commandCenters;
-
-    await notifySuperAdmins({
-      type: 'account.disabled',
-      title: 'Account disabled',
-      message: `${account.label} was disabled.`,
-      targetUrl,
-      targetId: uid,
-      excludeUid: auth.auth.uid,
-      metadata: { accountType },
+      metadata: {
+        accountType,
+        previousActive: true,
+        detectedRole: gate.detectedRole,
+        email: gate.email,
+      },
     });
 
     return NextResponse.json({ success: true });
@@ -106,7 +100,10 @@ export async function POST(request: NextRequest) {
     const message =
       status < 500
         ? (error as Error).message
-        : publicErrorMessage(error, 'Account could not be disabled. The account may have changed. Refresh and try again.');
+        : publicErrorMessage(
+            error,
+            'Account could not be disabled. The account may have changed. Refresh and try again.'
+          );
     return NextResponse.json({ error: message }, { status });
   }
 }

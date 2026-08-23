@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminAuth } from '@packages/firebase/admin';
 import { requireSuperAdmin } from '@/lib/requireSuperAdmin';
-import { recordAudit } from '@/lib/server/audit';
-import { notifySuperAdmins } from '@/lib/server/adminNotifications';
+import { recordAdminEvent } from '@/lib/server/adminEvents';
 import { httpErrorStatus, resolveManagedAccount } from '@/lib/server/accounts';
+import { assertDestructiveAccountActionAllowed } from '@/lib/server/accountClassification';
 import type { ManagedAccountType } from '@/lib/accountTypes';
 import { publicErrorMessage } from '@/lib/errors';
 import { routes } from '@/lib/routes';
@@ -33,17 +33,12 @@ export async function POST(request: NextRequest) {
     }
 
     const account = await resolveManagedAccount(uid, accountType);
-    await getAdminAuth().updateUser(uid, { password });
-
-    await recordAudit({
-      actorUid: auth.auth.uid,
-      actorEmail: auth.auth.email,
-      action: 'account.reset_password',
-      targetUid: uid,
-      targetLabel: account.label,
-      targetCollection: account.collection,
-      metadata: { accountType },
+    await assertDestructiveAccountActionAllowed({
+      uid,
+      accountType,
+      action: 'reset_password',
     });
+    await getAdminAuth().updateUser(uid, { password });
 
     const targetUrl =
       accountType === 'dispatcher'
@@ -52,16 +47,27 @@ export async function POST(request: NextRequest) {
           ? routes.admin.responders
           : accountType === 'civilian'
             ? routes.admin.civilians
-            : routes.admin.commandCenters;
+            : routes.admin.dashboard;
 
-    await notifySuperAdmins({
-      type: 'account.reset_password',
-      title: 'Password reset',
-      message: `Password was reset for ${account.label}.`,
-      targetUrl,
-      targetId: uid,
-      excludeUid: auth.auth.uid,
-      metadata: { accountType },
+    await recordAdminEvent({
+      audit: {
+        actorUid: auth.auth.uid,
+        actorEmail: auth.auth.email,
+        action: 'account.reset_password',
+        targetUid: uid,
+        targetLabel: account.label,
+        targetCollection: account.collection,
+        metadata: { accountType },
+      },
+      notification: {
+        type: 'account.reset_password',
+        title: 'Password reset',
+        message: `Password was reset for ${account.label}.`,
+        targetUrl,
+        targetId: uid,
+        metadata: { accountType },
+        eventKey: `account.reset_password:${uid}:${Date.now()}`,
+      },
     });
 
     return NextResponse.json({ success: true });

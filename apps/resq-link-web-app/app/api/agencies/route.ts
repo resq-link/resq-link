@@ -3,20 +3,17 @@ import * as admin from 'firebase-admin';
 import { getAdminFirestore } from '@packages/firebase/admin';
 import { requireSuperAdmin } from '@/lib/requireSuperAdmin';
 import { recordAudit } from '@/lib/server/audit';
-import { notifySuperAdmins } from '@/lib/server/adminNotifications';
 import {
-  attachPersonnelCounts,
   listAgenciesFromDb,
   mapAgencyDoc,
 } from '@/lib/server/agencies';
 import {
   AGENCY_TYPE_OPTIONS,
   isValidAgencyCodeFormat,
-  normalizeAgencyCode,
+  finalizeAgencyCode,
   type AgencyType,
 } from '@/lib/agencyTypes';
 import { publicErrorMessage } from '@/lib/errors';
-import { routes } from '@/lib/routes';
 
 function isAgencyType(value: unknown): value is AgencyType {
   return typeof value === 'string' && AGENCY_TYPE_OPTIONS.some((item) => item.value === value);
@@ -32,14 +29,10 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') || 'all';
     const type = searchParams.get('type') || 'all';
     const activeOnly = searchParams.get('activeOnly') === '1' || searchParams.get('activeOnly') === 'true';
-    const withCounts = searchParams.get('counts') === '1';
     const page = Math.max(1, Number(searchParams.get('page') || 1));
     const pageSize = Math.min(100, Math.max(1, Number(searchParams.get('pageSize') || 25)));
 
     let items = await listAgenciesFromDb();
-    if (withCounts) {
-      items = await attachPersonnelCounts(items);
-    }
 
     if (activeOnly || status === 'active') {
       items = items.filter((item) => item.isActive);
@@ -53,7 +46,7 @@ export async function GET(request: NextRequest) {
 
     if (search) {
       items = items.filter((item) =>
-        [item.name, item.code, item.description, item.type].join(' ').toLowerCase().includes(search)
+        [item.name, item.code, item.contactPhone, item.type].join(' ').toLowerCase().includes(search)
       );
     }
 
@@ -83,12 +76,9 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const name = typeof body.name === 'string' ? body.name.trim() : '';
-    const code = normalizeAgencyCode(typeof body.code === 'string' ? body.code : '');
+    const code = finalizeAgencyCode(typeof body.code === 'string' ? body.code : '');
     const type = body.type;
-    const description = typeof body.description === 'string' ? body.description.trim() : '';
-    const contactEmail = typeof body.contactEmail === 'string' ? body.contactEmail.trim() : '';
     const contactPhone = typeof body.contactPhone === 'string' ? body.contactPhone.trim() : '';
-    const address = typeof body.address === 'string' ? body.address.trim() : '';
     const isActive = body.isActive !== false;
 
     if (!name || !code) {
@@ -111,14 +101,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'An agency with this code already exists' }, { status: 409 });
     }
 
+    // Keep optional historical fields as empty strings for document-shape compatibility.
     const payload = {
       name,
       code,
       type,
-      description,
-      contactEmail,
+      description: '',
+      contactEmail: '',
       contactPhone,
-      address,
+      address: '',
       isActive,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
@@ -134,15 +125,6 @@ export async function POST(request: NextRequest) {
       targetLabel: `${name} (${code})`,
       targetCollection: 'agencies',
       metadata: { type, isActive },
-    });
-
-    await notifySuperAdmins({
-      type: 'agency.created',
-      title: 'New agency created',
-      message: `${name} was added.`,
-      targetUrl: routes.admin.agencies,
-      targetId: code,
-      excludeUid: auth.auth.uid,
     });
 
     const created = mapAgencyDoc(code, { ...payload, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() });

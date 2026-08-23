@@ -40,6 +40,7 @@ export function useAdminAuditLogs() {
   return {
     search,
     setSearch,
+    appliedSearch: debouncedSearch,
     action,
     setAction,
     targetType,

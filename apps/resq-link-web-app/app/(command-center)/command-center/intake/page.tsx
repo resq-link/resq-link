@@ -520,6 +520,10 @@ function IntakeContent() {
     };
   });
 
+  const [optimisticallyRejectedIds, setOptimisticallyRejectedIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+
   const appEmergencyReports = useMemo(
     () =>
       emergencyReports.filter(
@@ -565,9 +569,6 @@ function IntakeContent() {
   const [rejectReason, setRejectReason] = useState("");
   const [rejectError, setRejectError] = useState<string | null>(null);
   const [isRejecting, setIsRejecting] = useState(false);
-  const [optimisticallyRejectedIds, setOptimisticallyRejectedIds] = useState<Set<string>>(
-    () => new Set(),
-  );
   const incidentDateInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {

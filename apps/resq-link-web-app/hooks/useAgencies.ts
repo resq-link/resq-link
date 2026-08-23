@@ -1,13 +1,19 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { adminFetch } from '@/lib/adminFetch';
 import type { AgencyOption, AgencyRecord } from '@/lib/agencyTypes';
 import { AGENCIES } from '@/lib/agencies';
-import { ensureAdminQuery } from '@/lib/adminQueryCache';
+import { ensureAdminQuery, setAdminQueryData } from '@/lib/adminQueryCache';
 import { buildAdminQueryKey, invalidateAdminQueries, useAdminQuery } from './useAdminQuery';
 
 const DIRECTORY_KEY = buildAdminQueryKey('admin:agencies:directory', { activeOnly: false, counts: 0 });
+
+type AgencyListPayload = {
+  items: AgencyRecord[];
+  total: number;
+  pageSize: number;
+};
 
 async function fetchAgencyDirectory(activeOnly: boolean) {
   const params = new URLSearchParams({
@@ -62,7 +68,6 @@ export function useAdminAgenciesList(params: {
   page: number;
 }) {
   const listKey = buildAdminQueryKey('admin:agencies:list', params);
-  const countsKey = buildAdminQueryKey('admin:agencies:counts', {});
 
   const fetchList = useCallback(async () => {
     const query = new URLSearchParams({
@@ -73,42 +78,40 @@ export function useAdminAgenciesList(params: {
       pageSize: '25',
       counts: '0',
     });
-    return adminFetch<{ items: AgencyRecord[]; total: number; pageSize: number }>(
-      `/api/agencies?${query.toString()}`
-    );
+    return adminFetch<AgencyListPayload>(`/api/agencies?${query.toString()}`);
   }, [params.page, params.search, params.status, params.type]);
 
-  const fetchCounts = useCallback(async () => {
-    const data = await adminFetch<{ counts: Record<string, { dispatchers: number; responders: number; total: number }> }>(
-      '/api/agencies/personnel-counts'
-    );
-    return data.counts;
-  }, []);
-
   const listQuery = useAdminQuery(listKey, fetchList);
-  const countsQuery = useAdminQuery(countsKey, fetchCounts, 60_000);
 
-  const items = useMemo(() => {
-    const rows = listQuery.data?.items ?? [];
-    const counts = countsQuery.data;
-    if (!counts) return rows;
-    return rows.map((row) => ({
-      ...row,
-      personnel: counts[row.code] || { dispatchers: 0, responders: 0, total: 0 },
-    }));
-  }, [countsQuery.data, listQuery.data?.items]);
+  const patchItem = useCallback(
+    (item: AgencyRecord) => {
+      const current = listQuery.data;
+      if (!current) return;
+      const items = current.items.map((row) =>
+        row.id === item.id || row.code === item.code ? item : row
+      );
+      setAdminQueryData<AgencyListPayload>(listKey, { ...current, items });
+    },
+    [listKey, listQuery.data]
+  );
+
+  const refresh = useCallback(async () => {
+    // Mark related agency queries stale without wiping listeners/rows, then refetch.
+    invalidateAgencyQueries();
+    await listQuery.reload();
+  }, [listQuery]);
 
   return {
-    items,
+    items: listQuery.data?.items ?? [],
     total: listQuery.data?.total ?? 0,
     pageSize: listQuery.data?.pageSize ?? 25,
     initialLoading: listQuery.initialLoading,
-    refreshing: listQuery.refreshing || countsQuery.refreshing,
+    refreshing: listQuery.refreshing,
     error: listQuery.error,
-    reload: () => {
-      void listQuery.reload();
-      void countsQuery.reload();
-    },
+    /** Returns the in-flight promise so callers can `await list.reload()`. */
+    reload: () => listQuery.reload(),
     invalidate: invalidateAgencyQueries,
+    patchItem,
+    refresh,
   };
 }

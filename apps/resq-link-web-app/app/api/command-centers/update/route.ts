@@ -3,10 +3,8 @@ import * as admin from 'firebase-admin';
 import { getAdminFirestore } from '@packages/firebase/admin';
 import { requireSuperAdmin } from '@/lib/requireSuperAdmin';
 import { recordAudit } from '@/lib/server/audit';
-import { notifySuperAdmins } from '@/lib/server/adminNotifications';
 import { asString, httpErrorStatus, resolveManagedAccount } from '@/lib/server/accounts';
 import { publicErrorMessage } from '@/lib/errors';
-import { routes } from '@/lib/routes';
 
 function optionalString(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
@@ -56,15 +54,6 @@ export async function POST(request: NextRequest) {
       targetLabel: name || account.label,
       targetCollection: 'commandCenters',
       metadata: { changes },
-    });
-
-    await notifySuperAdmins({
-      type: 'command_center.updated',
-      title: 'Command center updated',
-      message: `${name || account.label} was updated.`,
-      targetUrl: routes.admin.commandCenters,
-      targetId: uid,
-      excludeUid: auth.auth.uid,
     });
 
     return NextResponse.json({ success: true });

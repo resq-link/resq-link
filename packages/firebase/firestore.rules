@@ -27,10 +27,20 @@ service cloud.firestore {
              exists(/databases/$(database)/documents/dispatchers/$(request.auth.uid));
     }
     
-    // Helper function to check if user is a super admin
+    // Super Admin identity — keep in sync with resolveWebWorkspace():
+    // admins/{uid} doc and/or Auth custom claims (role / isSuperAdmin).
+    function superAdminFromClaims() {
+      return request.auth.token.isSuperAdmin == true
+             || request.auth.token.role == 'super_admin'
+             || request.auth.token.role == 'superadmin'
+             || request.auth.token.role == 'platform_admin';
+    }
+
     function isSuperAdmin() {
-      return isAuthenticated() && 
-             exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      return isAuthenticated() && (
+             exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+             || superAdminFromClaims()
+           );
     }
     
     // Administrative audit trail — Super Admin may read; only Admin SDK may write.
@@ -41,9 +51,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Super Admin awareness notifications — Admin SDK only (API routes enforce auth).
+    // Super Admin awareness inbox — client may LIST/GET own recipientUid docs for realtime.
+    // Create/update/delete stay Admin SDK only (mark-read / clear / delete API routes).
     match /adminNotifications/{notificationId} {
-      allow read, write: if false;
+      allow read: if isSuperAdmin()
+                  && resource.data.recipientUid == request.auth.uid;
+      allow create, update, delete: if false;
     }
 
     // Agency directory — Admin SDK only for privileged mutations.
@@ -254,6 +267,12 @@ service cloud.firestore {
     match /teams/{teamId} {
       allow read: if isAuthenticated();
       allow create, update, delete: if isAuthenticated() && (isCommandCenter() || isSuperAdmin());
+    }
+
+    // Public Advisories and broadcasts
+    match /advisories/{advisoryId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isCommandCenter() || isDispatcher() || isSuperAdmin();
     }
 
     // Operational chat threads and messages

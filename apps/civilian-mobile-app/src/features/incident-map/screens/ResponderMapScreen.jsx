@@ -30,7 +30,7 @@ import {
 } from "@/features/incident-map/components/MapMarkers";
 import { coordFrom } from "@/features/incident-map/utils/mapUtils";
 import {
-  canRenderGoogleMapsProvider,
+  canRenderNativeMap,
   getNativeMapProvider,
 } from "@/utils/nativeMapConfig";
 
@@ -56,7 +56,7 @@ export default function ResponderMapScreen() {
   const focusReportId =
     typeof params.reportId === "string" ? params.reportId : undefined;
   const { colors, isLight, mapTheme: theme } = useAppTheme();
-  const canRenderMap = canRenderGoogleMapsProvider();
+  const canRenderMap = canRenderNativeMap();
   const mapProvider = getNativeMapProvider();
   const mapRef = useRef(null);
   const sheetRef = useRef(null);

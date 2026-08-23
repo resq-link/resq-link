@@ -47,6 +47,7 @@ export function useAccountList<T>(type: AccountListType, extraParams?: Record<st
   return {
     search,
     setSearch,
+    appliedSearch: debouncedSearch,
     page,
     setPage,
     items: data?.items ?? [],

@@ -2,6 +2,12 @@ import { getAdminAuth, getAdminFirestore, isAdmin } from '@packages/firebase/adm
 import type { ManagedAccountType, StaffAccountRecord } from '../accountTypes';
 import { civilianVerification } from '../status';
 import { toIso } from './timestamps';
+import {
+  assertExpectedAccountRole,
+  detectCanonicalAccountRole,
+  humanRoleLabel,
+  isProtectedAccountEmail,
+} from './accountClassification';
 
 type FirestoreData = Record<string, unknown>;
 
@@ -37,66 +43,84 @@ export interface ResolvedAccount {
   label: string;
   email: string;
   data: FirestoreData;
+  detectedRole: string;
 }
 
 export async function resolveManagedAccount(
   uid: string,
   expectedType: ManagedAccountType
 ): Promise<ResolvedAccount> {
+  const detected = await detectCanonicalAccountRole(uid);
+  assertExpectedAccountRole(detected.role, expectedType);
+
+  if (isProtectedAccountEmail(detected.email) && expectedType === 'civilian') {
+    throw Object.assign(
+      new Error(
+        `Account type mismatch: ${detected.email} is a protected ${humanRoleLabel(detected.role)} account and cannot be managed as a Civilian.`
+      ),
+      { status: 409, code: 'ACCOUNT_ACTION_BLOCKED_ROLE_MISMATCH' }
+    );
+  }
+
   const db = getAdminFirestore();
 
-  if (expectedType === 'dispatcher' || expectedType === 'responder') {
+  if (expectedType === 'responder') {
     const snap = await db.doc(`dispatchers/${uid}`).get();
-    if (!snap.exists) {
-      throw Object.assign(new Error('Staff account not found'), { status: 404 });
+    if (!snap.exists || snap.data()?.deleted === true) {
+      throw Object.assign(new Error('Responder account not found'), { status: 404 });
     }
     const data = (snap.data() || {}) as FirestoreData;
-    const responder = isResponderDesignation(data.designation);
-    if (expectedType === 'responder' && !responder) {
+    if (!isResponderDesignation(data.designation)) {
       throw Object.assign(new Error('This account is not a responder'), { status: 400 });
     }
-    if (expectedType === 'dispatcher' && responder) {
-      throw Object.assign(new Error('This account is not a dispatcher'), { status: 400 });
-    }
     return {
-      type: expectedType,
+      type: 'responder',
       collection: 'dispatchers',
       label: asString(data.fullName) || asString(data.email) || uid,
       email: asString(data.email),
       data,
+      detectedRole: detected.role,
     };
   }
 
-  if (expectedType === 'civilian') {
-    const snap = await db.doc(`users/${uid}`).get();
-    if (!snap.exists) {
-      throw Object.assign(new Error('Civilian account not found'), { status: 404 });
+  if (expectedType === 'dispatcher' || expectedType === 'command_center') {
+    const snap = await db.doc(`commandCenters/${uid}`).get();
+    if (!snap.exists || snap.data()?.deleted === true) {
+      throw Object.assign(new Error('Dispatcher account not found'), { status: 404 });
     }
     const data = (snap.data() || {}) as FirestoreData;
-    const role = asString(data.role).toLowerCase();
-    if (role && role !== 'civilian') {
-      throw Object.assign(new Error('This account is not a civilian'), { status: 400 });
-    }
     return {
-      type: 'civilian',
-      collection: 'users',
+      type: expectedType === 'dispatcher' ? 'dispatcher' : 'command_center',
+      collection: 'commandCenters',
       label: asString(data.name) || asString(data.email) || uid,
       email: asString(data.email),
       data,
+      detectedRole: detected.role,
     };
   }
 
-  const snap = await db.doc(`commandCenters/${uid}`).get();
-  if (!snap.exists) {
-    throw Object.assign(new Error('Command center not found'), { status: 404 });
+  const snap = await db.doc(`users/${uid}`).get();
+  if (!snap.exists || snap.data()?.deleted === true) {
+    throw Object.assign(new Error('Civilian account not found'), { status: 404 });
   }
   const data = (snap.data() || {}) as FirestoreData;
+  const role = asString(data.role).toLowerCase();
+  if (role !== 'civilian') {
+    throw Object.assign(
+      new Error(
+        `Account type mismatch: this account is registered as ${humanRoleLabel(detected.role)} and cannot be managed as a Civilian.`
+      ),
+      { status: 409, code: 'ACCOUNT_ACTION_BLOCKED_ROLE_MISMATCH' }
+    );
+  }
+
   return {
-    type: 'command_center',
-    collection: 'commandCenters',
+    type: 'civilian',
+    collection: 'users',
     label: asString(data.name) || asString(data.email) || uid,
     email: asString(data.email),
     data,
+    detectedRole: 'civilian',
   };
 }
 
@@ -137,6 +161,7 @@ export function mapCivilianRecord(id: string, data: FirestoreData) {
       asString(data.name) ||
       `${asString(data.firstName)} ${asString(data.lastName)}`.trim(),
     phone: asString(data.phone),
+    role: asString(data.role).toLowerCase() || 'unknown',
     status: asString(data.status) || 'active',
     disabled,
     verification: civilianVerification(asString(data.status), disabled),

@@ -134,11 +134,7 @@ const getResponderLabel = (responder?: { uid: string; account: DispatcherAccount
 
 const isResponderAccount = (responder: { uid: string; account: DispatcherAccount }) =>
   responder.account.active !== false &&
-  (
-    (responder.account.designation || '').toLowerCase().includes('responder') ||
-    !responder.account.designation ||
-    ['AMBULANCE', 'BFP', 'PNP', 'MDRRMO', 'PCG'].includes(responder.account.role)
-  )
+  (responder.account.designation || '').toLowerCase().includes('responder')
 
 export default function ResourcesPage() {
   const { user } = useAuth()

@@ -28,7 +28,7 @@ export default function SuperAdminGuard({ children }: { children: React.ReactNod
 
   if (loading || (user && workspace === null)) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-100">
+      <div className="flex min-h-[40vh] items-center justify-center">
         <InlineLoader label="Verifying access..." />
       </div>
     )

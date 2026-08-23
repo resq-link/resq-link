@@ -3,6 +3,7 @@ import { Space_Grotesk } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
 import { ToastProvider } from '@/components/ToastProvider'
+import { ADMIN_THEME_BOOTSTRAP_SCRIPT } from '@/lib/adminTheme'
 
 const spaceGrotesk = Space_Grotesk({ subsets: ['latin'] })
 
@@ -23,7 +24,10 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: ADMIN_THEME_BOOTSTRAP_SCRIPT }} />
+      </head>
       <body className={`${spaceGrotesk.className} antialiased`} suppressHydrationWarning>
         <AuthProvider>
           <ToastProvider>{children}</ToastProvider>

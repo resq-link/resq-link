@@ -6,30 +6,34 @@ const getConfiguredGoogleMapsKey = () => {
   const expoConfig = Constants.expoConfig || {};
   return String(
     expoConfig.extra?.googleMaps?.apiKey ||
-    expoConfig.android?.config?.googleMaps?.apiKey ||
-    ""
+      expoConfig.ios?.config?.googleMapsApiKey ||
+      expoConfig.android?.config?.googleMaps?.apiKey ||
+      process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
+      ""
   ).trim();
 };
 
-const hasIosGoogleMapsNativeConfig = () => {
-  const expoConfig = Constants.expoConfig || {};
-  return Boolean(expoConfig.ios?.infoPlist?.GMSApiKey);
-};
+export const hasGoogleMapsApiKey = () => getConfiguredGoogleMapsKey().length > 0;
 
-/** Matches responder-mobile-app: Android needs a key; iOS can always render a map. */
-export const canRenderGoogleMapsProvider = () => {
-  if (Platform.OS !== "android") return true;
+/**
+ * Android needs a Maps SDK key for Google tiles.
+ * iOS can fall back to Apple Maps when no Google key is configured.
+ */
+export const canRenderNativeMap = () => {
+  if (Platform.OS === "ios") return true;
   if (Constants.appOwnership === "expo") return true;
-  return getConfiguredGoogleMapsKey().length > 0;
+  return hasGoogleMapsApiKey();
 };
 
-/** Use Google tiles only when the native build supports them. */
+/** @deprecated Use canRenderNativeMap */
+export const canRenderGoogleMapsProvider = canRenderNativeMap;
+
+/**
+ * Prefer Google when a key is baked into the native build; otherwise Apple Maps on iOS.
+ */
 export const getNativeMapProvider = () => {
-  if (Constants.appOwnership === "expo") return PROVIDER_GOOGLE;
-
-  if (Platform.OS === "android") {
-    return getConfiguredGoogleMapsKey().length > 0 ? PROVIDER_GOOGLE : undefined;
+  if (hasGoogleMapsApiKey()) {
+    return PROVIDER_GOOGLE;
   }
-
-  return hasIosGoogleMapsNativeConfig() ? PROVIDER_GOOGLE : undefined;
+  return undefined;
 };

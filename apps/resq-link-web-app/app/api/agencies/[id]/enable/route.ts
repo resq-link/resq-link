@@ -3,10 +3,8 @@ import * as admin from 'firebase-admin';
 import { getAdminFirestore } from '@packages/firebase/admin';
 import { requireSuperAdmin } from '@/lib/requireSuperAdmin';
 import { recordAudit } from '@/lib/server/audit';
-import { notifySuperAdmins } from '@/lib/server/adminNotifications';
 import { mapAgencyDoc } from '@/lib/server/agencies';
 import { publicErrorMessage } from '@/lib/errors';
-import { routes } from '@/lib/routes';
 
 export async function POST(
   request: NextRequest,
@@ -22,6 +20,12 @@ export async function POST(
     const snap = await ref.get();
     if (!snap.exists) {
       return NextResponse.json({ error: 'Agency not found' }, { status: 404 });
+    }
+    if (snap.data()?.deleted === true) {
+      return NextResponse.json(
+        { error: 'Deleted agencies cannot be re-enabled. Create a new agency instead.' },
+        { status: 409 }
+      );
     }
 
     const current = mapAgencyDoc(code, snap.data() as Record<string, unknown>);
@@ -44,15 +48,6 @@ export async function POST(
       targetUid: code,
       targetLabel: `${current.name} (${current.code})`,
       targetCollection: 'agencies',
-    });
-
-    await notifySuperAdmins({
-      type: 'agency.enabled',
-      title: 'Agency enabled',
-      message: `${current.name} was enabled.`,
-      targetUrl: routes.admin.agencies,
-      targetId: code,
-      excludeUid: auth.auth.uid,
     });
 
     return NextResponse.json({ success: true, item: { ...current, isActive: true } });

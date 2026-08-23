@@ -175,7 +175,7 @@ export function AdminActionMenu({
               visibility: coords ? 'visible' : 'hidden',
               pointerEvents: coords ? 'auto' : 'none',
             }}
-            className="fixed z-[60] overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-admin-panel animate-admin-menu-in"
+            className="fixed z-[60] overflow-y-auto rounded-lg border border-admin-border bg-admin-surface py-1 shadow-admin-panel animate-admin-menu-in"
           >
             {items.map((item) => (
               <button
@@ -188,7 +188,9 @@ export function AdminActionMenu({
                   item.onClick();
                 }}
                 className={`block w-full px-3 py-2 text-left text-sm transition-colors duration-admin ${
-                  item.tone === 'danger' ? 'text-red-700 hover:bg-red-50' : 'text-slate-700 hover:bg-primary-50/50'
+                  item.tone === 'danger'
+                    ? 'text-red-700 hover:bg-red-500/10 dark:text-red-400'
+                    : 'text-admin-fg-muted hover:bg-admin-hover'
                 }`}
               >
                 {item.label}
@@ -216,7 +218,7 @@ export function AdminActionMenu({
           event.stopPropagation();
           setOpen((current) => !current);
         }}
-        className="rounded-lg p-2 text-slate-500 transition-colors duration-admin hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/25"
+        className="rounded-lg p-2 text-admin-fg-subtle transition-colors duration-admin hover:bg-admin-hover hover:text-admin-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/25"
       >
         <MoreHorizontal size={16} />
       </button>

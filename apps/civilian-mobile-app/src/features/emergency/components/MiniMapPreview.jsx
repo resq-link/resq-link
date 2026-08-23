@@ -5,7 +5,7 @@ import { MapPin } from "lucide-react-native";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useThemedStyles } from "@/hooks/useThemedStyles";
 import {
-  canRenderGoogleMapsProvider,
+  canRenderNativeMap,
   getNativeMapProvider,
 } from "@/utils/nativeMapConfig";
 
@@ -49,7 +49,7 @@ function MiniMapPreview({ latitude, longitude, mapRegion, onPin, interactive = f
     return <View style={[styles.placeholder, styles.map]} />;
   }
 
-  if (!canRenderGoogleMapsProvider()) {
+  if (!canRenderNativeMap()) {
     return (
       <View style={[styles.placeholder, styles.map]}>
         <MapPin size={22} color={reportTheme.primary} />

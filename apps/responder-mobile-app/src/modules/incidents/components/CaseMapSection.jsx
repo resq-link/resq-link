@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import MapView, { Marker, PROVIDER_GOOGLE } from "react-native-maps";
+import MapView, { Marker } from "react-native-maps";
 import { Check, MapPin, Navigation, Navigation2 } from "lucide-react-native";
 import Section from "./Section";
 import { radii, spacing } from "@/theme";
+import { getNativeMapProvider } from "@/utils/nativeMapConfig";
 
 const getIncidentTypeName = (type) => {
   const typeMap = {
@@ -128,7 +129,7 @@ export default function CaseMapSection({
       {hasPinnedLocation && (
         <View style={[styles.mapShell, { borderColor: colors.border, backgroundColor: colors.background }]}>
           <MapView
-            provider={PROVIDER_GOOGLE}
+            provider={getNativeMapProvider()}
             style={styles.map}
             region={mapRegion}
             scrollEnabled={true}

@@ -7,11 +7,10 @@ import {
   getAdminQuerySnapshot,
   subscribeAdminQuery,
 } from '@/lib/adminQueryCache';
-import type { DashboardStats, PersonnelByAgencyRow } from '@/lib/accountTypes';
+import type { DashboardStats } from '@/lib/accountTypes';
 
 export const DASHBOARD_STATS_STALE_MS = 30_000;
 export const DASHBOARD_STATS_KEY = 'admin:dashboard:stats';
-export const DASHBOARD_PERSONNEL_KEY = 'admin:dashboard:personnel';
 export const DASHBOARD_ACTIVITY_KEY = 'admin:dashboard:activity';
 
 export type DashboardActivityItem = {
@@ -20,10 +19,6 @@ export type DashboardActivityItem = {
   actorEmail: string | null;
   targetLabel: string | null;
   createdAt: string | null;
-};
-
-export type DashboardPersonnelPayload = {
-  personnelByAgency: PersonnelByAgencyRow[];
 };
 
 export type DashboardActivityPayload = {
@@ -40,10 +35,6 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
     console.info(`[admin-dashboard] stats request completed ${Date.now() - started}ms`);
   }
   return stats;
-}
-
-export async function fetchDashboardPersonnel(): Promise<DashboardPersonnelPayload> {
-  return adminFetch<DashboardPersonnelPayload>('/api/stats/overview?section=personnel');
 }
 
 export async function fetchDashboardActivity(): Promise<DashboardActivityPayload> {
@@ -81,10 +72,6 @@ function useCachedQuery<T>(key: string, fetcher: () => Promise<T>, staleTimeMs: 
 
 export function useDashboardStats() {
   return useCachedQuery(DASHBOARD_STATS_KEY, fetchDashboardStats, DASHBOARD_STATS_STALE_MS);
-}
-
-export function useDashboardPersonnel() {
-  return useCachedQuery(DASHBOARD_PERSONNEL_KEY, fetchDashboardPersonnel, DASHBOARD_STATS_STALE_MS);
 }
 
 export function useDashboardActivity() {

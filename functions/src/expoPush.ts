@@ -11,6 +11,8 @@ export const ALARM_SOUND = 'incident_alarm.wav';
 /** Must match the category registered in the responder app for tray actions. */
 export const ALERT_CATEGORY = 'incident-alert';
 
+export const CIVILIAN_ALERT_CHANNEL = 'emergency-updates';
+
 export type StoredToken = {
   token: string;
   platform?: 'ios' | 'android' | 'web';
@@ -61,6 +63,24 @@ export async function loadResponderTokens(
   });
 
   return targets;
+}
+
+/** Collect Expo tokens for a civilian user. */
+export async function loadCivilianTokens(
+  userId: string
+): Promise<PushTarget | null> {
+  if (!userId) return null;
+  const db = getFirestore();
+  const snap = await db.collection('users').doc(userId).get();
+  if (!snap.exists) return null;
+
+  const raw = snap.get('pushTokens');
+  const tokens: StoredToken[] = Array.isArray(raw)
+    ? raw.filter((entry) => entry?.token && typeof entry.token === 'string')
+    : [];
+
+  if (tokens.length === 0) return null;
+  return { responderId: userId, tokens };
 }
 
 /**
@@ -126,23 +146,30 @@ export async function sendExpoPush(
 }
 
 async function pruneToken(
-  responderId: string | undefined,
+  ownerId: string | undefined,
   token: string
 ): Promise<number> {
-  if (!responderId) return 0;
+  if (!ownerId) return 0;
   const db = getFirestore();
-  const ref = db.collection('dispatchers').doc(responderId);
-  try {
-    const snap = await ref.get();
-    const raw = snap.get('pushTokens');
-    if (!Array.isArray(raw)) return 0;
-    const stale = raw.filter((entry) => entry?.token === token);
-    if (stale.length === 0) return 0;
-    await ref.update({ pushTokens: FieldValue.arrayRemove(...stale) });
-    logger.info('Pruned dead push token', { responderId });
-    return 1;
-  } catch (error) {
-    logger.warn('Could not prune token', { responderId, error: String(error) });
-    return 0;
+  let removed = 0;
+
+  for (const coll of ['dispatchers', 'users'] as const) {
+    const ref = db.collection(coll).doc(ownerId);
+    try {
+      const snap = await ref.get();
+      if (!snap.exists) continue;
+      const raw = snap.get('pushTokens');
+      if (!Array.isArray(raw)) continue;
+      const stale = raw.filter((entry) => entry?.token === token);
+      if (stale.length > 0) {
+        await ref.update({ pushTokens: FieldValue.arrayRemove(...stale) });
+        logger.info('Pruned dead push token', { collection: coll, ownerId });
+        removed++;
+      }
+    } catch (error) {
+      logger.warn('Could not prune token', { collection: coll, ownerId, error: String(error) });
+    }
   }
+
+  return removed > 0 ? 1 : 0;
 }

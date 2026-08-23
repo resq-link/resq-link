@@ -49,7 +49,8 @@
         "android.permission.READ_CALENDAR",
         "android.permission.WRITE_CALENDAR"
       ],
-      "package": "com.tuguegarao.resqlink.responder"
+      "package": "com.tuguegarao.resqlink.responder",
+      "googleServicesFile": "./google-services.json"
     },
     "plugins": [
       [
@@ -65,6 +66,14 @@
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
         }
       ],
       "expo-font",

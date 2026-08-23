@@ -2,11 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdmin } from '@/lib/requireSuperAdmin';
 import { publicErrorMessage } from '@/lib/errors';
 import { buildNeedsAttention } from '@/lib/needsAttention';
-import {
-  loadDashboardStats,
-  loadPersonnelByAgency,
-  loadRecentActivity,
-} from '@/lib/server/dashboardStats';
+import { loadDashboardStats, loadRecentActivity } from '@/lib/server/dashboardStats';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,34 +18,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ recentActivity });
     }
 
-    if (section === 'personnel') {
-      const personnelByAgency = await loadPersonnelByAgency();
-      return NextResponse.json({ personnelByAgency });
-    }
-
-    if (section === 'stats') {
+    if (section === 'stats' || section === 'core') {
       const stats = await loadDashboardStats();
       return NextResponse.json({ stats, attention: buildNeedsAttention(stats) });
     }
 
-    if (section === 'core') {
-      const [stats, personnelByAgency] = await Promise.all([
-        loadDashboardStats(),
-        loadPersonnelByAgency(),
-      ]);
-      return NextResponse.json({
-        stats: { ...stats, personnelByAgency },
-        attention: buildNeedsAttention(stats),
-      });
-    }
-
-    const [stats, personnelByAgency, recentActivity] = await Promise.all([
+    const [stats, recentActivity] = await Promise.all([
       loadDashboardStats(),
-      loadPersonnelByAgency(),
       loadRecentActivity(8),
     ]);
     return NextResponse.json({
-      stats: { ...stats, personnelByAgency },
+      stats,
       attention: buildNeedsAttention(stats),
       recentActivity,
     });

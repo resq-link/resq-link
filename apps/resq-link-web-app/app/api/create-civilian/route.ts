@@ -2,9 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createCivilianAccountAdmin } from '@packages/firebase/admin';
 import { requireSuperAdmin } from '@/lib/requireSuperAdmin';
 import { recordAudit } from '@/lib/server/audit';
-import { notifySuperAdmins } from '@/lib/server/adminNotifications';
 import { publicErrorMessage } from '@/lib/errors';
-import { routes } from '@/lib/routes';
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,15 +35,6 @@ export async function POST(request: NextRequest) {
       targetUid: result.uid,
       targetLabel: fullName || email,
       targetCollection: 'users',
-    });
-
-    await notifySuperAdmins({
-      type: 'account.created.civilian',
-      title: 'Civilian account created',
-      message: `${fullName || email} was added.`,
-      targetUrl: routes.admin.civilians,
-      targetId: result.uid,
-      excludeUid: auth.auth.uid,
     });
 
     return NextResponse.json({ success: true, uid: result.uid });

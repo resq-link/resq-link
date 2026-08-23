@@ -63,11 +63,12 @@ Command-center realtime providers (incidents, map, Agora, Gemini) mount only und
 - `/admin/dispatchers`
 - `/admin/responders`
 - `/admin/civilians`
-- `/admin/command-centers`
+- `/admin/agencies`
 - `/admin/kyc`
 - `/admin/audit`
 
 Legacy dispatcher URLs such as `/overview` and `/intake` temporarily redirect to `/command-center/*`.
+Legacy `/admin/command-centers` redirects to `/admin/dashboard`.
 
 ## Mobile API compatibility
 

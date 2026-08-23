@@ -443,6 +443,7 @@ export default function IntakeDetailView({
         peopleStatus: merged.peopleStatus || current.peopleStatus || null,
         hospital: merged.hospital || current.hospital || null,
         photoUrl: merged.photoUrl || current.photoUrl || null,
+        actionPhotoUrl: merged.actionPhotoUrl || current.actionPhotoUrl || null,
         submittedAt: merged.submittedAt || current.submittedAt || null,
         submittedByDispatcherId:
           merged.submittedByDispatcherId || current.submittedByDispatcherId || null,

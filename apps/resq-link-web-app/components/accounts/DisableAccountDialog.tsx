@@ -33,16 +33,16 @@ export function DisableAccountDialog({
         }
       }}
     >
-      <p className="text-sm text-slate-600">
-        <span className="font-medium text-slate-900">{accountLabel}</span> will no longer be able to access RESQ-LINK.
+      <p className="text-sm text-admin-fg-muted">
+        <span className="font-medium text-admin-fg">{accountLabel}</span> will no longer be able to access RESQ-LINK.
       </p>
       <label className="mt-4 block">
-        <span className="mb-1 block text-sm font-medium text-slate-700">Reason</span>
+        <span className="mb-1 block text-sm font-medium text-admin-fg-muted">Reason</span>
         <textarea
           required
           value={reason}
           onChange={(event) => setReason(event.target.value)}
-          className="min-h-[96px] w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-800 transition-colors duration-admin focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+          className="min-h-[96px] w-full rounded-lg border border-admin-border px-3 py-2 text-sm text-admin-fg transition-colors duration-admin focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
           placeholder="Why is this account being disabled?"
         />
       </label>

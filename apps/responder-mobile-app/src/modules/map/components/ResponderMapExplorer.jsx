@@ -17,7 +17,7 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from "react-native-maps";
+import MapView, { Marker, Polyline } from "react-native-maps";
 import * as Location from "expo-location";
 import { LinearGradient } from "expo-linear-gradient";
 import {
@@ -56,7 +56,11 @@ import {
   isActiveIncident,
   isResolved,
 } from "@/utils/mapIncidentHelpers";
-import { canRenderGoogleMapsProvider } from "@/utils/nativeMapConfig";
+import {
+  canRenderNativeMap,
+  getNativeMapProvider,
+  hasGoogleMapsApiKey,
+} from "@/utils/nativeMapConfig";
 
 const hasValidCoordinate = (latitude, longitude) =>
   Number.isFinite(latitude) &&
@@ -669,7 +673,9 @@ export default function ResponderMapExplorer() {
     return <LoadingScreen title="Loading map…" subtitle="" />;
   }
 
-  const canRenderMap = canRenderGoogleMapsProvider();
+  const canRenderMap = canRenderNativeMap();
+  const mapProvider = getNativeMapProvider();
+  const useGoogleMapStyle = hasGoogleMapsApiKey();
 
   let headerSub = "";
   if (casesWithLocation.length === 0) headerSub = "No pins";
@@ -761,10 +767,10 @@ export default function ResponderMapExplorer() {
         {canRenderMap ? (
           <MapView
             ref={mapRef}
-            provider={PROVIDER_GOOGLE}
+            provider={mapProvider}
             style={[StyleSheet.absoluteFill, styles.mapNativeUnderlay]}
             initialRegion={initialCenter.current}
-            customMapStyle={mapTileStyle}
+            {...(useGoogleMapStyle ? { customMapStyle: mapTileStyle } : null)}
             showsUserLocation={showUserOnMap && !locationError}
             showsMyLocationButton={false}
             showsPointsOfInterest={false}

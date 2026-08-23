@@ -1,7 +1,7 @@
 import type { DashboardStats, NeedsAttentionItem } from '@/lib/accountTypes';
 
 export function buildNeedsAttention(
-  stats: Pick<DashboardStats, 'pendingKyc' | 'disabledAccounts' | 'incompleteCommandCenters'>
+  stats: Pick<DashboardStats, 'pendingKyc' | 'disabledAccounts'>
 ): NeedsAttentionItem[] {
   const attention: NeedsAttentionItem[] = [];
   if (stats.pendingKyc > 0) {
@@ -24,17 +24,6 @@ export function buildNeedsAttention(
         stats.disabledAccounts === 1
           ? '1 disabled account'
           : `${stats.disabledAccounts} disabled accounts`,
-    });
-  }
-  if (stats.incompleteCommandCenters > 0) {
-    attention.push({
-      id: 'incomplete-cc',
-      count: stats.incompleteCommandCenters,
-      href: '/admin/command-centers',
-      label:
-        stats.incompleteCommandCenters === 1
-          ? '1 incomplete command-center profile'
-          : `${stats.incompleteCommandCenters} incomplete command-center profiles`,
     });
   }
   return attention;

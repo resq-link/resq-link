@@ -19,11 +19,6 @@ export interface AgencyRecord {
   createdAt: string | null;
   updatedAt: string | null;
   createdBy: string | null;
-  personnel?: {
-    dispatchers: number;
-    responders: number;
-    total: number;
-  };
 }
 
 export interface AgencyOption {
@@ -86,7 +81,12 @@ export const SEED_AGENCIES: Array<{
 ];
 
 export function normalizeAgencyCode(value: string): string {
-  return value.trim().toUpperCase().replace(/\s+/g, '_');
+  // Avoid trim-while-typing (caret jumps). Callers should trim on submit if needed.
+  return value.toUpperCase().replace(/\s+/g, '_');
+}
+
+export function finalizeAgencyCode(value: string): string {
+  return normalizeAgencyCode(value).replace(/^_+|_+$/g, '');
 }
 
 export function isValidAgencyCodeFormat(value: string): boolean {

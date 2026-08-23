@@ -62,6 +62,8 @@ const nextConfig = {
     return [
       { source: "/admin", destination: "/admin/dashboard", permanent: false },
       { source: "/admin/profile", destination: "/admin/settings", permanent: false },
+      { source: "/admin/command-centers", destination: "/admin/dashboard", permanent: false },
+      { source: "/admin/command-centers/:path*", destination: "/admin/dashboard", permanent: false },
     ];
   },
   async rewrites() {

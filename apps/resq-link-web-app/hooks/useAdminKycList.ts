@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { adminFetch } from '@/lib/adminFetch';
 import { useDebouncedValue } from './useDebouncedValue';
 import { buildAdminQueryKey, invalidateAdminQueries, useAdminQuery } from './useAdminQuery';
@@ -50,6 +50,7 @@ export function useAdminKycList() {
     setTab,
     search,
     setSearch,
+    appliedSearch: debouncedSearch,
     page,
     setPage,
     items: data?.items ?? [],

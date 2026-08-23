@@ -44,7 +44,9 @@ import { UI_MODE, mockData } from "@/services/api";
 import {
   getUserEmergencyReports,
   getAllEmergencyReports,
+  subscribeToActiveAdvisories,
 } from "@packages/firebase";
+import AdvisoryBanner from "@/components/AdvisoryBanner";
 import {
   getIncidentMeta,
   isActiveReport,
@@ -641,6 +643,7 @@ export default function DashboardScreen() {
   const { handleSOS, sosLoading } = useSOS();
   const [recentReports, setRecentReports] = useState([]);
   const [nearbyReports, setNearbyReports] = useState([]);
+  const [activeAdvisories, setActiveAdvisories] = useState([]);
   const [userLocation, setUserLocation] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const { colors, dashboardTheme: theme } = useAppTheme();
@@ -666,6 +669,19 @@ export default function DashboardScreen() {
       easing: Easing.out(Easing.cubic),
     });
   }, [screenOpacity, screenTranslateY]);
+
+  // Subscribe to real-time active emergency advisories from Command Center
+  useEffect(() => {
+    const unsub = subscribeToActiveAdvisories(
+      (list) => {
+        setActiveAdvisories(list || []);
+      },
+      (err) => {
+        console.warn("Failed to subscribe to active advisories:", err);
+      }
+    );
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     if (userId) {
@@ -847,9 +863,13 @@ export default function DashboardScreen() {
             displayName={displayName}
             userInitial={userInitial}
             theme={theme}
-            onNotifications={() => router.push("/notifications")}
+            onNotifications={() => router.push("/advisories")}
             onProfile={() => router.push("/(tabs)/profile")}
           />
+
+          {activeAdvisories.length > 0 && (
+            <AdvisoryBanner advisories={activeAdvisories} theme={theme} />
+          )}
 
           <ReportEmergencyCard
             theme={theme}

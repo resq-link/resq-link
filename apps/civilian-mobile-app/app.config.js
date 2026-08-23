@@ -88,6 +88,18 @@ module.exports = ({ config }) => {
     ...baseConfig,
     android: androidConfig,
     plugins,
+    ios: {
+      ...baseConfig.ios,
+      ...(googleMapsApiKey
+        ? {
+            config: {
+              ...baseConfig.ios?.config,
+              googleMapsApiKey,
+            },
+          }
+        : null),
+    },
+    android: androidConfig,
     extra: {
       ...baseConfig.extra,
       firebase: {

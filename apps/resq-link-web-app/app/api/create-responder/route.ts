@@ -2,10 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createDispatcherAccountAdmin } from '@packages/firebase/admin';
 import { requireSuperAdmin } from '@/lib/requireSuperAdmin';
 import { recordAudit } from '@/lib/server/audit';
-import { notifySuperAdmins } from '@/lib/server/adminNotifications';
 import { assertAssignableAgencyCode } from '@/lib/server/agencies';
 import { publicErrorMessage } from '@/lib/errors';
-import { routes } from '@/lib/routes';
 
 export async function POST(request: NextRequest) {
   try {
@@ -49,16 +47,6 @@ export async function POST(request: NextRequest) {
       targetLabel: fullName || email,
       targetCollection: 'dispatchers',
       metadata: { agency: agencyCode, teamCode: teamCode || null, designation: 'responder' },
-    });
-
-    await notifySuperAdmins({
-      type: 'account.created.responder',
-      title: 'Responder account created',
-      message: `${fullName || email} was added to ${agencyCode}.`,
-      targetUrl: routes.admin.responders,
-      targetId: result.uid,
-      excludeUid: auth.auth.uid,
-      metadata: { agency: agencyCode },
     });
 
     return NextResponse.json({ success: true, uid: result.uid });
