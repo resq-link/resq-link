@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import dynamic from 'next/dynamic'
+import { getReportImageUrls } from '@packages/firebase'
+import IncidentScenePhotos from '@/components/incident-media/IncidentScenePhotos'
 
 const IncidentMap = dynamic(() => import('./IncidentMap'), {
   ssr: false,
@@ -27,6 +29,7 @@ interface IncidentDetailsModalProps {
     responder: string | null
     dispatcherId?: string | null
     imageUrl?: string | null
+    imageUrls?: string[] | null
     latitude?: number | null
     longitude?: number | null
   }
@@ -46,7 +49,11 @@ export default function IncidentDetailsModal({
 
   // Debug logging
   console.log('IncidentDetailsModal - incident data:', incident)
-  console.log('IncidentDetailsModal - imageUrl:', incident.imageUrl)
+
+  const sceneImageUrls = getReportImageUrls({
+    imageUrl: incident.imageUrl ?? null,
+    imageUrls: incident.imageUrls ?? null,
+  })
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -138,35 +145,8 @@ export default function IncidentDetailsModal({
             {/* Content */}
             <div className="space-y-4">
               {/* Image Section */}
-              {incident.imageUrl && incident.imageUrl.trim() !== '' ? (
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-100 mb-3">Photo</h3>
-                  <div className="rounded-lg overflow-hidden border border-slate-800">
-                    <img
-                      src={incident.imageUrl}
-                      alt="Incident photo"
-                      className="w-full h-auto max-h-96 object-contain bg-slate-950"
-                      onError={(e) => {
-                        console.error('Image failed to load:', incident.imageUrl)
-                        // Fallback if image fails to load
-                        const target = e.target as HTMLImageElement
-                        target.style.display = 'none'
-                        const parent = target.parentElement
-                        if (parent) {
-                          parent.innerHTML = `
-                            <div class="p-8 text-center text-slate-400">
-                              <p>Failed to load image</p>
-                              <p class="text-sm mt-2 break-all">${incident.imageUrl}</p>
-                            </div>
-                          `
-                        }
-                      }}
-                      onLoad={() => {
-                        console.log('Image loaded successfully:', incident.imageUrl)
-                      }}
-                    />
-                  </div>
-                </div>
+              {sceneImageUrls.length > 0 ? (
+                <IncidentScenePhotos imageUrls={sceneImageUrls} layout="stack" />
               ) : (
                 <div className="text-center py-4 text-slate-400 text-sm">
                   No photo available for this incident

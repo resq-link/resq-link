@@ -21,6 +21,8 @@ import {
   getFirebaseFirestore,
   onSnapshot,
   acknowledgeIncidentAlert,
+  parseResponderAssessment,
+  mapIncidentCategoryToEmergencyType,
 } from "@packages/firebase";
 import CaseInfoCard from "@/modules/incidents/components/CaseInfoCard";
 import CaseDetailSkeleton from "@/modules/incidents/components/CaseDetailSkeleton";
@@ -99,10 +101,16 @@ export default function CaseDetailView() {
           const data = docSnap.data();
           const latitude = toCoordinateValue(data.latitude ?? data.location?.latitude);
           const longitude = toCoordinateValue(data.longitude ?? data.location?.longitude);
+          const incidentCategory =
+            data.incidentCategory || data.incidentType || data.incident_type || "other";
+          const assessmentIncidentType = mapIncidentCategoryToEmergencyType(incidentCategory);
+
           const caseInfo = {
             id: docSnap.id,
             userId: data.createdByUserId || data.userId || data.user_id || "",
-            incidentType: data.incidentCategory || data.incidentType || data.incident_type || "other",
+            incidentCategory,
+            incidentType: assessmentIncidentType,
+            assessmentIncidentType,
             locationText: data.locationText || data.location_text || "",
             landmark: data.landmark || null,
             peopleInvolved:
@@ -148,6 +156,7 @@ export default function CaseDetailView() {
                     submittedAt: toDateValue(data.postIncidentReport.submittedAt),
                   }
                 : null,
+            responderAssessment: parseResponderAssessment(data.responderAssessment),
           };
 
           setCaseData(caseInfo);

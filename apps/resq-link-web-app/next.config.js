@@ -51,6 +51,8 @@ const nextConfig = {
       "@packages/firebase": "../../packages/firebase/src/index.ts",
       "expo-constants": "./lib/empty-module.js",
       "@react-native-async-storage/async-storage": "./lib/empty-module.js",
+      "expo-file-system": "./lib/empty-module.js",
+      "expo-file-system/legacy": "./lib/empty-module.js",
     },
   },
   eslint: {
@@ -120,6 +122,8 @@ const nextConfig = {
       ),
       "expo-constants": false,
       "@react-native-async-storage/async-storage": false,
+      "expo-file-system": false,
+      "expo-file-system/legacy": false,
     };
 
     if (!isServer) {

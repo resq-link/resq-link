@@ -4,6 +4,7 @@ import {
   declineIncident,
   markIncidentTouchdown,
   submitPostIncidentReportForIncident,
+  submitResponderSceneAssessmentForIncident,
 } from "@packages/firebase";
 import type { IncidentRecord } from "@packages/firebase";
 
@@ -34,6 +35,14 @@ export async function markIncidentCaseTouchdown(caseId: string, options: { sourc
 
 export async function submitIncidentPostReport(caseId: string, postReport: any) {
   return submitPostIncidentReportForIncident(caseId, postReport);
+}
+
+export async function submitIncidentSceneAssessment(
+  caseId: string,
+  fields: Record<string, string>,
+  options?: { updatedByName?: string | null; scenePhotoUrl?: string | null },
+) {
+  return submitResponderSceneAssessmentForIncident(caseId, fields, options);
 }
 
 export type { IncidentRecord as EmergencyReport }; // Keep the export name the same for compatibility with other files if they import it from here

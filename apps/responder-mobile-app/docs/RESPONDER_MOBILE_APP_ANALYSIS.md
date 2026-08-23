@@ -79,15 +79,16 @@ The responder app is the **execution layer** — it turns dispatcher assignments
 3. Share live GPS location while on duty
 4. Navigate to incident scenes (external Google Maps)
 5. Mark touchdown (on-scene arrival)
-6. Submit post-incident report with optional photo
-7. Answer voice calls from civilians (Agora RTC)
-8. Chat with dispatchers (Firestore messaging)
+6. Submit on-scene assessment (required before post report)
+7. Submit post-incident report with optional photo
+8. Answer voice calls from civilians (Agora RTC)
+9. Chat with dispatchers (Firestore messaging)
 
 ### Overall Workflow
 
 ```
 Sign in → Dashboard (assigned cases) → Open case → Accept → En route
-  → Navigate (Google Maps) → Touchdown → Post-incident report → Resolved
+  → Navigate (Google Maps) → Touchdown → Scene Assessment → Post-incident report → Resolved
 ```
 
 Parallel paths: incoming voice calls (dashboard overlay), dispatcher chat (global FAB), priority haptic alerts on new assignments.
@@ -472,7 +473,8 @@ Global (any authenticated screen):
 |-----------|--------|
 | Assigned + status ∈ pending/dispatched/awaiting_resources/active | Accept / Decline |
 | Assigned + enroute/on_scene + no touchdownAt | Touchdown |
-| Assigned + touchdownAt + no post report + not resolved | Post Report |
+| Assigned + touchdownAt + no scene assessment + not resolved | Scene Assessment (primary); Post Report disabled |
+| Assigned + touchdownAt + scene assessment + no post report + not resolved | Update Assessment / Post Report |
 | Resolved/done or has post report | "Case Completed" overlay |
 
 ### Post Report Modal (`PostReportModal`)
@@ -546,7 +548,7 @@ Global (any authenticated screen):
 | Expected Screen | Status |
 |-----------------|--------|
 | Dedicated History screen | ❌ Resolved cases shown on dashboard "Done" count only |
-| Field Assessment form | ❌ No responder assessment form (only post-incident report) |
+| Field Assessment form | ✅ Scene Assessment (`SceneAssessmentModal`) — required before Post Report |
 | Dedicated Profile screen | ⚠️ Profile info embedded in Settings |
 | In-app turn-by-turn navigation | ❌ Uses external Google Maps |
 
@@ -636,8 +638,9 @@ flowchart TD
 | 5. En route | Responder | GPS auto-push | `dispatchers/{uid}` lat/lng | Dispatcher map updates |
 | 6. Navigate | Responder | External Google Maps | — | — |
 | 7. Touchdown | Responder | `markIncidentTouchdown()` | `status: on_scene`, `touchdownAt`, `responseTimeSeconds` | Resources → `on_scene` |
-| 8. Post report | Responder | `submitPostIncidentReportForIncident()` | `status: resolved`, `postIncidentReport`, `resolvedAt`, `movedToHistoryAt` | Resources → `available` |
-| 9. Decline | Responder | `declineIncident(reason)` | Remove UID from `assignedResourceIds`; may set `awaiting_resources` | Dispatcher re-assigns |
+| 8. Scene assessment | Responder | `submitResponderSceneAssessmentForIncident()` | `incidents.responderAssessment` (+ best-effort sync to linked `emergencies`) | Command Center Scene Assessment panel updates in realtime |
+| 9. Post report | Responder | `submitPostIncidentReportForIncident()` | `status: resolved`, `postIncidentReport`, `resolvedAt`, `movedToHistoryAt` | Requires valid scene assessment; resources → `available` |
+| 10. Decline | Responder | `declineIncident(reason)` | Remove UID from `assignedResourceIds`; may set `awaiting_resources` | Dispatcher re-assigns |
 
 ### Timeline Visualization (`CaseTimeline`)
 
@@ -788,6 +791,7 @@ declineIncident(incidentId, reason):
 ```typescript
 submitPostIncidentReportForIncident(incidentId, postReport):
   → verify uid ∈ assignedResourceIds
+  → verify hasResponderSceneAssessment(responderAssessment) — skipped for already-resolved legacy cases
   → postIncidentReport object with submittedAt, submittedBy
   → status: 'resolved', resolutionStatus: 'resolved'
   → resolvedAt, movedToHistoryAt: now
@@ -804,14 +808,21 @@ submitPostIncidentReportForIncident(incidentId, postReport):
 
 ## 12. Field Assessment
 
-### Current State
+### Scene Assessment (Responder On-Scene)
 
-**There is no dedicated field assessment form for responders.** The codebase contains:
+**Implemented and required before Post Report.** Components:
 
-1. **Post-incident report** (`PostReportModal`) — outcome documentation after touchdown
-2. **Additional Details section** (`AdditionalDetailsSection`) — **read-only** display of civilian-provided field assessment data
+1. **Scene Assessment modal** (`SceneAssessmentModal`) — structured on-scene documentation after touchdown
+2. **Scene Assessment section** (`SceneAssessmentSection`) — read-only display of submitted assessment
+3. **Firebase module** (`packages/firebase/src/responderAssessment.ts`) — field defs, validation, Firestore writes
 
-### Post-Incident Report Fields
+**Workflow gate:** Post Report is disabled until `hasResponderSceneAssessment(caseData.responderAssessment)` is true. Validation is enforced in both the mobile UI and `submitPostIncidentReportForIncident()`.
+
+**Storage:** `incidents/{incidentId}.responderAssessment` with best-effort sync to linked `emergencies/{reportId}.responderAssessment`. Command Center reads via `SceneAssessmentPanel` in `IntakeDetailView`.
+
+**Fields (by incident type):** fire, medical, vehicular_accident, police_emergency, electrical_powerline_hazard, other_emergency — see `RESPONDER_SCENE_ASSESSMENT_FIELDS` in `@packages/firebase`.
+
+### Post-Incident Report
 
 | Field | Type | Presets |
 |-------|------|---------|
@@ -832,10 +843,6 @@ submitPostIncidentReportForIncident(incidentId, postReport):
 ### Storage
 
 Post-report saved to `incidents.postIncidentReport` object and propagated to linked `emergencies` documents. Optional photo uploaded to Firebase Storage at `post-reports/{incidentId}/{photoId}` (public read per storage rules).
-
-### Gap
-
-No structured on-scene assessment form (vitals, hazards, resources needed) — only post-closure outcome report. The `@packages/firebase` `responderAssessment.ts` module exists but is **not used** by the responder app UI.
 
 ---
 
@@ -1232,7 +1239,7 @@ Responder action → incidents doc update
 
 1. **Clean feature-module architecture** — Thin routes, domain-organized modules, service adapters
 2. **Firebase-first realtime** — Instant assignment visibility via Firestore subscriptions
-3. **Complete incident lifecycle** — Accept → en route → touchdown → post-report fully implemented
+3. **Complete incident lifecycle** — Accept → en route → touchdown → scene assessment → post-report fully implemented
 4. **Priority haptic alerts** — Tiered haptic patterns give immediate assignment awareness
 5. **Proper logout** — Full cleanup: Firebase signOut, presence clear, AsyncStorage clear
 6. **Global operational chat** — Dispatcher messaging accessible from any screen
@@ -1248,18 +1255,17 @@ Responder action → incidents doc update
 ## 22. Weaknesses
 
 1. **No push notifications** — Miss assignments when app is backgrounded or device locked
-2. **Monolithic CaseInfoCard** — 1313 lines mixing UI, logic, styles, and actions
-3. **No field assessment form** — Only post-incident report; no on-scene structured assessment
-4. **Dead code** — 3 unused components (~980 lines): StickyActionBar, DetailHeader, CaseMapSection
-5. **Notification settings unwired** — Toggles saved but not consumed by alert system
-6. **Agora URL mismatch** — Defaults to port 4000; actual API on dispatcher port 3000
-7. **Redundant GPS tracking** — Both watch and interval push location every 5s
-8. **No auto-touchdown** — Proximity constant defined but unused
-9. **No history screen** — Cannot browse past resolved cases
-10. **Naming confusion** — "Dispatcher" used for responder accounts throughout
-11. **No offline action queue** — Cannot accept/touchdown/report without network
-12. **Accessibility gaps** — No accessibility labels; color-dependent status indicators
-13. **Public post-report photos** — Storage rules allow unauthenticated read
+2. **Monolithic CaseInfoCard** — 1400+ lines mixing UI, logic, styles, and actions
+3. **Dead code** — 3 unused components (~980 lines): StickyActionBar, DetailHeader, CaseMapSection
+4. **Notification settings unwired** — Toggles saved but not consumed by alert system
+5. **Agora URL mismatch** — Defaults to port 4000; actual API on dispatcher port 3000
+6. **Redundant GPS tracking** — Both watch and interval push location every 5s
+7. **No auto-touchdown** — Proximity constant defined but unused
+8. **No history screen** — Cannot browse past resolved cases
+9. **Naming confusion** — "Dispatcher" used for responder accounts throughout
+10. **No offline action queue** — Cannot accept/touchdown/report without network
+11. **Accessibility gaps** — No accessibility labels; color-dependent status indicators
+12. **Public post-report photos** — Storage rules allow unauthenticated read
 
 ---
 
@@ -1276,11 +1282,10 @@ Responder action → incidents doc update
 
 | # | Problem | Impact | Solution | Complexity |
 |---|---------|--------|----------|------------|
-| H1 | No field assessment | Incomplete on-scene documentation | Build assessment form using `responderAssessment.ts` module | High |
-| H2 | Monolithic CaseInfoCard | Maintainability, performance | Split into CaseHeader, CaseMap, CaseActions, CaseSections | Medium |
-| H3 | Notification settings unwired | User toggles have no effect | Wire `responder_notification_settings` into PriorityAlertProvider | Low |
-| H4 | No offline queue | Cannot act without network | Firestore offline persistence + action queue with retry UI | High |
-| H5 | Triple incident subscription | Redundant Firestore listeners | Shared AssignedIncidentsProvider context | Medium |
+| H1 | Monolithic CaseInfoCard | Maintainability, performance | Split into CaseHeader, CaseMap, CaseActions, CaseSections | Medium |
+| H2 | Notification settings unwired | User toggles have no effect | Wire `responder_notification_settings` into PriorityAlertProvider | Low |
+| H3 | No offline queue | Cannot act without network | Firestore offline persistence + action queue with retry UI | High |
+| H4 | Triple incident subscription | Redundant Firestore listeners | Shared AssignedIncidentsProvider context | Medium |
 
 ### Medium
 
@@ -1308,7 +1313,6 @@ Responder action → incidents doc update
 | Feature | Value | Priority | Notes |
 |---------|-------|----------|-------|
 | **Push notifications (FCM)** | Critical for production | Critical | No implementation exists |
-| **On-scene field assessment** | Structured incident documentation | High | `responderAssessment.ts` exists in firebase package but unused |
 | **Offline mode** | Low-connectivity areas | High | No action queue |
 | **Incident history browser** | Review past cases | Medium | Only "Done" count on dashboard |
 | **Auto-touchdown (GPS proximity)** | Reduce manual steps | Medium | Constant defined, not implemented |
@@ -1357,13 +1361,12 @@ Responder action → incidents doc update
 2. **Fix Agora API URL** — Ensure voice calls work out of the box
 3. **Wire notification settings** — Make user toggles functional
 4. **Remove dead code** — StickyActionBar, DetailHeader, CaseMapSection
-5. **Split CaseInfoCard** — Improve maintainability before adding field assessment
-6. **Implement field assessment** — Use existing `responderAssessment.ts` module
-7. **Add incident history** — Allow responders to review past cases
+5. **Split CaseInfoCard** — Improve maintainability
+6. **Add incident history** — Allow responders to review past cases
 
 ### Summary
 
-The RESQ Responder Mobile App is a **well-architected, Firebase-realtime field operations client** with a complete incident lifecycle (accept → en route → touchdown → post-report). Its feature-module structure, service adapter pattern, and shared Firebase package integration provide a solid foundation. The primary blockers for production are **missing push notifications**, the **lack of on-scene field assessment**, and **monolithic components** that will impede future development. Addressing the critical and high-priority recommendations will bring the app to production readiness for municipal emergency response operations.
+The RESQ Responder Mobile App is a **well-architected, Firebase-realtime field operations client** with a complete incident lifecycle (accept → en route → touchdown → scene assessment → post-report). Its feature-module structure, service adapter pattern, and shared Firebase package integration provide a solid foundation. The primary blockers for production are **missing push notifications** and **monolithic components** that will impede future development. Addressing the critical and high-priority recommendations will bring the app to production readiness for municipal emergency response operations.
 
 ---
 

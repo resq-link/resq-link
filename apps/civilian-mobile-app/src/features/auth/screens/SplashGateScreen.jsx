@@ -125,7 +125,7 @@ export default function SplashGateScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { width: screenW, height: screenH } = useWindowDimensions();
-  const { user, isLoading, loadUser, setUser } = useUserStore();
+  const { user, isLoading, loadUser, refreshUserFromFirestore, setUser } = useUserStore();
   const { colors, authTheme, isLight } = useAppTheme();
 
   const [activeSlide, setActiveSlide] = useState(0);
@@ -178,7 +178,8 @@ export default function SplashGateScreen() {
       unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
         try {
           if (firebaseUser) {
-            const status = user?.status;
+            const refreshed = await refreshUserFromFirestore();
+            const status = refreshed?.status || user?.status;
             if (status === "pending_email_verification") {
               router.replace(ROUTES.emailVerification);
               return;

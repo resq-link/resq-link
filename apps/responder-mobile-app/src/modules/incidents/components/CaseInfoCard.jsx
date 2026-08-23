@@ -15,21 +15,26 @@ import { BlurView } from "expo-blur";
 import MapView, { Marker } from "react-native-maps";
 import {
   ArrowLeft,
+  ClipboardList,
   Check,
   MapPin,
   Navigation,
   Navigation2,
 } from "lucide-react-native";
-import { uploadImageToStorage } from "@packages/firebase";
+import { uploadImageToStorage, hasResponderSceneAssessment } from "@packages/firebase";
+import { toast } from "sonner-native";
 import {
   acceptIncidentCase as acceptCase,
   declineIncidentCase as declineCase,
   markIncidentCaseTouchdown as markCaseTouchdown,
   submitIncidentPostReport as submitPostIncidentReport,
+  submitIncidentSceneAssessment,
 } from "@/services/incidentService";
 import useUserStore from "@/store/userStore";
 
 import PostReportModal from "./PostReportModal";
+import SceneAssessmentModal from "./SceneAssessmentModal";
+import SceneAssessmentSection from "./SceneAssessmentSection";
 import DeclineModal from "./DeclineModal";
 import CaseTimeline from "./CaseTimeline";
 import Section from "./Section";
@@ -173,13 +178,14 @@ export default function CaseInfoCard({
   const [isTouchdownUpdating, setIsTouchdownUpdating] = useState(false);
   const [isPostReportModalVisible, setIsPostReportModalVisible] = useState(false);
   const [isSubmittingPostReport, setIsSubmittingPostReport] = useState(false);
+  const [isSceneAssessmentModalVisible, setIsSceneAssessmentModalVisible] = useState(false);
+  const [isSubmittingSceneAssessment, setIsSubmittingSceneAssessment] = useState(false);
   const [postReportForm, setPostReportForm] = useState({
     reasonForIncident: "",
     notes: "",
     peopleInvolved: "",
     peopleStatus: "",
     hospital: "",
-    photoUri: "",
     actionPhotoUri: "",
   });
   const [error, setError] = useState("");
@@ -303,12 +309,18 @@ export default function CaseInfoCard({
     isAssignedResponder &&
     !caseData.touchdownAt &&
     (caseData.status === "enroute" || caseData.status === "on_scene");
-  const canSubmitPostReport =
+  const hasSceneAssessment = hasResponderSceneAssessment(caseData.responderAssessment);
+  const canSubmitSceneAssessment =
     isAssignedResponder &&
     !!caseData.touchdownAt &&
-    !caseData.postIncidentReport?.submittedAt &&
     caseData.status !== "done" &&
     caseData.status !== "resolved";
+  const canSubmitPostReport =
+    canSubmitSceneAssessment &&
+    hasSceneAssessment &&
+    !caseData.postIncidentReport?.submittedAt;
+  const showPostReportBlocked =
+    canSubmitSceneAssessment && !hasSceneAssessment;
   const displayLocationText = streetLevelLocation || caseData.locationText;
   const status = String(caseData.status || "").toLowerCase();
   const hasTouchdown = !!caseData.touchdownAt;
@@ -451,17 +463,16 @@ export default function CaseInfoCard({
   const handleSubmitPostReport = async () => {
     if (!caseData.id) return;
 
+    if (!hasResponderSceneAssessment(caseData.responderAssessment)) {
+      setError("Complete the Scene Assessment before submitting the Post Report.");
+      toast.message("Complete Scene Assessment first");
+      return;
+    }
+
     try {
       setIsSubmittingPostReport(true);
       setError("");
       const peopleInvolvedValue = postReportForm.peopleInvolved.trim();
-      let photoUrl = null;
-      if (postReportForm.photoUri?.trim()) {
-        photoUrl = await uploadImageToStorage(
-          postReportForm.photoUri,
-          `post-reports/${caseData.id}/`
-        );
-      }
       let actionPhotoUrl = null;
       if (postReportForm.actionPhotoUri?.trim()) {
         actionPhotoUrl = await uploadImageToStorage(
@@ -475,7 +486,6 @@ export default function CaseInfoCard({
         peopleInvolved: peopleInvolvedValue ? Number(peopleInvolvedValue) : null,
         peopleStatus: postReportForm.peopleStatus,
         hospital: postReportForm.hospital,
-        photoUrl,
         actionPhotoUrl,
       });
       setIsPostReportModalVisible(false);
@@ -485,14 +495,49 @@ export default function CaseInfoCard({
         peopleInvolved: "",
         peopleStatus: "",
         hospital: "",
-        photoUri: "",
         actionPhotoUri: "",
       });
       onStatusUpdate?.();
+      toast.success("Post report submitted successfully.");
     } catch (err) {
-      setError(err.message || "Failed to submit post report");
+      console.error("[post-report] Submit failed:", err);
+      setError("Unable to submit post report. Please try again.");
+      toast.error("Unable to submit post report. Please try again.");
     } finally {
       setIsSubmittingPostReport(false);
+    }
+  };
+
+  const handleSubmitSceneAssessment = async (fields, scenePhotoUri) => {
+    if (!caseData.id) return;
+
+    try {
+      setIsSubmittingSceneAssessment(true);
+      setError("");
+      const responderName =
+        user?.displayName || user?.email || user?.uid || null;
+
+      let scenePhotoUrl = undefined;
+      if (scenePhotoUri?.trim()) {
+        scenePhotoUrl = await uploadImageToStorage(
+          scenePhotoUri,
+          `scene-assessment/${caseData.id}/`,
+        );
+      }
+
+      await submitIncidentSceneAssessment(caseData.id, fields, {
+        updatedByName: responderName,
+        scenePhotoUrl,
+      });
+      setIsSceneAssessmentModalVisible(false);
+      toast.success("Scene Assessment submitted successfully.");
+      onStatusUpdate?.();
+    } catch (err) {
+      console.error("[scene-assessment] Submit failed:", err);
+      setError("Unable to submit scene assessment. Please try again.");
+      toast.error("Unable to submit scene assessment. Please try again.");
+    } finally {
+      setIsSubmittingSceneAssessment(false);
     }
   };
 
@@ -820,6 +865,70 @@ export default function CaseInfoCard({
         sheetError: {
           marginBottom: spacing.sm,
         },
+        onScenePanel: {
+          gap: spacing.sm,
+          width: "100%",
+        },
+        onSceneHeader: {
+          fontFamily: "Inter_700Bold",
+          fontSize: 11,
+          letterSpacing: 1.1,
+          textTransform: "uppercase",
+          color: colors.textMuted,
+          marginBottom: 2,
+        },
+        onSceneStatusRow: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: spacing.xs,
+          marginBottom: 2,
+        },
+        onSceneStatusText: {
+          fontFamily: "Inter_500Medium",
+          fontSize: 13,
+          color: colors.success,
+        },
+        disabledPostReportButton: {
+          minHeight: 52,
+          borderRadius: 999,
+          alignItems: "center",
+          justifyContent: "center",
+          flexDirection: "row",
+          paddingHorizontal: spacing.md,
+          borderWidth: 1,
+          borderColor: colors.border,
+          backgroundColor: colors.surfaceHighlight,
+          opacity: 0.72,
+        },
+        disabledPostReportText: {
+          fontFamily: "Inter_600SemiBold",
+          fontSize: 15,
+          color: colors.textMuted,
+        },
+        postReportHelperText: {
+          fontFamily: "Inter_400Regular",
+          fontSize: 12,
+          lineHeight: 17,
+          color: colors.textMuted,
+          textAlign: "center",
+          paddingHorizontal: spacing.sm,
+        },
+        secondaryOutlineActionButton: {
+          minHeight: 52,
+          borderRadius: 999,
+          alignItems: "center",
+          justifyContent: "center",
+          flexDirection: "row",
+          paddingHorizontal: spacing.md,
+          borderWidth: 1,
+          borderColor: colors.border,
+          backgroundColor: colors.surface,
+        },
+        secondaryOutlineActionText: {
+          fontFamily: "Inter_700Bold",
+          fontSize: 15,
+          color: colors.text,
+        },
         contentStack: {
           marginTop: spacing.md,
           paddingTop: spacing.md,
@@ -1108,8 +1217,16 @@ export default function CaseInfoCard({
                   </Text>
                 ) : null}
                 {[
-                  { url: caseData.postIncidentReport.photoUrl, label: "Scene photo" },
                   { url: caseData.postIncidentReport.actionPhotoUrl, label: "Action photo" },
+                  {
+                    url:
+                      caseData.postIncidentReport.photoUrl &&
+                      caseData.postIncidentReport.photoUrl !==
+                        caseData.postIncidentReport.actionPhotoUrl
+                        ? caseData.postIncidentReport.photoUrl
+                        : null,
+                    label: "Legacy report photo",
+                  },
                 ]
                   .filter((photo) => photo.url)
                   .map((photo) => (
@@ -1133,12 +1250,22 @@ export default function CaseInfoCard({
                             height: 200,
                             borderRadius: radii.md,
                           }}
-                          contentFit="cover"
+                          contentFit="contain"
                           transition={200}
                         />
                       </TouchableOpacity>
                     </View>
                   ))}
+                {!caseData.postIncidentReport.actionPhotoUrl &&
+                !(
+                  caseData.postIncidentReport.photoUrl &&
+                  caseData.postIncidentReport.photoUrl !==
+                    caseData.postIncidentReport.actionPhotoUrl
+                ) ? (
+                  <Text style={[styles.postReportMeta, { marginTop: spacing.md, fontStyle: "italic" }]}>
+                    No action photo submitted.
+                  </Text>
+                ) : null}
               </Section>
             ) : null}
 
@@ -1147,6 +1274,17 @@ export default function CaseInfoCard({
               colors={colors}
               formatDate={formatDate}
               embedded={true}
+            />
+
+            <SceneAssessmentSection
+              caseData={caseData}
+              colors={colors}
+              formatDate={formatDate}
+              embedded={true}
+              onPreviewPhoto={(uri) => {
+                setPreviewImageUri(uri);
+                setImageModalVisible(true);
+              }}
             />
 
             <ReporterSection
@@ -1246,6 +1384,23 @@ export default function CaseInfoCard({
           error={error}
           colors={colors}
         />
+
+        <SceneAssessmentModal
+          visible={isSceneAssessmentModalVisible}
+          onClose={() => {
+            if (!isSubmittingSceneAssessment) {
+              setIsSceneAssessmentModalVisible(false);
+              setError("");
+            }
+          }}
+          onSubmit={handleSubmitSceneAssessment}
+          isSubmitting={isSubmittingSceneAssessment}
+          incidentType={caseData.assessmentIncidentType || caseData.incidentType}
+          initialFields={caseData.responderAssessment?.fields || {}}
+          initialScenePhotoUrl={caseData.responderAssessment?.scenePhotoUrl || null}
+          error={error}
+          colors={colors}
+        />
       </ScrollView>
 
       <View style={styles.actionPanel}>
@@ -1306,27 +1461,102 @@ export default function CaseInfoCard({
               {isTouchdownUpdating ? "Marking Touchdown..." : "Touchdown"}
             </Text>
           </TouchableOpacity>
-        ) : canSubmitPostReport ? (
-          <TouchableOpacity
-            onPress={() => {
-              setError("");
-              setIsPostReportModalVisible(true);
-            }}
-            disabled={isSubmittingPostReport}
-            activeOpacity={0.85}
-            style={[
-              styles.primaryActionButton,
-              { backgroundColor: colors.accent },
-              isSubmittingPostReport && styles.actionDisabled,
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Submit post incident report"
-          >
-            <Check size={19} color="#FFFFFF" style={styles.actionIcon} />
-            <Text style={styles.primaryActionText}>
-              {isSubmittingPostReport ? "Submitting..." : "Post Report"}
-            </Text>
-          </TouchableOpacity>
+        ) : canSubmitSceneAssessment || canSubmitPostReport ? (
+          <View style={styles.onScenePanel}>
+            <Text style={styles.onSceneHeader}>On Scene</Text>
+            <View style={styles.onSceneStatusRow}>
+              <Check size={14} color={colors.success} />
+              <Text style={styles.onSceneStatusText}>Touchdown recorded</Text>
+            </View>
+            {hasSceneAssessment ? (
+              <View style={styles.onSceneStatusRow}>
+                <Check size={14} color={colors.success} />
+                <Text style={styles.onSceneStatusText}>Scene Assessment submitted</Text>
+              </View>
+            ) : null}
+
+            {canSubmitSceneAssessment ? (
+              <TouchableOpacity
+                onPress={() => {
+                  setError("");
+                  setIsSceneAssessmentModalVisible(true);
+                }}
+                disabled={isSubmittingSceneAssessment}
+                activeOpacity={0.85}
+                style={[
+                  hasSceneAssessment
+                    ? styles.secondaryOutlineActionButton
+                    : styles.primaryActionButton,
+                  !hasSceneAssessment && { backgroundColor: colors.accent },
+                  isSubmittingSceneAssessment && styles.actionDisabled,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  hasSceneAssessment ? "Update scene assessment" : "Submit scene assessment"
+                }
+              >
+                <ClipboardList
+                  size={19}
+                  color={hasSceneAssessment ? colors.text : "#FFFFFF"}
+                  style={styles.actionIcon}
+                />
+                <Text
+                  style={
+                    hasSceneAssessment
+                      ? styles.secondaryOutlineActionText
+                      : styles.primaryActionText
+                  }
+                >
+                  {isSubmittingSceneAssessment
+                    ? "Submitting..."
+                    : hasSceneAssessment
+                      ? "Update Assessment"
+                      : "Scene Assessment"}
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+
+            {canSubmitPostReport ? (
+              <TouchableOpacity
+                onPress={() => {
+                  setError("");
+                  setIsPostReportModalVisible(true);
+                }}
+                disabled={isSubmittingPostReport}
+                activeOpacity={0.85}
+                style={[
+                  styles.primaryActionButton,
+                  { backgroundColor: colors.accent },
+                  isSubmittingPostReport && styles.actionDisabled,
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel="Submit post incident report"
+              >
+                <Check size={19} color="#FFFFFF" style={styles.actionIcon} />
+                <Text style={styles.primaryActionText}>
+                  {isSubmittingPostReport ? "Submitting..." : "Post Report"}
+                </Text>
+              </TouchableOpacity>
+            ) : showPostReportBlocked ? (
+              <>
+                <TouchableOpacity
+                  onPress={() => toast.message("Complete Scene Assessment first")}
+                  disabled={isSubmittingPostReport}
+                  activeOpacity={0.85}
+                  style={styles.disabledPostReportButton}
+                  accessibilityRole="button"
+                  accessibilityLabel="Post report unavailable until scene assessment is complete"
+                  accessibilityState={{ disabled: true }}
+                >
+                  <Check size={19} color={colors.textMuted} style={styles.actionIcon} />
+                  <Text style={styles.disabledPostReportText}>Post Report</Text>
+                </TouchableOpacity>
+                <Text style={styles.postReportHelperText}>
+                  Complete Scene Assessment before submitting your final report.
+                </Text>
+              </>
+            ) : null}
+          </View>
         ) : caseData.status === "done" || caseData.status === "resolved" ? (
           <BlurView
             intensity={80}

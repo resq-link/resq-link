@@ -38,6 +38,26 @@ import {
   normalizePhilippinePhone,
 } from "@/features/auth/utils/phone";
 import { sendEmailOtp } from "@/features/auth/utils/emailOtpApi";
+import { toUserFacingNetworkError } from "@/features/auth/utils/networkErrors";
+
+const LOADING_COPY = {
+  creating_auth: {
+    title: "Creating your account...",
+    subtitle: "Setting up your RESQ-LINK profile",
+  },
+  uploading_photo: {
+    title: "Uploading photo...",
+    subtitle: "Securely saving your government ID",
+  },
+  saving_profile: {
+    title: "Saving profile...",
+    subtitle: "Almost done",
+  },
+  sending_verification: {
+    title: "Sending verification email...",
+    subtitle: "Check your inbox for a 6-digit code",
+  },
+};
 
 let registerCivilian = null;
 let firebaseError = null;
@@ -76,10 +96,12 @@ export default function RegisterScreen() {
   const [locating, setLocating] = useState(false);
   const [showHeaderBorder, setShowHeaderBorder] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState("creating_auth");
   const [error, setError] = useState("");
   const [keyboardInset, setKeyboardInset] = useState(0);
   const scrollRef = useRef(null);
   const phoneFieldY = useRef(0);
+  const submittingRef = useRef(false);
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -201,6 +223,7 @@ export default function RegisterScreen() {
           allowsEditing: true,
           quality: 0.8,
           aspect: [4, 3],
+          copyToCacheDirectory: true,
         });
         if (!result.canceled && result.assets?.[0]?.uri) {
           setIdPhotoUri(result.assets[0].uri);
@@ -218,6 +241,7 @@ export default function RegisterScreen() {
         allowsEditing: true,
         quality: 0.8,
         aspect: [4, 3],
+        copyToCacheDirectory: true,
       });
       if (!result.canceled && result.assets?.[0]?.uri) {
         setIdPhotoUri(result.assets[0].uri);
@@ -251,12 +275,16 @@ export default function RegisterScreen() {
   };
 
   const handleSubmit = async () => {
-    if (!canSubmit) {
-      setError("Please select an ID type and upload the front of your government ID.");
+    if (!canSubmit || isLoading || submittingRef.current) {
+      if (!canSubmit) {
+        setError("Please select an ID type and upload the front of your government ID.");
+      }
       return;
     }
 
+    submittingRef.current = true;
     setIsLoading(true);
+    setLoadingStep("creating_auth");
     setError("");
 
     try {
@@ -285,16 +313,21 @@ export default function RegisterScreen() {
         );
       }
 
-      const { uid, profile } = await registerCivilian({
-        email: email.trim(),
-        password,
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        phone,
-        address: address.trim(),
-        govIdType,
-        govIdFrontUri: idPhotoUri,
-      });
+      const { profile } = await registerCivilian(
+        {
+          email: email.trim(),
+          password,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          phone,
+          address: address.trim(),
+          govIdType,
+          govIdFrontUri: idPhotoUri,
+        },
+        {
+          onProgress: (step) => setLoadingStep(step),
+        }
+      );
 
       await setUser({
         uid: profile.uid,
@@ -307,33 +340,43 @@ export default function RegisterScreen() {
         status: profile.status,
       });
 
+      setLoadingStep("sending_verification");
+
+      let otpWarning = "";
       try {
-        await sendEmailOtp({ uid, email: profile.email });
+        await sendEmailOtp({ uid: profile.uid, email: profile.email });
       } catch (otpError) {
-        console.warn("Account created but verification email failed:", otpError);
-        router.replace("/email-verification");
-        return;
+        otpWarning = toUserFacingNetworkError(otpError, "otp");
       }
 
-      router.replace("/email-verification");
+      router.replace({
+        pathname: "/email-verification",
+        params: otpWarning ? { notice: otpWarning } : undefined,
+      });
     } catch (err) {
-      let message = err.message || "Failed to create account.";
-      if (message.includes("email-already-in-use")) {
-        message = "An account with this email already exists. Try logging in.";
-      } else if (/network-request-failed|network request failed|failed to fetch|could not connect|network error/i.test(message)) {
-        message = "Could not connect to the server. Check your internet connection and try again.";
+      const raw = err?.message || "Failed to create account.";
+      const lower = raw.toLowerCase();
+      let context = "request";
+      if (lower.includes("upload") || lower.includes("image") || lower.includes("photo")) {
+        context = "photo";
       }
-      setError(message);
+      if (raw.includes("email-already-in-use")) {
+        setError("An account with this email already exists. Try logging in.");
+      } else {
+        setError(toUserFacingNetworkError(err, context));
+      }
     } finally {
+      submittingRef.current = false;
       setIsLoading(false);
     }
   };
 
   if (isLoading) {
+    const copy = LOADING_COPY[loadingStep] || LOADING_COPY.creating_auth;
     return (
       <LoadingScreen
-        title="Creating your account..."
-        subtitle="Uploading your ID and sending a verification email"
+        title={copy.title}
+        subtitle={copy.subtitle}
         variant="register"
       />
     );
@@ -710,7 +753,7 @@ export default function RegisterScreen() {
               onPress={handleSubmit}
               variant="register"
               buttonVariant="register"
-              disabled={!canSubmit}
+              disabled={!canSubmit || isLoading}
             />
           </>
         )}

@@ -1,79 +1,42 @@
-import { ref, uploadBytes, getDownloadURL, UploadResult } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getFirebaseStorage } from './config';
+import { deleteStorageFile, guessContentType } from './storage.shared';
 
-/**
- * Convert a file URI to a Blob (works in React Native and Web)
- */
-function uriToBlob(uri: string): Promise<Blob> {
-  return new Promise((resolve, reject) => {
-    // Check if we're in React Native environment
-    const isReactNative = typeof navigator !== 'undefined' && navigator.product === 'ReactNative';
-    
-    if (isReactNative) {
-      // For React Native, use XMLHttpRequest which handles file:// URIs properly
-      const xhr = new XMLHttpRequest();
-      xhr.onload = function() {
-        resolve(xhr.response);
-      };
-      xhr.onerror = function() {
-        reject(new Error('Failed to load file'));
-      };
-      xhr.responseType = 'blob';
-      xhr.open('GET', uri, true);
-      xhr.send(null);
-    } else {
-      // For web, use fetch
-      fetch(uri)
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error(`Failed to fetch file: ${response.statusText}`);
-          }
-          return response.blob();
-        })
-        .then(resolve)
-        .catch(reject);
-    }
-  });
+export { deleteStorageFile } from './storage.shared';
+
+async function uploadViaBlob(
+  fileUri: string,
+  storageRef: ReturnType<typeof ref>,
+  contentType: string
+): Promise<string> {
+  const response = await fetch(fileUri);
+  if (!response.ok) {
+    throw new Error(`Failed to read image file (${response.status}).`);
+  }
+  const blob = await response.blob();
+  if (!blob || blob.size === 0) {
+    throw new Error('Selected image file is empty.');
+  }
+  const uploadResult = await uploadBytes(storageRef, blob, { contentType });
+  return getDownloadURL(uploadResult.ref);
 }
 
-/**
- * Upload an image file to Firebase Storage
- * @param fileUri - The local file URI (from expo-image-picker or similar)
- * @param path - The storage path (e.g., 'emergencies/photos/')
- * @param fileName - Optional custom file name. If not provided, a timestamp-based name will be generated
- * @returns The download URL of the uploaded file
- */
+/** Upload an image file to Firebase Storage (web / browser). */
 export async function uploadImageToStorage(
   fileUri: string,
   path: string = 'emergencies/photos/',
   fileName?: string
 ): Promise<string> {
+  const finalFileName = fileName || `photo_${Date.now()}.jpg`;
+  const storagePath = `${path}${finalFileName}`;
+  const storageRef = ref(getFirebaseStorage(), storagePath);
+  const contentType = guessContentType(fileUri, finalFileName);
+
   try {
-    // Generate file name if not provided
-    const finalFileName = fileName || `photo_${Date.now()}.jpg`;
-    const storagePath = `${path}${finalFileName}`;
-    
-    // Create a reference to the file location in Storage
-    const storageRef = ref(getFirebaseStorage(), storagePath);
-    
-    // Convert file URI to blob (handles React Native file:// URIs properly)
-    console.log('Converting file URI to blob:', fileUri);
-    const blob = await uriToBlob(fileUri);
-    console.log('Blob created successfully, size:', blob.size);
-    
-    // Upload the blob to Firebase Storage
-    const uploadResult: UploadResult = await uploadBytes(storageRef, blob, {
-      contentType: 'image/jpeg',
-    });
-    
-    // Get the download URL
-    const downloadURL = await getDownloadURL(uploadResult.ref);
-    
-    console.log('✅ Image uploaded to Firebase Storage:', downloadURL);
-    return downloadURL;
-  } catch (error: any) {
-    console.error('❌ Error uploading image to Firebase Storage:', error);
-    throw new Error(`Failed to upload image: ${error.message}`);
+    return await uploadViaBlob(fileUri, storageRef, contentType);
+  } catch (error: unknown) {
+    const detail = error instanceof Error ? error.message : String(error);
+    console.error('Error uploading image to Firebase Storage:', error);
+    throw new Error(`Failed to upload image: ${detail}`);
   }
 }
-

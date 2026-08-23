@@ -1,96 +1,74 @@
-import { getOtpApiUrl, apiConfig } from "@/services/api";
+import { getOtpApiUrl, apiConfig } from '@/services/api';
+import { toUserFacingNetworkError } from '@/features/auth/utils/networkErrors';
+
+const REQUEST_TIMEOUT_MS = 30000;
 
 async function postJson(url, body) {
-  let response;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
   try {
-    response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
+      signal: controller.signal,
     });
-  } catch (error) {
-    const message = error?.message || "";
-    if (/network request failed|failed to fetch|could not connect|network error/i.test(message)) {
-      throw new Error(
-        "Could not reach the RESQ-Link server. Check your internet connection and try again."
-      );
+
+    let data = {};
+    try {
+      data = await response.json();
+    } catch {
+      data = {};
     }
-    throw error;
+
+    if (!response.ok) {
+      const err = new Error(data.error || 'Request failed.');
+      if (typeof data.retryAfterSeconds === 'number') {
+        err.retryAfterSeconds = data.retryAfterSeconds;
+      }
+      throw err;
+    }
+
+    return data;
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error(toUserFacingNetworkError(new Error('timeout'), 'otp'));
+    }
+    if (typeof error?.retryAfterSeconds === 'number') {
+      const wrapped = new Error(toUserFacingNetworkError(error, 'otp'));
+      wrapped.retryAfterSeconds = error.retryAfterSeconds;
+      throw wrapped;
+    }
+    throw new Error(toUserFacingNetworkError(error, 'otp'));
+  } finally {
+    clearTimeout(timeoutId);
   }
-  return response;
 }
 
 export async function sendEmailOtp({ uid, email }) {
-  const response = await postJson(getOtpApiUrl(apiConfig.endpoints.emailOtpSend), {
-    uid,
-    email,
-  });
-  let data = {};
-  try {
-    data = await response.json();
-  } catch {
-    data = {};
-  }
-  if (!response.ok) {
-    throw new Error(data.error || "Failed to send verification email.");
-  }
-  return data;
+  return postJson(getOtpApiUrl(apiConfig.endpoints.emailOtpSend), { uid, email });
 }
 
 export async function verifyEmailOtp({ email, otp }) {
-  const response = await postJson(getOtpApiUrl(apiConfig.endpoints.emailOtpVerify), {
-    email,
-    otp,
-  });
-  let data = {};
-  try {
-    data = await response.json();
-  } catch {
-    data = {};
-  }
-  if (!response.ok) {
-    throw new Error(data.error || "Verification failed.");
-  }
-  return data;
+  return postJson(getOtpApiUrl(apiConfig.endpoints.emailOtpVerify), { email, otp });
 }
 
 export async function sendForgotPasswordOtp({ email }) {
-  const response = await postJson(getOtpApiUrl(apiConfig.endpoints.forgotPasswordSend), {
-    email,
-  });
-  let data = {};
-  try {
-    data = await response.json();
-  } catch {
-    data = {};
-  }
-  if (!response.ok) {
-    throw new Error(data.error || "Failed to send reset code.");
-  }
-  return data;
+  return postJson(getOtpApiUrl(apiConfig.endpoints.forgotPasswordSend), { email });
 }
 
 export async function resetPassword({ email, otp, newPassword }) {
-  const response = await postJson(getOtpApiUrl(apiConfig.endpoints.forgotPasswordReset), {
+  return postJson(getOtpApiUrl(apiConfig.endpoints.forgotPasswordReset), {
     email,
     otp,
     newPassword,
   });
-  let data = {};
-  try {
-    data = await response.json();
-  } catch {
-    data = {};
-  }
-  if (!response.ok) {
-    throw new Error(data.error || "Failed to reset password.");
-  }
-  return data;
 }
 
 export function maskEmail(email) {
-  const value = String(email || "");
-  const at = value.indexOf("@");
+  const value = String(email || '');
+  const at = value.indexOf('@');
   if (at < 1) return value;
   const local = value.slice(0, at);
   const domain = value.slice(at);

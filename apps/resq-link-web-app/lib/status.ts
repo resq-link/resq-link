@@ -61,9 +61,10 @@ export function civilianVerification(status: string | undefined, disabled: boole
 export function civilianAccountStatus(status: string | undefined, disabled: boolean): StatusDisplay {
   if (disabled) return STATUS_MAP.disabled;
   if (status === 'rejected') return STATUS_MAP.rejected;
-  if (status === 'pending_kyc_review') return STATUS_MAP.pending_kyc;
-  if (status === 'pending_email_verification') return STATUS_MAP.pending;
-  return STATUS_MAP.active;
+    if (status === 'pending_kyc_review') return STATUS_MAP.pending_kyc;
+    if (status === 'pending_email_verification') return STATUS_MAP.pending;
+    if (status === 'active') return STATUS_MAP.active;
+    return STATUS_MAP.pending;
 }
 
 export function verificationLabel(value: CivilianVerification): string {

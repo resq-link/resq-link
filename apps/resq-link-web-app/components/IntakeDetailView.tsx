@@ -21,13 +21,14 @@ import {
   convertFirestoreDoc,
   getReportImageUrls,
   getCivilianEmergencyTypeLabel,
-  getSceneAssessmentEntries,
   hasResponderSceneAssessment,
   resolveSceneAssessmentIncidentType,
 } from "@packages/firebase";
 import IncidentStatusIndicator from "@/components/IncidentStatusIndicator";
 import { useDispatcherData } from "@/contexts/DispatcherDataContext";
-import PostIncidentReportPhoto from "@/components/PostIncidentReportPhoto";
+import PostIncidentReportPhotos from "@/components/PostIncidentReportPhotos";
+import IncidentScenePhotos from "@/components/incident-media/IncidentScenePhotos";
+import SceneAssessmentPanel from "@/components/SceneAssessmentPanel";
 import InitialNarrativeDisplay from "@/components/InitialNarrativeDisplay";
 import CitizenReportDetailDrawer from "@/components/CitizenReportDetailDrawer";
 import AssociatedCitizenReportList from "@/components/AssociatedCitizenReportList";
@@ -161,7 +162,7 @@ export default function IntakeDetailView({
   const [responderLocation, setResponderLocation] = useState<DispatcherLocation | null>(null);
   const [associatedReports, setAssociatedReports] = useState<EmergencyReport[]>([]);
   const [isLinking, setIsLinking] = useState(false);
-  const { resources, dispatcherLocations } = useDispatcherData();
+  const { resources, dispatcherLocations, incidentsLoading } = useDispatcherData();
   const [selectedCitizenReport, setSelectedCitizenReport] = useState<EmergencyReport | null>(null);
 
   useEffect(() => {
@@ -395,12 +396,21 @@ export default function IntakeDetailView({
       incidentCategory: incident?.incidentCategory,
     });
 
+    const linkedIncident =
+      incident ??
+      (report?.incidentId && recentIncidents?.length
+        ? recentIncidents.find((entry) => entry.id === report.incidentId) ?? null
+        : null);
+
     if (report?.responderAssessment && hasResponderSceneAssessment(report.responderAssessment)) {
       return { assessment: report.responderAssessment, incidentType };
     }
 
-    if (incident?.responderAssessment && hasResponderSceneAssessment(incident.responderAssessment)) {
-      return { assessment: incident.responderAssessment, incidentType };
+    if (
+      linkedIncident?.responderAssessment &&
+      hasResponderSceneAssessment(linkedIncident.responderAssessment)
+    ) {
+      return { assessment: linkedIncident.responderAssessment, incidentType };
     }
 
     const linkedAssessment = associatedReports.find(
@@ -414,16 +424,7 @@ export default function IntakeDetailView({
     }
 
     return { assessment: null, incidentType };
-  }, [report, incident, associatedReports]);
-
-  const sceneAssessmentEntries = useMemo(
-    () =>
-      getSceneAssessmentEntries(
-        sceneAssessmentContext.assessment,
-        sceneAssessmentContext.incidentType,
-      ),
-    [sceneAssessmentContext],
-  );
+  }, [report, incident, associatedReports, recentIncidents]);
 
   const postIncidentReport = useMemo(() => {
     type PostReport = NonNullable<IncidentRecord["postIncidentReport"]>;
@@ -479,8 +480,14 @@ export default function IntakeDetailView({
     if (primaryCivilianReport) {
       return getReportImageUrls(primaryCivilianReport);
     }
+    if (incident) {
+      return getReportImageUrls({
+        imageUrl: incident.imageUrl ?? null,
+        imageUrls: incident.imageUrls ?? null,
+      });
+    }
     return [];
-  }, [primaryCivilianReport]);
+  }, [primaryCivilianReport, incident]);
 
   const emergencyTypeLabel = useMemo(() => {
     if (report) {
@@ -1147,15 +1154,12 @@ export default function IntakeDetailView({
                 />
               </div>
               {primarySceneImageUrls.length > 0 ? (
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {primarySceneImageUrls.map((url, index) => (
-                    <img
-                      key={`${url}-${index}`}
-                      src={url}
-                      alt={`Civilian evidence ${index + 1}`}
-                      className="max-h-40 w-full rounded-lg border border-slate-800 object-cover"
-                    />
-                  ))}
+                <div className="border-t border-slate-800/80 pt-3">
+                  <IncidentScenePhotos
+                    imageUrls={primarySceneImageUrls}
+                    layout={primarySceneImageUrls.length > 1 ? "row" : "stack"}
+                    emptyMessage=""
+                  />
                 </div>
               ) : (
                 <p className="text-[11px] italic text-slate-500">No photos attached.</p>
@@ -1230,18 +1234,15 @@ export default function IntakeDetailView({
                   ) : null}
                 </div>
 
-                {postIncidentReport.photoUrl ? (
-                  <PostIncidentReportPhoto
-                    photoUrl={postIncidentReport.photoUrl}
-                    className="max-h-36 w-full object-cover"
-                  />
-                ) : null}
-                {postIncidentReport.actionPhotoUrl ? (
-                  <PostIncidentReportPhoto
-                    photoUrl={postIncidentReport.actionPhotoUrl}
-                    className="max-h-36 w-full object-cover"
-                  />
-                ) : null}
+                <PostIncidentReportPhotos
+                  actionPhotoUrl={postIncidentReport.actionPhotoUrl}
+                  legacyPhotoUrl={
+                    postIncidentReport.photoUrl &&
+                    postIncidentReport.photoUrl !== postIncidentReport.actionPhotoUrl
+                      ? postIncidentReport.photoUrl
+                      : null
+                  }
+                />
               </div>
             ) : (
               <div className="rounded-lg border border-dashed border-slate-700 bg-slate-950/40 px-3 py-5 text-center">
@@ -1261,34 +1262,14 @@ export default function IntakeDetailView({
           icon={<AlertTriangle className="w-4 h-4" />}
           title="Scene Assessment"
         >
-          {sceneAssessmentContext.assessment?.updatedAt && (
-            <p className="mb-3 text-xs text-emerald-400">
-              Last updated {getDateLabel(sceneAssessmentContext.assessment.updatedAt)}
-              {sceneAssessmentContext.assessment.updatedByName
-                ? ` by ${sceneAssessmentContext.assessment.updatedByName}`
-                : ""}
-            </p>
-          )}
-          {sceneAssessmentEntries.length > 0 ? (
-            <div className="grid w-full grid-cols-[minmax(6.5rem,auto)_1fr] items-start gap-x-4 gap-y-3 text-[13px] leading-snug">
-              {sceneAssessmentEntries.map((field) => (
-                <div key={field.key} className="contents">
-                  <span className="font-medium text-slate-500">{field.label}</span>
-                  <span className="min-w-0 break-words text-right font-medium text-slate-100">
-                    {field.value}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="flex min-h-[180px] flex-col items-center justify-center rounded-lg border border-dashed border-slate-800 bg-slate-950/40 p-4 text-center">
-              <AlertTriangle className="mb-2 h-7 w-7 text-slate-700" />
-              <p className="text-sm font-medium text-slate-400">No on-scene assessment yet</p>
-              <p className="mt-1 text-xs text-slate-500">
-                Responder scene assessment will appear here once submitted.
-              </p>
-            </div>
-          )}
+          <SceneAssessmentPanel
+            assessment={sceneAssessmentContext.assessment}
+            incidentType={sceneAssessmentContext.incidentType}
+            isLoading={
+              !sceneAssessmentContext.assessment &&
+              (item?.channel === "incident" ? incidentsLoading : false)
+            }
+          />
         </DetailSection>
 
       </div>

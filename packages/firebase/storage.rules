@@ -47,6 +47,15 @@ service firebase.storage {
 
       allow read: if true;
     }
+
+    // Responder on-scene assessment photos - scene-assessment/{incidentId}/{photoId}
+    match /scene-assessment/{incidentId}/{photoId} {
+      allow write: if isAuthenticated()
+                   && request.resource.size < 10 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+
+      allow read: if true;
+    }
     
     // Default: deny all other access
     match /{allPaths=**} {

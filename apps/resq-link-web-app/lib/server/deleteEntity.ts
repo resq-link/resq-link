@@ -1,16 +1,22 @@
 import * as admin from 'firebase-admin';
-import { getAdminAuth, getAdminFirestore } from '@packages/firebase/admin';
+import {
+  deleteAuthUserAdmin,
+  deleteStoragePrefixAdmin,
+  getAdminAuth,
+  getAdminFirestore,
+  purgeOtpRecordsForEmailAdmin,
+} from '@packages/firebase/admin';
 import type { ManagedAccountType } from '@/lib/accountTypes';
 import {
   assertNotSuperAdmin,
   resolveManagedAccount,
   setAuthDisabled,
 } from '@/lib/server/accounts';
-import { assertDestructiveAccountActionAllowed } from '@/lib/server/accountClassification';
+import { assertDestructiveAccountActionAllowed, isProtectedAccountEmail } from '@/lib/server/accountClassification';
 import { mapAgencyDoc } from '@/lib/server/agencies';
 import { finalizeAgencyCode } from '@/lib/agencyTypes';
 
-export type DeleteMethod = 'soft_delete';
+export type DeleteMethod = 'soft_delete' | 'hard_delete';
 
 export interface DeleteDependencyBlock {
   allowed: false;
@@ -75,12 +81,138 @@ export async function checkAccountDeleteDependencies(
     };
   }
 
-  // Dispatchers / responders / civilians: soft-delete preserves incident history.
+  // Dispatchers / responders / civilians: preserve incident history.
   return {
     allowed: true,
     warnings: [
-      'Operational history (incidents, reports, and assignments) will be preserved. The account will no longer appear in active lists or be able to sign in.',
+      accountType === 'civilian'
+        ? 'Operational history (incidents and reports) will be preserved. The civilian profile, KYC files, and login account will be permanently removed so the email can be used again.'
+        : 'Operational history (incidents, reports, and assignments) will be preserved. The account will no longer appear in active lists or be able to sign in.',
     ],
+  };
+}
+
+async function resolveCivilianForDeletion(uid: string): Promise<{
+  label: string;
+  email: string;
+  data: Record<string, unknown>;
+}> {
+  const db = getAdminFirestore();
+  const snap = await db.doc(`users/${uid}`).get();
+
+  if (snap.exists) {
+    const data = (snap.data() || {}) as Record<string, unknown>;
+    const role = String(data.role || '').toLowerCase();
+    if (role && role !== 'civilian') {
+      throw Object.assign(new Error('This account is not a civilian profile.'), { status: 409 });
+    }
+    return {
+      label: String(data.name || data.email || uid),
+      email: String(data.email || ''),
+      data,
+    };
+  }
+
+  try {
+    const authUser = await getAdminAuth().getUser(uid);
+    return {
+      label: authUser.email || authUser.displayName || uid,
+      email: authUser.email || '',
+      data: {},
+    };
+  } catch {
+    throw Object.assign(new Error('Civilian account not found'), { status: 404 });
+  }
+}
+
+async function hardDeleteCivilianAccount(input: {
+  uid: string;
+  actorUid: string;
+  reason?: string | null;
+  account: {
+    label: string;
+    email: string;
+    data: Record<string, unknown>;
+  };
+}): Promise<{
+  label: string;
+  email: string;
+  collection: 'users';
+  method: DeleteMethod;
+  previousActive: boolean;
+  warnings?: string[];
+  cleanup: {
+    storageFilesDeleted: number;
+    authDeleted: boolean;
+  };
+}> {
+  const db = getAdminFirestore();
+  const email = input.account.email;
+  const previousActive = input.account.data.disabled !== true;
+  const cleanupWarnings: string[] = [];
+  let storageFilesDeleted = 0;
+
+  try {
+    storageFilesDeleted = await deleteStoragePrefixAdmin(`kyc-documents/${input.uid}/`);
+  } catch {
+    cleanupWarnings.push('KYC storage files could not be fully removed.');
+  }
+
+  if (email) {
+    try {
+      await purgeOtpRecordsForEmailAdmin(email);
+    } catch {
+      cleanupWarnings.push('Email verification records could not be fully removed.');
+    }
+  }
+
+  try {
+    const profileRef = db.doc(`users/${input.uid}`);
+    const profileSnap = await profileRef.get();
+    if (profileSnap.exists) {
+      await profileRef.delete();
+    }
+  } catch (error) {
+    throw Object.assign(new Error('Unable to delete the civilian profile.'), {
+      status: 500,
+      cause: error,
+    });
+  }
+
+  let authDeleted = false;
+  try {
+    await deleteAuthUserAdmin(input.uid);
+    authDeleted = true;
+  } catch (error: unknown) {
+    const code =
+      error && typeof error === 'object' && 'code' in error
+        ? String((error as { code?: string }).code || '')
+        : '';
+    if (code !== 'auth/user-not-found') {
+      throw Object.assign(
+        new Error(
+          'The civilian profile was removed, but the Firebase Authentication account could not be deleted. Contact support before attempting to re-register this email.'
+        ),
+        { status: 500, partial: true }
+      );
+    }
+    authDeleted = true;
+  }
+
+  return {
+    label: input.account.label,
+    email,
+    collection: 'users',
+    method: 'hard_delete',
+    previousActive,
+    warnings: [
+      'Historical emergencies and incidents linked to this user were preserved for operational records.',
+      ...cleanupWarnings,
+    ],
+    cleanup: {
+      storageFilesDeleted,
+      authDeleted,
+    },
   };
 }
 
@@ -95,6 +227,11 @@ export async function softDeleteManagedAccount(input: {
   collection: 'dispatchers' | 'users' | 'commandCenters';
   method: DeleteMethod;
   previousActive: boolean;
+  warnings?: string[];
+  cleanup?: {
+    storageFilesDeleted: number;
+    authDeleted: boolean;
+  };
 }> {
   await assertNotSuperAdmin(input.uid);
   await assertDestructiveAccountActionAllowed({
@@ -102,6 +239,40 @@ export async function softDeleteManagedAccount(input: {
     accountType: input.accountType,
     action: 'delete',
   });
+
+  if (input.accountType === 'civilian') {
+    const civilian = await resolveCivilianForDeletion(input.uid);
+    if (
+      civilian.data.deleted !== true &&
+      isProtectedAccountEmail(civilian.email)
+    ) {
+      throw Object.assign(new Error('Protected accounts cannot be deleted from Super Admin.'), {
+        status: 409,
+      });
+    }
+
+    const deps = await checkAccountDeleteDependencies(input.uid, input.accountType);
+    if (!deps.allowed) {
+      throw Object.assign(new Error(deps.message), { status: 409, code: deps.code, details: deps.details });
+    }
+
+    const result = await hardDeleteCivilianAccount({
+      uid: input.uid,
+      actorUid: input.actorUid,
+      reason: input.reason,
+      account: civilian,
+    });
+    return {
+      label: result.label,
+      email: result.email,
+      collection: result.collection,
+      method: result.method,
+      previousActive: result.previousActive,
+      warnings: [...(deps.warnings || []), ...(result.warnings || [])],
+      cleanup: result.cleanup,
+    };
+  }
+
   const account = await resolveManagedAccount(input.uid, input.accountType);
 
   if (account.data.deleted === true) {

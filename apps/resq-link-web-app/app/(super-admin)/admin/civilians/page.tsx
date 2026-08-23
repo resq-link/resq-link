@@ -19,6 +19,7 @@ import { TableExportMenu } from '@/components/admin/TableExportMenu';
 import { Dialog } from '@/components/ui/Dialog';
 import { Drawer } from '@/components/ui/Drawer';
 import { useAccountList } from '@/hooks/useAccountList';
+import { invalidateAdminCivilianDataCaches } from '@/lib/adminCacheInvalidation';
 import { adminFetch } from '@/lib/adminFetch';
 import { formatDate, formatDateTime } from '@/lib/dates';
 import { civilianAccountStatus, verificationLabel } from '@/lib/status';
@@ -90,7 +91,7 @@ export default function CiviliansPage() {
     try {
       await work();
       toast.success(message);
-      list.invalidateType();
+      invalidateAdminCivilianDataCaches();
       await list.reload();
     } catch (error) {
       toast.error((error as Error).message || errorFallback);
@@ -392,7 +393,7 @@ export default function CiviliansPage() {
         accountTypeLabel={deleting?.role === 'civilian' ? 'Civilian' : deleting?.role || 'Unknown'}
         blocked={Boolean(deleting && deleting.role !== 'civilian')}
         blockedMessage="This account cannot be managed as a civilian."
-        description="This removes the civilian from active administration. Submitted incidents and reports remain in operational history. The account will no longer be able to sign in."
+        description="This permanently removes the civilian profile, KYC files, and login account. Submitted incidents and reports remain in operational history. The email address can be used to register again."
         confirmLabel="Delete Civilian"
         busy={busy}
         onClose={() => setDeleting(null)}

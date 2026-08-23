@@ -4,6 +4,8 @@ import { mapIncidentCategoryToEmergencyType } from './civilianFieldAssessment';
 
 export type ResponderAssessmentRecord = {
   fields: Record<string, string>;
+  /** Responder on-scene arrival evidence — distinct from post-report action photo */
+  scenePhotoUrl?: string | null;
   updatedAt?: Date | Timestamp | null;
   updatedById?: string | null;
   updatedByName?: string | null;
@@ -102,8 +104,14 @@ export function parseResponderAssessment(raw: unknown): ResponderAssessmentRecor
     return null;
   }
 
+  const scenePhotoUrl =
+    typeof data.scenePhotoUrl === 'string' && data.scenePhotoUrl.trim()
+      ? data.scenePhotoUrl.trim()
+      : null;
+
   return {
     fields,
+    scenePhotoUrl,
     updatedAt:
       data.updatedAt && typeof data.updatedAt === 'object' && 'toDate' in data.updatedAt
         ? (data.updatedAt as Timestamp).toDate()
@@ -157,7 +165,7 @@ async function writeResponderAssessment(
   refPath: 'emergencies' | 'incidents',
   docId: string,
   fields: Record<string, string>,
-  updatedByName?: string | null,
+  options?: { updatedByName?: string | null; scenePhotoUrl?: string | null },
 ): Promise<ResponderAssessmentRecord> {
   const currentUser = getFirebaseAuth().currentUser;
   if (!currentUser) {
@@ -170,18 +178,30 @@ async function writeResponderAssessment(
   }
 
   const now = Timestamp.now();
-  const payload: ResponderAssessmentRecord = {
-    fields: normalizedFields,
-    updatedAt: now,
-    updatedById: currentUser.uid,
-    updatedByName: updatedByName?.trim() || currentUser.displayName || currentUser.email || currentUser.uid,
-  };
 
   const docRef = doc(getFirebaseFirestore(), refPath, docId);
   const snap = await getDoc(docRef);
   if (!snap.exists()) {
     throw new Error(`${refPath === 'emergencies' ? 'Emergency report' : 'Incident'} not found`);
   }
+
+  const existingAssessment = parseResponderAssessment(snap.data()?.responderAssessment);
+  const scenePhotoUrl =
+    options?.scenePhotoUrl !== undefined
+      ? options.scenePhotoUrl?.trim() || null
+      : existingAssessment?.scenePhotoUrl ?? null;
+
+  const payload: ResponderAssessmentRecord = {
+    fields: normalizedFields,
+    scenePhotoUrl,
+    updatedAt: now,
+    updatedById: currentUser.uid,
+    updatedByName:
+      options?.updatedByName?.trim() ||
+      currentUser.displayName ||
+      currentUser.email ||
+      currentUser.uid,
+  };
 
   await updateDoc(docRef, {
     responderAssessment: payload,
@@ -194,21 +214,21 @@ async function writeResponderAssessment(
 export async function submitResponderSceneAssessmentForEmergency(
   reportId: string,
   fields: Record<string, string>,
-  options?: { updatedByName?: string | null },
+  options?: { updatedByName?: string | null; scenePhotoUrl?: string | null },
 ): Promise<ResponderAssessmentRecord> {
-  return writeResponderAssessment('emergencies', reportId, fields, options?.updatedByName);
+  return writeResponderAssessment('emergencies', reportId, fields, options);
 }
 
 export async function submitResponderSceneAssessmentForIncident(
   incidentId: string,
   fields: Record<string, string>,
-  options?: { updatedByName?: string | null },
+  options?: { updatedByName?: string | null; scenePhotoUrl?: string | null },
 ): Promise<ResponderAssessmentRecord> {
   const assessment = await writeResponderAssessment(
     'incidents',
     incidentId,
     fields,
-    options?.updatedByName,
+    options,
   );
 
   const incidentRef = doc(getFirebaseFirestore(), 'incidents', incidentId);
@@ -222,7 +242,7 @@ export async function submitResponderSceneAssessmentForIncident(
           'emergencies',
           primaryReportId,
           fields,
-          options?.updatedByName,
+          options,
         );
       } catch {
         // Primary report sync is best-effort; incident assessment remains source of truth.
