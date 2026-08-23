@@ -55,41 +55,49 @@ export async function POST(request: NextRequest) {
       ? advisory.targetBarangays.map((b: string) => b.trim().toLowerCase())
       : [];
 
-    // Query civilian users with push tokens
-    const usersSnapshot = await db.collection('users').get();
+    // Query mobile devices (both civilian users and responders/dispatchers)
+    const [usersSnapshot, dispatchersSnapshot] = await Promise.all([
+      db.collection('users').get(),
+      db.collection('dispatchers').get(),
+    ]);
 
     const messages: ExpoMessage[] = [];
-    const tokenOwners = new Map<string, string>(); // token -> userId
+    const tokenOwners = new Map<string, { uid: string; collection: 'users' | 'dispatchers' }>();
 
-    usersSnapshot.forEach((userDoc) => {
-      const userData = userDoc.data();
-      const rawTokens = userData.pushTokens;
+    const prefix =
+      severity === 'critical'
+        ? '🚨 [CRITICAL ADVISORY] '
+        : severity === 'severe'
+        ? '⚠️ [SEVERE WARNING] '
+        : severity === 'moderate'
+        ? '📢 [ADVISORY] '
+        : 'ℹ️ [NOTICE] ';
+
+    const processDocTokens = (docSnap: FirebaseFirestore.QueryDocumentSnapshot, collectionName: 'users' | 'dispatchers') => {
+      const data = docSnap.data();
+      const rawTokens = data.pushTokens;
       if (!Array.isArray(rawTokens) || rawTokens.length === 0) return;
 
-      // Check barangay targeting if scope is not 'all'
-      if (targetScope === 'barangay' && targetBarangays.length > 0) {
-        const userBarangay = String(userData.barangay || userData.address || '').toLowerCase();
+      // Check barangay targeting if scope is 'barangay' and targeting civilian users
+      if (collectionName === 'users' && targetScope === 'barangay' && targetBarangays.length > 0) {
+        const userBarangay = String(data.barangay || data.address || '').toLowerCase();
         const matches = targetBarangays.some((target) => userBarangay.includes(target));
         if (!matches) return;
       }
 
-      const tokens: StoredToken[] = rawTokens.filter(
-        (t) => t?.token && typeof t.token === 'string' && t.token.startsWith('ExponentPushToken')
-      );
+      // Collect tokens (supports both { token: "..." } objects and raw string tokens)
+      const tokenStrings: string[] = [];
+      rawTokens.forEach((t) => {
+        const val = typeof t === 'string' ? t.trim() : typeof t?.token === 'string' ? t.token.trim() : '';
+        if (val && !tokenStrings.includes(val) && !tokenOwners.has(val)) {
+          tokenStrings.push(val);
+        }
+      });
 
-      const prefix =
-        severity === 'critical'
-          ? '🚨 [CRITICAL ADVISORY] '
-          : severity === 'severe'
-          ? '⚠️ [SEVERE WARNING] '
-          : severity === 'moderate'
-          ? '📢 [ADVISORY] '
-          : 'ℹ️ [NOTICE] ';
-
-      tokens.forEach((entry) => {
-        tokenOwners.set(entry.token, userDoc.id);
+      tokenStrings.forEach((tokenStr) => {
+        tokenOwners.set(tokenStr, { uid: docSnap.id, collection: collectionName });
         messages.push({
-          to: entry.token,
+          to: tokenStr,
           title: `${prefix}${title}`,
           body: summary,
           data: {
@@ -108,7 +116,10 @@ export async function POST(request: NextRequest) {
           ttl: 86400,
         });
       });
-    });
+    };
+
+    usersSnapshot.forEach((docSnap) => processDocTokens(docSnap, 'users'));
+    dispatchersSnapshot.forEach((docSnap) => processDocTokens(docSnap, 'dispatchers'));
 
     if (messages.length === 0) {
       await advisoryDocRef.update({
@@ -125,7 +136,7 @@ export async function POST(request: NextRequest) {
         totalRecipients: 0,
         successCount: 0,
         failureCount: 0,
-        message: 'No registered civilian push devices found matching target criteria.',
+        message: 'No registered push devices found matching target criteria.',
       });
     }
 
@@ -166,16 +177,16 @@ export async function POST(request: NextRequest) {
           } else {
             failureCount++;
             if (ticket?.details?.error === 'DeviceNotRegistered' && token) {
-              const userId = tokenOwners.get(token);
-              if (userId) {
+              const ownerInfo = tokenOwners.get(token);
+              if (ownerInfo) {
                 try {
-                  const userRef = db.collection('users').doc(userId);
-                  const uSnap = await userRef.get();
-                  if (uSnap.exists) {
-                    const existing = uSnap.get('pushTokens') || [];
-                    const stale = existing.filter((e: StoredToken) => e?.token === token);
+                  const targetRef = db.collection(ownerInfo.collection).doc(ownerInfo.uid);
+                  const tSnap = await targetRef.get();
+                  if (tSnap.exists) {
+                    const existing = tSnap.get('pushTokens') || [];
+                    const stale = existing.filter((e: StoredToken) => (typeof e === 'string' ? e : e?.token) === token);
                     if (stale.length > 0) {
-                      await userRef.update({
+                      await targetRef.update({
                         pushTokens: admin.firestore.FieldValue.arrayRemove(...stale),
                       });
                       deadTokensPruned++;

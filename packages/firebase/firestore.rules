@@ -165,31 +165,30 @@ service cloud.firestore {
 
     // Incident type rules (managed configuration)
     match /incidentTypeRules/{ruleId} {
-      // Command centers (and super admins) can read the catalog used for routing.
-      allow read: if isCommandCenter() || isSuperAdmin();
+      // Authenticated operational users can read the catalog used for routing.
+      allow read: if isAuthenticated();
 
       // Command center operators manage routing rules from the dispatcher app.
       allow create, update, delete: if isSuperAdmin() || isCommandCenter() || isDispatcher();
     }
 
-    // Incidents created by command centers
+    // Incidents created by command centers or dispatchers
     match /incidents/{incidentId} {
-      // Only command centers can create incidents, and only inside their own namespace.
+      // Allow command center, dispatchers, or super admins to create incidents
       allow create: if isAuthenticated()
-        && isCommandCenter()
-        && request.resource.data.commandCenterAdminId == request.auth.uid;
+        && (isCommandCenter() || isDispatcher() || isSuperAdmin());
 
       // Allow authenticated users to read all incidents
       allow read: if isAuthenticated();
 
-      // Allow command center or dispatcher to update
+      // Allow command center or dispatcher or super admin to update
       allow update: if isSuperAdmin()
         || isCommandCenter()
         || isDispatcher();
 
-      // Command centers can remove their own intake incidents when dispatch validation fails.
+      // Command centers or super admins can remove incidents
       allow delete: if isSuperAdmin()
-        || (isCommandCenter() && resource.data.commandCenterAdminId == request.auth.uid);
+        || isCommandCenter();
     }
 
     // SMS records are written only by the gateway Cloud Functions. Dispatcher-side

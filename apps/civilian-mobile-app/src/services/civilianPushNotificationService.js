@@ -52,7 +52,7 @@ const resolveProjectId = () =>
 /**
  * Request notification permissions, fetch Expo push token, and save to Firestore users/{uid}.
  */
-export async function registerForCivilianPush() {
+export async function registerForCivilianPush(explicitUid = null) {
   await ensureCivilianNotificationChannel();
 
   if (!Device.isDevice) {
@@ -92,7 +92,7 @@ export async function registerForCivilianPush() {
 
     cachedToken = token;
     const platform = Platform.OS === "ios" ? "ios" : Platform.OS === "android" ? "android" : "web";
-    await saveCivilianPushToken(token, platform);
+    await saveCivilianPushToken(token, platform, explicitUid);
     return token;
   } catch (error) {
     console.warn("[civilian-push] Failed to register push token:", error?.message ?? error);
@@ -103,10 +103,10 @@ export async function registerForCivilianPush() {
 /**
  * Detach this device's token on sign-out.
  */
-export async function unregisterCivilianPush() {
+export async function unregisterCivilianPush(explicitUid = null) {
   if (!cachedToken) return;
   try {
-    await removeCivilianPushToken(cachedToken);
+    await removeCivilianPushToken(cachedToken, explicitUid);
   } catch (error) {
     console.warn("[civilian-push] Failed to remove push token:", error?.message ?? error);
   } finally {
