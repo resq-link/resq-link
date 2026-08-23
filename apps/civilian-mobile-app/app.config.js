@@ -67,7 +67,7 @@ module.exports = ({ config }) => {
 
   const plugins = (baseConfig.plugins ?? []).filter((plugin) => {
     const name = Array.isArray(plugin) ? plugin[0] : plugin;
-    return name !== 'expo-navigation-bar' && name !== 'react-native-maps';
+    return name !== 'expo-navigation-bar';
   });
 
   if (isAndroidBuild) {

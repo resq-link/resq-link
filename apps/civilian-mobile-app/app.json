@@ -66,14 +66,7 @@
           "color": "#DC2626"
         }
       ],
-      [
-        "expo-build-properties",
-        {
-          "ios": {
-            "useFrameworks": "static"
-          }
-        }
-      ],
+
       "expo-font",
       "expo-secure-store",
       "expo-web-browser",
@@ -91,7 +84,8 @@
           "photosPermission": "Allow $(PRODUCT_NAME) to access your photos so you can upload a government ID image or attach photos to emergency reports.",
           "cameraPermission": "Allow $(PRODUCT_NAME) to use the camera to photograph your government ID or attach photos to emergency reports."
         }
-      ]
+      ],
+      "./plugins/withReactNativeMaps"
     ],
     "experiments": {
       "typedRoutes": true
