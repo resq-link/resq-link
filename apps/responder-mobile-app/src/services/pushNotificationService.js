@@ -1,7 +1,7 @@
-import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import Constants from "expo-constants";
 import { Platform } from "react-native";
+import { isRunningInExpoGo } from "expo";
 import {
   acknowledgeIncidentAlert,
   saveResponderPushToken,
@@ -25,6 +25,9 @@ import {
  *
  * The looping audio itself lives in `priorityAlertService`; this module only
  * covers registration, the channel, categories, and OS-level notification I/O.
+ *
+ * Remote push is lazy-loaded so Expo Go (SDK 53+) does not throw on import —
+ * Android push was removed from Expo Go. In-app alarms still work in Expo Go.
  */
 
 export const INCIDENT_ALERT_CHANNEL = "incident-alerts-v2";
@@ -38,17 +41,46 @@ export const ALARM_SOUND = "incident_alarm.wav";
 let cachedToken = null;
 let categoriesReady = false;
 let responseSubscription = null;
+let notificationsModule = null;
+let handlerConfigured = false;
+let loggedExpoGoSkip = false;
 
-// An assignment has to break through whatever the responder is doing, so the
-// banner and sound fire even when the app is already in the foreground.
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+/** Remote push requires a dev/production build — not Expo Go on Android (SDK 53+). */
+export function isRemotePushAvailable() {
+  return !isRunningInExpoGo();
+}
+
+async function getNotificationsModule() {
+  if (!isRemotePushAvailable()) {
+    if (__DEV__ && !loggedExpoGoSkip) {
+      loggedExpoGoSkip = true;
+      console.info(
+        "[push] Remote push skipped in Expo Go — use a development build for push. In-app alarms still work."
+      );
+    }
+    return null;
+  }
+
+  if (!notificationsModule) {
+    notificationsModule = await import("expo-notifications");
+
+    if (!handlerConfigured) {
+      // An assignment has to break through whatever the responder is doing, so the
+      // banner and sound fire even when the app is already in the foreground.
+      notificationsModule.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowBanner: true,
+          shouldShowList: true,
+          shouldPlaySound: true,
+          shouldSetBadge: true,
+        }),
+      });
+      handlerConfigured = true;
+    }
+  }
+
+  return notificationsModule;
+}
 
 /**
  * Android requires the channel to exist before the first notification arrives,
@@ -56,7 +88,8 @@ Notifications.setNotificationHandler({
  * importance later needs a new channel id.
  */
 export async function ensureIncidentAlertChannel() {
-  if (Platform.OS !== "android") return;
+  const Notifications = await getNotificationsModule();
+  if (!Notifications || Platform.OS !== "android") return;
 
   await Notifications.setNotificationChannelAsync(INCIDENT_ALERT_CHANNEL, {
     name: "Incident assignments",
@@ -77,6 +110,10 @@ export async function ensureIncidentAlertChannel() {
  */
 export async function ensureIncidentAlertCategory() {
   if (categoriesReady) return;
+
+  const Notifications = await getNotificationsModule();
+  if (!Notifications) return;
+
   try {
     await Notifications.setNotificationCategoryAsync(INCIDENT_ALERT_CATEGORY, [
       {
@@ -119,6 +156,9 @@ const resolveProjectId = () =>
  * alarm still works whenever the app is open.
  */
 export async function registerForIncidentPush() {
+  const Notifications = await getNotificationsModule();
+  if (!Notifications) return null;
+
   await ensureIncidentAlertChannel();
   await ensureIncidentAlertCategory();
 
@@ -187,6 +227,9 @@ export async function unregisterIncidentPush() {
 
 /** Clear delivered alert notifications once the responder has acknowledged. */
 export async function dismissIncidentNotifications(incidentId) {
+  const Notifications = await getNotificationsModule();
+  if (!Notifications) return;
+
   try {
     const presented = await Notifications.getPresentedNotificationsAsync();
     await Promise.all(
@@ -227,40 +270,51 @@ export function subscribeToIncidentNotificationActions({ onView } = {}) {
     responseSubscription = null;
   }
 
-  const handleResponse = async (response) => {
-    if (!response) return;
-    const actionId = response.actionIdentifier;
-    const data = response.notification?.request?.content?.data ?? {};
-    const incidentId = typeof data.incidentId === "string" ? data.incidentId : null;
-    if (!incidentId) return;
+  if (!isRemotePushAvailable()) {
+    return () => {};
+  }
 
-    // Default tap and Acknowledge both clear the alarm; View also opens the case.
-    if (
-      actionId === ACKNOWLEDGE_ACTION ||
-      actionId === VIEW_ACTION ||
-      actionId === Notifications.DEFAULT_ACTION_IDENTIFIER
-    ) {
-      await acknowledgeFromNotification(incidentId);
-    }
+  let cancelled = false;
 
-    if (
-      (actionId === VIEW_ACTION || actionId === Notifications.DEFAULT_ACTION_IDENTIFIER) &&
-      typeof onView === "function"
-    ) {
-      onView(incidentId);
-    }
-  };
+  void getNotificationsModule().then((Notifications) => {
+    if (cancelled || !Notifications) return;
 
-  responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
-    void handleResponse(response);
-  });
+    const handleResponse = async (response) => {
+      if (!response) return;
+      const actionId = response.actionIdentifier;
+      const data = response.notification?.request?.content?.data ?? {};
+      const incidentId = typeof data.incidentId === "string" ? data.incidentId : null;
+      if (!incidentId) return;
 
-  // Cold start: the OS may have buffered the action that launched the app.
-  void Notifications.getLastNotificationResponseAsync().then((response) => {
-    if (response) void handleResponse(response);
+      // Default tap and Acknowledge both clear the alarm; View also opens the case.
+      if (
+        actionId === ACKNOWLEDGE_ACTION ||
+        actionId === VIEW_ACTION ||
+        actionId === Notifications.DEFAULT_ACTION_IDENTIFIER
+      ) {
+        await acknowledgeFromNotification(incidentId);
+      }
+
+      if (
+        (actionId === VIEW_ACTION || actionId === Notifications.DEFAULT_ACTION_IDENTIFIER) &&
+        typeof onView === "function"
+      ) {
+        onView(incidentId);
+      }
+    };
+
+    responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      void handleResponse(response);
+    });
+
+    // Cold start: the OS may have buffered the action that launched the app.
+    void Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response) void handleResponse(response);
+    });
   });
 
   return () => {
+    cancelled = true;
     responseSubscription?.remove();
     responseSubscription = null;
   };

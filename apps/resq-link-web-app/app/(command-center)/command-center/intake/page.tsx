@@ -377,6 +377,7 @@ const emergencyReportSyncKey = (report: EmergencyReport): string =>
     report.description ?? "",
     report.typeProfile ?? "",
     JSON.stringify(report.fieldAssessment ?? {}),
+    JSON.stringify(report.responderAssessment?.fields ?? {}),
     JSON.stringify(report.imageUrls ?? []),
     String(toMillis(report.updatedAt)),
   ].join("|");

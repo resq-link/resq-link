@@ -4,20 +4,37 @@ import { Platform } from 'react-native';
 import { appDebug, appInfo } from '@/utils/logger';
 
 // UI MODE: Set to true to use mock data for UI development (no backend needed)
-// UI Mode: mock data for UI development. Set to false to hit real backend.
 export const UI_MODE = Constants.expoConfig?.extra?.uiMode === true;
 
+/** Deployed RESQ-LINK web app (email OTP, password reset). */
+export const PRODUCTION_API_URL = 'https://www.resq-link.com';
+
 const LOCALHOST_PATTERN = /localhost|127\.0\.0\.1/i;
-const PRODUCTION_WEB_URL = 'https://www.resq-link.com';
 
 const trimTrailingSlash = (url) => url.replace(/\/$/, '');
 
 const isLocalhostHost = (url) => LOCALHOST_PATTERN.test(url);
 
+const useLocalApi =
+  process.env.EXPO_PUBLIC_USE_LOCAL_API === 'true' ||
+  process.env.EXPO_PUBLIC_USE_LOCAL_API === '1';
+
 const getExtraApiUrl = (key) => {
   const value = Constants.expoConfig?.extra?.[key];
-  if (typeof value === 'string' && value.length > 0 && !isLocalhostHost(value)) {
+  if (typeof value === 'string' && value.length > 0) {
+    if (!useLocalApi && isLocalhostHost(value)) {
+      return null;
+    }
     return trimTrailingSlash(value);
+  }
+  return null;
+};
+
+const resolveExplicitUrl = (...candidates) => {
+  for (const candidate of candidates) {
+    if (candidate && typeof candidate === 'string') {
+      return trimTrailingSlash(candidate);
+    }
   }
   return null;
 };
@@ -40,12 +57,32 @@ const getDebuggerHostIp = () => {
   return null;
 };
 
-// Get the API base URL
-// Priority: env override, app config extra, Expo dev IP, localhost (dev only), production web app
+/** Local Next.js dev server URL — only when explicitly enabled. */
+const getLocalDevApiUrl = (port) => {
+  const devHostIp = getDebuggerHostIp();
+  if (devHostIp) {
+    return `http://${devHostIp}:${port}`;
+  }
+
+  if (Platform.OS === 'android' && Constants.isDevice === false) {
+    return `http://10.0.2.2:${port}`;
+  }
+
+  return `http://localhost:${port}`;
+};
+
 const getApiBaseUrl = () => {
-  const envUrl = process.env.EXPO_PUBLIC_API_URL;
+  const envUrl = resolveExplicitUrl(process.env.EXPO_PUBLIC_API_URL);
   if (envUrl) {
-    return trimTrailingSlash(envUrl);
+    return envUrl;
+  }
+
+  if (useLocalApi && __DEV__) {
+    const extraUrl = getExtraApiUrl('apiUrl');
+    if (extraUrl) {
+      return extraUrl;
+    }
+    return getLocalDevApiUrl(3000);
   }
 
   const extraUrl = getExtraApiUrl('apiUrl');
@@ -53,29 +90,13 @@ const getApiBaseUrl = () => {
     return extraUrl;
   }
 
-  const devHostIp = getDebuggerHostIp();
-  if (devHostIp) {
-    return `http://${devHostIp}:4000`;
-  }
-
-  if (__DEV__) {
-    if (Platform.OS === 'android') {
-      // Android emulator alias for the host machine.
-      return 'http://10.0.2.2:4000';
-    }
-    return 'http://localhost:4000';
-  }
-
-  return PRODUCTION_WEB_URL;
+  return PRODUCTION_API_URL;
 };
 
-const API_BASE_URL = getApiBaseUrl();
-
-/** Unified RESQ-LINK web app (email OTP / password-reset APIs). */
 const getOtpApiBaseUrl = () => {
-  const dedicatedUrl = process.env.EXPO_PUBLIC_OTP_API_URL;
+  const dedicatedUrl = resolveExplicitUrl(process.env.EXPO_PUBLIC_OTP_API_URL);
   if (dedicatedUrl) {
-    return trimTrailingSlash(dedicatedUrl);
+    return dedicatedUrl;
   }
 
   const extraOtpUrl = getExtraApiUrl('otpApiUrl');
@@ -83,9 +104,9 @@ const getOtpApiBaseUrl = () => {
     return extraOtpUrl;
   }
 
-  const envUrl = process.env.EXPO_PUBLIC_API_URL;
+  const envUrl = resolveExplicitUrl(process.env.EXPO_PUBLIC_API_URL);
   if (envUrl) {
-    return trimTrailingSlash(envUrl);
+    return envUrl;
   }
 
   const extraApiUrl = getExtraApiUrl('apiUrl');
@@ -93,21 +114,14 @@ const getOtpApiBaseUrl = () => {
     return extraApiUrl;
   }
 
-  const devHostIp = getDebuggerHostIp();
-  if (devHostIp) {
-    return `http://${devHostIp}:3000`;
+  if (useLocalApi && __DEV__) {
+    return getLocalDevApiUrl(3000);
   }
 
-  if (__DEV__) {
-    if (Platform.OS === 'android') {
-      return 'http://10.0.2.2:3000';
-    }
-    return 'http://localhost:3000';
-  }
-
-  return PRODUCTION_WEB_URL;
+  return PRODUCTION_API_URL;
 };
 
+const API_BASE_URL = getApiBaseUrl();
 export const OTP_API_BASE_URL = getOtpApiBaseUrl();
 
 export const getOtpApiUrl = (endpoint) => `${OTP_API_BASE_URL}${endpoint}`;
@@ -118,7 +132,6 @@ export const isNativeLocalhostApi = () => {
     return false;
   }
 
-  // iOS simulator shares the host network stack; localhost works there.
   if (Platform.OS === 'ios' && Constants.isDevice === false) {
     return false;
   }
@@ -126,13 +139,13 @@ export const isNativeLocalhostApi = () => {
   return true;
 };
 
-// Log the API URL for debugging (development only)
 if (__DEV__) {
   if (UI_MODE) {
     appInfo('UI MODE: Using mock data (no backend required)');
   } else {
     appDebug('API Base URL:', API_BASE_URL);
     appDebug('OTP API Base URL:', OTP_API_BASE_URL);
+    appDebug('Use local API:', useLocalApi ? 'yes (EXPO_PUBLIC_USE_LOCAL_API)' : 'no');
   }
 }
 
@@ -155,78 +168,75 @@ export const apiConfig = {
   },
 };
 
-export const getApiUrl = (endpoint) => {
-  return `${API_BASE_URL}${endpoint}`;
-};
+export const getApiUrl = (endpoint) => `${API_BASE_URL}${endpoint}`;
 
-// Mock data for UI development
 export const mockData = {
   login: {
     user: {
-      id: "mock-user-123",
-      uid: "mock-user-123",
-      email: "civilian@test.com",
-      phone_number: "+639123456789",
-      phone: "+639123456789",
-      name: "Test User",
-      role: "civilian",
+      id: 'mock-user-123',
+      uid: 'mock-user-123',
+      email: 'civilian@test.com',
+      phone_number: '+639123456789',
+      phone: '+639123456789',
+      name: 'Test User',
+      role: 'civilian',
       created_at: new Date().toISOString(),
     },
   },
   register: {
     user: {
-      id: "mock-user-123",
-      phone_number: "0000000000",
-      name: "New User",
+      id: 'mock-user-123',
+      phone_number: '0000000000',
+      name: 'New User',
       created_at: new Date().toISOString(),
     },
   },
   emergencyList: {
     reports: [
       {
-        id: "1",
-        incident_type: "fire",
-        incident_id: "inc-mock-1",
-        location_text: "Brgy. San Roque, City Center",
-        status: "pending",
+        id: '1',
+        incident_type: 'fire',
+        incident_id: 'inc-mock-1',
+        location_text: 'Brgy. San Roque, City Center',
+        status: 'pending',
         created_at: new Date(Date.now() - 44 * 60000).toISOString(),
       },
       {
-        id: "2",
-        incident_type: "medical",
-        location_text: "Brgy. San Roque, City Center",
-        status: "in_progress",
+        id: '2',
+        incident_type: 'medical',
+        location_text: 'Brgy. San Roque, City Center',
+        status: 'in_progress',
         created_at: new Date(Date.now() - 50 * 60000).toISOString(),
       },
     ],
   },
   emergencySubmit: {
     report: {
-      id: "new-report-123",
-      incident_type: "fire",
-      location_text: "789 Pine Rd",
-      status: "pending",
+      id: 'new-report-123',
+      incident_type: 'fire',
+      location_text: '789 Pine Rd',
+      status: 'pending',
       created_at: new Date().toISOString(),
     },
   },
   responders: {
     responders: [
       {
-        id: "1",
-        name: "Engine 7",
-        unit_type: "Fire Truck",
+        id: '1',
+        name: 'Engine 7',
+        unit_type: 'Fire Truck',
         latitude: 17.6132,
         longitude: 121.727,
-        status: "available",
+        status: 'available',
       },
       {
-        id: "2",
-        name: "Ambulance 3",
-        unit_type: "Ambulance",
+        id: '2',
+        name: 'Ambulance 3',
+        unit_type: 'Ambulance',
         latitude: 17.6232,
         longitude: 121.737,
-        status: "en_route",
-        assignedIncidentId: "inc-mock-1",
+        status: 'en_route',
+        assignedIncidentId: 'inc-mock-1',
       },
     ],
   },

@@ -19,24 +19,38 @@ const resolveMonorepoPackage = (name) =>
     }),
   );
 
-const reactNativeRoot = resolveMonorepoPackage("react-native");
-const bottomSheetRoot = resolveMonorepoPackage("@gorhom/bottom-sheet");
+/** Prefer this app's node_modules (avoids duplicate React in monorepo). */
+const resolveAppPackage = (name) =>
+  path.dirname(
+    require.resolve(`${name}/package.json`, {
+      paths: [__dirname, monorepoRoot],
+    }),
+  );
+
+const reactRoot = resolveAppPackage("react");
+const reactNativeRoot = resolveAppPackage("react-native");
+const bottomSheetRoot = resolveAppPackage("@gorhom/bottom-sheet");
 const bottomSheetLib = path.join(bottomSheetRoot, "lib/module");
 const flashListStub = path.resolve(__dirname, "./polyfills/optional/flash-list.js");
-const RN_TEXT_INPUT_IMPL = path.join(
-  reactNativeRoot,
-  "Libraries/Components/TextInput/TextInput.js",
+
+/** Pin RN ecosystem deps to this app (root hoists duplicates that break DevTools). */
+const APP_PINNED_PACKAGES = [
+  "react-native-gesture-handler",
+  "react-native-reanimated",
+  "react-native-screens",
+  "react-native-maps",
+  "react-native-safe-area-context",
+  "react-native-svg",
+  "react-native-worklets",
+];
+
+const pinnedAppModules = Object.fromEntries(
+  APP_PINNED_PACKAGES.map((name) => [name, resolveAppPackage(name)])
 );
 
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
 
-const NATIVE_ALIASES = {
-  "./Libraries/Components/TextInput/TextInput": path.resolve(
-    __dirname,
-    "./polyfills/native/texinput.native.jsx",
-  ),
-};
 const SHARED_ALIASES = {
   "expo-image": path.resolve(__dirname, "./polyfills/shared/expo-image.tsx"),
 };
@@ -48,6 +62,12 @@ config.watchFolders = [
   packagesFirebase,
 ];
 
+// Prefer app node_modules over monorepo root (prevents duplicate react-native).
+config.resolver.nodeModulesPaths = [
+  path.resolve(__dirname, "node_modules"),
+  path.resolve(monorepoRoot, "node_modules"),
+];
+
 // Ensure Metro can resolve the shared Firebase package
 config.resolver = {
   ...config.resolver,
@@ -57,8 +77,12 @@ config.resolver = {
   unstable_enablePackageExports: false,
   extraNodeModules: {
     ...config.resolver?.extraNodeModules,
+    ...pinnedAppModules,
     "@packages/firebase": packagesFirebase,
     expo: resolveMonorepoPackage("expo"),
+    react: reactRoot,
+    "react/jsx-runtime": path.join(reactRoot, "jsx-runtime.js"),
+    "react/jsx-dev-runtime": path.join(reactRoot, "jsx-dev-runtime.js"),
     "react-native": reactNativeRoot,
     "expo-router": resolveMonorepoPackage("expo-router"),
     "expo/virtual/env": path.join(resolveMonorepoPackage("expo"), "virtual", "env"),
@@ -69,10 +93,6 @@ config.resolver = {
 
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   try {
-    if (moduleName === "@resqlink-internal/text-input-impl") {
-      return { type: "sourceFile", filePath: RN_TEXT_INPUT_IMPL };
-    }
-
     // @gorhom/bottom-sheet "react-native" field points at TypeScript src; use compiled lib.
     if (moduleName === "@gorhom/bottom-sheet") {
       return {
@@ -121,13 +141,6 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
       );
     }
 
-    if (NATIVE_ALIASES[moduleName] && !moduleName.startsWith("./polyfills/")) {
-      return context.resolveRequest(
-        context,
-        NATIVE_ALIASES[moduleName],
-        platform,
-      );
-    }
     return context.resolveRequest(context, moduleName, platform);
   } catch (error) {
     return handleResolveRequestError({ error, context, platform, moduleName });

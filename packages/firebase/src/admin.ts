@@ -274,3 +274,43 @@ export async function writeAuditLog(input: WriteAuditLogInput): Promise<string> 
   );
   return ref.id;
 }
+
+/**
+ * Hard-delete a Firebase Authentication user (server-side only).
+ */
+export async function deleteAuthUserAdmin(uid: string): Promise<void> {
+  await adminAuth().deleteUser(uid);
+}
+
+/**
+ * Delete all Storage objects under a prefix (server-side only).
+ */
+export async function deleteStoragePrefixAdmin(prefix: string): Promise<number> {
+  const bucket = getAdminApp().storage().bucket();
+  const [files] = await bucket.getFiles({ prefix });
+  if (files.length === 0) {
+    return 0;
+  }
+  await Promise.all(
+    files.map(async (file) => {
+      try {
+        await file.delete();
+      } catch (error) {
+        console.warn('Failed to delete storage object during admin purge:', file.name, error);
+      }
+    })
+  );
+  return files.length;
+}
+
+/**
+ * Remove OTP records tied to an email address.
+ */
+export async function purgeOtpRecordsForEmailAdmin(email: string): Promise<void> {
+  const docId = emailOtpDocId(email);
+  const db = adminFirestore();
+  await Promise.all([
+    db.doc(`emailOtps/${docId}`).delete().catch(() => undefined),
+    db.doc(`passwordResetOtps/${docId}`).delete().catch(() => undefined),
+  ]);
+}

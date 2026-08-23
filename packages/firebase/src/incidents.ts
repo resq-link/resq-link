@@ -31,7 +31,10 @@ import {
   type IncidentPriority,
 } from './priority';
 import { mapEmergencyTypeToIncidentCategory } from './civilianFieldAssessment';
-import { parseResponderAssessment } from './responderAssessment';
+import {
+  hasResponderSceneAssessment,
+  parseResponderAssessment,
+} from './responderAssessment';
 
 export type { IncidentPriority };
 export type IncidentSource = 'civilian_app' | 'call' | 'sms' | 'walk_in' | 'radio' | 'manual';
@@ -1608,6 +1611,11 @@ export async function submitPostIncidentReportForIncident(
   const currentData = snap.data() as IncidentRecord;
   if (!currentData.assignedResourceIds.includes(currentUser.uid)) {
     throw new Error('Only an assigned responder can submit a post report');
+  }
+
+  const assessment = parseResponderAssessment(currentData.responderAssessment);
+  if (!hasResponderSceneAssessment(assessment)) {
+    throw new Error('Complete the Scene Assessment before submitting the Post Report.');
   }
   
   const resolvedAt = Timestamp.now();

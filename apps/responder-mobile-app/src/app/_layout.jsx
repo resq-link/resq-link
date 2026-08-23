@@ -24,6 +24,7 @@ import useUserStore from "@/store/userStore";
 import { ResqThemeProvider } from "@/theme";
 import ResponderMessagingWidget from "@/modules/messaging/components/ResponderMessagingWidget";
 import PriorityAlertProvider from "@/providers/PriorityAlertProvider";
+import { Toaster } from "sonner-native";
 
 // Do not call SplashScreen.preventAutoHideAsync() at module scope.
 // On TestFlight (New Arch), that TurboModule void call can SIGABRT before JS catch runs.
@@ -93,6 +94,7 @@ export default function RootLayout() {
               }}
             />
             <ResponderMessagingWidget />
+            <Toaster />
           </View>
         </GestureHandlerRootView>
         </PriorityAlertProvider>

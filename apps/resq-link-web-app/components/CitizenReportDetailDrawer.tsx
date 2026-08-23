@@ -2,10 +2,11 @@
 
 import { createPortal } from "react-dom";
 import { useEffect, useState } from "react";
-import { X, FileText, MapPin, Image as ImageIcon } from "lucide-react";
+import { X, FileText, MapPin } from "lucide-react";
 import type { EmergencyReport } from "@packages/firebase";
 import { getCivilianEmergencyTypeLabel, getReportImageUrls } from "@packages/firebase";
 import InitialNarrativeDisplay from "@/components/InitialNarrativeDisplay";
+import IncidentScenePhotos from "@/components/incident-media/IncidentScenePhotos";
 
 type CitizenReportDetailDrawerProps = {
   report: EmergencyReport | null;
@@ -28,6 +29,7 @@ export default function CitizenReportDetailDrawer({
   onClose,
 }: CitizenReportDetailDrawerProps) {
   const [mounted, setMounted] = useState(false);
+  const [photoViewerOpen, setPhotoViewerOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -36,11 +38,11 @@ export default function CitizenReportDetailDrawer({
   useEffect(() => {
     if (!report) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape" && !photoViewerOpen) onClose();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [report, onClose]);
+  }, [report, onClose, photoViewerOpen]);
 
   if (!mounted || !report) return null;
 
@@ -114,22 +116,13 @@ export default function CitizenReportDetailDrawer({
 
           {imageUrls.length > 0 ? (
             <section className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
-              <div className="mb-3 flex items-center gap-2 text-slate-400">
-                <ImageIcon className="h-3.5 w-3.5" />
-                <span className="text-[10px] font-black uppercase tracking-widest">
-                  Evidence ({imageUrls.length})
-                </span>
-              </div>
-              <div className="grid gap-3">
-                {imageUrls.map((url, index) => (
-                  <img
-                    key={`${url}-${index}`}
-                    src={url}
-                    alt={`Citizen evidence ${index + 1}`}
-                    className="max-h-64 w-full rounded-lg border border-slate-800 object-cover"
-                  />
-                ))}
-              </div>
+              <IncidentScenePhotos
+                imageUrls={imageUrls}
+                title={`Evidence (${imageUrls.length})`}
+                layout="row"
+                emptyMessage=""
+                onViewerOpenChange={setPhotoViewerOpen}
+              />
             </section>
           ) : null}
         </div>

@@ -7,10 +7,12 @@ import {
   PhoneAuthProvider,
   signInWithCredential,
   ConfirmationResult,
+  deleteUser,
 } from 'firebase/auth';
 import {
   doc,
   setDoc,
+  deleteDoc,
   serverTimestamp,
   getDoc,
   collection,
@@ -21,7 +23,7 @@ import {
 } from 'firebase/firestore';
 import { getFirebaseAuth, getFirebaseFirestore } from './config';
 import { firebaseInfo } from './logger';
-import { uploadImageToStorage } from './storage';
+import { deleteStorageFile, uploadImageToStorage } from './storage';
 
 // Dispatcher roles
 export type DispatcherRole = 'BFP' | 'PNP' | 'MDRRMO' | 'AMBULANCE' | 'PCG';
@@ -333,6 +335,15 @@ export interface RegisterCivilianInput {
   govIdFrontUri?: string;
 }
 
+export type RegisterCivilianProgressStep =
+  | 'creating_auth'
+  | 'uploading_photo'
+  | 'saving_profile';
+
+export interface RegisterCivilianOptions {
+  onProgress?: (step: RegisterCivilianProgressStep) => void;
+}
+
 export interface CivilianUserProfile {
   uid: string;
   name: string;
@@ -461,28 +472,102 @@ export async function signInCivilian(
   }
 }
 
+function mapRegistrationError(error: unknown): Error & { code?: string } {
+  const err = error as { code?: string; message?: string };
+  const code = typeof err?.code === 'string' ? err.code : '';
+  const message = typeof err?.message === 'string' ? err.message : String(error);
+  const lower = message.toLowerCase();
+
+  if (code === 'auth/email-already-in-use' || lower.includes('email-already-in-use')) {
+    return Object.assign(new Error('An account with this email already exists.'), { code: 'auth/email-already-in-use' });
+  }
+  if (code === 'auth/weak-password' || lower.includes('weak-password')) {
+    return Object.assign(new Error('Password is too weak. Use at least 6 characters.'), { code: 'auth/weak-password' });
+  }
+  if (code === 'auth/invalid-email' || lower.includes('invalid-email')) {
+    return Object.assign(new Error('Please enter a valid email address.'), { code: 'auth/invalid-email' });
+  }
+  if (
+    lower.includes('failed to upload image') ||
+    lower.includes('storage upload failed') ||
+    lower.includes('arraybuffer') ||
+    lower.includes('blob')
+  ) {
+    return Object.assign(
+      new Error('Your account could not be completed because the image upload failed.'),
+      { code: 'storage/upload-failed' }
+    );
+  }
+  if (lower.includes('empty') && (lower.includes('image') || lower.includes('photo') || lower.includes('file'))) {
+    return Object.assign(new Error('The selected image could not be processed.'), { code: 'storage/invalid-image' });
+  }
+
+  const wrapped = new Error(message) as Error & { code?: string };
+  if (code) wrapped.code = code;
+  return wrapped;
+}
+
+async function rollbackCivilianRegistration(input: {
+  uid: string;
+  user: User | null;
+  uploadedStoragePath: string | null;
+  firestoreWritten: boolean;
+}): Promise<void> {
+  if (input.firestoreWritten) {
+    try {
+      await deleteDoc(doc(getFirebaseFirestore(), 'users', input.uid));
+    } catch (cleanupError: unknown) {
+      const detail = cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
+      console.warn('Failed to roll back Firestore profile after registration error:', detail);
+    }
+  }
+
+  if (input.uploadedStoragePath) {
+    await deleteStorageFile(input.uploadedStoragePath);
+  }
+
+  if (input.user) {
+    try {
+      await deleteUser(input.user);
+    } catch (cleanupError: unknown) {
+      const detail = cleanupError instanceof Error ? cleanupError.message : String(cleanupError);
+      console.warn('Failed to roll back Firebase Auth user after registration error:', detail);
+    }
+  }
+}
+
 /**
  * Register a civilian with email/password and KYC profile fields.
  * Account stays pending until email OTP and super-admin KYC approval.
  */
 export async function registerCivilian(
-  input: RegisterCivilianInput
+  input: RegisterCivilianInput,
+  options?: RegisterCivilianOptions
 ): Promise<{ user: User; uid: string; profile: CivilianUserProfile }> {
   const email = input.email.trim().toLowerCase();
   const firstName = input.firstName.trim();
   const lastName = input.lastName.trim();
   const fullName = `${firstName} ${lastName}`.trim();
+  const onProgress = options?.onProgress;
+
+  let createdUser: User | null = null;
+  let uploadedStoragePath: string | null = null;
+  let firestoreWritten = false;
 
   try {
+    onProgress?.('creating_auth');
     const userCredential = await createUserWithEmailAndPassword(
       getFirebaseAuth(),
       email,
       input.password
     );
-    const user = userCredential.user;
+    createdUser = userCredential.user;
+    const user = createdUser;
 
     let govIdFrontUrl = (input.govIdFrontUrl || '').trim();
     if (input.govIdFrontUri) {
+      onProgress?.('uploading_photo');
+      uploadedStoragePath = `kyc-documents/${user.uid}/gov-id-front.jpg`;
       govIdFrontUrl = await uploadImageToStorage(
         input.govIdFrontUri,
         `kyc-documents/${user.uid}/`,
@@ -491,9 +576,10 @@ export async function registerCivilian(
     }
 
     if (!govIdFrontUrl) {
-      throw new Error('Government ID photo is required.');
+      throw Object.assign(new Error('Government ID photo is required.'), { code: 'storage/invalid-image' });
     }
 
+    onProgress?.('saving_profile');
     const accountData = {
       email,
       firstName,
@@ -505,12 +591,12 @@ export async function registerCivilian(
       status: 'pending_email_verification' as CivilianAccountStatus,
       govIdType: input.govIdType,
       govIdFrontUrl,
-      kycSubmittedAt: serverTimestamp(),
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
 
     await setDoc(doc(getFirebaseFirestore(), 'users', user.uid), accountData);
+    firestoreWritten = true;
 
     const profile: CivilianUserProfile = {
       uid: user.uid,
@@ -526,12 +612,17 @@ export async function registerCivilian(
     };
 
     return { user, uid: user.uid, profile };
-  } catch (error: any) {
-    const wrapped = new Error(`Failed to register: ${error.message}`) as Error & {
-      code?: string;
-    };
-    wrapped.code = error.code;
-    throw wrapped;
+  } catch (error: unknown) {
+    if (createdUser) {
+      await rollbackCivilianRegistration({
+        uid: createdUser.uid,
+        user: createdUser,
+        uploadedStoragePath,
+        firestoreWritten,
+      });
+    }
+
+    throw mapRegistrationError(error);
   }
 }
 

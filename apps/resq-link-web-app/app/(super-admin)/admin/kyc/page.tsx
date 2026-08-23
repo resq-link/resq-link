@@ -11,6 +11,7 @@ import { Drawer } from '@/components/ui/Drawer';
 import { adminFetch } from '@/lib/adminFetch';
 import { formatDateTime } from '@/lib/dates';
 import { useAdminKycList } from '@/hooks/useAdminKycList';
+import { invalidateAdminCivilianDataCaches } from '@/lib/adminCacheInvalidation';
 import { useToast } from '@/components/ToastProvider';
 import { fetchAllFilteredPages, type AdminExportColumn } from '@/lib/adminExport';
 import type { KycListItem } from '@/lib/accountTypes';
@@ -326,7 +327,7 @@ export default function KycPage() {
                 toast.success('KYC approved successfully.');
                 setApproveOpen(false);
                 setSelected(null);
-                list.invalidate();
+                invalidateAdminCivilianDataCaches();
                 await list.reload();
               } catch (err) {
                 toast.error((err as Error).message || 'Unable to update KYC verification.');
@@ -370,7 +371,7 @@ export default function KycPage() {
                 setRejectOpen(false);
                 setRejectReason('');
                 setSelected(null);
-                list.invalidate();
+                invalidateAdminCivilianDataCaches();
                 await list.reload();
               } catch (err) {
                 toast.error((err as Error).message || 'Unable to update KYC verification.');

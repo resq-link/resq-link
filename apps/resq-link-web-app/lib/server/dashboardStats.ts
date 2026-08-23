@@ -1,5 +1,6 @@
 import { getAdminFirestore } from '@packages/firebase/admin';
 import { countDocuments } from '@/lib/server/firestoreCount';
+import { countKycBuckets } from '@/lib/server/kycList';
 import { toIso } from '@/lib/server/timestamps';
 import type { DashboardStats } from '@/lib/accountTypes';
 
@@ -17,7 +18,7 @@ export async function loadDashboardStats(): Promise<DashboardStats> {
   const [
     civilians,
     civiliansThisMonth,
-    pendingKyc,
+    kycCounts,
     disabledCivilians,
     dispatcherTotal,
     disabledDispatchers,
@@ -29,7 +30,7 @@ export async function loadDashboardStats(): Promise<DashboardStats> {
   ] = await Promise.all([
     countDocuments('users'),
     countDocuments('users', [{ field: 'createdAt', op: '>=', value: monthStart }]),
-    countDocuments('users', [{ field: 'status', op: '==', value: 'pending_kyc_review' }]),
+    countKycBuckets(),
     countDocuments('users', [{ field: 'disabled', op: '==', value: true }]),
     // Web dispatcher operators (Command Center accounts)
     countDocuments('commandCenters'),
@@ -59,7 +60,7 @@ export async function loadDashboardStats(): Promise<DashboardStats> {
       total: agenciesTotal,
       active: Math.max(0, agenciesTotal - inactiveAgencies),
     },
-    pendingKyc,
+    pendingKyc: kycCounts.pending,
     disabledAccounts: disabledStaff + disabledCivilians + disabledDispatchers,
   };
 

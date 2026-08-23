@@ -48,6 +48,8 @@ export async function POST(request: NextRequest) {
         deletionMethod: result.method,
         previousActive: result.previousActive,
         email: result.email || null,
+        cleanup: result.cleanup || null,
+        warnings: result.warnings || null,
       },
     });
 
@@ -55,6 +57,8 @@ export async function POST(request: NextRequest) {
       success: true,
       deletionMethod: result.method,
       label: result.label,
+      warnings: result.warnings || [],
+      cleanup: result.cleanup || null,
     });
   } catch (error: unknown) {
     const status = httpErrorStatus(error);

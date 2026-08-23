@@ -9,22 +9,19 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Alert,
 } from "react-native";
-import { Image } from "expo-image";
-import * as ImagePicker from "expo-image-picker";
 import {
   AlertTriangle,
   Building2,
   Camera,
   CheckCircle2,
   ClipboardList,
-  ImageIcon,
   Minus,
   Plus,
   Users,
   X,
 } from "lucide-react-native";
+import IncidentPhotoField from "./IncidentPhotoField";
 import { radii, spacing } from "@/theme";
 
 const causePresets = [
@@ -109,68 +106,6 @@ function FieldLabel({ label, hint, colors }) {
   );
 }
 
-function PhotoField({ label, hint, noun, uri, onPick, onRemove, disabled, colors }) {
-  return (
-    <View style={styles.fieldContainer}>
-      <FieldLabel label={label} hint={hint} colors={colors} />
-      {uri ? (
-        <View style={styles.photoPreviewWrap}>
-          <Image
-            source={{ uri }}
-            style={styles.photoPreview}
-            contentFit="cover"
-            accessibilityLabel={`Selected ${noun} preview`}
-          />
-          <TouchableOpacity
-            onPress={onRemove}
-            disabled={disabled}
-            style={[
-              styles.removePhotoButton,
-              { backgroundColor: colors.surfaceHighlight, borderColor: colors.border },
-              disabled && styles.disabledButton,
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={`Remove ${noun}`}
-          >
-            <X size={18} color={colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <View style={styles.photoActionsRow}>
-          <TouchableOpacity
-            onPress={() => onPick("camera")}
-            disabled={disabled}
-            style={[
-              styles.photoActionButton,
-              { backgroundColor: colors.surfaceHighlight, borderColor: colors.border },
-              disabled && styles.disabledButton,
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={`Take ${noun}`}
-          >
-            <Camera size={18} color={colors.accent} />
-            <Text style={[styles.photoActionText, { color: colors.text }]}>Take Photo</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => onPick("library")}
-            disabled={disabled}
-            style={[
-              styles.photoActionButton,
-              { backgroundColor: colors.surfaceHighlight, borderColor: colors.border },
-              disabled && styles.disabledButton,
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel={`Choose ${noun} from library`}
-          >
-            <ImageIcon size={18} color={colors.accent} />
-            <Text style={[styles.photoActionText, { color: colors.text }]}>Choose Photo</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
-  );
-}
-
 export default function PostReportModal({
   visible,
   onClose,
@@ -200,50 +135,12 @@ export default function PostReportModal({
     }));
   };
 
-  const pickerOptions = {
-    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    allowsEditing: true,
-    aspect: [4, 3],
-    quality: 0.8,
-  };
-
-  const handlePickPhoto = useCallback(
-    async (source, field = "photoUri", noun = "scene photo") => {
+  const handleActionPhotoChange = useCallback(
+    (uri) => {
       if (isSubmitting) return;
-
-      const permission =
-        source === "camera"
-          ? await ImagePicker.requestCameraPermissionsAsync()
-          : await ImagePicker.requestMediaLibraryPermissionsAsync();
-
-      if (!permission.granted) {
-        Alert.alert(
-          "Permission required",
-          source === "camera"
-            ? `Camera access is needed to take a ${noun}.`
-            : `Photo library access is needed to attach a ${noun}.`
-        );
-        return;
-      }
-
-      const result =
-        source === "camera"
-          ? await ImagePicker.launchCameraAsync(pickerOptions)
-          : await ImagePicker.launchImageLibraryAsync(pickerOptions);
-
-      if (!result.canceled && result.assets?.[0]?.uri) {
-        setForm((current) => ({ ...current, [field]: result.assets[0].uri }));
-      }
+      setForm((current) => ({ ...current, actionPhotoUri: uri }));
     },
-    [isSubmitting, setForm]
-  );
-
-  const handleRemovePhoto = useCallback(
-    (field = "photoUri") => {
-      if (isSubmitting) return;
-      setForm((current) => ({ ...current, [field]: "" }));
-    },
-    [isSubmitting, setForm]
+    [isSubmitting, setForm],
   );
 
   return (
@@ -540,28 +437,16 @@ export default function PostReportModal({
               <View style={styles.sectionHeader}>
                 <Camera size={17} color={colors.accent} />
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-                  Photos
+                  Response Evidence
                 </Text>
               </View>
 
-              <PhotoField
-                label="Scene Photo"
-                hint="Optional — document scene condition or handover"
-                noun="scene photo"
-                uri={form.photoUri}
-                onPick={(source) => handlePickPhoto(source, "photoUri", "scene photo")}
-                onRemove={() => handleRemovePhoto("photoUri")}
-                disabled={isSubmitting}
-                colors={colors}
-              />
-
-              <PhotoField
+              <IncidentPhotoField
                 label="Action Photo"
-                hint="Optional — responders carrying out the response"
+                hint="Document the response action performed on scene."
                 noun="action photo"
                 uri={form.actionPhotoUri}
-                onPick={(source) => handlePickPhoto(source, "actionPhotoUri", "action photo")}
-                onRemove={() => handleRemovePhoto("actionPhotoUri")}
+                onChange={handleActionPhotoChange}
                 disabled={isSubmitting}
                 colors={colors}
               />
@@ -835,45 +720,5 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.55,
-  },
-  photoActionsRow: {
-    flexDirection: "row",
-    gap: spacing.sm,
-  },
-  photoActionButton: {
-    flex: 1,
-    minHeight: 52,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-  },
-  photoActionText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 13,
-  },
-  photoPreviewWrap: {
-    position: "relative",
-    borderRadius: radii.md,
-    overflow: "hidden",
-  },
-  photoPreview: {
-    width: "100%",
-    height: 200,
-    borderRadius: radii.md,
-  },
-  removePhotoButton: {
-    position: "absolute",
-    top: spacing.sm,
-    right: spacing.sm,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
   },
 });

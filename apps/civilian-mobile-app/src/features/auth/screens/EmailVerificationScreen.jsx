@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import {
   Inter_400Regular,
   Inter_600SemiBold,
@@ -27,10 +27,12 @@ import {
   sendEmailOtp,
   verifyEmailOtp,
 } from "@/features/auth/utils/emailOtpApi";
+import { toUserFacingNetworkError } from "@/features/auth/utils/networkErrors";
 
 export default function EmailVerificationScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { notice } = useLocalSearchParams();
   const { colors, authTheme: theme } = useAppTheme();
   const { user, isLoading: userLoading, setUser } = useUserStore();
   const [digits, setDigits] = useState(["", "", "", "", "", ""]);
@@ -38,6 +40,36 @@ export default function EmailVerificationScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const inputs = useRef([]);
+  const initialSendRef = useRef(false);
+
+  const applyCooldown = (seconds) => {
+    if (typeof seconds === "number" && seconds > 0) {
+      setCooldown(seconds);
+    }
+  };
+
+  const requestOtp = async ({ silent429 = false } = {}) => {
+    const targetEmail = user?.email || "";
+    if (!targetEmail || !user?.uid) return;
+    setError("");
+    try {
+      if (UI_MODE) {
+        applyCooldown(60);
+        return;
+      }
+      const result = await sendEmailOtp({ uid: user.uid, email: targetEmail });
+      applyCooldown(result?.retryAfterSeconds ?? 60);
+    } catch (err) {
+      if (silent429 && err?.retryAfterSeconds) {
+        applyCooldown(err.retryAfterSeconds);
+        return;
+      }
+      if (err?.retryAfterSeconds) {
+        applyCooldown(err.retryAfterSeconds);
+      }
+      setError(toUserFacingNetworkError(err, "otp"));
+    }
+  };
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -57,6 +89,21 @@ export default function EmailVerificationScreen() {
       router.replace("/login");
     }
   }, [user, userLoading, router]);
+
+  useEffect(() => {
+    const message = typeof notice === "string" ? notice.trim() : "";
+    if (message) {
+      setError(message);
+    }
+  }, [notice]);
+
+  useEffect(() => {
+    if (userLoading || !user?.uid || !user?.email || initialSendRef.current) {
+      return;
+    }
+    initialSendRef.current = true;
+    requestOtp({ silent429: true });
+  }, [user?.uid, user?.email, userLoading]);
 
   if (!fontsLoaded) {
     return null;
@@ -99,7 +146,7 @@ export default function EmailVerificationScreen() {
       await setUser({ ...user, status: "pending_kyc_review" });
       router.replace("/account-pending");
     } catch (err) {
-      setError(err.message || "Invalid or expired code.");
+      setError(toUserFacingNetworkError(err, "otp"));
     } finally {
       setIsLoading(false);
     }
@@ -107,15 +154,7 @@ export default function EmailVerificationScreen() {
 
   const handleResend = async () => {
     if (cooldown > 0 || !email) return;
-    setError("");
-    try {
-      if (!UI_MODE) {
-        await sendEmailOtp({ uid: user?.uid, email });
-      }
-      setCooldown(60);
-    } catch (err) {
-      setError(err.message || "Could not resend the code.");
-    }
+    await requestOtp();
   };
 
   return (

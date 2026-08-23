@@ -225,6 +225,7 @@ export function useReportEmergency(initialCoords = null) {
         quality: 0.8,
         allowsMultipleSelection: true,
         selectionLimit: 6,
+        copyToCacheDirectory: true,
       });
 
       if (!result.canceled && result.assets?.length) {
@@ -249,6 +250,7 @@ export function useReportEmergency(initialCoords = null) {
         allowsEditing: false,
         quality: 0.8,
         exif: false,
+        copyToCacheDirectory: true,
       });
 
       if (!result.canceled && result.assets?.[0]) {
