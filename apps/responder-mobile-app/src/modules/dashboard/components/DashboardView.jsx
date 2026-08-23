@@ -428,6 +428,49 @@ export default function DashboardView() {
         </View>
 
         <View style={[styles.mainBlock, { paddingHorizontal: spacing.lg }]}>
+          <View
+            style={{
+              flexDirection: "row",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 12,
+              marginTop: 6,
+            }}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <Text
+                style={{
+                  fontFamily: "Inter_700Bold",
+                  fontSize: 16,
+                  color: D.textPrimary,
+                  letterSpacing: 0.2,
+                }}
+              >
+                Assigned Incidents
+              </Text>
+              {cases.length > 0 && (
+                <View
+                  style={{
+                    backgroundColor: "rgba(59, 130, 246, 0.16)",
+                    borderRadius: 12,
+                    paddingHorizontal: 8,
+                    paddingVertical: 2,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontFamily: "Inter_700Bold",
+                      fontSize: 12,
+                      color: D.accentBright,
+                    }}
+                  >
+                    {cases.length}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+
           {cases.length === 0 ? (
             <View style={styles.emptyWrap}>
               <View style={styles.emptyOrb}>
