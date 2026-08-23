@@ -12,10 +12,16 @@
 			"distribution": "internal",
 			"android": {
 				"buildType": "apk"
+			},
+			"env": {
+				"EAS_SKIP_AUTO_FINGERPRINT": "1"
 			}
 		},
 		"production": {
-			"autoIncrement": true
+			"autoIncrement": true,
+			"env": {
+				"EAS_SKIP_AUTO_FINGERPRINT": "1"
+			}
 		}
 	},
 	"submit": {
