@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "RESQ-Link Responder",
+    "name": "RESQ Responder",
     "slug": "resq-link-responder",
     "scheme": "resqlink-responder",
     "version": "1.0.0",
@@ -15,6 +15,7 @@
         "aps-environment": "production"
       },
       "infoPlist": {
+        "CFBundleDisplayName": "RESQ Responder",
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "RESQ-Link Responder uses the camera to capture post-incident scene photos you choose to attach to reports.",
         "NSPhotoLibraryUsageDescription": "RESQ-Link Responder uses your photo library so you can attach scene photos to incident reports.",
@@ -62,7 +63,8 @@
         {
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
-          "resizeMode": "contain"
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
         }
       ],
       "expo-font",

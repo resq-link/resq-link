@@ -6,6 +6,7 @@ export {
   getFirebaseStorage,
   getFirebaseRealtimeDatabase,
   isFirebaseRealtimeDatabaseConfigured,
+  waitForFirebaseAuthUser,
 } from './config';
 
 // Export Firestore functions

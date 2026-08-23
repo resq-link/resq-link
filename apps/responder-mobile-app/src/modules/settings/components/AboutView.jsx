@@ -107,7 +107,7 @@ export default function AboutView() {
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.appName}>RESQ-Link Responder</Text>
+        <Text style={styles.appName}>RESQ Responder</Text>
         <Text style={styles.version}>Version {appVersion}</Text>
         <Text style={styles.description}>
           Field responder app for verified emergency personnel. View assigned incidents, share live location with

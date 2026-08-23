@@ -30,7 +30,7 @@ import {
   Shield,
 } from "lucide-react-native";
 import useUserStore from "@/store/userStore";
-import { getFirebaseAuth } from "@packages/firebase";
+import { getFirebaseAuth, waitForFirebaseAuthUser } from "@packages/firebase";
 import CaseCard from "@/modules/incidents/components/CaseCard";
 import LoadingScreen from "@/components/ui/LoadingScreen";
 import {
@@ -170,19 +170,38 @@ export default function DashboardView() {
     [styles, D]
   );
 
+  const [authReady, setAuthReady] = React.useState(false);
+  const [firebaseUid, setFirebaseUid] = React.useState(
+    () => getFirebaseAuth().currentUser?.uid ?? null
+  );
+
   useEffect(() => {
     if (!user) {
       router.replace("/login");
-      return;
+      return undefined;
     }
-    const firebaseUser = getFirebaseAuth().currentUser;
-    if (!firebaseUser) {
-      router.replace("/login");
-    }
+
+    let cancelled = false;
+    (async () => {
+      // Wait for RN Firebase Auth persistence — sync currentUser is often null
+      // for a moment after cold start even when the session is valid.
+      const firebaseUser = await waitForFirebaseAuthUser();
+      if (cancelled) return;
+      setAuthReady(true);
+      if (!firebaseUser) {
+        router.replace("/login");
+        return;
+      }
+      setFirebaseUid(firebaseUser.uid);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [user, router]);
 
   useDashboardLocationTracking(
-    !!(user && getFirebaseAuth().currentUser && !locationPaused),
+    !!(user && authReady && firebaseUid && !locationPaused),
     { resourceId: duty.duty.resourceId, isPrimary: duty.isPrimary },
   );
 
