@@ -49,7 +49,7 @@ export default function RootLayout() {
   useEffect(() => {
     initiate();
     loadUser();
-  }, [initiate]);
+  }, [initiate, loadUser]);
 
   useEffect(() => {
     if (isReady && fontsLoaded) {

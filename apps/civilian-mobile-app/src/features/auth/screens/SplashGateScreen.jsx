@@ -11,12 +11,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import {
-  Inter_400Regular,
-  Inter_600SemiBold,
-  Inter_700Bold,
-} from "@expo-google-fonts/inter";
-import { useFonts } from "expo-font";
 import Animated, {
   Easing,
   interpolate,
@@ -133,15 +127,9 @@ export default function Index() {
   const copyTranslateY = useSharedValue(20);
   const ctaTranslateY = useSharedValue(16);
 
-  const [fontsLoaded] = useFonts({
-    Inter_400Regular,
-    Inter_600SemiBold,
-    Inter_700Bold,
-  });
-
   useEffect(() => {
     loadUser();
-  }, []);
+  }, [loadUser]);
 
   useEffect(() => {
     if (isLoading || !user) return;
@@ -151,31 +139,47 @@ export default function Index() {
       return;
     }
 
-    const auth = getFirebaseAuth();
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        const status = user?.status;
-        if (status === "pending_email_verification") {
-          router.replace(ROUTES.emailVerification);
-          return;
-        }
-        if (status === "pending_kyc_review" || status === "rejected") {
-          router.replace(ROUTES.accountPending);
-          return;
-        }
-        router.replace("/dashboard");
-        return;
-      }
+    let unsubscribe = () => {};
 
-      await setUser(null);
+    try {
+      const auth = getFirebaseAuth();
+      unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+        try {
+          if (firebaseUser) {
+            const status = user?.status;
+            if (status === "pending_email_verification") {
+              router.replace(ROUTES.emailVerification);
+              return;
+            }
+            if (status === "pending_kyc_review" || status === "rejected") {
+              router.replace(ROUTES.accountPending);
+              return;
+            }
+            router.replace("/dashboard");
+            return;
+          }
+
+          await setUser(null);
+          router.replace(ROUTES.login);
+        } catch (error) {
+          if (__DEV__) {
+            console.error("Auth state redirect failed:", error);
+          }
+          router.replace(ROUTES.login);
+        }
+      });
+    } catch (error) {
+      if (__DEV__) {
+        console.error("Firebase auth init failed:", error);
+      }
       router.replace(ROUTES.login);
-    });
+    }
 
     return unsubscribe;
   }, [user, isLoading, router, setUser]);
 
   useEffect(() => {
-    if (!fontsLoaded || isLoading || user) return;
+    if (isLoading || user) return;
 
     screenOpacity.value = withTiming(1, {
       duration: 650,
@@ -193,7 +197,7 @@ export default function Index() {
       duration: 800,
       easing: Easing.out(Easing.cubic),
     });
-  }, [fontsLoaded, isLoading, user, screenOpacity, heroTranslateY, copyTranslateY, ctaTranslateY]);
+  }, [isLoading, user, screenOpacity, heroTranslateY, copyTranslateY, ctaTranslateY]);
 
   const screenAnimatedStyle = useAnimatedStyle(() => ({
     opacity: screenOpacity.value,
@@ -290,7 +294,7 @@ export default function Index() {
     [authTheme, colors, contentMaxWidth, insets.top, bottomPad, isLight]
   );
 
-  if (!fontsLoaded || isLoading) {
+  if (isLoading) {
     return null;
   }
 

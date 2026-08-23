@@ -47,7 +47,13 @@ const useSOSStore = create((set, get) => ({
     const { confirmHandler } = get();
     get().closeConfirmation();
     if (confirmHandler) {
-      await confirmHandler();
+      try {
+        await confirmHandler();
+      } catch (error) {
+        if (__DEV__) {
+          console.error("SOS confirm handler failed:", error);
+        }
+      }
     }
   },
 }));
