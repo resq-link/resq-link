@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
-import { onDocumentUpdated } from 'firebase-functions/v2/firestore';
+import { onDocumentWritten, onDocumentUpdated } from 'firebase-functions/v2/firestore';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { logger, setGlobalOptions } from 'firebase-functions/v2';
 import {
@@ -128,14 +128,14 @@ async function alertResponders(
 }
 
 /**
- * Alert responders the moment they are added to an incident.
+ * Alert responders the moment they are assigned to an incident.
  *
- * Triggers on the assignment write in `dispatchIncidentResources`, which merges
- * bound responder uids into `assignedResourceIds`. Only genuinely new ids are
- * alerted, so unrelated incident edits never re-notify. Only on-duty responders
- * receive a push.
+ * Listens on document writes (both create and update) so:
+ * 1. Manual incident intake (create then dispatch update)
+ * 2. App & SMS emergency intake (direct elevation to incident with assigned responder)
+ * both reliably trigger push notification alarms.
  */
-export const onIncidentAssigned = onDocumentUpdated(
+export const onIncidentAssigned = onDocumentWritten(
   'incidents/{incidentId}',
   async (event) => {
     const before = event.data?.before.data();
