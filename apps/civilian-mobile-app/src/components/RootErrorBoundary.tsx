@@ -1,6 +1,7 @@
 import React, { type ReactNode, useCallback, useEffect } from "react";
 import {
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -10,9 +11,27 @@ import * as Updates from "expo-updates";
 
 type ErrorBoundaryState = {
   hasError: boolean;
+  error: unknown | null;
 };
 
-function ErrorFallback() {
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  if (typeof error === "string" && error.length > 0) {
+    return error;
+  }
+  return "Unknown error";
+}
+
+function getErrorStack(error: unknown): string {
+  if (error instanceof Error && error.stack) {
+    return error.stack.slice(0, 400);
+  }
+  return "";
+}
+
+function ErrorFallback({ error }: { error: unknown | null }) {
   useEffect(() => {
     SplashScreen.hideAsync().catch(() => {});
   }, []);
@@ -21,12 +40,32 @@ function ErrorFallback() {
     Updates.reloadAsync().catch(() => {});
   }, []);
 
+  const message = getErrorMessage(error);
+  const stack = getErrorStack(error);
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Something went wrong</Text>
       <Text style={styles.body}>
         The app hit an unexpected error. Restart to continue.
       </Text>
+
+      <ScrollView
+        style={styles.detailsScroll}
+        contentContainerStyle={styles.detailsContent}
+        showsVerticalScrollIndicator
+      >
+        <Text style={styles.detailsLabel}>Error details</Text>
+        <Text style={styles.detailsMessage} selectable>
+          {message}
+        </Text>
+        {stack ? (
+          <Text style={styles.detailsStack} selectable>
+            {stack}
+          </Text>
+        ) : null}
+      </ScrollView>
+
       <Pressable
         onPress={handleReload}
         style={({ pressed }) => [
@@ -45,26 +84,25 @@ function ErrorFallback() {
 /**
  * Production-safe root error boundary. Catches unhandled render/lifecycle
  * errors so release builds show a recovery UI instead of crashing.
+ * Surfaces error.message + truncated stack so TestFlight issues can be diagnosed.
  */
 export class RootErrorBoundary extends React.Component<
   { children: ReactNode },
   ErrorBoundaryState
 > {
-  state: ErrorBoundaryState = { hasError: false };
+  state: ErrorBoundaryState = { hasError: false, error: null };
 
-  static getDerivedStateFromError(): ErrorBoundaryState {
-    return { hasError: true };
+  static getDerivedStateFromError(error: unknown): ErrorBoundaryState {
+    return { hasError: true, error };
   }
 
   componentDidCatch(error: unknown, errorInfo: React.ErrorInfo): void {
-    if (__DEV__) {
-      console.error("RootErrorBoundary caught:", error, errorInfo);
-    }
+    console.error("RootErrorBoundary caught:", error, errorInfo);
   }
 
   render() {
     if (this.state.hasError) {
-      return <ErrorFallback />;
+      return <ErrorFallback error={this.state.error} />;
     }
     return this.props.children;
   }
@@ -76,7 +114,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#0D0F12",
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 32,
+    paddingHorizontal: 24,
+    paddingVertical: 48,
   },
   title: {
     fontSize: 22,
@@ -90,7 +129,37 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: "#A1A1AA",
     textAlign: "center",
-    marginBottom: 28,
+    marginBottom: 20,
+  },
+  detailsScroll: {
+    maxHeight: 220,
+    width: "100%",
+    marginBottom: 24,
+    borderRadius: 12,
+    backgroundColor: "#1A1D21",
+  },
+  detailsContent: {
+    padding: 14,
+  },
+  detailsLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#71717A",
+    marginBottom: 8,
+    textTransform: "uppercase",
+    letterSpacing: 0.4,
+  },
+  detailsMessage: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: "#FCA5A5",
+    marginBottom: 10,
+  },
+  detailsStack: {
+    fontSize: 11,
+    lineHeight: 16,
+    color: "#A1A1AA",
+    fontFamily: "Courier",
   },
   button: {
     backgroundColor: "#16A34A",
