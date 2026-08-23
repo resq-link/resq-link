@@ -5,7 +5,7 @@ const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 /** Expo accepts at most 100 messages per request. */
 const BATCH_SIZE = 100;
 
-export const ALERT_CHANNEL = 'incident-alerts';
+export const ALERT_CHANNEL = 'incident-alerts-v2';
 /** Must match the bundled asset and the client's notification channel. */
 export const ALARM_SOUND = 'incident_alarm.wav';
 /** Must match the category registered in the responder app for tray actions. */

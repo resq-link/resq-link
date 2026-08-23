@@ -27,7 +27,7 @@ import {
  * covers registration, the channel, categories, and OS-level notification I/O.
  */
 
-export const INCIDENT_ALERT_CHANNEL = "incident-alerts";
+export const INCIDENT_ALERT_CHANNEL = "incident-alerts-v2";
 /** Must match functions/src/expoPush.ts ALERT_CATEGORY. */
 export const INCIDENT_ALERT_CATEGORY = "incident-alert";
 export const ACKNOWLEDGE_ACTION = "ACKNOWLEDGE";
