@@ -16,13 +16,11 @@ import { useFonts } from "expo-font";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import HistoryHeader from "@/features/history/components/HistoryHeader";
 import SearchBar from "@/features/history/components/SearchBar";
-import FilterChips from "@/features/history/components/FilterChips";
 import IncidentHistoryCard from "@/features/history/components/IncidentHistoryCard";
 import TimelineSectionHeader from "@/features/history/components/TimelineSectionHeader";
 import EmptyHistoryState from "@/features/history/components/EmptyHistoryState";
 import HistorySkeleton from "@/features/history/components/HistorySkeleton";
 import { useHistoryReports } from "@/features/history/hooks/useHistoryReports";
-import { STATUS_FILTERS, TYPE_FILTERS } from "@/features/history/constants";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useThemedStyles } from "@/hooks/useThemedStyles";
 import { getBottomNavHeight } from "@/utils/navigationInsets";
@@ -39,8 +37,9 @@ export default function HistoryScreen() {
         flex: 1,
       },
       topChrome: {
-        paddingBottom: 10,
+        paddingBottom: 8,
         backgroundColor: t.background,
+        gap: 8,
       },
       listSurface: {
         flex: 1,
@@ -74,7 +73,7 @@ export default function HistoryScreen() {
   const renderItem = useCallback(
     ({ item, index }) => (
       <Animated.View
-        entering={index < 8 ? FadeInDown.duration(240).delay(index * 30) : undefined}
+        entering={index < 8 ? FadeInDown.duration(240).delay(index * 25) : undefined}
       >
         <IncidentHistoryCard
           report={item}
@@ -92,11 +91,18 @@ export default function HistoryScreen() {
     []
   );
 
+  const handleResetFilters = useCallback(() => {
+    history.setStatusFilter("all");
+    history.setTypeFilter("all");
+    history.setSearchQuery("");
+  }, [history]);
+
   const ListEmpty = useCallback(() => {
     if (history.loading) return null;
     return (
       <EmptyHistoryState
         filtered={history.isFilteredEmpty}
+        onResetFilter={handleResetFilters}
         onReport={
           history.isFilteredEmpty
             ? undefined
@@ -104,7 +110,7 @@ export default function HistoryScreen() {
         }
       />
     );
-  }, [history.loading, history.isFilteredEmpty, router]);
+  }, [history.loading, history.isFilteredEmpty, handleResetFilters, router]);
 
   if (!fontsLoaded) {
     return null;
@@ -123,18 +129,13 @@ export default function HistoryScreen() {
         <HistoryHeader
           onBack={() => router.push("/dashboard")}
           reportCount={history.isEmpty ? 0 : history.totalCount}
+          stats={history.stats}
+          statusFilter={history.statusFilter}
+          onStatusChange={history.setStatusFilter}
         />
         <SearchBar
           value={history.searchQuery}
           onChangeText={history.setSearchQuery}
-        />
-        <FilterChips
-          statusFilters={STATUS_FILTERS}
-          typeFilters={TYPE_FILTERS}
-          statusFilter={history.statusFilter}
-          typeFilter={history.typeFilter}
-          onStatusChange={history.setStatusFilter}
-          onTypeChange={history.setTypeFilter}
         />
       </View>
 
@@ -146,39 +147,40 @@ export default function HistoryScreen() {
         <EmptyHistoryState onReport={() => router.push("/emergency-form")} />
       ) : (
         <View style={styles.listSurface}>
-        <SectionList
-          sections={history.sections}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          renderSectionHeader={renderSectionHeader}
-          ListEmptyComponent={
-            history.sections.length === 0 ? ListEmpty : null
-          }
-          stickySectionHeadersEnabled={false}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{
-            paddingHorizontal: 16,
-            paddingTop: 8,
-            paddingBottom: getBottomNavHeight(insets) + 20,
-            flexGrow: history.sections.length === 0 ? 1 : undefined,
-          }}
-          refreshControl={
-            <RefreshControl
-              refreshing={history.refreshing}
-              onRefresh={history.onRefresh}
-              tintColor={historyTheme.primary}
-              colors={[historyTheme.primary]}
-              progressBackgroundColor={historyTheme.surface}
-            />
-          }
-          initialNumToRender={8}
-          maxToRenderPerBatch={10}
-          windowSize={7}
-          removeClippedSubviews
-          accessibilityLabel="Emergency report history"
-        />
+          <SectionList
+            sections={history.sections}
+            keyExtractor={(item) => item.id}
+            renderItem={renderItem}
+            renderSectionHeader={renderSectionHeader}
+            ListEmptyComponent={
+              history.sections.length === 0 ? ListEmpty : null
+            }
+            stickySectionHeadersEnabled={false}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{
+              paddingHorizontal: 16,
+              paddingTop: 4,
+              paddingBottom: getBottomNavHeight(insets) + 20,
+              flexGrow: history.sections.length === 0 ? 1 : undefined,
+            }}
+            refreshControl={
+              <RefreshControl
+                refreshing={history.refreshing}
+                onRefresh={history.onRefresh}
+                tintColor={historyTheme.primary}
+                colors={[historyTheme.primary]}
+                progressBackgroundColor={historyTheme.surface}
+              />
+            }
+            initialNumToRender={8}
+            maxToRenderPerBatch={10}
+            windowSize={7}
+            removeClippedSubviews
+            accessibilityLabel="Emergency report history"
+          />
         </View>
       )}
     </View>
   );
 }
+

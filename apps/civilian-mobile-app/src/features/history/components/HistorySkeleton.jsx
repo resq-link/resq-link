@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo } from "react";
-import { View } from "react-native";
+import React, { useEffect } from "react";
+import { View, StyleSheet } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -9,16 +9,15 @@ import Animated, {
 } from "react-native-reanimated";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useThemedStyles } from "@/hooks/useThemedStyles";
-import { createHistoryCardShell } from "@/theme/factories";
 
 function Bone({ boneStyle, style }) {
-  const opacity = useSharedValue(0.35);
+  const opacity = useSharedValue(0.3);
 
   useEffect(() => {
     opacity.value = withRepeat(
       withSequence(
-        withTiming(0.65, { duration: 700 }),
-        withTiming(0.35, { duration: 700 })
+        withTiming(0.65, { duration: 750 }),
+        withTiming(0.3, { duration: 750 })
       ),
       -1,
       false
@@ -32,90 +31,107 @@ function Bone({ boneStyle, style }) {
   return <Animated.View style={[boneStyle, style, animatedStyle]} />;
 }
 
-function SkeletonCard({ styles, cardShell }) {
+function SkeletonCard({ styles }) {
   return (
-    <View style={[styles.card, cardShell]}>
-      <Bone boneStyle={styles.bone} style={styles.accent} />
+    <View style={styles.card}>
+      <View style={styles.telemetryStripe} />
       <View style={styles.content}>
         <View style={styles.header}>
           <Bone boneStyle={styles.bone} style={styles.icon} />
           <View style={styles.headerText}>
+            <Bone boneStyle={styles.bone} style={styles.callsign} />
             <Bone boneStyle={styles.bone} style={styles.title} />
-            <Bone boneStyle={styles.bone} style={styles.subtitle} />
           </View>
           <Bone boneStyle={styles.bone} style={styles.chip} />
         </View>
-        <Bone boneStyle={styles.bone} style={styles.panel} />
-        <Bone boneStyle={styles.bone} style={styles.footer} />
+        <Bone boneStyle={styles.bone} style={styles.detailsBox} />
+        <View style={styles.footer}>
+          <Bone boneStyle={styles.bone} style={styles.footerLeft} />
+          <Bone boneStyle={styles.bone} style={styles.footerRight} />
+        </View>
       </View>
     </View>
   );
 }
 
 export default function HistorySkeleton() {
-  const { historyTheme } = useAppTheme();
-  const cardShell = useMemo(
-    () => createHistoryCardShell(historyTheme),
-    [historyTheme]
-  );
+  const { historyTheme, isLight } = useAppTheme();
 
   const styles = useThemedStyles(
     (t) => ({
       wrap: {
         paddingTop: 8,
+        gap: 12,
       },
       bone: {
-        backgroundColor: t.surface,
-        borderRadius: 8,
+        backgroundColor: isLight ? "rgba(0,0,0,0.07)" : "rgba(255,255,255,0.08)",
+        borderRadius: 6,
       },
       card: {
-        marginBottom: 12,
+        flexDirection: "row",
+        borderRadius: 16,
+        backgroundColor: t.card,
+        borderWidth: 1,
+        borderColor: t.border,
+        overflow: "hidden",
       },
-      accent: {
-        height: 4,
-        width: "100%",
-        borderRadius: 0,
+      telemetryStripe: {
+        width: 5,
+        backgroundColor: isLight ? "rgba(0,0,0,0.1)" : "rgba(255,255,255,0.12)",
       },
       content: {
-        padding: 16,
-        gap: 12,
+        flex: 1,
+        padding: 14,
+        gap: 10,
       },
       header: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 12,
+        gap: 10,
       },
       headerText: {
         flex: 1,
-        gap: 6,
+        gap: 5,
       },
       icon: {
         width: 44,
         height: 44,
         borderRadius: 14,
       },
-      title: {
-        height: 16,
-        width: "58%",
-        borderRadius: 8,
+      callsign: {
+        height: 10,
+        width: "35%",
+        borderRadius: 4,
       },
-      subtitle: {
-        height: 12,
-        width: "38%",
-        borderRadius: 6,
+      title: {
+        height: 15,
+        width: "60%",
+        borderRadius: 5,
       },
       chip: {
-        width: 78,
-        height: 26,
-        borderRadius: 999,
+        width: 72,
+        height: 22,
+        borderRadius: 6,
       },
-      panel: {
-        height: 88,
-        borderRadius: 14,
+      detailsBox: {
+        height: 52,
+        borderRadius: 10,
       },
       footer: {
-        height: 44,
-        borderRadius: 14,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingTop: 2,
+      },
+      footerLeft: {
+        width: "40%",
+        height: 12,
+        borderRadius: 4,
+      },
+      footerRight: {
+        width: "25%",
+        height: 12,
+        borderRadius: 4,
       },
     }),
     historyTheme
@@ -123,9 +139,10 @@ export default function HistorySkeleton() {
 
   return (
     <View style={styles.wrap}>
-      {[0, 1, 2, 3].map((i) => (
-        <SkeletonCard key={i} styles={styles} cardShell={cardShell} />
+      {[0, 1, 2].map((i) => (
+        <SkeletonCard key={i} styles={styles} />
       ))}
     </View>
   );
 }
+

@@ -653,7 +653,7 @@ export default function RegisterScreen() {
           >
             Already have an account?{" "}
           </Text>
-          <TouchableOpacity onPress={() => router.push("/login")}>
+          <TouchableOpacity onPress={() => router.replace("/login")}>
             <Text
               style={{
                 fontFamily: "Inter_600SemiBold",

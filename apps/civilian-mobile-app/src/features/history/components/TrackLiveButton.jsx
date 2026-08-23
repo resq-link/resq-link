@@ -10,7 +10,8 @@ function TrackLiveButton({ status, highlighted = false }) {
   const { historyTheme } = useAppTheme();
   const presentation = getTrackButtonPresentation(status, historyTheme);
   const isLive =
-    presentation.variant === "gradient" && presentation.showNavigationIcon;
+    (presentation.variant === "live" || presentation.variant === "gradient") &&
+    presentation.showNavigationIcon;
 
   const styles = useThemedStyles(
     (t) => ({

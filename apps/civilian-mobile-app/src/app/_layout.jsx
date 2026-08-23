@@ -65,7 +65,14 @@ export default function RootLayout() {
       <AppThemeProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <View style={{ flex: 1 }}>
-            <Stack screenOptions={{ headerShown: false }} initialRouteName="index">
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                animation: "fade",
+                animationDuration: 220,
+              }}
+              initialRouteName="index"
+            >
               <Stack.Screen name="index" />
               <Stack.Screen name="(auth)" />
               <Stack.Screen name="(main)" />

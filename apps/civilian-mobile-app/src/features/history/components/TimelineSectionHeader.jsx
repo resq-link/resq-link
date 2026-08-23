@@ -1,45 +1,53 @@
 import React from "react";
 import { View, Text, StyleSheet } from "react-native";
-import { historyTypography } from "@/features/history/constants/typography";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useThemedStyles } from "@/hooks/useThemedStyles";
 
 export default function TimelineSectionHeader({ title, count }) {
-  const { historyTheme } = useAppTheme();
+  const { historyTheme, isLight } = useAppTheme();
 
   const styles = useThemedStyles(
     (t) => ({
       wrap: {
         flexDirection: "row",
         alignItems: "center",
-        justifyContent: "space-between",
-        paddingTop: 6,
+        gap: 10,
+        paddingTop: 14,
         paddingBottom: 8,
       },
-      pill: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 999,
-        backgroundColor: t.surface,
-        borderWidth: 1,
-        borderColor: t.border,
+      nodeDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: t.primary,
+        shadowColor: t.primary,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.4,
+        shadowRadius: 4,
+        elevation: 1,
       },
       title: {
         fontFamily: "Inter_700Bold",
-        fontSize: historyTypography.section,
+        fontSize: 11.5,
         color: t.text,
-        letterSpacing: 0.4,
+        letterSpacing: 0.8,
         textTransform: "uppercase",
       },
-      count: {
+      countBadge: {
+        paddingHorizontal: 6,
+        paddingVertical: 1.5,
+        borderRadius: 5,
+        backgroundColor: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.08)",
+      },
+      countText: {
         fontFamily: "Inter_600SemiBold",
-        fontSize: historyTypography.badge,
+        fontSize: 10,
         color: t.textSecondary,
-        minWidth: 18,
-        textAlign: "center",
+      },
+      hairline: {
+        flex: 1,
+        height: 1,
+        backgroundColor: t.border,
       },
     }),
     historyTheme
@@ -47,10 +55,15 @@ export default function TimelineSectionHeader({ title, count }) {
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.pill}>
-        <Text style={styles.title}>{title}</Text>
-        {count != null ? <Text style={styles.count}>{count}</Text> : null}
-      </View>
+      <View style={styles.nodeDot} />
+      <Text style={styles.title}>{title}</Text>
+      {count != null ? (
+        <View style={styles.countBadge}>
+          <Text style={styles.countText}>{count}</Text>
+        </View>
+      ) : null}
+      <View style={styles.hairline} />
     </View>
   );
 }
+

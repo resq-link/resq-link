@@ -5,23 +5,28 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
 import {
   Building2,
   Calendar,
   ChevronRight,
   Clock3,
+  Flame,
   Hash,
   MapPin,
   Navigation,
   Radio,
+  Shield,
   Smartphone,
   Timer,
+  Zap,
 } from "lucide-react-native";
 import {
   getCardStatusAccent,
   getIncidentMeta,
   getStatusPresentation,
   getTrackButtonPresentation,
+  isActiveReport,
 } from "@/features/history/constants";
 import {
   formatAgencyLabel,
@@ -36,31 +41,12 @@ import StatusChip from "./StatusChip";
 import { historyTypography } from "@/features/history/constants/typography";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { useThemedStyles } from "@/hooks/useThemedStyles";
-import { createHistoryCardShell } from "@/theme/factories";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-
-function MetaLine({ icon: Icon, children, theme, styles }) {
-  return (
-    <View style={styles.metaLine}>
-      <View style={[styles.metaIconWrap, { backgroundColor: theme.surface }]}>
-        <Icon size={13} color={theme.textSecondary} strokeWidth={2.2} />
-      </View>
-      <Text style={styles.metaText} numberOfLines={2}>
-        {children}
-      </Text>
-    </View>
-  );
-}
 
 function PremiumIncidentCard({ report, onPress, featured = false }) {
   const { historyTheme, isLight } = useAppTheme();
   const scale = useSharedValue(1);
-
-  const cardShell = useMemo(
-    () => createHistoryCardShell(historyTheme, { featured }),
-    [historyTheme, featured]
-  );
 
   const statusPresentation = getStatusPresentation(
     report.status,
@@ -68,170 +54,8 @@ function PremiumIncidentCard({ report, onPress, featured = false }) {
     isLight
   );
   const statusAccent = getCardStatusAccent(report.status, historyTheme, isLight);
-  const actionPresentation = getTrackButtonPresentation(report.status, historyTheme);
-  const isLiveAction =
-    actionPresentation.variant === "gradient" &&
-    actionPresentation.showNavigationIcon;
-
-  const styles = useThemedStyles(
-    (t) => ({
-      card: {
-        marginBottom: 12,
-      },
-      accentBar: {
-        height: 4,
-        width: "100%",
-      },
-      content: {
-        paddingHorizontal: 16,
-        paddingTop: 14,
-        paddingBottom: 14,
-        gap: 12,
-      },
-      header: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 12,
-      },
-      iconShell: {
-        borderRadius: 14,
-        padding: 2,
-      },
-      headerText: {
-        flex: 1,
-        minWidth: 0,
-        gap: 3,
-      },
-      liveRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 5,
-        alignSelf: "flex-start",
-        paddingHorizontal: 8,
-        paddingVertical: 3,
-        borderRadius: 999,
-        backgroundColor: t.emergencyMuted,
-        marginBottom: 2,
-      },
-      liveText: {
-        fontFamily: "Inter_700Bold",
-        fontSize: historyTypography.badge,
-        color: t.emergency,
-        letterSpacing: 0.5,
-        textTransform: "uppercase",
-      },
-      title: {
-        fontFamily: "Inter_700Bold",
-        fontSize: historyTypography.cardTitle + 1,
-        color: t.text,
-        letterSpacing: -0.2,
-      },
-      subtitle: {
-        fontFamily: "Inter_400Regular",
-        fontSize: historyTypography.cardMeta,
-        color: t.textSecondary,
-      },
-      metaPanel: {
-        borderRadius: 14,
-        backgroundColor: t.surface,
-        borderWidth: 1,
-        borderColor: t.border,
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        gap: 8,
-      },
-      metaLine: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 10,
-        minHeight: 22,
-      },
-      metaIconWrap: {
-        width: 28,
-        height: 28,
-        borderRadius: 10,
-        alignItems: "center",
-        justifyContent: "center",
-      },
-      metaText: {
-        flex: 1,
-        fontFamily: "Inter_600SemiBold",
-        fontSize: historyTypography.cardMetaStrong,
-        color: t.text,
-        lineHeight: 18,
-      },
-      inlineMeta: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-      },
-      inlineMetaItem: {
-        flex: 1,
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-        minWidth: 0,
-      },
-      inlineMetaText: {
-        flex: 1,
-        fontFamily: "Inter_600SemiBold",
-        fontSize: historyTypography.cardMetaStrong,
-        color: t.text,
-      },
-      inlineDivider: {
-        width: 1,
-        height: 14,
-        borderRadius: 1,
-        backgroundColor: t.divider,
-      },
-      footerBar: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 10,
-        borderRadius: 14,
-        backgroundColor: t.surface,
-        borderWidth: 1,
-        borderColor: t.border,
-        paddingLeft: 12,
-        paddingRight: 6,
-        paddingVertical: 6,
-        minHeight: 44,
-      },
-      footerMeta: {
-        flex: 1,
-        minWidth: 0,
-        gap: 2,
-      },
-      footerMetaRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 5,
-      },
-      footerMetaText: {
-        flex: 1,
-        fontFamily: "Inter_400Regular",
-        fontSize: historyTypography.cardFooter,
-        color: t.textSecondary,
-      },
-      actionBtn: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 12,
-        minHeight: 44,
-        minWidth: 44,
-        justifyContent: "center",
-      },
-      actionLabel: {
-        fontFamily: "Inter_700Bold",
-        fontSize: historyTypography.cardFooter,
-        letterSpacing: 0.05,
-      },
-    }),
-    historyTheme
-  );
+  const isLiveMission = statusPresentation.isLiveDispatch === true;
+  const isDeclined = statusPresentation.tagText === "DECLINED";
 
   const meta = getIncidentMeta(report.incidentType, report.typeProfile);
   const reportId = formatReportId(report);
@@ -241,15 +65,190 @@ function PremiumIncidentCard({ report, onPress, featured = false }) {
   const dateLabel = formatCardDate(report.createdAt);
   const timeLabel = formatCardClock(report.createdAt);
 
-  const actionBg = isLiveAction
-    ? historyTheme.primaryMuted
-    : statusPresentation.muted;
-  const actionColor = isLiveAction
-    ? historyTheme.primary
-    : statusPresentation.color;
-  const actionBorder = isLiveAction
-    ? historyTheme.primary
-    : statusPresentation.border;
+  const styles = useThemedStyles(
+    (t) => ({
+      cardContainer: {
+        marginBottom: 12,
+        borderRadius: 16,
+        backgroundColor: t.card,
+        borderWidth: 1,
+        borderColor: isLiveMission
+          ? isLight
+            ? "rgba(220, 38, 38, 0.35)"
+            : "rgba(255, 69, 58, 0.45)"
+          : t.border,
+        shadowColor: isLiveMission ? statusAccent : t.shadow,
+        shadowOffset: { width: 0, height: isLiveMission ? 4 : 2 },
+        shadowOpacity: isLiveMission ? (isLight ? 0.16 : 0.28) : isLight ? 0.06 : 0.15,
+        shadowRadius: isLiveMission ? 12 : 6,
+        elevation: isLiveMission ? 4 : 2,
+        overflow: "hidden",
+      },
+      cardInner: {
+        flexDirection: "row",
+      },
+      telemetryStripe: {
+        width: 5,
+        backgroundColor: statusAccent,
+      },
+      mainBody: {
+        flex: 1,
+        padding: 14,
+        gap: 10,
+      },
+      headerRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+      },
+      titleGroup: {
+        flex: 1,
+        minWidth: 0,
+        gap: 2,
+      },
+      callsignRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 6,
+      },
+      callsignTag: {
+        fontFamily: "Inter_700Bold",
+        fontSize: 10,
+        color: t.textSecondary,
+        letterSpacing: 0.4,
+      },
+      liveIndicator: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        paddingHorizontal: 6,
+        paddingVertical: 1.5,
+        borderRadius: 4,
+        backgroundColor: isLight ? "rgba(220, 38, 38, 0.1)" : "rgba(255, 69, 58, 0.2)",
+      },
+      liveIndicatorText: {
+        fontFamily: "Inter_700Bold",
+        fontSize: 9,
+        color: isLight ? "#DC2626" : "#FF5247",
+        letterSpacing: 0.5,
+      },
+      titleText: {
+        fontFamily: "Inter_700Bold",
+        fontSize: 15,
+        color: t.text,
+        letterSpacing: -0.2,
+      },
+      detailsBox: {
+        borderRadius: 10,
+        backgroundColor: isLight ? "rgba(0,0,0,0.025)" : "rgba(255,255,255,0.03)",
+        borderWidth: 1,
+        borderColor: isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.05)",
+        paddingHorizontal: 10,
+        paddingVertical: 8,
+        gap: 6,
+      },
+      locationRow: {
+        flexDirection: "row",
+        alignItems: "flex-start",
+        gap: 7,
+      },
+      locationText: {
+        flex: 1,
+        fontFamily: "Inter_500Medium",
+        fontSize: 12,
+        color: t.text,
+        lineHeight: 16,
+      },
+      telemetryGrid: {
+        flexDirection: "row",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: 10,
+        paddingTop: 2,
+      },
+      telemetryItem: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+      },
+      telemetryText: {
+        fontFamily: "Inter_500Medium",
+        fontSize: 11,
+        color: t.textSecondary,
+      },
+      declinedText: {
+        fontFamily: "Inter_500Medium",
+        fontSize: 11,
+        color: isLight ? "#DC2626" : "#FF5247",
+      },
+      agencyBadge: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 6,
+        backgroundColor: isLight ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.07)",
+      },
+      agencyText: {
+        fontFamily: "Inter_600SemiBold",
+        fontSize: 10.5,
+        color: t.text,
+      },
+      footerRow: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingTop: 2,
+      },
+      footerDuration: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+      },
+      footerDurationText: {
+        fontFamily: "Inter_600SemiBold",
+        fontSize: 11,
+        color: isLight ? "#059669" : "#34D399",
+      },
+      liveActionButton: {
+        flex: 1,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+        paddingVertical: 9,
+        paddingHorizontal: 14,
+        borderRadius: 10,
+        backgroundColor: isLight ? "#DC2626" : "#EF4444",
+        shadowColor: "#EF4444",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        elevation: 3,
+      },
+      liveActionText: {
+        fontFamily: "Inter_700Bold",
+        fontSize: 12,
+        color: "#FFFFFF",
+        letterSpacing: 0.4,
+        textTransform: "uppercase",
+      },
+      neutralActionButton: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 3,
+        paddingVertical: 4,
+        paddingHorizontal: 6,
+      },
+      neutralActionText: {
+        fontFamily: "Inter_600SemiBold",
+        fontSize: 11.5,
+        color: t.primary,
+      },
+    }),
+    historyTheme
+  );
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -259,115 +258,107 @@ function PremiumIncidentCard({ report, onPress, featured = false }) {
     <AnimatedPressable
       onPress={onPress}
       onPressIn={() => {
-        scale.value = withSpring(0.982, { damping: 18, stiffness: 420 });
+        scale.value = withSpring(0.98, { damping: 18, stiffness: 420 });
       }}
       onPressOut={() => {
         scale.value = withSpring(1, { damping: 14, stiffness: 320 });
       }}
-      style={[styles.card, cardShell, animatedStyle]}
-      android_ripple={{ color: "rgba(128, 128, 128, 0.14)", borderless: false }}
+      style={[styles.cardContainer, animatedStyle]}
+      android_ripple={{ color: "rgba(128, 128, 128, 0.12)", borderless: false }}
       accessibilityRole="button"
       accessibilityLabel={`${meta.label}, ${statusPresentation.label}, ${report.locationText || "location unavailable"}`}
-      accessibilityHint="Opens report details"
+      accessibilityHint="Opens incident details"
     >
-      <View style={[styles.accentBar, { backgroundColor: statusAccent }]} />
+      <View style={styles.cardInner}>
+        <View style={styles.telemetryStripe} />
 
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <View style={styles.iconShell}>
+        <View style={styles.mainBody}>
+          <View style={styles.headerRow}>
             <IncidentIconBadge meta={meta} size="md" />
-          </View>
 
-          <View style={styles.headerText}>
-            {featured ? (
-              <View style={styles.liveRow}>
-                <Radio size={10} color={historyTheme.emergency} strokeWidth={2.5} />
-                <Text style={styles.liveText}>Live</Text>
+            <View style={styles.titleGroup}>
+              <View style={styles.callsignRow}>
+                <Text style={styles.callsignTag}>{reportId}</Text>
+                {isLiveMission ? (
+                  <View style={styles.liveIndicator}>
+                    <Radio size={9} color={isLight ? "#DC2626" : "#FF5247"} strokeWidth={2.6} />
+                    <Text style={styles.liveIndicatorText}>LIVE MISSION</Text>
+                  </View>
+                ) : null}
               </View>
-            ) : null}
-            <Text style={styles.title} numberOfLines={1}>
-              {meta.label}
-            </Text>
-            <Text style={styles.subtitle} numberOfLines={1}>
-              Report {reportId}
-            </Text>
-          </View>
-
-          <StatusChip status={report.status} size={featured ? "md" : "sm"} />
-        </View>
-
-        <View style={styles.metaPanel}>
-          <View style={styles.inlineMeta}>
-            <View style={styles.inlineMetaItem}>
-              <Calendar size={14} color={historyTheme.textSecondary} strokeWidth={2.2} />
-              <Text style={styles.inlineMetaText} numberOfLines={1}>
-                {dateLabel}
+              <Text style={styles.titleText} numberOfLines={1}>
+                {meta.label}
               </Text>
             </View>
-            <View style={styles.inlineDivider} />
-            <View style={styles.inlineMetaItem}>
-              <Clock3 size={14} color={historyTheme.textSecondary} strokeWidth={2.2} />
-              <Text style={styles.inlineMetaText} numberOfLines={1}>
-                {timeLabel}
+
+            <StatusChip status={report.status} size={isLiveMission ? "md" : "sm"} />
+          </View>
+
+          <View style={styles.detailsBox}>
+            <View style={styles.locationRow}>
+              <MapPin
+                size={13}
+                color={isLiveMission ? (isLight ? "#DC2626" : "#FF5247") : historyTheme.textSecondary}
+                strokeWidth={2.2}
+                style={{ marginTop: 1 }}
+              />
+              <Text style={styles.locationText} numberOfLines={2}>
+                {report.locationText || "Location coordinates on file"}
               </Text>
+            </View>
+
+            <View style={styles.telemetryGrid}>
+              <View style={styles.telemetryItem}>
+                <Calendar size={12} color={historyTheme.textSecondary} strokeWidth={2} />
+                <Text style={styles.telemetryText}>{dateLabel}</Text>
+              </View>
+              <View style={styles.telemetryItem}>
+                <Clock3 size={12} color={historyTheme.textSecondary} strokeWidth={2} />
+                <Text style={styles.telemetryText}>{timeLabel}</Text>
+              </View>
+              {agency ? (
+                <View style={styles.agencyBadge}>
+                  <Building2 size={11} color={historyTheme.text} strokeWidth={2.2} />
+                  <Text style={styles.agencyText} numberOfLines={1}>
+                    {agency}
+                  </Text>
+                </View>
+              ) : null}
             </View>
           </View>
 
-          <MetaLine icon={MapPin} theme={historyTheme} styles={styles}>
-            {report.locationText || "Location unavailable"}
-          </MetaLine>
-
-          {reportSource ? (
-            <MetaLine icon={Smartphone} theme={historyTheme} styles={styles}>
-              Reported via {reportSource}
-            </MetaLine>
-          ) : null}
-        </View>
-
-        <View style={styles.footerBar}>
-          <View style={styles.footerMeta}>
-            {agency ? (
-              <View style={styles.footerMetaRow}>
-                <Building2 size={13} color={historyTheme.textSecondary} strokeWidth={2.2} />
-                <Text style={styles.footerMetaText} numberOfLines={1}>
-                  {agency}
-                </Text>
+          <View style={styles.footerRow}>
+            {isLiveMission ? (
+              <View style={styles.liveActionButton}>
+                <Navigation size={13} color="#FFFFFF" strokeWidth={2.6} />
+                <Text style={styles.liveActionText}>Track Dispatch Live</Text>
+                <ChevronRight size={14} color="#FFFFFF" strokeWidth={2.6} />
               </View>
             ) : (
-              <View style={styles.footerMetaRow}>
-                <Hash size={13} color={historyTheme.textSecondary} strokeWidth={2.2} />
-                <Text style={styles.footerMetaText} numberOfLines={1}>
-                  {reportId}
-                </Text>
-              </View>
-            )}
-            {responseDuration ? (
-              <View style={styles.footerMetaRow}>
-                <Timer size={13} color={historyTheme.textSecondary} strokeWidth={2.2} />
-                <Text style={styles.footerMetaText} numberOfLines={1}>
-                  {responseDuration}
-                </Text>
-              </View>
-            ) : null}
-          </View>
+              <>
+                <View style={styles.footerDuration}>
+                  {responseDuration ? (
+                    <>
+                      <Zap size={12} color={isLight ? "#059669" : "#34D399"} strokeWidth={2.4} />
+                      <Text style={styles.footerDurationText}>{responseDuration}</Text>
+                    </>
+                  ) : isDeclined ? (
+                    <Text style={styles.declinedText}>Case Closed by Dispatch</Text>
+                  ) : reportSource ? (
+                    <Text style={styles.telemetryText}>Via {reportSource}</Text>
+                  ) : (
+                    <Text style={styles.telemetryText}>Incident Recorded</Text>
+                  )}
+                </View>
 
-          <View
-            style={[
-              styles.actionBtn,
-              {
-                backgroundColor: actionBg,
-                borderWidth: 1,
-                borderColor: actionBorder,
-              },
-            ]}
-          >
-            {isLiveAction ? (
-              <Navigation size={14} color={actionColor} strokeWidth={2.4} />
-            ) : null}
-            <Text style={[styles.actionLabel, { color: actionColor }]} numberOfLines={1}>
-              {actionPresentation.shortLabel || actionPresentation.label}
-            </Text>
-            <ChevronRight size={16} color={actionColor} strokeWidth={2.4} />
+                <View style={styles.neutralActionButton}>
+                  <Text style={[styles.neutralActionText, isDeclined && { color: historyTheme.textSecondary }]}>
+                    {statusPresentation.actionLabel || "View Dossier"}
+                  </Text>
+                  <ChevronRight size={14} color={isDeclined ? historyTheme.textSecondary : historyTheme.primary} strokeWidth={2.4} />
+                </View>
+              </>
+            )}
           </View>
         </View>
       </View>
@@ -376,3 +367,4 @@ function PremiumIncidentCard({ report, onPress, featured = false }) {
 }
 
 export default memo(PremiumIncidentCard);
+

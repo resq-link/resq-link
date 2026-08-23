@@ -2,13 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import useUserStore from "@/stores/userStore";
 import { appDebug } from "@/utils/logger";
 import { UI_MODE, mockData } from "@/services/api";
-import { getUserEmergencyReports } from "@packages/firebase";
+import { getUserEmergencyReports, normalizeOperationalStatus } from "@packages/firebase";
 import {
   filterReports,
   normalizeHistoryReport,
   searchReports,
   groupReportsByTimeline,
 } from "@/features/history/utils";
+import { isActiveReport } from "@/features/history/constants";
 
 export function useHistoryReports() {
   const { user } = useUserStore();
@@ -63,7 +64,27 @@ export function useHistoryReports() {
     const searched = searchReports(reports, searchQuery);
     const filtered = filterReports(searched, statusFilter, typeFilter);
     const sections = groupReportsByTimeline(filtered);
-    return { sections, totalCount: filtered.length };
+
+    const activeCount = reports.filter((r) => isActiveReport(r.status)).length;
+    const resolvedCount = reports.filter((r) => {
+      const norm = normalizeOperationalStatus(r.status);
+      return norm === "resolved" || r.status === "done" || r.status === "completed";
+    }).length;
+    const pendingCount = reports.filter((r) => {
+      const norm = normalizeOperationalStatus(r.status);
+      return norm === "pending";
+    }).length;
+
+    return {
+      sections,
+      totalCount: filtered.length,
+      stats: {
+        total: reports.length,
+        active: activeCount,
+        resolved: resolvedCount,
+        pending: pendingCount,
+      },
+    };
   }, [reports, searchQuery, statusFilter, typeFilter]);
 
   return {
@@ -78,6 +99,7 @@ export function useHistoryReports() {
     setTypeFilter,
     sections: processed.sections,
     totalCount: processed.totalCount,
+    stats: processed.stats,
     isEmpty: !loading && reports.length === 0,
     isFilteredEmpty:
       !loading && reports.length > 0 && processed.totalCount === 0,

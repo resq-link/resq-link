@@ -15,9 +15,9 @@ const AnimatedView = Animated.createAnimatedComponent(View);
 export default function SearchBar({
   value,
   onChangeText,
-  placeholder = "Search type, location, or ID",
+  placeholder = "Search incident type, location, or #ID...",
 }) {
-  const { historyTheme } = useAppTheme();
+  const { historyTheme, isLight } = useAppTheme();
   const [focused, setFocused] = useState(false);
   const focus = useSharedValue(0);
 
@@ -27,26 +27,45 @@ export default function SearchBar({
         flexDirection: "row",
         alignItems: "center",
         gap: 10,
-        minHeight: 48,
-        borderRadius: 16,
+        minHeight: 46,
+        borderRadius: 13,
         borderWidth: 1,
-        paddingHorizontal: 14,
+        paddingHorizontal: 13,
         marginTop: 4,
       },
       input: {
         flex: 1,
-        fontFamily: "Inter_400Regular",
-        fontSize: historyTypography.body,
+        fontFamily: "Inter_500Medium",
+        fontSize: 13.5,
         color: t.text,
         paddingVertical: 10,
+      },
+      clearBtn: {
+        width: 26,
+        height: 26,
+        borderRadius: 13,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: isLight ? "rgba(0,0,0,0.06)" : "rgba(255,255,255,0.08)",
       },
     }),
     historyTheme
   );
 
   const animatedWrap = useAnimatedStyle(() => ({
-    borderColor: focus.value ? historyTheme.primary : historyTheme.border,
-    backgroundColor: focus.value ? historyTheme.card : historyTheme.surface,
+    borderColor: focus.value
+      ? historyTheme.primary
+      : historyTheme.border,
+    backgroundColor: focus.value
+      ? historyTheme.card
+      : isLight
+        ? "#FFFFFF"
+        : "rgba(23, 26, 31, 0.75)",
+    shadowColor: historyTheme.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: focus.value ? (isLight ? 0.12 : 0.22) : 0,
+    shadowRadius: 8,
+    elevation: focus.value ? 2 : 0,
   }));
 
   const onFocus = () => {
@@ -62,16 +81,16 @@ export default function SearchBar({
   return (
     <AnimatedView style={[styles.wrap, animatedWrap]}>
       <Search
-        size={18}
+        size={17}
         color={focused ? historyTheme.primary : historyTheme.textSecondary}
-        strokeWidth={2.2}
+        strokeWidth={2.4}
       />
       <TextInput
         style={styles.input}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={historyTheme.textSecondary}
+        placeholderTextColor={isLight ? "#94A3B8" : "#64748B"}
         onFocus={onFocus}
         onBlur={onBlur}
         returnKeyType="search"
@@ -83,12 +102,14 @@ export default function SearchBar({
         <Pressable
           onPress={() => onChangeText("")}
           hitSlop={8}
+          style={styles.clearBtn}
           accessibilityRole="button"
           accessibilityLabel="Clear search"
         >
-          <X size={18} color={historyTheme.textSecondary} />
+          <X size={14} color={historyTheme.textSecondary} strokeWidth={2.5} />
         </Pressable>
       ) : null}
     </AnimatedView>
   );
 }
+

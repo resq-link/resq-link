@@ -101,7 +101,6 @@
   "overrides": {
     "expo-asset": "~12.0.12",
     "@tootallnate/once": "^3.0.1",
-    "brace-expansion": "^2.0.3",
     "node-fetch": "^2.7.0",
     "semver": "^7.6.3",
     "xml2js": "^0.6.2"

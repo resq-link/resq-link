@@ -1,0 +1,37 @@
+# Auto detect text files and perform LF normalization
+* text=auto eol=lf
+
+# Explicitly ensure shell scripts and iOS build files always use LF
+*.sh text eol=lf
+*.env text eol=lf
+*.env.* text eol=lf
+.xcode.env text eol=lf
+.xcode.env.local text eol=lf
+Podfile text eol=lf
+Podfile.lock text eol=lf
+*.podspec text eol=lf
+*.pbxproj text eol=lf
+*.xcworkspacedata text eol=lf
+*.xcscheme text eol=lf
+*.plist text eol=lf
+*.xcprivacy text eol=lf
+*.storyboard text eol=lf
+*.h text eol=lf
+*.m text eol=lf
+*.mm text eol=lf
+*.swift text eol=lf
+*.json text eol=lf
+*.js text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.jar binary
+*.keystore binary
+*.p8 binary
+*.p12 binary
