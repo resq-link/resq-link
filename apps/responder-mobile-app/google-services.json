@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "665229808010",
+    "project_id": "city-rescue-dispatch",
+    "storage_bucket": "city-rescue-dispatch.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:665229808010:android:2dd841f8da8a3d6a27f873",
+        "android_client_info": {
+          "package_name": "com.tuguegarao.resqlink.responder"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "665229808010-8g11ab1tittqo06u3jgch2f71dullost.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBl3f0JM089yZpahAOHXQqMTY_jQAllzBo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "665229808010-8g11ab1tittqo06u3jgch2f71dullost.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

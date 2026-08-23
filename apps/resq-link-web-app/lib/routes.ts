@@ -17,6 +17,7 @@ export const routes = {
     reportIncidents: '/command-center/report/incidents',
     history: '/command-center/history',
     incidentManagement: '/command-center/incident-management',
+    advisories: '/command-center/advisories',
   },
 
   admin: {

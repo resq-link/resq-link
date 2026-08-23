@@ -269,6 +269,12 @@ service cloud.firestore {
       allow create, update, delete: if isAuthenticated() && (isCommandCenter() || isSuperAdmin());
     }
 
+    // Public Advisories and broadcasts
+    match /advisories/{advisoryId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isCommandCenter() || isDispatcher() || isSuperAdmin();
+    }
+
     // Operational chat threads and messages
     match /chatThreads/{threadId} {
       function isChatParticipant() {

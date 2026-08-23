@@ -14,6 +14,7 @@ export const LEGACY_COMMAND_CENTER_PATHS = [
   '/report',
   '/history',
   '/incident-management',
+  '/advisories',
 ] as const
 
 export function isAdminRoute(pathname: string): boolean {

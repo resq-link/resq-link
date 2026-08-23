@@ -201,7 +201,11 @@ export type AuditAction =
   | 'agency.delete'
   | 'notification.delete'
   | 'admin.profile.update'
-  | 'admin.password.change';
+  | 'admin.password.change'
+  | 'advisory.create'
+  | 'advisory.update'
+  | 'advisory.delete'
+  | 'advisory.broadcast';
 
 export interface WriteAuditLogInput {
   actorUid: string;

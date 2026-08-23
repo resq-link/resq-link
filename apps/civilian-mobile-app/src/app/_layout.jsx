@@ -21,6 +21,13 @@ import {
   applyImmersiveAndroidNavigationBar,
 } from "@/hooks/useImmersiveAndroidNavigation";
 
+import { useRouter } from "expo-router";
+import {
+  registerForCivilianPush,
+  unregisterCivilianPush,
+  subscribeToCivilianNotificationResponse,
+} from "@/services/civilianPushNotificationService";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -33,8 +40,9 @@ const queryClient = new QueryClient({
 });
 
 export default function RootLayout() {
+  const router = useRouter();
   const { initiate, isReady } = useAuth();
-  const { loadUser } = useUserStore();
+  const { user, loadUser } = useUserStore();
   useImmersiveAndroidNavigation();
 
   const [fontsLoaded] = useFonts({
@@ -48,6 +56,36 @@ export default function RootLayout() {
     initiate();
     loadUser();
   }, [initiate, loadUser]);
+
+  // Register push notifications when civilian user is authenticated
+  useEffect(() => {
+    if (!user?.uid) return;
+    void registerForCivilianPush().catch(() => {});
+  }, [user?.uid]);
+
+  // Unregister token on logout
+  useEffect(() => {
+    if (user?.uid) return;
+    void unregisterCivilianPush().catch(() => {});
+  }, [user?.uid]);
+
+  // Handle cold-start and background notification taps
+  useEffect(() => {
+    return subscribeToCivilianNotificationResponse({
+      onNavigate: (data) => {
+        if (data?.type === "advisory" || data?.advisoryId) {
+          router.push({
+            pathname: "/advisory-detail",
+            params: { id: data.advisoryId },
+          });
+        } else if (data?.screen) {
+          router.push(data.screen);
+        } else if (data?.emergencyId) {
+          router.push("/dashboard");
+        }
+      },
+    });
+  }, [router]);
 
   useEffect(() => {
     if (isReady && fontsLoaded) {

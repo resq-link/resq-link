@@ -7,7 +7,9 @@ import {
   ALARM_SOUND,
   ALERT_CATEGORY,
   ALERT_CHANNEL,
+  CIVILIAN_ALERT_CHANNEL,
   loadResponderTokens,
+  loadCivilianTokens,
   sendExpoPush,
   type ExpoMessage,
 } from './expoPush';
@@ -225,3 +227,95 @@ export const resendUnacknowledgedAlerts = onSchedule(
     }
   }
 );
+
+const formatCivilianNotification = (
+  emergency: Record<string, any>,
+  beforeStatus?: string
+): { title: string; body: string } | null => {
+  const currentStatus = String(emergency?.status ?? '').toLowerCase();
+  const agency = emergency?.assignedAgency || 'Emergency Services';
+  const type = emergency?.incidentType || 'Emergency';
+
+  if (currentStatus === beforeStatus) return null;
+
+  switch (currentStatus) {
+    case 'dispatched':
+    case 'acknowledged':
+      return {
+        title: `Help Dispatched · ${agency}`,
+        body: `Responders from ${agency} have been dispatched to your ${type} report.`,
+      };
+    case 'enroute':
+      return {
+        title: `Responders En Route · ${agency}`,
+        body: `Emergency units are currently on the way to your location.`,
+      };
+    case 'on_scene':
+      return {
+        title: `Responders On Scene · ${agency}`,
+        body: `Emergency personnel have arrived at the scene.`,
+      };
+    case 'resolved':
+      return {
+        title: `Emergency Resolved`,
+        body: `Your reported ${type} emergency has been resolved by ${agency}.`,
+      };
+    case 'cancelled':
+      return {
+        title: `Emergency Cancelled`,
+        body: `Your reported ${type} emergency has been cancelled.`,
+      };
+    default:
+      return {
+        title: `Emergency Status Update`,
+        body: `Your ${type} report status has been updated to: ${currentStatus}.`,
+      };
+  }
+};
+
+/**
+ * Notify civilian reporters when their emergency report status changes or responders are dispatched.
+ * Works even when civilian app is closed or backgrounded.
+ */
+export const onEmergencyUpdated = onDocumentUpdated(
+  'emergencies/{emergencyId}',
+  async (event) => {
+    const before = event.data?.before.data();
+    const after = event.data?.after.data();
+    if (!after || !after.userId) return;
+
+    const emergencyId = event.params.emergencyId;
+    const beforeStatus = before?.status;
+    const notification = formatCivilianNotification(after, beforeStatus);
+    if (!notification) return;
+
+    const target = await loadCivilianTokens(after.userId);
+    if (!target || target.tokens.length === 0) {
+      logger.info('No civilian push tokens found for user', { userId: after.userId, emergencyId });
+      return;
+    }
+
+    const messages: ExpoMessage[] = target.tokens.map((entry) => ({
+      to: entry.token,
+      title: notification.title,
+      body: notification.body,
+      data: {
+        emergencyId,
+        status: after.status,
+        action: 'civilian_emergency_update',
+      },
+      sound: 'default',
+      channelId: CIVILIAN_ALERT_CHANNEL,
+      priority: 'high',
+      interruptionLevel: 'time-sensitive',
+      ttl: 3600,
+    }));
+
+    const tokenOwners = new Map<string, string>();
+    target.tokens.forEach((entry) => tokenOwners.set(entry.token, after.userId));
+
+    const { sent, removed } = await sendExpoPush(messages, tokenOwners);
+    logger.info('Civilian alert sent', { emergencyId, userId: after.userId, sent, removed });
+  }
+);
+

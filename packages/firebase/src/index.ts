@@ -370,12 +370,18 @@ export {
 
 
 
-// Responder push notification tokens
+// Push notification tokens (Responder & Civilian)
 export {
   saveResponderPushToken,
   removeResponderPushToken,
+  saveCivilianPushToken,
+  removeCivilianPushToken,
 } from './pushTokens';
-export type { PushPlatform, ResponderPushToken } from './pushTokens';
+export type {
+  PushPlatform,
+  ResponderPushToken,
+  CivilianPushToken,
+} from './pushTokens';
 
 // Responder duty — which vehicle a responder is crewing
 export {
@@ -387,3 +393,28 @@ export {
   getResourceCrewIds,
 } from "./responderDuty";
 export type { ResponderDutyState } from "./responderDuty";
+
+// Public Advisories & Civilian Broadcasts
+export {
+  createAdvisory,
+  updateAdvisory,
+  archiveAdvisory,
+  expireAdvisory,
+  deleteAdvisory,
+  getAdvisory,
+  getActiveAdvisories,
+  subscribeToAdvisories,
+  subscribeToActiveAdvisories,
+  ADVISORY_CATEGORIES,
+  ADVISORY_SEVERITIES,
+} from './advisories';
+export type {
+  AdvisorySeverity,
+  AdvisoryCategory,
+  AdvisoryStatus,
+  AdvisoryTargetScope,
+  AdvisoryPushNotificationStats,
+  AdvisoryRecord,
+  CreateAdvisoryInput,
+  UpdateAdvisoryInput,
+} from './advisories';

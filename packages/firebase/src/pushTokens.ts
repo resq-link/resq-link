@@ -26,6 +26,12 @@ export type ResponderPushToken = {
   updatedAt: Timestamp | Date | null;
 };
 
+export type CivilianPushToken = {
+  token: string;
+  platform: PushPlatform;
+  updatedAt: Timestamp | Date | null;
+};
+
 const ensureAuthenticated = () => {
   const currentUser = getFirebaseAuth().currentUser;
   if (!currentUser) {
@@ -35,6 +41,7 @@ const ensureAuthenticated = () => {
 };
 
 const dispatcherRef = (uid: string) => doc(getFirebaseFirestore(), 'dispatchers', uid);
+const userRef = (uid: string) => doc(getFirebaseFirestore(), 'users', uid);
 
 const readTokens = async (uid: string): Promise<ResponderPushToken[]> => {
   const snap = await getDoc(dispatcherRef(uid));
@@ -42,8 +49,14 @@ const readTokens = async (uid: string): Promise<ResponderPushToken[]> => {
   return Array.isArray(raw) ? (raw as ResponderPushToken[]) : [];
 };
 
+const readUserTokens = async (uid: string): Promise<CivilianPushToken[]> => {
+  const snap = await getDoc(userRef(uid));
+  const raw = snap.exists() ? snap.data()?.pushTokens : null;
+  return Array.isArray(raw) ? (raw as CivilianPushToken[]) : [];
+};
+
 /**
- * Register (or refresh) the current device's Expo push token.
+ * Register (or refresh) the current device's Expo push token for responders.
  *
  * Safe to call on every launch: an unchanged token is a no-op, and a token that
  * has moved to another account is removed from this one first so a device never
@@ -97,3 +110,57 @@ export async function removeResponderPushToken(token: string): Promise<void> {
     pushTokens: arrayRemove(...stale),
   });
 }
+
+/**
+ * Register (or refresh) the current device's Expo push token for civilians.
+ * Stores under users/{uid}.pushTokens.
+ */
+export async function saveCivilianPushToken(
+  token: string,
+  platform: PushPlatform
+): Promise<void> {
+  const trimmed = token.trim();
+  if (!trimmed) return;
+
+  const currentUser = ensureAuthenticated();
+  const existing = await readUserTokens(currentUser.uid);
+  const match = existing.find((entry) => entry?.token === trimmed);
+  if (match && match.platform === platform) {
+    return;
+  }
+
+  const stale = existing.filter((entry) => entry?.token === trimmed);
+  if (stale.length > 0) {
+    await updateDoc(userRef(currentUser.uid), {
+      pushTokens: arrayRemove(...stale),
+    });
+  }
+
+  await updateDoc(userRef(currentUser.uid), {
+    pushTokens: arrayUnion({
+      token: trimmed,
+      platform,
+      updatedAt: Timestamp.now(),
+    }),
+    updatedAt: Timestamp.now(),
+  });
+}
+
+/** Drop this device's token for civilian — call on sign-out. */
+export async function removeCivilianPushToken(token: string): Promise<void> {
+  const trimmed = token.trim();
+  if (!trimmed) return;
+
+  const currentUser = getFirebaseAuth().currentUser;
+  if (!currentUser) return;
+
+  const stale = (await readUserTokens(currentUser.uid)).filter(
+    (entry) => entry?.token === trimmed
+  );
+  if (stale.length === 0) return;
+
+  await updateDoc(userRef(currentUser.uid), {
+    pushTokens: arrayRemove(...stale),
+  });
+}
+
