@@ -1,8 +1,10 @@
-# Google Play Store — next steps (civilian app)
+# Google Play Store — next steps (responder app)
 
 Plan: start with **Internal testing** (fastest “share a link → install from Play”), then move to closed/open testing or production when ready.
 
 Parallel track: iOS uses **TestFlight**; Android uses **Play Internal testing**.
+
+This is a **separate** Play Console listing from the civilian app.
 
 ---
 
@@ -10,10 +12,11 @@ Parallel track: iOS uses **TestFlight**; Android uses **Play Internal testing**.
 
 | Field | Value |
 |-------|--------|
-| App name | RESQ-Link |
-| Package name | `com.tuguegarao.resqlink` |
+| App name | RESQ-Link Responder |
+| Package name | `com.tuguegarao.resqlink.responder` |
 | Privacy policy | https://www.resq-link.com/privacy-policy |
-| Demo account | `civilian@rescue.com` / `Test123` (status must be `active` in Super Admin KYC) |
+| Demo account | `bfp@rescue.ph` / `BFP2024!` (must exist in Firebase `dispatchers/{uid}`, status active) |
+| Notes | Admin-provisioned accounts only — no public registration |
 
 ---
 
@@ -22,11 +25,11 @@ Parallel track: iOS uses **TestFlight**; Android uses **Play Internal testing**.
 Do this before the first upload.
 
 1. Open [Google Play Console](https://play.google.com/console).
-2. Create app → **RESQ-Link** (or select existing).
-3. Confirm package name is exactly `com.tuguegarao.resqlink` (cannot change later).
+2. Create app → **RESQ-Link Responder** (new listing; do not reuse civilian package).
+3. Confirm package name is exactly `com.tuguegarao.resqlink.responder` (cannot change later).
 4. Complete required dashboard items (even for Internal testing):
    - [ ] Privacy policy URL
-   - [ ] App access (login required → provide demo credentials)
+   - [ ] App access (login required → provide demo dispatcher credentials)
    - [ ] Ads declaration (likely **No**)
    - [ ] Content rating questionnaire
    - [ ] Target audience / age
@@ -37,19 +40,21 @@ Do this before the first upload.
 
 Declare collection of at least:
 
-- Name, email, phone, address, user ID  
-- Precise location  
-- Photos / videos (KYC + incident attachments)  
-- Other user content (reports)  
+- Email, user ID  
+- Precise location (live GPS share with dispatch when enabled)  
+- Photos / videos (optional post-incident scene photos)  
+- Other user content (incident reports, messaging if used)  
 - Crash / diagnostics if Firebase Crashlytics is used  
 
 Mark as **collected** and **linked to user** where applicable. Do **not** declare microphone (removed) or contacts use.
+
+In **App access**, note that accounts are created by administrators; reviewers use the demo dispatcher above.
 
 ---
 
 ## Phase 1 — Build Android AAB (EAS)
 
-From `apps/civilian-mobile-app`:
+From `apps/responder-mobile-app`:
 
 ```bash
 eas login
@@ -68,19 +73,19 @@ Download the AAB from the Expo build page when finished.
 
 ## Phase 2 — Internal testing (deadline onboard)
 
-1. Play Console → **Testing → Internal testing**.
+1. Play Console → **Testing → Internal testing** (on the **Responder** app).
 2. Create a new release → upload the AAB.
-3. Release notes (example): `Initial internal build for pilot users.`
+3. Release notes (example): `Initial internal build for responder pilot users.`
 4. Save → review → **Roll out to Internal testing**.
-5. **Testers** tab → create email list → add pilot users (up to ~100).
+5. **Testers** tab → create email list → add responders / staff (up to ~100).
 6. Copy the **opt-in / join link** and send to testers.
 
 ### Tester flow
 
 1. Open the invite link on their Android phone.  
 2. Accept to become a tester.  
-3. Install **RESQ-Link** from the Play Store listing for the internal track.  
-4. Sign in with their account (or demo account for reviewers).
+3. Install **RESQ-Link Responder** from the Play Store listing for the internal track.  
+4. Sign in with their provisioned dispatcher account (or demo `bfp@rescue.ph`).
 
 Internal testing usually has **little or no full review delay** compared to closed/open/production — but Play Console setup forms must be complete first.
 
@@ -102,10 +107,10 @@ Add under `eas.json` → `submit.production.android` when ready (service account
 
 | Track | When to use | Review |
 |-------|-------------|--------|
-| **Internal** | Staff / pilot (now) | Usually fast / minimal |
+| **Internal** | Staff / pilot responders (now) | Usually fast / minimal |
 | **Closed testing** | Larger invite-only beta | Yes — hours to days |
-| **Open testing** | Public beta link | Yes |
-| **Production** | Public launch | Yes — often 1–7+ days |
+| **Open testing** | Public beta link | Yes (rarely needed for responder) |
+| **Production** | Public / agency-wide launch | Yes — often 1–7+ days |
 
 Promote a good Internal build → Closed or Production when ready; you do not need to rebuild unless you want a new versionCode.
 
@@ -113,7 +118,7 @@ Promote a good Internal build → Closed or Production when ready; you do not ne
 
 ## Checklist — before inviting testers
 
-- [ ] Play app created with package `com.tuguegarao.resqlink`
+- [ ] Play app created with package `com.tuguegarao.resqlink.responder`
 - [ ] Privacy policy live
 - [ ] Data safety + content rating completed
 - [ ] Store listing has icon + screenshots (required fields satisfied)
@@ -121,18 +126,18 @@ Promote a good Internal build → Closed or Production when ready; you do not ne
 - [ ] AAB uploaded to Internal testing and rolled out
 - [ ] Tester emails added
 - [ ] Opt-in link shared
-- [ ] Demo / pilot accounts approved in Super Admin KYC if they must use the app fully
+- [ ] Demo / pilot dispatcher accounts active in Firebase (`dispatchers`)
 
 ---
 
-## Parallel with iOS
+## Parallel with iOS and civilian Android
 
-| Platform | Channel | Status goal |
-|----------|---------|-------------|
-| iOS | TestFlight | Civilian + Responder |
-| Android | Play Internal testing | Civilian + Responder (separate listings) |
-
-Responder Android checklist: `../responder-mobile-app/docs/PLAY_STORE_SUBMISSION.md` (package `com.tuguegarao.resqlink.responder`).
+| App | Platform | Channel |
+|-----|----------|---------|
+| Civilian | iOS | TestFlight |
+| Civilian | Android | Play Internal (`com.tuguegarao.resqlink`) — see civilian `docs/PLAY_STORE_SUBMISSION.md` |
+| Responder | iOS | TestFlight (`scripts/release-ios.sh`) |
+| Responder | Android | Play Internal (`com.tuguegarao.resqlink.responder`) — this doc |
 
 ---
 
@@ -142,12 +147,14 @@ Responder Android checklist: `../responder-mobile-app/docs/PLAY_STORE_SUBMISSION
 - EAS Build (Android): https://docs.expo.dev/build/setup/  
 - EAS Submit (Android): https://docs.expo.dev/submit/android/  
 - iOS privacy / review notes: `docs/APP_STORE_PRIVACY.md`  
-- iOS release script: `scripts/release-ios.sh`
+- iOS release script: `scripts/release-ios.sh`  
+- Civilian Play doc: `../civilian-mobile-app/docs/PLAY_STORE_SUBMISSION.md`
 
 ---
 
 ## Owner notes
 
-- Prefer **Internal testing** for the Tuesday-style deadline; do not wait on Closed/Open review.  
+- Prefer **Internal testing** for deadline onboarding; do not wait on Closed/Open review.  
 - Keep versionName `1.0.0` (or current) and let EAS bump versionCode.  
-- If install fails: confirm tester accepted the opt-in link while signed into the **same Google account** added to the tester list.
+- If install fails: confirm tester accepted the opt-in link while signed into the **same Google account** added to the tester list.  
+- Responders need provisioned accounts — sharing the Play link alone is not enough without a dispatcher login.
