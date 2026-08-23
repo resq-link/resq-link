@@ -146,7 +146,7 @@ export default function IncidentAlertModal({
           <View style={styles.noticeRow}>
             <AlertTriangle size={13} color={colors.textMuted} />
             <Text style={[styles.notice, { color: colors.textMuted }]}>
-              The alarm keeps sounding until you acknowledge.
+              Alarm keeps going until you Acknowledge here or from the notification.
             </Text>
           </View>
 

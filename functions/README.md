@@ -4,8 +4,8 @@ Server-side push alerts for responder incident assignments.
 
 | Function | Trigger | Purpose |
 |----------|---------|---------|
-| `onIncidentAssigned` | Firestore update on `incidents/{id}` | Alerts responders newly added to `assignedResourceIds` |
-| `resendUnacknowledgedAlerts` | Schedule, every 1 min | Re-alerts responders who have not acknowledged yet |
+| `onIncidentAssigned` | Firestore update on `incidents/{id}` | Alerts **on-duty** responders newly added to `assignedResourceIds` |
+| `resendUnacknowledgedAlerts` | Schedule, every 1 min | Re-alerts on-duty responders who have not acknowledged yet |
 
 Both run in `asia-southeast1`.
 
@@ -14,28 +14,30 @@ Both run in `asia-southeast1`.
 1. A dispatcher dispatches resources; `dispatchIncidentResources` merges the
    bound responder uids into the incident's `assignedResourceIds`.
 2. `onIncidentAssigned` diffs that array, loads each responder's Expo tokens
-   from `dispatchers/{uid}.pushTokens`, and sends a high-priority push.
+   from `dispatchers/{uid}.pushTokens` **only if `onDutyResourceId` is set**,
+   and sends a high-priority push with tray actions (`Acknowledge` / `View case`).
 3. The responder app plays a looping alarm and shows a blocking acknowledge
-   sheet. Acknowledging writes the responder's uid into
-   `responderAlertAcknowledgedBy` on the incident.
+   sheet (also only while on duty). Acknowledging — from the tray button or the
+   in-app sheet — writes the responder's uid into `responderAlertAcknowledgedBy`.
 4. Until that happens, `resendUnacknowledgedAlerts` keeps re-sending, up to
-   `REMINDER_WINDOW_MINUTES` (20) after the last alert.
+   `REMINDER_WINDOW_MINUTES` (20) after the last alert. Off-duty responders are
+   skipped on every sweep.
 
-Only `critical` and `high` incidents trigger a push. Dead tokens are pruned
-automatically when Expo reports `DeviceNotRegistered`.
+`critical`, `high`, and `medium` priorities trigger a push. Low stays in-app
+only. Dead tokens are pruned when Expo reports `DeviceNotRegistered`.
 
 ## Platform behaviour
 
 **Android** gets a genuine alarm: the `incident-alerts` channel is MAX
 importance, carries the bundled `incident_alarm.wav`, vibrates, and bypasses Do
-Not Disturb.
+Not Disturb. Notification actions appear as chips on the tray item.
 
 **iOS cannot loop a sound from a remote push** without Apple's Critical Alerts
 entitlement, which must be requested and justified. Instead the push uses
 `interruptionLevel: "time-sensitive"` (breaks through Focus, no entitlement
 needed) and the once-a-minute reminder stands in for a repeating alarm. The
-continuous loop only runs once the app is open. One minute is Cloud Scheduler's
-floor — a faster cadence would need a self-rescheduling Cloud Task.
+continuous loop only runs once the app is open. Notification actions appear as
+buttons when the user long-presses / expands the banner.
 
 ## Prerequisites before this will actually deliver
 
@@ -52,7 +54,8 @@ These are **not** configured in this repo yet:
    `eas build --profile development`.
 
 The app degrades safely if these are missing: registration returns `null`, no
-push is sent, and the in-app alarm still fires whenever the app is open.
+push is sent, and the in-app alarm still fires whenever the app is open **and
+the responder is on duty**.
 
 ## Deploy
 
@@ -88,4 +91,5 @@ Both constants are at the top of `src/index.ts`:
   bounded: "until acknowledged" would otherwise hammer a phone that is switched
   off indefinitely and burn quota. Past this window the incident is left for the
   dispatcher to reassign.
-- `ALARM_PRIORITIES` — which priorities warrant waking a phone.
+- `ALARM_PRIORITIES` — which priorities warrant waking a phone (`critical`,
+  `high`, `medium`).

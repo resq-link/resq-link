@@ -67,13 +67,6 @@
       "expo-secure-store",
       "expo-web-browser",
       [
-        "expo-navigation-bar",
-        {
-          "visibility": "hidden",
-          "backgroundColor": "#00000000"
-        }
-      ],
-      [
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location to report emergencies accurately and attach coordinates to incident reports.",

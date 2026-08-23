@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { usePathname } from "expo-router";
+import { usePathname, useRouter } from "expo-router";
 import useUserStore from "@/store/userStore";
 import { useAssignedEmergencies } from "@/modules/incidents/hooks/useAssignedEmergencies";
 import {
@@ -7,6 +7,7 @@ import {
   acknowledgeIncidentAlert,
   normalizePriority,
   requiresForcedAlert,
+  subscribeToResponderDuty,
 } from "@packages/firebase";
 import {
   playPriorityAlert,
@@ -17,6 +18,7 @@ import {
 import {
   dismissIncidentNotifications,
   registerForIncidentPush,
+  subscribeToIncidentNotificationActions,
   unregisterIncidentPush,
 } from "@/services/pushNotificationService";
 import IncidentAlertModal from "@/modules/incidents/components/IncidentAlertModal";
@@ -25,26 +27,38 @@ const IncidentAlertContext = createContext({
   activeAlert: null,
   acknowledge: async () => {},
   isAcknowledging: false,
+  isOnDuty: false,
 });
 
 export const useIncidentAlert = () => useContext(IncidentAlertContext);
 
 /**
- * Drives the assignment alarm: haptics, looping sound, and the blocking
- * acknowledge sheet.
+ * Drives the assignment alarm: push registration, haptics, looping sound, and
+ * the blocking acknowledge sheet.
  *
- * State-driven rather than event-driven on purpose. The alarm reflects "is
- * there an unacknowledged incident assigned to me right now", so it also
- * resumes correctly after an app restart or a reconnect — an alert that goes
- * quiet because the process died is exactly the failure this feature exists to
- * prevent.
+ * Alerts only fire while the responder is on duty (has claimed a resource).
+ * State-driven rather than event-driven so an unacknowledged assignment still
+ * resumes after an app restart or reconnect.
  */
 export default function PriorityAlertProvider({ children }) {
   const { user } = useUserStore();
   const pathname = usePathname();
+  const router = useRouter();
   const { cases } = useAssignedEmergencies(user?.uid);
   const [isAcknowledging, setIsAcknowledging] = useState(false);
+  const [isOnDuty, setIsOnDuty] = useState(false);
   const alarmingIdRef = useRef(null);
+
+  // Live duty gate — off-duty phones must stay quiet even if still assigned.
+  useEffect(() => {
+    if (!user?.uid) {
+      setIsOnDuty(false);
+      return undefined;
+    }
+    return subscribeToResponderDuty((duty) => {
+      setIsOnDuty(Boolean(duty?.resourceId));
+    });
+  }, [user?.uid]);
 
   // Register this device for remote push while a responder is signed in.
   // Token removal is handled by the sign-out effect below, not by cleanup here,
@@ -54,6 +68,17 @@ export default function PriorityAlertProvider({ children }) {
     void registerForIncidentPush().catch(() => {});
   }, [user?.uid]);
 
+  // Tray Acknowledge / View actions (and cold-start notification taps).
+  useEffect(() => {
+    if (!user?.uid) return undefined;
+    return subscribeToIncidentNotificationActions({
+      onView: (incidentId) => {
+        if (!incidentId) return;
+        router.push(`/incident/${incidentId}`);
+      },
+    });
+  }, [user?.uid, router]);
+
   const viewingIncidentId = useMemo(() => {
     const match = typeof pathname === "string" ? pathname.match(/\/incident\/([^/?#]+)/) : null;
     const id = match?.[1] ? decodeURIComponent(match[1]) : null;
@@ -61,12 +86,12 @@ export default function PriorityAlertProvider({ children }) {
     return id;
   }, [pathname]);
 
-  /** Unacknowledged, still-open incidents assigned to this responder. */
+  /** Unacknowledged, still-open incidents assigned to this on-duty responder. */
   const alertingCases = useMemo(() => {
-    if (!user?.uid) return [];
+    if (!user?.uid || !isOnDuty) return [];
     return cases
       .filter((c) => c.resolutionStatus === "open" && c.status !== "resolved")
-      .filter((c) => c.id && shouldAlertForIncident(c, user.uid))
+      .filter((c) => c.id && shouldAlertForIncident(c, user.uid, { isOnDuty: true }))
       // Don't cover the case detail screen with the same incident's alarm sheet.
       .filter((c) => c.id !== viewingIncidentId)
       .sort(
@@ -74,13 +99,13 @@ export default function PriorityAlertProvider({ children }) {
           (PRIORITY_RANK[normalizePriority(b.priority)] ?? 0) -
           (PRIORITY_RANK[normalizePriority(a.priority)] ?? 0)
       );
-  }, [cases, user?.uid, viewingIncidentId]);
+  }, [cases, user?.uid, viewingIncidentId, isOnDuty]);
 
   const activeAlert = alertingCases[0] ?? null;
 
   // Start, switch, or stop the alarm as the top unacknowledged incident changes.
   useEffect(() => {
-    if (!user?.uid || !activeAlert) {
+    if (!user?.uid || !isOnDuty || !activeAlert) {
       if (alarmingIdRef.current) {
         alarmingIdRef.current = null;
         void stopPriorityAlerts();
@@ -95,7 +120,15 @@ export default function PriorityAlertProvider({ children }) {
     void playPriorityAlert(priority, {
       intensified: requiresForcedAlert(priority),
     });
-  }, [activeAlert, user?.uid]);
+  }, [activeAlert, user?.uid, isOnDuty]);
+
+  // Going off duty must silence immediately.
+  useEffect(() => {
+    if (isOnDuty) return;
+    alarmingIdRef.current = null;
+    void stopPriorityAlerts();
+    void dismissIncidentNotifications();
+  }, [isOnDuty]);
 
   // Signing out must silence the device and detach its push token.
   useEffect(() => {
@@ -132,18 +165,20 @@ export default function PriorityAlertProvider({ children }) {
   }, [activeAlert?.id]);
 
   const value = useMemo(
-    () => ({ activeAlert, acknowledge, isAcknowledging }),
-    [activeAlert, acknowledge, isAcknowledging]
+    () => ({ activeAlert, acknowledge, isAcknowledging, isOnDuty }),
+    [activeAlert, acknowledge, isAcknowledging, isOnDuty]
   );
 
   return (
     <IncidentAlertContext.Provider value={value}>
       {children}
-      <IncidentAlertModal
-        incident={activeAlert}
-        onAcknowledge={acknowledge}
-        isAcknowledging={isAcknowledging}
-      />
+      {isOnDuty ? (
+        <IncidentAlertModal
+          incident={activeAlert}
+          onAcknowledge={acknowledge}
+          isAcknowledging={isAcknowledging}
+        />
+      ) : null}
     </IncidentAlertContext.Provider>
   );
 }

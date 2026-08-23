@@ -11,11 +11,16 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.tuguegarao.resqlink.responder",
+      "entitlements": {
+        "aps-environment": "production"
+      },
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "RESQ-Link Responder uses the camera to capture post-incident scene photos you choose to attach to reports.",
         "NSPhotoLibraryUsageDescription": "RESQ-Link Responder uses your photo library so you can attach scene photos to incident reports.",
         "NSLocationWhenInUseUsageDescription": "RESQ-Link Responder uses your location to share live GPS with dispatch when enabled and to navigate to incident locations.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "RESQ-Link Responder uses your location to share live GPS with dispatch when enabled and to navigate to incident locations.",
+        "NSContactsUsageDescription": "RESQ-Link Responder does not access your contacts. This description is required because a bundled system library may reference the Contacts API; the app never reads or stores contact information.",
         "UIBackgroundModes": [
           "remote-notification",
           "audio"

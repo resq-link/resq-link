@@ -1,0 +1,33 @@
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+dist-test/
+expo-env.d.ts
+
+# Native projects — generate on EAS via prebuild (avoid uploading local/malformed ios)
+/ios/
+/android/
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# typescript
+*.tsbuildinfo
+
+caches/
+docs/app-store-screenshots/
+.maestro/
+openspec/
