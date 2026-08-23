@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   Bell,
-  Building2,
   ClipboardList,
   Headset,
   Landmark,
@@ -15,8 +14,12 @@ import {
   Settings,
   ShieldCheck,
   Users,
+  type LucideIcon,
 } from 'lucide-react'
 import { useAdminAuth } from '@/contexts/AdminAuthContext'
+import { useSignOutFlow } from '@/components/admin/SignOutFlow'
+import { AdminThemeToggle } from '@/components/admin/AdminThemeToggle'
+import { useAdminNotificationPreview } from '@/hooks/useAdminNotifications'
 import { routes } from '@/lib/routes'
 
 function initialsFromEmail(email: string | null | undefined): string {
@@ -30,12 +33,24 @@ function initialsFromEmail(email: string | null | undefined): string {
   return local.slice(0, 2).toUpperCase() || 'SA'
 }
 
-const NAV_SECTIONS = [
+type NavItem = {
+  href: string
+  label: string
+  icon: LucideIcon
+  badgeKey?: 'notifications'
+}
+
+const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
   {
     label: 'Overview',
     items: [
       { href: routes.admin.dashboard, label: 'Dashboard', icon: LayoutDashboard },
-      { href: routes.admin.notifications, label: 'Notifications', icon: Bell },
+      {
+        href: routes.admin.notifications,
+        label: 'Notifications',
+        icon: Bell,
+        badgeKey: 'notifications',
+      },
     ],
   },
   {
@@ -48,10 +63,7 @@ const NAV_SECTIONS = [
   },
   {
     label: 'Organization',
-    items: [
-      { href: routes.admin.commandCenters, label: 'Command Centers', icon: Building2 },
-      { href: routes.admin.agencies, label: 'Agencies', icon: Landmark },
-    ],
+    items: [{ href: routes.admin.agencies, label: 'Agencies', icon: Landmark }],
   },
   {
     label: 'Verification',
@@ -66,108 +78,145 @@ const NAV_SECTIONS = [
   },
 ]
 
+function formatBadgeCount(count: number): string {
+  if (count > 99) return '99+'
+  return String(count)
+}
+
 export function AdminSidebar({
   onNavigate,
 }: {
   onNavigate?: () => void
 }) {
   const pathname = usePathname()
-  const { user, signOut } = useAdminAuth()
+  const { user } = useAdminAuth()
+  const { requestSignOut, isSigningOut } = useSignOutFlow()
+  const notifications = useAdminNotificationPreview()
   const email = user?.email || null
   const initials = initialsFromEmail(email)
+  const unreadCount = notifications.unreadCount
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="border-b border-white/[0.08] px-5 py-5">
+    <div className="flex h-full min-h-0 flex-col bg-admin-sidebar text-admin-fg">
+      {/* Branding */}
+      <div className="shrink-0 border-b border-admin-border px-4 pb-4 pt-[1.125rem]">
         <Link
           href={routes.admin.dashboard}
           onClick={onNavigate}
-          className="group flex items-start gap-3 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-primary-400/50"
+          className="group flex items-center gap-2.5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-primary-500/35"
         >
-          <span className="relative mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-500/15 ring-1 ring-primary-400/25 transition-colors duration-admin group-hover:bg-primary-500/20">
-            <Image
-              src="/branding/resq-link-icon.png"
-              alt=""
-              width={28}
-              height={28}
-              className="h-7 w-7 object-contain"
-              priority
-            />
-          </span>
-          <span className="min-w-0">
-            <span className="block text-[15px] font-semibold tracking-wide text-white">RESQ-LINK</span>
-            <span className="mt-0.5 block text-xs leading-snug text-slate-400">Platform Administration</span>
+          <Image
+            src="/branding/resq-link-icon.png"
+            alt=""
+            width={28}
+            height={28}
+            className="h-7 w-7 shrink-0 object-contain"
+            priority
+          />
+          <span className="min-w-0 leading-tight">
+            <span className="block text-[13px] font-semibold tracking-[0.06em] text-admin-fg">
+              RESQ-LINK
+            </span>
+            <span className="mt-0.5 block text-[11px] font-normal tracking-normal text-admin-fg-subtle">
+              Platform Administration
+            </span>
           </span>
         </Link>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 py-4" aria-label="Primary">
-        {NAV_SECTIONS.map((section) => (
-          <div key={section.label} className="mb-5 last:mb-0">
-            <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+      {/* Navigation — only this region scrolls */}
+      <nav className="min-h-0 flex-1 overflow-y-auto px-2.5 py-3" aria-label="Primary">
+        {NAV_SECTIONS.map((section, sectionIndex) => (
+          <div key={section.label} className={sectionIndex === 0 ? '' : 'mt-4'}>
+            <p className="px-2 pb-1.5 text-[10px] font-medium uppercase tracking-[0.12em] text-admin-fg-subtle">
               {section.label}
             </p>
-            <div className="space-y-0.5">
+            <ul className="space-y-px pl-1.5">
               {section.items.map((item) => {
                 const Icon = item.icon
-                const active = pathname === item.href || pathname.startsWith(`${item.href}/`)
+                const active =
+                  pathname === item.href || pathname.startsWith(`${item.href}/`)
+                const showBadge =
+                  item.badgeKey === 'notifications' && unreadCount > 0
+
                 return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={onNavigate}
-                    aria-current={active ? 'page' : undefined}
-                    className={`group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-admin ease-out ${
-                      active
-                        ? 'bg-primary-500/15 text-primary-300 ring-1 ring-inset ring-primary-400/20'
-                        : 'text-slate-300 hover:bg-white/[0.04] hover:text-white'
-                    }`}
-                  >
-                    <Icon
-                      size={16}
-                      aria-hidden="true"
-                      className={`shrink-0 transition-colors duration-admin ${
-                        active ? 'text-primary-400' : 'text-slate-500 group-hover:text-slate-300'
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      onClick={onNavigate}
+                      aria-current={active ? 'page' : undefined}
+                      className={`group relative flex items-center gap-2.5 rounded-md py-[0.4375rem] pl-2.5 pr-2 text-[13px] font-medium transition-[background-color,color] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary-500/30 ${
+                        active
+                          ? 'bg-primary-500/[0.09] text-admin-fg dark:bg-primary-500/[0.14]'
+                          : 'text-admin-fg-muted hover:bg-admin-hover hover:text-admin-fg'
                       }`}
-                    />
-                    {item.label}
-                  </Link>
+                    >
+                      {active ? (
+                        <span
+                          aria-hidden="true"
+                          className="absolute bottom-1.5 left-0 top-1.5 w-0.5 rounded-full bg-primary-500"
+                        />
+                      ) : null}
+                      <Icon
+                        size={18}
+                        strokeWidth={1.75}
+                        aria-hidden="true"
+                        className={`shrink-0 transition-colors duration-150 ${
+                          active
+                            ? 'text-primary-600 dark:text-primary-400'
+                            : 'text-admin-fg-subtle group-hover:text-admin-fg-muted'
+                        }`}
+                      />
+                      <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                      {showBadge ? (
+                        <span className="ml-1 inline-flex h-4 min-w-4 shrink-0 items-center justify-center rounded px-1 text-[10px] font-semibold tabular-nums leading-none text-primary-700 dark:text-primary-300">
+                          {formatBadgeCount(unreadCount)}
+                        </span>
+                      ) : null}
+                    </Link>
+                  </li>
                 )
               })}
-            </div>
+            </ul>
           </div>
         ))}
       </nav>
 
-      <div className="border-t border-white/[0.08] p-3">
-        <div className="rounded-xl bg-white/[0.03] p-2.5 ring-1 ring-inset ring-white/[0.08]">
-          <div className="flex items-center gap-2.5 px-0.5">
-            <span
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-500/20 text-xs font-semibold tracking-wide text-primary-300 ring-1 ring-inset ring-primary-400/25"
-              aria-hidden="true"
-            >
-              {initials}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-white">Super Admin</p>
-              <p className="truncate text-[11px] text-slate-400" title={email || undefined}>
-                {email || 'Not signed in'}
-              </p>
-            </div>
-          </div>
-          <div className="my-2.5 border-t border-white/[0.08]" role="separator" />
-          <button
-            type="button"
-            onClick={() => {
-              onNavigate?.()
-              void signOut()
-            }}
-            className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-300 transition-colors duration-admin hover:bg-red-500/10 hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/40"
+      {/* Account — anchored, not a floating card */}
+      <div className="shrink-0 border-t border-admin-border px-3 py-3">
+        <div className="flex items-center gap-2.5">
+          <span
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-admin-muted text-[11px] font-semibold tracking-wide text-admin-fg-muted ring-1 ring-inset ring-admin-border"
+            aria-hidden="true"
           >
-            <LogOut size={15} aria-hidden="true" />
-            Sign Out
-          </button>
+            {initials}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[13px] font-medium leading-tight text-admin-fg">
+              Super Admin
+            </p>
+            <p
+              className="mt-0.5 truncate text-[11px] leading-tight text-admin-fg-subtle"
+              title={email || undefined}
+            >
+              {email || 'Not signed in'}
+            </p>
+          </div>
+          <AdminThemeToggle className="h-8 w-8 shrink-0" />
         </div>
+
+        <button
+          type="button"
+          disabled={isSigningOut}
+          onClick={() => {
+            onNavigate?.()
+            requestSignOut()
+          }}
+          className="mt-2.5 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] font-medium text-admin-fg-muted transition-[background-color,color] duration-150 hover:bg-red-500/[0.08] hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/30 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:text-red-400"
+        >
+          <LogOut size={16} strokeWidth={1.75} aria-hidden="true" />
+          Sign Out
+        </button>
       </div>
     </div>
   )

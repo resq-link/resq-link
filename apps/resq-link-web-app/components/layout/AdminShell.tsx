@@ -7,6 +7,8 @@ import { AdminHeader } from './AdminHeader'
 import SuperAdminGuard from '@/components/auth/SuperAdminGuard'
 import NavigationProgress from '@/components/NavigationProgress'
 import RouteEnter from '@/components/RouteEnter'
+import { SignOutFlowProvider } from '@/components/admin/SignOutFlow'
+import { AdminThemeProvider } from '@/contexts/AdminThemeContext'
 
 export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
@@ -26,36 +28,40 @@ export function AdminShell({ children }: { children: ReactNode }) {
   }, [mobileOpen])
 
   return (
-    <div className="admin-shell flex h-dvh overflow-hidden lg:grid lg:grid-cols-[16.5rem_minmax(0,1fr)]">
-      <aside className="hidden h-dvh min-h-0 flex-col border-r border-white/[0.04] bg-navy-950 lg:flex">
-        <AdminSidebar />
-      </aside>
+    <AdminThemeProvider>
+      <SignOutFlowProvider>
+        <div className="admin-shell flex h-dvh overflow-hidden lg:grid lg:grid-cols-[15.5rem_minmax(0,1fr)]">
+          <aside className="hidden h-dvh min-h-0 flex-col border-r border-admin-border bg-admin-sidebar lg:flex">
+            <AdminSidebar />
+          </aside>
 
-      {mobileOpen ? (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <button
-            type="button"
-            aria-label="Close navigation"
-            className="absolute inset-0 bg-slate-950/50 transition-opacity duration-admin"
-            onClick={() => setMobileOpen(false)}
-          />
-          <div className="relative flex h-full w-[18rem] max-w-[85vw] flex-col animate-admin-drawer-in bg-navy-950 shadow-admin-panel">
-            <AdminSidebar onNavigate={() => setMobileOpen(false)} />
+          {mobileOpen ? (
+            <div className="fixed inset-0 z-50 lg:hidden">
+              <button
+                type="button"
+                aria-label="Close navigation"
+                className="absolute inset-0 bg-admin-overlay/50 transition-opacity duration-150 dark:bg-admin-overlay/65"
+                onClick={() => setMobileOpen(false)}
+              />
+              <div className="relative flex h-full w-[16.5rem] max-w-[85vw] flex-col animate-admin-drawer-in border-r border-admin-border bg-admin-sidebar shadow-admin-panel">
+                <AdminSidebar onNavigate={() => setMobileOpen(false)} />
+              </div>
+            </div>
+          ) : null}
+
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            <div className="relative z-20 shrink-0">
+              <NavigationProgress />
+              <AdminHeader onOpenMenu={() => setMobileOpen(true)} />
+            </div>
+            <main className="relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
+              <SuperAdminGuard>
+                <RouteEnter>{children}</RouteEnter>
+              </SuperAdminGuard>
+            </main>
           </div>
         </div>
-      ) : null}
-
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <div className="relative z-20 shrink-0">
-          <NavigationProgress />
-          <AdminHeader onOpenMenu={() => setMobileOpen(true)} />
-        </div>
-        <main className="relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
-          <SuperAdminGuard>
-            <RouteEnter>{children}</RouteEnter>
-          </SuperAdminGuard>
-        </main>
-      </div>
-    </div>
+      </SignOutFlowProvider>
+    </AdminThemeProvider>
   )
 }

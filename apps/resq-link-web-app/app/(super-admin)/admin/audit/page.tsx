@@ -1,16 +1,19 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { DataTable } from '@/components/data-table/DataTable';
 import { TableSearch } from '@/components/data-table/TableSearch';
 import { FilterSelect, TableFilters } from '@/components/data-table/TableFilters';
 import { TablePagination } from '@/components/data-table/TablePagination';
+import { TableExportMenu } from '@/components/admin/TableExportMenu';
 import { Drawer } from '@/components/ui/Drawer';
 import { DetailItem, DetailList } from '@/components/accounts/DetailList';
 import { AUDIT_ACTION_LABELS, auditActionLabel } from '@/lib/auditActions';
 import { formatDateTime } from '@/lib/dates';
 import { useAdminAuditLogs } from '@/hooks/useAdminAuditLogs';
-import type { AuditLogRecord } from '@/lib/accountTypes';
+import { adminFetch } from '@/lib/adminFetch';
+import { fetchAllFilteredPages, type AdminExportColumn } from '@/lib/adminExport';
+import type { AuditLogRecord, PaginatedResponse } from '@/lib/accountTypes';
 
 const TARGET_TYPES = [
   { value: 'all', label: 'All targets' },
@@ -19,6 +22,31 @@ const TARGET_TYPES = [
   { value: 'commandCenters', label: 'Command Centers' },
   { value: 'agencies', label: 'Agencies' },
   { value: 'admins', label: 'Administrators' },
+];
+
+const AUDIT_EXPORT_COLUMNS: AdminExportColumn<AuditLogRecord>[] = [
+  { header: 'Date / Time', accessor: (row) => formatDateTime(row.createdAt) },
+  { header: 'Actor', accessor: (row) => row.actorEmail || row.actorUid || '—' },
+  { header: 'Role', accessor: () => 'Super Admin' },
+  { header: 'Action', accessor: (row) => auditActionLabel(row.action) },
+  {
+    header: 'Entity',
+    accessor: (row) => row.targetLabel || row.targetUid || row.targetCollection || '—',
+  },
+  {
+    header: 'Details',
+    accessor: (row) => {
+      if (row.reason?.trim()) return row.reason.trim();
+      const changes =
+        row.metadata && typeof row.metadata.changes === 'object' && row.metadata.changes
+          ? (row.metadata.changes as Record<string, { from?: unknown; to?: unknown }>)
+          : null;
+      if (!changes) return '—';
+      return Object.entries(changes)
+        .map(([field, value]) => `${field}: ${String(value.from ?? '—')} → ${String(value.to ?? '—')}`)
+        .join('; ');
+    },
+  },
 ];
 
 export default function AuditPage() {
@@ -30,6 +58,36 @@ export default function AuditPage() {
     []
   );
 
+  const exportFilters = useMemo(() => {
+    const parts: string[] = [];
+    if (logs.appliedSearch.trim()) parts.push(`Search: ${logs.appliedSearch.trim()}`);
+    if (logs.action !== 'all') parts.push(`Action: ${auditActionLabel(logs.action)}`);
+    if (logs.targetType !== 'all') {
+      const target = TARGET_TYPES.find((item) => item.value === logs.targetType)?.label || logs.targetType;
+      parts.push(`Target: ${target}`);
+    }
+    return parts;
+  }, [logs.action, logs.appliedSearch, logs.targetType]);
+
+  const getExportRows = useCallback(async () => {
+    return fetchAllFilteredPages<AuditLogRecord>({
+      pageSize: 50,
+      fetchPage: async (page, pageSize) => {
+        const params = new URLSearchParams({
+          search: logs.appliedSearch,
+          page: String(page),
+          pageSize: String(pageSize),
+          ...(logs.action !== 'all' ? { action: logs.action } : {}),
+          ...(logs.targetType !== 'all' ? { targetType: logs.targetType } : {}),
+        });
+        const data = await adminFetch<PaginatedResponse<AuditLogRecord> & { hasMore?: boolean }>(
+          `/api/audit?${params.toString()}`
+        );
+        return { items: data.items, total: data.total, hasMore: data.hasMore };
+      },
+    });
+  }, [logs.action, logs.appliedSearch, logs.targetType]);
+
   const changes =
     selected?.metadata && typeof selected.metadata.changes === 'object' && selected.metadata.changes
       ? (selected.metadata.changes as Record<string, { from?: unknown; to?: unknown }>)
@@ -38,7 +96,18 @@ export default function AuditPage() {
   return (
     <>
       <div className="mb-4">
-        <TableFilters>
+        <TableFilters
+          actions={
+            <TableExportMenu
+              title="Audit Logs"
+              fileSlug="Audit-Logs"
+              columns={AUDIT_EXPORT_COLUMNS}
+              getRows={getExportRows}
+              filtersSummary={exportFilters}
+              orientation="landscape"
+            />
+          }
+        >
           <TableSearch label="Search activity" placeholder="Search activity..." value={logs.search} onChange={logs.setSearch} />
           <FilterSelect label="Action" value={logs.action} onChange={logs.setAction} options={actionOptions} />
           <FilterSelect label="Target Type" value={logs.targetType} onChange={logs.setTargetType} options={TARGET_TYPES} />

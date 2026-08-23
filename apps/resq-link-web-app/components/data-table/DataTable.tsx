@@ -35,9 +35,9 @@ export function DataTable<T extends { id: string }>({
   const showInitialLoader = Boolean(loading) && rows.length === 0 && !error;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-admin-card">
+    <div className="overflow-hidden rounded-xl border border-admin-border/90 bg-admin-surface shadow-admin-card">
       {refreshing && rows.length > 0 ? (
-        <div className="flex items-center justify-end gap-2 border-b border-slate-100 bg-slate-50/70 px-4 py-1.5 text-[11px] text-slate-500">
+        <div className="flex items-center justify-end gap-2 border-b border-admin-border bg-admin-muted/70 px-4 py-1.5 text-[11px] text-admin-fg-subtle">
           <Loader2 size={12} className="animate-spin text-primary-500" />
           Refreshing...
         </div>
@@ -45,19 +45,19 @@ export function DataTable<T extends { id: string }>({
 
       {error ? (
         <div className="px-4 py-10 text-center">
-          <p className="text-sm text-red-700">{error}</p>
+          <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
           {onRetry ? (
             <button
               type="button"
               onClick={onRetry}
-              className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="mt-3 rounded-lg border border-admin-border bg-admin-surface px-3 py-1.5 text-sm font-medium text-admin-fg-muted hover:bg-admin-muted"
             >
               Retry
             </button>
           ) : null}
         </div>
       ) : showInitialLoader ? (
-        <div className="flex items-center justify-center gap-2 px-4 py-10 text-sm text-slate-500">
+        <div className="flex items-center justify-center gap-2 px-4 py-10 text-sm text-admin-fg-subtle">
           <Loader2 size={16} className="animate-spin text-primary-500" />
           Loading...
         </div>
@@ -66,30 +66,38 @@ export function DataTable<T extends { id: string }>({
       ) : (
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
-            <thead className="sticky top-0 z-[1] border-b border-slate-200/80 bg-slate-50/95 backdrop-blur-sm">
+            <thead className="sticky top-0 z-[1] border-b border-admin-border/80 bg-admin-muted/95 backdrop-blur-sm">
               <tr>
                 {columns.map((column) => (
                   <th
                     key={column.key}
                     scope="col"
-                    className={`whitespace-nowrap px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500 ${column.className || ''}`}
+                    className={`whitespace-nowrap px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-admin-fg-subtle ${column.className || ''}`}
                   >
                     {column.header}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-admin-border">
               {rows.map((row) => (
                 <tr
                   key={row.id}
                   className={`transition-colors duration-admin ${
-                    onRowClick ? 'cursor-pointer hover:bg-primary-50/40' : 'hover:bg-slate-50/80'
+                    onRowClick ? 'cursor-pointer hover:bg-admin-hover' : 'hover:bg-admin-muted/80'
                   }`}
                   onClick={() => onRowClick?.(row)}
                 >
                   {columns.map((column) => (
-                    <td key={column.key} className={`px-4 py-3 text-slate-700 ${column.className || ''}`}>
+                    <td
+                      key={column.key}
+                      className={`px-4 py-3 text-admin-fg-muted ${column.className || ''}`}
+                      onClick={
+                        column.key === 'actions'
+                          ? (event) => event.stopPropagation()
+                          : undefined
+                      }
+                    >
                       {column.render(row)}
                     </td>
                   ))}

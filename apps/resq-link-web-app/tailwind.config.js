@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: ['selector', '.admin-dark'],
   content: [
     './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
@@ -10,6 +11,21 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        // Super Admin semantic tokens (values from CSS variables)
+        admin: {
+          bg: 'rgb(var(--admin-bg) / <alpha-value>)',
+          surface: 'rgb(var(--admin-surface) / <alpha-value>)',
+          muted: 'rgb(var(--admin-muted) / <alpha-value>)',
+          hover: 'rgb(var(--admin-hover) / <alpha-value>)',
+          border: 'rgb(var(--admin-border) / <alpha-value>)',
+          input: 'rgb(var(--admin-input) / <alpha-value>)',
+          fg: 'rgb(var(--admin-fg) / <alpha-value>)',
+          'fg-muted': 'rgb(var(--admin-fg-muted) / <alpha-value>)',
+          'fg-subtle': 'rgb(var(--admin-fg-subtle) / <alpha-value>)',
+          overlay: 'rgb(var(--admin-overlay) / <alpha-value>)',
+          ring: 'rgb(var(--admin-ring) / <alpha-value>)',
+          sidebar: 'rgb(var(--admin-sidebar) / <alpha-value>)',
+        },
         // RESQ-LINK logo teal (#1f9d7a) as primary brand accent
         primary: {
           50: '#eefbf6',
@@ -54,9 +70,9 @@ module.exports = {
         },
       },
       boxShadow: {
-        'admin-card': '0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06)',
-        'admin-card-hover': '0 4px 12px rgba(15, 23, 42, 0.06), 0 2px 4px rgba(15, 23, 42, 0.04)',
-        'admin-panel': '0 8px 24px rgba(15, 23, 42, 0.1)',
+        'admin-card': 'var(--admin-shadow-card)',
+        'admin-card-hover': 'var(--admin-shadow-card-hover)',
+        'admin-panel': 'var(--admin-shadow-panel)',
       },
       transitionDuration: {
         admin: '200ms',

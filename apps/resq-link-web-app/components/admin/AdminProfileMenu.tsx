@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { LogOut, Settings } from 'lucide-react';
 import { useAdminAuth } from '@/contexts/AdminAuthContext';
+import { useSignOutFlow } from '@/components/admin/SignOutFlow';
 import { routes } from '@/lib/routes';
 
 const MENU_WIDTH = 208;
@@ -24,7 +25,8 @@ function initialsFromEmail(email: string | null | undefined): string {
 }
 
 export function AdminProfileMenu() {
-  const { user, signOut } = useAdminAuth();
+  const { user } = useAdminAuth();
+  const { requestSignOut, isSigningOut } = useSignOutFlow();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
@@ -107,30 +109,31 @@ export function AdminProfileMenu() {
               visibility: coords ? 'visible' : 'hidden',
               zIndex: 55,
             }}
-            className="overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-admin-panel animate-admin-menu-in"
+            className="overflow-hidden rounded-xl border border-admin-border bg-admin-surface py-1 shadow-admin-panel animate-admin-menu-in"
           >
-            <div className="border-b border-slate-100 px-3 py-2.5">
-              <p className="text-xs font-medium text-slate-500">Signed in as</p>
-              <p className="mt-0.5 truncate text-sm font-medium text-slate-800">{user?.email || 'Super Admin'}</p>
+            <div className="border-b border-admin-border px-3 py-2.5">
+              <p className="text-xs font-medium text-admin-fg-subtle">Signed in as</p>
+              <p className="mt-0.5 truncate text-sm font-medium text-admin-fg">{user?.email || 'Super Admin'}</p>
             </div>
             <Link
               href={routes.admin.settings}
               role="menuitem"
               onClick={() => setOpen(false)}
-              className="flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 transition-colors duration-admin hover:bg-primary-50/60"
+              className="flex items-center gap-2.5 px-3 py-2 text-sm text-admin-fg-muted transition-colors duration-admin hover:bg-admin-hover"
             >
-              <Settings size={15} aria-hidden="true" className="text-slate-400" />
+              <Settings size={15} aria-hidden="true" className="text-admin-fg-subtle" />
               Settings
             </Link>
-            <div className="my-1 border-t border-slate-100" />
+            <div className="my-1 border-t border-admin-border" />
             <button
               type="button"
               role="menuitem"
+              disabled={isSigningOut}
               onClick={() => {
                 setOpen(false);
-                void signOut();
+                requestSignOut();
               }}
-              className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-red-700 transition-colors duration-admin hover:bg-red-50"
+              className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm text-red-700 transition-colors duration-admin hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-60 dark:text-red-400"
             >
               <LogOut size={15} aria-hidden="true" />
               Sign Out
@@ -150,7 +153,7 @@ export function AdminProfileMenu() {
         aria-controls={open ? menuId : undefined}
         aria-label="Open account menu"
         onClick={() => setOpen((current) => !current)}
-        className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-500 text-[11px] font-semibold tracking-wide text-white shadow-sm ring-2 ring-primary-100 transition-all duration-admin hover:bg-primary-600 hover:ring-primary-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2"
+        className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-500 text-[11px] font-semibold tracking-wide text-white shadow-sm ring-2 ring-primary-100 transition-all duration-admin hover:bg-primary-600 hover:ring-primary-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-admin-bg dark:ring-primary-500/30 dark:hover:ring-primary-500/45"
       >
         {initials}
       </button>

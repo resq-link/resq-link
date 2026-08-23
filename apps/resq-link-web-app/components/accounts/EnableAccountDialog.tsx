@@ -21,8 +21,8 @@ export function EnableAccountDialog({
 }) {
   return (
     <Dialog open={open} title={`Enable ${accountKind}?`} onClose={() => !busy && onClose()}>
-      <p className="text-sm text-slate-600">
-        Restore access for <span className="font-medium text-slate-900">{accountLabel}</span>.
+      <p className="text-sm text-admin-fg-muted">
+        Restore access for <span className="font-medium text-admin-fg">{accountLabel}</span>.
       </p>
       <div className="mt-5 flex justify-end gap-2">
         <Button type="button" variant="ghost" disabled={busy} onClick={onClose}>

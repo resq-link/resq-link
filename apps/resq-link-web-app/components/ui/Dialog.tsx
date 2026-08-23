@@ -35,7 +35,9 @@ export function Dialog({
 
   useEffect(() => {
     if (!open) return;
+
     previouslyFocused.current = document.activeElement as HTMLElement | null;
+
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         onCloseRef.current();
@@ -56,13 +58,17 @@ export function Dialog({
         first.focus();
       }
     };
+
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     window.addEventListener('keydown', onKey);
+
+    // Autofocus only when the dialog opens — not on every parent re-render.
     const frame = window.requestAnimationFrame(() => {
       const first = panelRef.current?.querySelector<HTMLElement>(FOCUSABLE);
       first?.focus();
     });
+
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener('keydown', onKey);
@@ -78,24 +84,24 @@ export function Dialog({
       <button
         type="button"
         aria-label="Close dialog"
-        className="absolute inset-0 bg-slate-950/50 transition-opacity duration-admin"
-        onClick={onClose}
+        className="absolute inset-0 bg-admin-overlay/50 transition-opacity duration-admin dark:bg-admin-overlay/65"
+        onClick={() => onCloseRef.current()}
       />
       <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby="dialog-title"
-        className={`relative w-full ${widthClassName} animate-admin-dialog-in rounded-xl border border-slate-200 bg-white p-5 shadow-admin-panel`}
+        className={`relative w-full ${widthClassName} animate-admin-dialog-in rounded-xl border border-admin-border bg-admin-surface p-5 text-admin-fg shadow-admin-panel`}
       >
         <div className="mb-4 flex items-start justify-between gap-4">
-          <h2 id="dialog-title" className="text-lg font-semibold text-slate-900">
+          <h2 id="dialog-title" className="text-lg font-semibold text-admin-fg">
             {title}
           </h2>
           <button
             type="button"
-            onClick={onClose}
-            className="rounded-lg p-1 text-slate-500 transition-colors duration-admin hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/25"
+            onClick={() => onCloseRef.current()}
+            className="rounded-lg p-1 text-admin-fg-subtle transition-colors duration-admin hover:bg-admin-hover hover:text-admin-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500/25"
             aria-label="Close"
           >
             <X size={18} />

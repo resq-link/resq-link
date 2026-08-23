@@ -14,6 +14,7 @@ const KYC_SELECT = [
   'address',
   'govIdType',
   'status',
+  'deleted',
   'kycRejectionReason',
   'kycSubmittedAt',
   'kycReviewedAt',
@@ -80,6 +81,7 @@ export async function listKycSubmissions(params: KycListParams = {}) {
   const snap = await buildTabQuery(db, tab).select(...selectFields).limit(500).get();
 
   let items = snap.docs
+    .filter((doc) => (doc.data() || {}).deleted !== true)
     .map((doc) => mapKycItem(doc.id, (doc.data() || {}) as Record<string, unknown>, includeMedia))
     .filter((item) => matchesTab(item, tab));
 
@@ -108,6 +110,7 @@ export async function listKycSubmissions(params: KycListParams = {}) {
 export async function getKycApplicant(uid: string): Promise<KycListItem | null> {
   const snap = await getAdminFirestore().doc(`users/${uid}`).get();
   if (!snap.exists) return null;
+  if (snap.data()?.deleted === true) return null;
   return mapKycItem(snap.id, (snap.data() || {}) as Record<string, unknown>, true);
 }
 

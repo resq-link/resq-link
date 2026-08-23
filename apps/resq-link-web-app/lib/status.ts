@@ -12,40 +12,41 @@ const STATUS_MAP: Record<AccountStatusKey, StatusDisplay> = {
     key: 'active',
     label: 'Active',
     symbol: '●',
-    className: 'bg-primary-50 text-primary-800 ring-primary-200',
+    className:
+      'bg-primary-50 text-primary-800 ring-primary-200 dark:bg-primary-500/15 dark:text-primary-300 dark:ring-primary-500/30',
   },
   disabled: {
     key: 'disabled',
     label: 'Disabled',
     symbol: '○',
-    className: 'bg-slate-100 text-slate-700 ring-slate-300',
+    className:
+      'bg-slate-100 text-slate-700 ring-slate-300 dark:bg-slate-500/15 dark:text-slate-300 dark:ring-slate-500/30',
   },
   pending: {
     key: 'pending',
     label: 'Pending',
     symbol: '◷',
-    className: 'bg-amber-50 text-amber-800 ring-amber-200',
+    className:
+      'bg-amber-50 text-amber-800 ring-amber-200 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/30',
   },
   pending_kyc: {
     key: 'pending_kyc',
     label: 'Pending KYC',
     symbol: '◷',
-    className: 'bg-amber-50 text-amber-900 ring-amber-200',
+    className:
+      'bg-amber-50 text-amber-900 ring-amber-200 dark:bg-amber-500/15 dark:text-amber-200 dark:ring-amber-500/30',
   },
   rejected: {
     key: 'rejected',
     label: 'Rejected',
     symbol: '✕',
-    className: 'bg-red-50 text-red-800 ring-red-200',
+    className:
+      'bg-red-50 text-red-800 ring-red-200 dark:bg-red-500/15 dark:text-red-300 dark:ring-red-500/30',
   },
 };
 
 export function staffAccountStatus(active: boolean): StatusDisplay {
   return active ? STATUS_MAP.active : STATUS_MAP.disabled;
-}
-
-export function commandCenterStatus(disabled: boolean): StatusDisplay {
-  return disabled ? STATUS_MAP.disabled : STATUS_MAP.active;
 }
 
 export function civilianVerification(status: string | undefined, disabled: boolean): CivilianVerification {

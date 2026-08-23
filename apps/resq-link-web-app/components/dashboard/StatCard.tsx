@@ -25,13 +25,13 @@ export function StatCard({
   const interactive = Boolean(href);
   const toneClasses =
     tone === 'warning'
-      ? 'border-amber-200/80 hover:border-amber-300/90 hover:shadow-admin-card-hover'
-      : 'border-slate-200/90 hover:border-primary-200/80 hover:shadow-admin-card-hover';
+      ? 'border-amber-200/80 hover:border-amber-300/90 hover:shadow-admin-card-hover dark:border-amber-500/30 dark:hover:border-amber-500/45'
+      : 'border-admin-border/90 hover:border-primary-200/80 hover:shadow-admin-card-hover dark:hover:border-primary-500/35';
 
   const iconTone =
     tone === 'warning'
-      ? 'bg-amber-50 text-amber-700 ring-amber-100 group-hover:bg-amber-100/80'
-      : 'bg-primary-50 text-primary-600 ring-primary-100 group-hover:bg-primary-100/80';
+      ? 'bg-amber-50 text-amber-700 ring-amber-100 group-hover:bg-amber-100/80 dark:bg-amber-500/15 dark:text-amber-300 dark:ring-amber-500/25 dark:group-hover:bg-amber-500/20'
+      : 'bg-primary-50 text-primary-600 ring-primary-100 group-hover:bg-primary-100/80 dark:bg-primary-500/15 dark:text-primary-300 dark:ring-primary-500/25 dark:group-hover:bg-primary-500/20';
 
   const content = (
     <>
@@ -42,12 +42,12 @@ export function StatCard({
           >
             <Icon size={15} aria-hidden="true" strokeWidth={2} />
           </span>
-          <p className="truncate text-sm font-medium text-slate-600">{label}</p>
+          <p className="truncate text-sm font-medium text-admin-fg-muted">{label}</p>
         </div>
         {interactive ? (
           <ChevronRight
             size={14}
-            className="mt-0.5 shrink-0 text-slate-300 transition-colors duration-admin group-hover:text-primary-500"
+            className="mt-0.5 shrink-0 text-admin-fg-subtle/60 transition-colors duration-admin group-hover:text-primary-500"
             aria-hidden="true"
           />
         ) : null}
@@ -57,13 +57,13 @@ export function StatCard({
         <div className="flex h-8 items-center overflow-hidden">
           {loading ? (
             <span
-              className="block h-5 w-10 shrink-0 rounded bg-slate-200/90 animate-pulse"
+              className="block h-5 w-10 shrink-0 rounded bg-admin-hover animate-pulse"
               aria-hidden="true"
             />
           ) : (
             <p
               className={`text-[1.875rem] font-semibold leading-8 tracking-tight tabular-nums ${
-                tone === 'warning' && Number(value) > 0 ? 'text-amber-800' : 'text-slate-900'
+                tone === 'warning' && Number(value) > 0 ? 'text-amber-800 dark:text-amber-300' : 'text-admin-fg'
               }`}
             >
               {value}
@@ -71,7 +71,7 @@ export function StatCard({
           )}
         </div>
         <div className="mt-2 flex h-4 items-center overflow-hidden">
-          {hint ? <p className="truncate text-xs leading-4 text-slate-500">{hint}</p> : null}
+          {hint ? <p className="truncate text-xs leading-4 text-admin-fg-subtle">{hint}</p> : null}
         </div>
         {loading ? <span className="sr-only">Loading {label}</span> : null}
       </div>
@@ -79,7 +79,7 @@ export function StatCard({
   );
 
   const className = [
-    'group relative block h-full rounded-xl border bg-white p-4 shadow-admin-card',
+    'group relative block h-full rounded-xl border bg-admin-surface p-4 shadow-admin-card',
     'transition-[transform,box-shadow,border-color] duration-admin ease-out',
     'motion-safe:hover:-translate-y-0.5',
     toneClasses,
@@ -114,7 +114,7 @@ export function StatSection({
 }) {
   return (
     <section className={className}>
-      <h2 className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
+      <h2 className="mb-2.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-admin-fg-subtle">
         {title}
       </h2>
       {children}

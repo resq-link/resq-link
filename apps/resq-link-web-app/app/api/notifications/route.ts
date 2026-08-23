@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const unreadOnly = searchParams.get('unread') === '1' || searchParams.get('unread') === 'true';
     const categoryParam = searchParams.get('category');
     const category =
-      categoryParam === 'kyc' || categoryParam === 'accounts' || categoryParam === 'system'
+      categoryParam === 'kyc' || categoryParam === 'operational' || categoryParam === 'system'
         ? (categoryParam as AdminNotificationCategory)
         : null;
     const preview = searchParams.get('preview') === '1';

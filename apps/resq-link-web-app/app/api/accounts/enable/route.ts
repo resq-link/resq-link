@@ -3,15 +3,14 @@ import * as admin from 'firebase-admin';
 import { getAdminFirestore } from '@packages/firebase/admin';
 import { requireSuperAdmin } from '@/lib/requireSuperAdmin';
 import { recordAudit } from '@/lib/server/audit';
-import { notifySuperAdmins } from '@/lib/server/adminNotifications';
 import {
   httpErrorStatus,
   resolveManagedAccount,
   setAuthDisabled,
 } from '@/lib/server/accounts';
+import { assertDestructiveAccountActionAllowed } from '@/lib/server/accountClassification';
 import type { ManagedAccountType } from '@/lib/accountTypes';
 import { publicErrorMessage } from '@/lib/errors';
-import { routes } from '@/lib/routes';
 
 const ACCOUNT_TYPES: ManagedAccountType[] = [
   'dispatcher',
@@ -35,6 +34,17 @@ export async function POST(request: NextRequest) {
     }
 
     const account = await resolveManagedAccount(uid, accountType);
+    if (account.data.deleted === true) {
+      return NextResponse.json(
+        { error: 'Deleted accounts cannot be re-enabled. Create a new account instead.' },
+        { status: 409 }
+      );
+    }
+    await assertDestructiveAccountActionAllowed({
+      uid,
+      accountType,
+      action: 'enable',
+    });
     await setAuthDisabled(uid, false);
 
     const db = getAdminFirestore();
@@ -72,25 +82,6 @@ export async function POST(request: NextRequest) {
       targetLabel: account.label,
       targetCollection: account.collection,
       reason: reason || null,
-      metadata: { accountType },
-    });
-
-    const targetUrl =
-      accountType === 'dispatcher'
-        ? routes.admin.dispatchers
-        : accountType === 'responder'
-          ? routes.admin.responders
-          : accountType === 'civilian'
-            ? routes.admin.civilians
-            : routes.admin.commandCenters;
-
-    await notifySuperAdmins({
-      type: 'account.enabled',
-      title: 'Account enabled',
-      message: `${account.label} was enabled.`,
-      targetUrl,
-      targetId: uid,
-      excludeUid: auth.auth.uid,
       metadata: { accountType },
     });
 

@@ -1,15 +1,73 @@
 /**
  * Super Admin API + route QA. Reads Firebase web config from env.
  * Run from apps/resq-link-web-app: node scripts/super-admin-qa.mjs
+ *
+ * Mutating fixtures (QA Civilian / QA Temporary Agency / QA Responder) are blocked
+ * against production Firebase projects unless QA_ALLOW_PRODUCTION=1 is set.
+ * Prefer the Auth/Firestore emulator or a dedicated non-prod project.
  */
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+function loadLocalEnv() {
+  for (const rel of ['.env.local', '.env']) {
+    const file = path.resolve(__dirname, '..', rel);
+    if (!fs.existsSync(file)) continue;
+    for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eq = trimmed.indexOf('=');
+      if (eq <= 0) continue;
+      const key = trimmed.slice(0, eq).trim();
+      let value = trimmed.slice(eq + 1).trim();
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        value = value.slice(1, -1);
+      }
+      if (process.env[key] === undefined) process.env[key] = value;
+    }
+  }
+}
+
+loadLocalEnv();
+
 const BASE = process.env.QA_BASE_URL || 'http://localhost:3000';
 const API_KEY = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+const FIREBASE_PROJECT_ID =
+  process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ||
+  process.env.FIREBASE_PROJECT_ID ||
+  process.env.GCLOUD_PROJECT ||
+  '';
+/** Known production / shared live projects — do not pollute their Super Admin inbox. */
+const PRODUCTION_FIREBASE_PROJECTS = new Set(['resq-link-899dc', 'city-rescue-dispatch']);
+const USING_AUTH_EMULATOR = Boolean(process.env.FIREBASE_AUTH_EMULATOR_HOST);
+const ALLOW_PRODUCTION = process.env.QA_ALLOW_PRODUCTION === '1';
 const ACCOUNTS = {
   admin: { email: 'superadmin@rescue.ph', password: 'SuperAdmin2024!' },
   command: { email: 'command@rescue.ph', password: 'command123' },
   civilian: { email: 'civilian@rescue.ph', password: 'Civilian2024!' },
   responder: { email: 'bfp@rescue.ph', password: 'BFP2024!' },
 };
+
+function assertMutationSafety() {
+  const isProductionProject = PRODUCTION_FIREBASE_PROJECTS.has(FIREBASE_PROJECT_ID);
+  if (!isProductionProject || USING_AUTH_EMULATOR || ALLOW_PRODUCTION) {
+    return;
+  }
+  throw new Error(
+    [
+      `Refusing Super Admin QA mutations against production Firebase project "${FIREBASE_PROJECT_ID}".`,
+      'These fixtures create real adminNotifications (QA Civilian / QA Temporary Agency / QA Responder).',
+      'Use the Auth/Firestore emulator, a non-prod project, or set QA_ALLOW_PRODUCTION=1 intentionally.',
+      'After an allowed production run, re-run: npx ts-node packages/firebase/scripts/cleanup-qa-records.ts --notifications-only',
+    ].join('\n')
+  );
+}
 
 const results = [];
 
@@ -68,6 +126,11 @@ async function main() {
   if (!API_KEY) {
     throw new Error('NEXT_PUBLIC_FIREBASE_API_KEY is required');
   }
+
+  assertMutationSafety();
+  console.log(
+    `QA target project=${FIREBASE_PROJECT_ID || '(unset)'} base=${BASE} allowProduction=${ALLOW_PRODUCTION} emulator=${USING_AUTH_EMULATOR}`
+  );
 
   const health = await request('/');
   record('Web app reachable', health.status === 200, `GET / → ${health.status}`);
@@ -135,7 +198,6 @@ async function main() {
     '/admin/dispatchers',
     '/admin/responders',
     '/admin/civilians',
-    '/admin/command-centers',
     '/admin/agencies',
     '/admin/kyc',
     '/admin/audit',
@@ -152,6 +214,16 @@ async function main() {
         page.location.includes('/admin/settings'));
     record(`Page ${path}`, ok, `status ${page.status}${page.location ? ` → ${page.location}` : ''}`);
   }
+
+  const legacyCommandCenters = await jsonOrText(
+    await request('/admin/command-centers', { cookie: adminCookie, redirect: 'manual' })
+  );
+  record(
+    'Legacy /admin/command-centers redirects to dashboard',
+    (legacyCommandCenters.status === 307 || legacyCommandCenters.status === 308 || legacyCommandCenters.status === 302) &&
+      Boolean(legacyCommandCenters.location && legacyCommandCenters.location.includes('/admin/dashboard')),
+    `${legacyCommandCenters.status} → ${legacyCommandCenters.location || 'no location'}`
+  );
 
   const commandBlocked = await jsonOrText(await request('/command-center/overview', { cookie: adminCookie }));
   record(
@@ -181,7 +253,6 @@ async function main() {
     ['GET', '/api/accounts/list?type=dispatchers&search=&page=1&pageSize=25'],
     ['GET', '/api/accounts/list?type=responders&search=&page=1&pageSize=25'],
     ['GET', '/api/accounts/list?type=civilians&search=&page=1&pageSize=25'],
-    ['GET', '/api/accounts/list?type=command-centers&search=&page=1&pageSize=25'],
     ['GET', '/api/agencies?page=1&pageSize=25&counts=1'],
     ['GET', '/api/kyc/list'],
     ['GET', '/api/audit?search=&page=1&pageSize=25'],
@@ -216,7 +287,6 @@ async function main() {
       s.civilians?.total,
       s.responders?.total,
       s.dispatchers?.total,
-      s.commandCenters?.total,
       s.agencies?.active,
       s.pendingKyc,
       s.disabledAccounts,
@@ -225,13 +295,16 @@ async function main() {
       civilians: s.civilians?.total,
       responders: s.responders?.total,
       dispatchers: s.dispatchers?.total,
-      commandCenters: s.commandCenters?.total,
       agencies: s.agencies?.active,
       pendingKyc: s.pendingKyc,
       disabled: s.disabledAccounts,
     }));
     record('Dashboard attention array present', Array.isArray(stats.attention));
-    record('Personnel by agency present', Array.isArray(s.personnelByAgency));
+    record(
+      'Response agencies count present',
+      typeof s.agencies?.active === 'number' && typeof s.agencies?.total === 'number',
+      JSON.stringify(s.agencies)
+    );
   } else {
     record('Dashboard core counts are numeric', false, 'stats payload missing');
   }
@@ -510,6 +583,43 @@ async function main() {
     record('Mark all notifications read succeeds', mark.status === 200, `status ${mark.status}`);
   } else {
     record('Notifications empty state acceptable', true, 'no notifications to mark');
+  }
+
+  // Remove QA-generated notification pollution from the Super Admin inbox.
+  const inbox = await jsonOrText(
+    await request('/api/notifications?limit=200', { token: adminToken })
+  );
+  const qaItems = (inbox.json?.items || []).filter((item) => {
+    const haystack = `${item.title || ''} ${item.message || ''} ${item.targetId || ''}`.toLowerCase();
+    return (
+      haystack.includes('qa civilian') ||
+      haystack.includes('qa temporary agency') ||
+      haystack.includes('qa responder') ||
+      haystack.includes('qa super admin') ||
+      haystack.includes('should fail') ||
+      haystack.includes('test deduplication') ||
+      haystack.includes('test command center') ||
+      (typeof item.targetId === 'string' &&
+        (item.targetId === qaAgencyCode ||
+          item.targetId === responderUid ||
+          item.targetId === createdCivilian.json?.uid))
+    );
+  });
+  if (qaItems.length > 0) {
+    const purge = await jsonOrText(
+      await request('/api/notifications/delete', {
+        method: 'POST',
+        token: adminToken,
+        body: { ids: qaItems.map((item) => item.id) },
+      })
+    );
+    record(
+      'QA notification pollution cleaned up',
+      purge.status === 200 && (purge.json?.deletedCount || 0) >= 1,
+      `deleted=${purge.json?.deletedCount || 0} matched=${qaItems.length}`
+    );
+  } else {
+    record('QA notification pollution cleaned up', true, 'no QA notification rows matched');
   }
 
   const failed = results.filter((item) => !item.pass);

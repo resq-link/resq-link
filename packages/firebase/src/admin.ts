@@ -185,15 +185,21 @@ export type AuditAction =
   | 'account.create.command_center'
   | 'account.disable'
   | 'account.enable'
+  | 'account.delete'
   | 'account.update_staff'
   | 'account.reset_password'
+  | 'account.role_updated'
   | 'command_center.update'
   | 'kyc.approve'
   | 'kyc.reject'
+  | 'kyc.submit'
+  | 'kyc.resubmit'
   | 'agency.create'
   | 'agency.update'
   | 'agency.disable'
   | 'agency.enable'
+  | 'agency.delete'
+  | 'notification.delete'
   | 'admin.profile.update'
   | 'admin.password.change';
 
@@ -225,11 +231,17 @@ async function setRoleClaimsSafe(
   try {
     const existing = await adminAuth().getUser(uid);
     const previous = (existing.customClaims || {}) as Record<string, unknown>;
-    await adminAuth().setCustomUserClaims(uid, stripUndefined({
+    const nextClaims: Record<string, unknown> = {
       ...previous,
       role: claims.role,
       agency: claims.agency,
-    }));
+    };
+    if (claims.role === 'super_admin') {
+      nextClaims.isSuperAdmin = true;
+    } else if ('isSuperAdmin' in nextClaims) {
+      delete nextClaims.isSuperAdmin;
+    }
+    await adminAuth().setCustomUserClaims(uid, stripUndefined(nextClaims));
   } catch (error) {
     console.error('Failed to set custom claims', { uid, error });
   }

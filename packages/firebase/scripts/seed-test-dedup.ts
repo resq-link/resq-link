@@ -11,6 +11,24 @@ const firebaseConfig = {
   appId: "1:665229808010:web:4f51791af88672b027f873"
 };
 
+const PRODUCTION_FIREBASE_PROJECTS = new Set(['resq-link-899dc', 'city-rescue-dispatch']);
+const USING_AUTH_EMULATOR = Boolean(process.env.FIREBASE_AUTH_EMULATOR_HOST);
+const ALLOW_PRODUCTION = process.env.QA_ALLOW_PRODUCTION === '1';
+
+if (
+  PRODUCTION_FIREBASE_PROJECTS.has(firebaseConfig.projectId) &&
+  !USING_AUTH_EMULATOR &&
+  !ALLOW_PRODUCTION
+) {
+  throw new Error(
+    [
+      `Refusing seed-test-dedup against production Firebase project "${firebaseConfig.projectId}".`,
+      'This script creates Test Command Center / Test Deduplication fixtures that pollute Super Admin notifications.',
+      'Use the emulator, a non-prod project, or set QA_ALLOW_PRODUCTION=1 intentionally.',
+    ].join('\n')
+  );
+}
+
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);

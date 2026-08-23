@@ -68,7 +68,6 @@ async function main() {
       ['/admin/dispatchers', 'Dispatchers'],
       ['/admin/responders', 'Responders'],
       ['/admin/civilians', 'Civilians'],
-      ['/admin/command-centers', 'Command Centers'],
       ['/admin/agencies', 'Agencies'],
       ['/admin/kyc', 'KYC Review'],
       ['/admin/audit', 'Audit Logs'],

@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Loader2, Lock, ShieldCheck, UserCog } from 'lucide-react';
+import { Loader2, Lock, Palette, ShieldCheck, UserCog } from 'lucide-react';
 import {
   EmailAuthProvider,
   getFirebaseAuth,
@@ -10,12 +10,13 @@ import {
 } from '@packages/firebase';
 import { Button } from '@/components/ui/Button';
 import { Dialog } from '@/components/ui/Dialog';
+import { AdminThemePicker } from '@/components/admin/AdminThemePicker';
 import { adminFetch } from '@/lib/adminFetch';
 import { formatDateTime } from '@/lib/dates';
-import { useToast } from '@/components/ToastProvider';
+import { useToast, toastAuthErrorMessage } from '@/components/ToastProvider';
 import { useAdminAuth } from '@/contexts/AdminAuthContext';
 
-type SettingsSection = 'account' | 'security';
+type SettingsSection = 'account' | 'security' | 'appearance';
 
 interface SettingsProfile {
   uid: string;
@@ -46,6 +47,7 @@ function initialsFromName(name: string, email: string | null): string {
 const SECTIONS: { id: SettingsSection; label: string; icon: typeof UserCog }[] = [
   { id: 'account', label: 'Account', icon: UserCog },
   { id: 'security', label: 'Security', icon: Lock },
+  { id: 'appearance', label: 'Appearance', icon: Palette },
 ];
 
 export default function SettingsPage() {
@@ -98,6 +100,7 @@ export default function SettingsPage() {
       toast.error('Display name cannot be empty.');
       return;
     }
+    if (saving) return;
     setSaving(true);
     try {
       const result = await adminFetch<{ displayName: string }>('/api/settings/profile', {
@@ -106,7 +109,7 @@ export default function SettingsPage() {
       });
       setProfile((current) => (current ? { ...current, displayName: result.displayName } : current));
       setDisplayName(result.displayName);
-      toast.success('Account information updated successfully.');
+      toast.success('Profile updated successfully.');
       try {
         await getFirebaseAuth().currentUser?.reload();
       } catch {
@@ -121,18 +124,25 @@ export default function SettingsPage() {
 
   const changePassword = async () => {
     setPasswordError(null);
+    if (passwordBusy) return;
     if (newPassword.length < 6) {
-      setPasswordError('New password must be at least 6 characters.');
+      const message = 'Password must meet the required security rules.';
+      setPasswordError(message);
+      toast.error(message);
       return;
     }
     if (newPassword !== confirmPassword) {
-      setPasswordError('New passwords do not match.');
+      const message = 'New passwords do not match.';
+      setPasswordError(message);
+      toast.error(message);
       return;
     }
     const currentUser = getFirebaseAuth().currentUser;
     const email = currentUser?.email || profile?.email;
     if (!currentUser || !email) {
-      setPasswordError('You must be signed in to change your password.');
+      const message = 'You must be signed in to change your password.';
+      setPasswordError(message);
+      toast.error(message);
       return;
     }
 
@@ -142,22 +152,15 @@ export default function SettingsPage() {
       await reauthenticateWithCredential(currentUser, credential);
       await updatePassword(currentUser, newPassword);
       await adminFetch('/api/settings/password-changed', { method: 'POST', body: '{}' });
-      toast.success('Password updated successfully.');
+      toast.success('Password changed successfully.');
       setPasswordOpen(false);
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (err) {
-      const code = (err as { code?: string }).code || '';
-      if (code.includes('wrong-password') || code.includes('invalid-credential')) {
-        setPasswordError('Current password is incorrect.');
-      } else if (code.includes('weak-password')) {
-        setPasswordError('Password does not meet requirements.');
-      } else if (code.includes('too-many-requests')) {
-        setPasswordError('Too many attempts. Please try again later.');
-      } else {
-        setPasswordError('Unable to change password. Please try again.');
-      }
+      const message = toastAuthErrorMessage(err, 'Unable to change password. Please try again.');
+      setPasswordError(message);
+      toast.error(message);
     } finally {
       setPasswordBusy(false);
     }
@@ -165,7 +168,7 @@ export default function SettingsPage() {
 
   return (
     <>
-      <div className="mb-5 flex flex-wrap gap-1 rounded-xl border border-slate-200/80 bg-white/80 p-1 shadow-sm">
+      <div className="mb-5 flex flex-wrap gap-1 rounded-xl border border-admin-border/80 bg-admin-surface/80 p-1 shadow-sm">
         {SECTIONS.map((item) => {
           const Icon = item.icon;
           const active = section === item.id;
@@ -176,8 +179,8 @@ export default function SettingsPage() {
               onClick={() => setSection(item.id)}
               className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors duration-admin ${
                 active
-                  ? 'bg-primary-500/15 text-primary-700 ring-1 ring-inset ring-primary-400/25'
-                  : 'text-slate-600 hover:bg-slate-50'
+                  ? 'bg-primary-500/15 text-primary-700 ring-1 ring-inset ring-primary-400/25 dark:text-primary-300'
+                  : 'text-admin-fg-muted hover:bg-admin-muted'
               }`}
             >
               <Icon size={15} aria-hidden="true" />
@@ -187,13 +190,13 @@ export default function SettingsPage() {
         })}
       </div>
 
-      {loadError ? (
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+      {loadError && section !== 'appearance' ? (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800/50 dark:bg-red-950/40 dark:text-red-200">
           <p>{loadError}</p>
           <button
             type="button"
             onClick={() => void load()}
-            className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-800 hover:bg-red-100"
+            className="rounded-lg border border-red-200 bg-admin-surface px-3 py-1.5 text-sm font-medium text-red-800 hover:bg-red-100 dark:border-red-800/50 dark:text-red-200 dark:hover:bg-red-950/60"
           >
             Retry
           </button>
@@ -201,26 +204,26 @@ export default function SettingsPage() {
       ) : null}
 
       {section === 'account' ? (
-        <section className="animate-admin-fade-in overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-admin-card">
-          <div className="border-b border-slate-100 px-5 py-4 sm:px-6">
+        <section className="animate-admin-fade-in overflow-hidden rounded-xl border border-admin-border/90 bg-admin-surface shadow-admin-card">
+          <div className="border-b border-admin-border px-5 py-4 sm:px-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
-                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-500 text-sm font-semibold tracking-wide text-white shadow-sm ring-4 ring-primary-50">
+                <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary-500 text-sm font-semibold tracking-wide text-white shadow-sm ring-4 ring-primary-50 dark:ring-primary-500/20">
                   {initials}
                 </span>
                 <div className="min-w-0">
-                  <h2 className="truncate text-base font-semibold text-slate-900">
+                  <h2 className="truncate text-base font-semibold text-admin-fg">
                     {displayName.trim() || 'Super Administrator'}
                   </h2>
-                  <p className="truncate text-sm text-slate-500">{profile?.email || user?.email || '—'}</p>
+                  <p className="truncate text-sm text-admin-fg-subtle">{profile?.email || user?.email || '—'}</p>
                 </div>
               </div>
-              <p className="text-sm text-slate-500">Manage your Super Administrator profile information.</p>
+              <p className="text-sm text-admin-fg-subtle">Manage your Super Administrator profile information.</p>
             </div>
           </div>
 
           {loading && !profile ? (
-            <div className="flex items-center justify-center gap-2 px-4 py-16 text-sm text-slate-500">
+            <div className="flex items-center justify-center gap-2 px-4 py-16 text-sm text-admin-fg-subtle">
               <Loader2 size={16} className="animate-spin text-primary-500" />
               Loading account...
             </div>
@@ -228,47 +231,47 @@ export default function SettingsPage() {
             <div className="px-5 py-5 sm:px-6">
               <div className="grid gap-5 lg:grid-cols-2">
                 <label className="block">
-                  <span className="mb-1.5 block text-sm font-medium text-slate-700">Display Name</span>
+                  <span className="mb-1.5 block text-sm font-medium text-admin-fg-muted">Display Name</span>
                   <input
                     value={displayName}
                     onChange={(event) => setDisplayName(event.target.value)}
-                    className="h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-sm transition-colors duration-admin focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                    className="h-10 w-full rounded-lg border border-admin-border bg-admin-surface px-3 text-sm text-admin-fg shadow-sm transition-colors duration-admin focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
                     placeholder="Super Administrator"
                     maxLength={80}
                   />
                 </label>
 
                 <label className="block">
-                  <span className="mb-1.5 block text-sm font-medium text-slate-700">Email Address</span>
+                  <span className="mb-1.5 block text-sm font-medium text-admin-fg-muted">Email Address</span>
                   <input
                     value={profile?.email || ''}
                     readOnly
                     disabled
-                    className="h-10 w-full cursor-not-allowed rounded-lg border border-slate-200 bg-slate-50 px-3 text-sm text-slate-600"
+                    className="h-10 w-full cursor-not-allowed rounded-lg border border-admin-border bg-admin-muted px-3 text-sm text-admin-fg-muted"
                   />
-                  <span className="mt-1.5 block text-xs text-slate-500">
+                  <span className="mt-1.5 block text-xs text-admin-fg-subtle">
                     Managed by authentication and cannot be changed here.
                   </span>
                 </label>
 
                 <div>
-                  <p className="mb-1.5 text-sm font-medium text-slate-700">Role</p>
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
-                    <p className="text-sm text-slate-800">{profile?.role || 'Super Administrator'}</p>
-                    <p className="mt-0.5 text-xs text-slate-500">Managed by RESQ-LINK</p>
+                  <p className="mb-1.5 text-sm font-medium text-admin-fg-muted">Role</p>
+                  <div className="rounded-lg border border-admin-border bg-admin-muted px-3 py-2.5">
+                    <p className="text-sm text-admin-fg">{profile?.role || 'Super Administrator'}</p>
+                    <p className="mt-0.5 text-xs text-admin-fg-subtle">Managed by RESQ-LINK</p>
                   </div>
                 </div>
 
                 <div>
-                  <p className="mb-1.5 text-sm font-medium text-slate-700">User ID</p>
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
-                    <p className="break-all font-mono text-xs text-slate-700">{profile?.uid || '—'}</p>
-                    <p className="mt-0.5 text-xs text-slate-500">System-generated identifier</p>
+                  <p className="mb-1.5 text-sm font-medium text-admin-fg-muted">User ID</p>
+                  <div className="rounded-lg border border-admin-border bg-admin-muted px-3 py-2.5">
+                    <p className="break-all font-mono text-xs text-admin-fg-muted">{profile?.uid || '—'}</p>
+                    <p className="mt-0.5 text-xs text-admin-fg-subtle">System-generated identifier</p>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-6 flex justify-end border-t border-slate-100 pt-4">
+              <div className="mt-6 flex justify-end border-t border-admin-border pt-4">
                 <Button type="button" disabled={!dirty || saving} onClick={() => void saveProfile()}>
                   {saving ? <Loader2 size={16} className="animate-spin" /> : null}
                   {saving ? 'Saving...' : 'Save Changes'}
@@ -280,21 +283,21 @@ export default function SettingsPage() {
       ) : null}
 
       {section === 'security' ? (
-        <section className="animate-admin-fade-in overflow-hidden rounded-xl border border-slate-200/90 bg-white shadow-admin-card">
-          <div className="border-b border-slate-100 px-5 py-4 sm:px-6">
-            <h2 className="text-base font-semibold text-slate-900">Security</h2>
-            <p className="mt-1 text-sm text-slate-500">Protect your Super Administrator account.</p>
+        <section className="animate-admin-fade-in overflow-hidden rounded-xl border border-admin-border/90 bg-admin-surface shadow-admin-card">
+          <div className="border-b border-admin-border px-5 py-4 sm:px-6">
+            <h2 className="text-base font-semibold text-admin-fg">Security</h2>
+            <p className="mt-1 text-sm text-admin-fg-subtle">Protect your Super Administrator account.</p>
           </div>
 
           <div className="space-y-4 px-5 py-5 sm:px-6">
-            <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50/50 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-3 rounded-xl border border-admin-border bg-admin-muted/50 p-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-start gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-50 text-primary-600 ring-1 ring-primary-100">
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-50 text-primary-600 ring-1 ring-primary-100 dark:bg-primary-500/15 dark:text-primary-300 dark:ring-primary-500/25">
                   <Lock size={16} aria-hidden="true" />
                 </span>
                 <div>
-                  <p className="text-sm font-medium text-slate-900">Password</p>
-                  <p className="mt-0.5 text-sm text-slate-500">
+                  <p className="text-sm font-medium text-admin-fg">Password</p>
+                  <p className="mt-0.5 text-sm text-admin-fg-subtle">
                     Change your password using your current credentials.
                   </p>
                 </div>
@@ -304,21 +307,43 @@ export default function SettingsPage() {
               </Button>
             </div>
 
-            <div className="rounded-xl border border-slate-200 p-4">
-              <div className="flex items-center gap-2 text-sm font-medium text-slate-800">
+            <div className="rounded-xl border border-admin-border p-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-admin-fg">
                 <ShieldCheck size={15} className="text-primary-600" aria-hidden="true" />
                 Session
               </div>
               <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-                <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2.5">
-                  <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Last sign-in</dt>
-                  <dd className="mt-1 text-sm text-slate-800">{formatDateTime(profile?.lastSignInAt)}</dd>
+                <div className="rounded-lg border border-admin-border bg-admin-muted/80 px-3 py-2.5">
+                  <dt className="text-xs font-medium uppercase tracking-wide text-admin-fg-subtle">Last sign-in</dt>
+                  <dd className="mt-1 text-sm text-admin-fg">{formatDateTime(profile?.lastSignInAt)}</dd>
                 </div>
-                <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2.5">
-                  <dt className="text-xs font-medium uppercase tracking-wide text-slate-500">Account created</dt>
-                  <dd className="mt-1 text-sm text-slate-800">{formatDateTime(profile?.createdAt)}</dd>
+                <div className="rounded-lg border border-admin-border bg-admin-muted/80 px-3 py-2.5">
+                  <dt className="text-xs font-medium uppercase tracking-wide text-admin-fg-subtle">Account created</dt>
+                  <dd className="mt-1 text-sm text-admin-fg">{formatDateTime(profile?.createdAt)}</dd>
                 </div>
               </dl>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {section === 'appearance' ? (
+        <section className="animate-admin-fade-in overflow-hidden rounded-xl border border-admin-border/90 bg-admin-surface shadow-admin-card">
+          <div className="border-b border-admin-border px-5 py-4 sm:px-6">
+            <h2 className="text-base font-semibold text-admin-fg">Appearance</h2>
+            <p className="mt-1 text-sm text-admin-fg-subtle">
+              Choose how RESQ-LINK Platform Administration looks on this device.
+            </p>
+          </div>
+          <div className="px-5 py-5 sm:px-6">
+            <div className="flex flex-col gap-3 rounded-xl border border-admin-border bg-admin-muted/50 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-medium text-admin-fg">Theme</p>
+                <p className="mt-0.5 text-sm text-admin-fg-subtle">
+                  Light or dark mode. Preference is saved for this browser.
+                </p>
+              </div>
+              <AdminThemePicker />
             </div>
           </div>
         </section>
@@ -338,18 +363,18 @@ export default function SettingsPage() {
           }}
         >
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">Current password</span>
+            <span className="mb-1 block text-sm font-medium text-admin-fg-muted">Current password</span>
             <input
               type="password"
               required
               autoComplete="current-password"
               value={currentPassword}
               onChange={(event) => setCurrentPassword(event.target.value)}
-              className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              className="h-10 w-full rounded-lg border border-admin-border bg-admin-input px-3 text-sm text-admin-fg focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">New password</span>
+            <span className="mb-1 block text-sm font-medium text-admin-fg-muted">New password</span>
             <input
               type="password"
               required
@@ -357,11 +382,11 @@ export default function SettingsPage() {
               autoComplete="new-password"
               value={newPassword}
               onChange={(event) => setNewPassword(event.target.value)}
-              className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              className="h-10 w-full rounded-lg border border-admin-border bg-admin-input px-3 text-sm text-admin-fg focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm font-medium text-slate-700">Confirm new password</span>
+            <span className="mb-1 block text-sm font-medium text-admin-fg-muted">Confirm new password</span>
             <input
               type="password"
               required
@@ -369,17 +394,17 @@ export default function SettingsPage() {
               autoComplete="new-password"
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
-              className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              className="h-10 w-full rounded-lg border border-admin-border bg-admin-input px-3 text-sm text-admin-fg focus:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
             />
           </label>
-          {passwordError ? <p className="text-sm text-red-600">{passwordError}</p> : null}
+          {passwordError ? <p className="text-sm text-red-600 dark:text-red-400">{passwordError}</p> : null}
           <div className="flex justify-end gap-2 pt-1">
             <Button type="button" variant="ghost" disabled={passwordBusy} onClick={() => setPasswordOpen(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={passwordBusy}>
               {passwordBusy ? <Loader2 size={16} className="animate-spin" /> : null}
-              {passwordBusy ? 'Updating...' : 'Update Password'}
+              {passwordBusy ? 'Changing password...' : 'Update Password'}
             </Button>
           </div>
         </form>

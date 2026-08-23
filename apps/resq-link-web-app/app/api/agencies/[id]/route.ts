@@ -3,11 +3,9 @@ import * as admin from 'firebase-admin';
 import { getAdminFirestore } from '@packages/firebase/admin';
 import { requireSuperAdmin } from '@/lib/requireSuperAdmin';
 import { recordAudit } from '@/lib/server/audit';
-import { notifySuperAdmins } from '@/lib/server/adminNotifications';
 import { mapAgencyDoc } from '@/lib/server/agencies';
 import { AGENCY_TYPE_OPTIONS, type AgencyType } from '@/lib/agencyTypes';
 import { publicErrorMessage } from '@/lib/errors';
-import { routes } from '@/lib/routes';
 
 function isAgencyType(value: unknown): value is AgencyType {
   return typeof value === 'string' && AGENCY_TYPE_OPTIONS.some((item) => item.value === value);
@@ -57,7 +55,7 @@ export async function POST(
       updates.type = body.type;
     }
 
-    for (const field of ['description', 'contactEmail', 'contactPhone', 'address'] as const) {
+    for (const field of ['contactPhone'] as const) {
       if (body[field] !== undefined) {
         const next = optionalString(body[field]) ?? '';
         changes[field] = { from: current[field] || '', to: next };
@@ -88,19 +86,6 @@ export async function POST(
       targetCollection: 'agencies',
       metadata: { changes },
     });
-
-    const meaningful =
-      changes.name || changes.type || changes.contactEmail || changes.contactPhone || changes.address;
-    if (meaningful) {
-      await notifySuperAdmins({
-        type: 'agency.updated',
-        title: 'Agency updated',
-        message: `${item.name} information was updated.`,
-        targetUrl: routes.admin.agencies,
-        targetId: code,
-        excludeUid: auth.auth.uid,
-      });
-    }
 
     return NextResponse.json({ success: true, item });
   } catch (error: unknown) {

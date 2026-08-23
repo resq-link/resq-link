@@ -24,6 +24,7 @@ export interface CivilianAccountRecord {
   email: string;
   name: string;
   phone: string;
+  role: string;
   status: string;
   disabled: boolean;
   verification: CivilianVerification;
@@ -61,17 +62,9 @@ export interface DashboardStats {
   civilians: { total: number; thisMonth: number };
   responders: { total: number; active: number };
   dispatchers: { total: number; active: number };
-  commandCenters: { total: number; active: number };
   agencies: { total: number; active: number };
   pendingKyc: number;
   disabledAccounts: number;
-  incompleteCommandCenters: number;
-}
-
-export type PersonnelByAgencyRow = { code: string; name: string; total: number };
-
-export interface OverviewStats extends DashboardStats {
-  personnelByAgency: PersonnelByAgencyRow[];
 }
 
 export interface NeedsAttentionItem {

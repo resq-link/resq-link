@@ -92,16 +92,40 @@ export function getAdminQuerySnapshot<T>(key: string): {
   };
 }
 
-export function invalidateAdminQuery(key: string) {
-  entries.delete(key);
+/**
+ * Mark a query stale without destroying the cache entry.
+ *
+ * IMPORTANT: Do not `entries.delete(key)` here. Subscribers hold listeners on the
+ * entry object; deleting it drops those listeners, so a later refetch notifies an
+ * empty set and React stays stuck on `initialLoading` with empty rows.
+ *
+ * Keep existing `data` (stale-while-revalidate) so tables do not flash to zero.
+ */
+function markEntryStale(key: string) {
+  const entry = entries.get(key);
+  if (!entry) return;
+  entry.updatedAt = 0;
+  entry.error = null;
   notify(key);
+}
+
+export function invalidateAdminQuery(key: string) {
+  markEntryStale(key);
 }
 
 export function invalidateAdminQueryPrefix(prefix: string) {
   for (const key of [...entries.keys()]) {
     if (key.startsWith(prefix)) {
-      entries.delete(key);
-      notify(key);
+      markEntryStale(key);
     }
   }
+}
+
+/** Synchronously replace cached data (e.g. patch one row after a successful edit). */
+export function setAdminQueryData<T>(key: string, data: T) {
+  const entry = getEntry<T>(key);
+  entry.data = data;
+  entry.error = null;
+  entry.updatedAt = Date.now();
+  notify(key);
 }

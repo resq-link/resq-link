@@ -25,7 +25,6 @@ export const routes = {
     dispatchers: '/admin/dispatchers',
     responders: '/admin/responders',
     civilians: '/admin/civilians',
-    commandCenters: '/admin/command-centers',
     kyc: '/admin/kyc',
     audit: '/admin/audit',
     notifications: '/admin/notifications',

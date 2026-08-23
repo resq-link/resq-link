@@ -25,9 +25,9 @@ export function PageHeader({
     >
       {showCopy ? (
         <div className="min-w-0">
-          {title ? <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{title}</h1> : null}
+          {title ? <h1 className="text-2xl font-semibold tracking-tight text-admin-fg">{title}</h1> : null}
           {description ? (
-            <p className={`max-w-2xl text-sm leading-relaxed text-slate-500 ${title ? 'mt-1.5' : ''}`}>
+            <p className={`max-w-2xl text-sm leading-relaxed text-admin-fg-subtle ${title ? 'mt-1.5' : ''}`}>
               {description}
             </p>
           ) : null}

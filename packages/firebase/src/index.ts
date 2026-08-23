@@ -10,7 +10,7 @@ export {
 } from './config';
 
 // Export Firestore functions
-export { getDoc, doc, updateDoc, Timestamp, onSnapshot, collection, getDocs, query, where } from 'firebase/firestore';
+export { getDoc, doc, updateDoc, Timestamp, onSnapshot, collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
 
 // Export Firebase Auth types and functions
 export type { User } from 'firebase/auth';

@@ -5,7 +5,7 @@ import { toIso } from '@/lib/server/timestamps';
 import {
   SEED_AGENCIES,
   isValidAgencyCodeFormat,
-  normalizeAgencyCode,
+  finalizeAgencyCode,
   type AgencyRecord,
   type AgencyType,
 } from '@/lib/agencyTypes';
@@ -64,16 +64,18 @@ export async function listAgenciesFromDb(): Promise<AgencyRecord[]> {
   await ensureSeedAgencies();
   const snap = await getAdminFirestore().collection(COLLECTION).get();
   return snap.docs
+    .filter((doc) => doc.data()?.deleted !== true)
     .map((doc) => mapAgencyDoc(doc.id, doc.data() as Record<string, unknown>))
     .sort((a, b) => a.code.localeCompare(b.code));
 }
 
 export async function getAgencyByCode(code: string): Promise<AgencyRecord | null> {
-  const normalized = normalizeAgencyCode(code);
+  const normalized = finalizeAgencyCode(code);
   if (!normalized) return null;
   await ensureSeedAgencies();
   const snap = await getAdminFirestore().doc(`${COLLECTION}/${normalized}`).get();
   if (!snap.exists) return null;
+  if (snap.data()?.deleted === true) return null;
   return mapAgencyDoc(snap.id, snap.data() as Record<string, unknown>);
 }
 
@@ -84,7 +86,7 @@ export async function assertAssignableAgencyCode(
   if (typeof code !== 'string') {
     throw Object.assign(new Error('Agency is required'), { status: 400 });
   }
-  const normalized = normalizeAgencyCode(code);
+  const normalized = finalizeAgencyCode(code);
   if (!isValidAgencyCodeFormat(normalized)) {
     throw Object.assign(new Error('Invalid agency code format'), { status: 400 });
   }
@@ -108,7 +110,8 @@ export async function countPersonnelByAgencyCode(): Promise<
 
   snap.docs.forEach((doc) => {
     const data = doc.data() || {};
-    const code = normalizeAgencyCode(String(data.role || ''));
+    if (data.deleted === true) return;
+    const code = finalizeAgencyCode(String(data.role || ''));
     if (!code) return;
     if (!counts[code]) counts[code] = { dispatchers: 0, responders: 0, total: 0 };
     if (isResponderDesignation(data.designation)) counts[code].responders += 1;
@@ -117,12 +120,4 @@ export async function countPersonnelByAgencyCode(): Promise<
   });
 
   return counts;
-}
-
-export async function attachPersonnelCounts(agencies: AgencyRecord[]): Promise<AgencyRecord[]> {
-  const counts = await countPersonnelByAgencyCode();
-  return agencies.map((agency) => ({
-    ...agency,
-    personnel: counts[agency.code] || { dispatchers: 0, responders: 0, total: 0 },
-  }));
 }

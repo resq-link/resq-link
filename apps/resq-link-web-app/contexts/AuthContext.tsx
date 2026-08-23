@@ -36,9 +36,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setWorkspaceLoading(true)
     try {
       const token = await nextUser.getIdToken(true)
-      const nextWorkspace = await syncAuthSession(token)
-      setWorkspace(nextWorkspace)
-      return nextWorkspace
+      const session = await syncAuthSession(token)
+      if (session.forceTokenRefresh) {
+        await nextUser.getIdToken(true)
+      }
+      setWorkspace(session.workspace)
+      return session.workspace
     } finally {
       setWorkspaceLoading(false)
     }
@@ -75,6 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       router.push(routes.login)
     } catch (error) {
       console.error('Error signing out:', error)
+      throw error
     }
   }, [router])
 

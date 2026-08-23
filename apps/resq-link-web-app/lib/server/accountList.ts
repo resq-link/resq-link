@@ -6,8 +6,13 @@ import {
   mapCommandCenterRecord,
   mapStaffRecord,
 } from '@/lib/server/accounts';
+import {
+  isExplicitCivilianUserDoc,
+  isProtectedAccountEmail,
+  mapRoleAlias,
+} from '@/lib/server/accountClassification';
 import { toMillis } from '@/lib/server/timestamps';
-import type { AccountListType } from '@/lib/accountTypes';
+import type { AccountListType, StaffAccountRecord } from '@/lib/accountTypes';
 
 const DEFAULT_PAGE_SIZE = 25;
 const MAX_PAGE_SIZE = 50;
@@ -22,6 +27,7 @@ const STAFF_SELECT = [
   'teamCode',
   'teamLabel',
   'active',
+  'deleted',
   'createdAt',
   'updatedAt',
 ] as const;
@@ -32,8 +38,10 @@ const CIVILIAN_SELECT = [
   'firstName',
   'lastName',
   'phone',
+  'role',
   'status',
   'disabled',
+  'deleted',
   'govIdType',
   'kycSubmittedAt',
   'kycReviewedAt',
@@ -42,7 +50,15 @@ const CIVILIAN_SELECT = [
   'createdAt',
 ] as const;
 
-const COMMAND_CENTER_SELECT = ['email', 'name', 'location', 'disabled', 'createdAt', 'updatedAt'] as const;
+const COMMAND_CENTER_SELECT = [
+  'email',
+  'name',
+  'location',
+  'disabled',
+  'deleted',
+  'createdAt',
+  'updatedAt',
+] as const;
 
 export interface AccountListParams {
   type: AccountListType;
@@ -86,7 +102,55 @@ function readPaging(params: AccountListParams) {
   return { page, pageSize };
 }
 
-async function listStaff(params: AccountListParams): Promise<AccountListResult<ReturnType<typeof mapStaffRecord>>> {
+/** Web dispatcher operators live in `commandCenters` (e.g. command@rescue.ph). */
+function mapCommandCenterAsDispatcher(
+  id: string,
+  data: Record<string, unknown>
+): StaffAccountRecord {
+  const mapped = mapCommandCenterRecord(id, data);
+  return {
+    id: mapped.id,
+    email: mapped.email,
+    fullName: mapped.name,
+    agency: '',
+    designation: 'dispatcher',
+    teamCode: null,
+    teamLabel: null,
+    active: !mapped.disabled,
+    createdAt: mapped.createdAt,
+    updatedAt: mapped.updatedAt,
+  };
+}
+
+async function listDispatchers(
+  params: AccountListParams
+): Promise<AccountListResult<StaffAccountRecord>> {
+  const { page, pageSize } = readPaging(params);
+  const search = (params.search || '').trim();
+  const status = (params.status || '').trim();
+  const db = getAdminFirestore();
+
+  let query: Query = db.collection('commandCenters');
+  if (status === 'active') query = query.where('disabled', '==', false);
+  else if (status === 'disabled') query = query.where('disabled', '==', true);
+
+  const snap = await query.select(...COMMAND_CENTER_SELECT).limit(MAX_SCAN).get();
+  const rows = snap.docs
+    .map((doc) => ({
+      record: mapCommandCenterAsDispatcher(doc.id, (doc.data() || {}) as Record<string, unknown>),
+      deleted: (doc.data() || {}).deleted === true,
+    }))
+    .filter((row) => !row.deleted)
+    .map((row) => row.record)
+    .filter((row) => matchesSearch([row.fullName, row.email], search))
+    .sort((a, b) => toMillis(b.updatedAt || b.createdAt) - toMillis(a.updatedAt || a.createdAt));
+
+  return paginate(rows, page, pageSize);
+}
+
+async function listResponders(
+  params: AccountListParams
+): Promise<AccountListResult<StaffAccountRecord>> {
   const { page, pageSize } = readPaging(params);
   const search = (params.search || '').trim();
   const agency = (params.agency || '').trim();
@@ -100,12 +164,14 @@ async function listStaff(params: AccountListParams): Promise<AccountListResult<R
 
   const snap = await query.select(...STAFF_SELECT).limit(MAX_SCAN).get();
   const rows = snap.docs
-    .map((doc) => mapStaffRecord(doc.id, (doc.data() || {}) as Record<string, unknown>))
-    .filter((row) =>
-      params.type === 'responders'
-        ? isResponderDesignation(row.designation)
-        : !isResponderDesignation(row.designation)
-    )
+    .map((doc) => ({
+      record: mapStaffRecord(doc.id, (doc.data() || {}) as Record<string, unknown>),
+      rawDesignation: (doc.data() || {}).designation,
+      deleted: (doc.data() || {}).deleted === true,
+    }))
+    .filter((row) => !row.deleted)
+    .filter((row) => isResponderDesignation(row.rawDesignation ?? row.record.designation))
+    .map((row) => row.record)
     .filter((row) => matchesSearch([row.fullName, row.email, row.agency, row.teamLabel], search))
     .sort((a, b) => toMillis(b.updatedAt || b.createdAt) - toMillis(a.updatedAt || a.createdAt));
 
@@ -142,7 +208,14 @@ async function listCivilians(
 
   const snap = await query.select(...CIVILIAN_SELECT).limit(MAX_SCAN).get();
   const rows = snap.docs
-    .map((doc) => mapCivilianRecord(doc.id, (doc.data() || {}) as Record<string, unknown>))
+    .map((doc) => ({
+      record: mapCivilianRecord(doc.id, (doc.data() || {}) as Record<string, unknown>),
+      data: (doc.data() || {}) as Record<string, unknown>,
+    }))
+    .filter((row) => isExplicitCivilianUserDoc(row.data))
+    .filter((row) => !isProtectedAccountEmail(row.record.email))
+    .filter((row) => mapRoleAlias(row.data.role) === 'civilian')
+    .map((row) => row.record)
     .filter((row) => matchesSearch([row.name, row.email, row.phone], search))
     .filter((row) => {
       if (status === 'active') return !row.disabled && row.status === 'active';
@@ -177,7 +250,12 @@ async function listCommandCenters(
 
   const snap = await query.select(...COMMAND_CENTER_SELECT).limit(MAX_SCAN).get();
   const rows = snap.docs
-    .map((doc) => mapCommandCenterRecord(doc.id, (doc.data() || {}) as Record<string, unknown>))
+    .map((doc) => ({
+      record: mapCommandCenterRecord(doc.id, (doc.data() || {}) as Record<string, unknown>),
+      deleted: (doc.data() || {}).deleted === true,
+    }))
+    .filter((row) => !row.deleted)
+    .map((row) => row.record)
     .filter((row) => matchesSearch([row.name, row.email, row.location], search))
     .sort((a, b) => toMillis(b.updatedAt || b.createdAt) - toMillis(a.updatedAt || a.createdAt));
 
@@ -185,8 +263,11 @@ async function listCommandCenters(
 }
 
 export async function listManagedAccounts(params: AccountListParams) {
-  if (params.type === 'dispatchers' || params.type === 'responders') {
-    return listStaff(params);
+  if (params.type === 'dispatchers') {
+    return listDispatchers(params);
+  }
+  if (params.type === 'responders') {
+    return listResponders(params);
   }
   if (params.type === 'civilians') {
     return listCivilians(params);

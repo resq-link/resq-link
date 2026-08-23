@@ -1,7 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import Link from 'next/link';
+import { useCallback, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { Loader2, Plus } from 'lucide-react';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
@@ -12,30 +11,40 @@ import { TablePagination } from '@/components/data-table/TablePagination';
 import { ActionMenu } from '@/components/accounts/ActionMenu';
 import { AccountStatusBadge } from '@/components/accounts/AccountStatusBadge';
 import { DetailItem, DetailList } from '@/components/accounts/DetailList';
+import { DeleteConfirmationDialog } from '@/components/admin/DeleteConfirmationDialog';
+import { TableExportMenu } from '@/components/admin/TableExportMenu';
 import { Dialog } from '@/components/ui/Dialog';
 import { Drawer } from '@/components/ui/Drawer';
 import { adminFetch } from '@/lib/adminFetch';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useAdminAgenciesList } from '@/hooks/useAgencies';
 import { useToast } from '@/components/ToastProvider';
+import { fetchAllFilteredPages, type AdminExportColumn } from '@/lib/adminExport';
 import {
   AGENCY_TYPE_OPTIONS,
   agencyTypeLabel,
+  finalizeAgencyCode,
   normalizeAgencyCode,
   type AgencyRecord,
   type AgencyType,
 } from '@/lib/agencyTypes';
 import { getStatusDisplay } from '@/lib/status';
-import { routes } from '@/lib/routes';
+
+const AGENCY_EXPORT_COLUMNS: AdminExportColumn<AgencyRecord>[] = [
+  { header: 'Agency', accessor: (row) => row.name || '—' },
+  { header: 'Code', accessor: (row) => row.code || '—' },
+  { header: 'Type', accessor: (row) => agencyTypeLabel(row.type) },
+  {
+    header: 'Status',
+    accessor: (row) => getStatusDisplay(row.isActive ? 'active' : 'disabled').label,
+  },
+];
 
 const EMPTY_FORM = {
   name: '',
   code: '',
   type: 'fire_rescue' as AgencyType,
-  description: '',
-  contactEmail: '',
   contactPhone: '',
-  address: '',
   isActive: true,
 };
 
@@ -46,8 +55,11 @@ export default function AgenciesPage() {
   const [status, setStatus] = useState('all');
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<AgencyRecord | null>(null);
+  /** Agency being edited in the modal — kept separate from `selected` so Edit does not open the drawer. */
+  const [editing, setEditing] = useState<AgencyRecord | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [deleting, setDeleting] = useState<AgencyRecord | null>(null);
   const [busy, setBusy] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const debouncedSearch = useDebouncedValue(search);
@@ -57,6 +69,34 @@ export default function AgenciesPage() {
     [debouncedSearch, page, status, type]
   );
   const list = useAdminAgenciesList(listParams);
+
+  const exportFilters = useMemo(() => {
+    const parts: string[] = [];
+    if (debouncedSearch.trim()) parts.push(`Search: ${debouncedSearch.trim()}`);
+    if (type !== 'all') parts.push(`Type: ${agencyTypeLabel(type)}`);
+    if (status !== 'all') parts.push(`Status: ${status}`);
+    return parts;
+  }, [debouncedSearch, status, type]);
+
+  const getExportRows = useCallback(async () => {
+    return fetchAllFilteredPages<AgencyRecord>({
+      pageSize: 100,
+      fetchPage: async (exportPage, pageSize) => {
+        const query = new URLSearchParams({
+          search: debouncedSearch,
+          type,
+          status,
+          page: String(exportPage),
+          pageSize: String(pageSize),
+          counts: '0',
+        });
+        const data = await adminFetch<{ items: AgencyRecord[]; total: number }>(
+          `/api/agencies?${query.toString()}`
+        );
+        return { items: data.items, total: data.total };
+      },
+    });
+  }, [debouncedSearch, status, type]);
 
   const typeOptions = useMemo(
     () => [{ value: 'all', label: 'All types' }, ...AGENCY_TYPE_OPTIONS.map((item) => ({ value: item.value, label: item.label }))],
@@ -69,18 +109,21 @@ export default function AgenciesPage() {
   };
 
   const openEdit = (agency: AgencyRecord) => {
-    setSelected(agency);
+    setEditing(agency);
     setForm({
       name: agency.name,
       code: agency.code,
       type: agency.type,
-      description: agency.description,
-      contactEmail: agency.contactEmail,
       contactPhone: agency.contactPhone,
-      address: agency.address,
       isActive: agency.isActive,
     });
     setEditOpen(true);
+  };
+
+  const closeEdit = () => {
+    if (busy) return;
+    setEditOpen(false);
+    setEditing(null);
   };
 
   const createAgency = async () => {
@@ -89,44 +132,46 @@ export default function AgenciesPage() {
       await adminFetch('/api/agencies', {
         method: 'POST',
         body: JSON.stringify({
-          ...form,
-          code: normalizeAgencyCode(form.code),
+          name: form.name,
+          code: finalizeAgencyCode(form.code),
+          type: form.type,
+          contactPhone: form.contactPhone,
+          isActive: form.isActive,
         }),
       });
-      toast.success('Agency created.');
+      toast.success('Agency created successfully.');
       setCreateOpen(false);
-      list.invalidate();
-      await list.reload();
+      await list.refresh();
     } catch (err) {
-      toast.error((err as Error).message);
+      toast.error((err as Error).message || 'Unable to create agency.');
     } finally {
       setBusy(false);
     }
   };
 
   const saveAgency = async () => {
-    if (!selected) return;
+    if (!editing) return;
     setBusy(true);
     try {
-      const data = await adminFetch<{ item: AgencyRecord }>(`/api/agencies/${encodeURIComponent(selected.code)}`, {
+      const data = await adminFetch<{ item: AgencyRecord }>(`/api/agencies/${encodeURIComponent(editing.code)}`, {
         method: 'POST',
         body: JSON.stringify({
           name: form.name,
           type: form.type,
-          description: form.description,
-          contactEmail: form.contactEmail,
           contactPhone: form.contactPhone,
-          address: form.address,
           isActive: form.isActive,
         }),
       });
-      toast.success('Agency updated.');
+      toast.success('Agency updated successfully.');
       setEditOpen(false);
-      setSelected(data.item);
-      list.invalidate();
-      await list.reload();
+      setEditing(null);
+      // Refresh drawer contents only if that agency was already open — do not open the drawer.
+      setSelected((current) => (current?.code === data.item.code ? data.item : current));
+      list.patchItem(data.item);
+      await list.refresh();
     } catch (err) {
-      toast.error((err as Error).message);
+      toast.error((err as Error).message || 'Unable to update agency.');
+      console.error('[agencies] update failed', err);
     } finally {
       setBusy(false);
     }
@@ -140,12 +185,15 @@ export default function AgenciesPage() {
         `/api/agencies/${encodeURIComponent(agency.code)}/${path}`,
         { method: 'POST', body: '{}' }
       );
-      toast.success(enable ? 'Agency enabled.' : 'Agency disabled.');
-      setSelected(data.item);
-      list.invalidate();
-      await list.reload();
+      toast.success(enable ? 'Agency enabled successfully.' : 'Agency disabled successfully.');
+      setSelected((current) => (current?.code === data.item.code ? data.item : current));
+      list.patchItem(data.item);
+      await list.refresh();
     } catch (err) {
-      toast.error((err as Error).message);
+      toast.error(
+        (err as Error).message || (enable ? 'Unable to enable agency.' : 'Unable to disable agency.')
+      );
+      console.error('[agencies] toggle failed', err);
     } finally {
       setBusy(false);
     }
@@ -163,7 +211,17 @@ export default function AgenciesPage() {
       />
 
       <div className="mb-4">
-        <TableFilters>
+        <TableFilters
+          actions={
+            <TableExportMenu
+              title="Agencies"
+              fileSlug="Agencies"
+              columns={AGENCY_EXPORT_COLUMNS}
+              getRows={getExportRows}
+              filtersSummary={exportFilters}
+            />
+          }
+        >
           <TableSearch
             label="Search agencies"
             placeholder="Search agencies..."
@@ -203,15 +261,10 @@ export default function AgenciesPage() {
           {
             key: 'agency',
             header: 'Agency',
-            render: (row) => <span className="font-medium text-slate-900">{row.name}</span>,
+            render: (row) => <span className="font-medium text-admin-fg">{row.name}</span>,
           },
           { key: 'code', header: 'Code', render: (row) => row.code },
           { key: 'type', header: 'Type', render: (row) => agencyTypeLabel(row.type) },
-          {
-            key: 'personnel',
-            header: 'Personnel',
-            render: (row) => (row.personnel ? row.personnel.total : '—'),
-          },
           {
             key: 'status',
             header: 'Status',
@@ -222,15 +275,21 @@ export default function AgenciesPage() {
             header: 'Actions',
             className: 'w-16',
             render: (row) => (
-              <ActionMenu
-                items={[
-                  { label: 'View Details', onClick: () => setSelected(row) },
-                  { label: 'Edit Agency', onClick: () => openEdit(row) },
-                  row.isActive
-                    ? { label: 'Disable Agency', onClick: () => void toggleAgency(row, false), tone: 'danger' }
-                    : { label: 'Enable Agency', onClick: () => void toggleAgency(row, true) },
-                ]}
-              />
+              <div
+                onClick={(event) => event.stopPropagation()}
+                onKeyDown={(event) => event.stopPropagation()}
+              >
+                <ActionMenu
+                  items={[
+                    { label: 'View Details', onClick: () => setSelected(row) },
+                    { label: 'Edit Agency', onClick: () => openEdit(row) },
+                    row.isActive
+                      ? { label: 'Disable Agency', onClick: () => void toggleAgency(row, false), tone: 'danger' }
+                      : { label: 'Enable Agency', onClick: () => void toggleAgency(row, true) },
+                    { label: 'Delete Agency', onClick: () => setDeleting(row), tone: 'danger' },
+                  ]}
+                />
+              </div>
             ),
           },
         ]}
@@ -243,7 +302,10 @@ export default function AgenciesPage() {
         onRowClick={setSelected}
         onRetry={() => void list.reload()}
       />
-      <TablePagination page={page} pageSize={list.pageSize} total={list.total} onPageChange={setPage} />
+      {/* Avoid "Showing 0–0 of 0" while the first fetch is still unresolved. */}
+      {!list.initialLoading ? (
+        <TablePagination page={page} pageSize={list.pageSize} total={list.total} onPageChange={setPage} />
+      ) : null}
 
       <Drawer open={Boolean(selected)} title={selected?.name || 'Agency'} onClose={() => setSelected(null)}>
         {selected ? (
@@ -255,42 +317,10 @@ export default function AgenciesPage() {
                 label="Status"
                 value={<AccountStatusBadge status={getStatusDisplay(selected.isActive ? 'active' : 'disabled')} />}
               />
-              <DetailItem label="Description" value={selected.description || '—'} />
+              <DetailItem label="Phone" value={selected.contactPhone || '—'} />
             </DetailList>
 
-            <section>
-              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Contact Information</h3>
-              <DetailList>
-                <DetailItem label="Email" value={selected.contactEmail || '—'} />
-                <DetailItem label="Phone" value={selected.contactPhone || '—'} />
-                <DetailItem label="Address" value={selected.address || '—'} />
-              </DetailList>
-            </section>
-
-            <section>
-              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Personnel Summary</h3>
-              <DetailList>
-                <DetailItem label="Dispatchers" value={selected.personnel?.dispatchers ?? '—'} />
-                <DetailItem label="Responders" value={selected.personnel?.responders ?? '—'} />
-                <DetailItem label="Total Personnel" value={selected.personnel?.total ?? '—'} />
-              </DetailList>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Link
-                  href={`${routes.admin.dispatchers}?agency=${encodeURIComponent(selected.code)}`}
-                  className="inline-flex h-9 items-center rounded-lg border border-slate-200 px-3 text-sm text-slate-700 transition-colors duration-admin hover:bg-slate-50"
-                >
-                  View Dispatchers
-                </Link>
-                <Link
-                  href={`${routes.admin.responders}?agency=${encodeURIComponent(selected.code)}`}
-                  className="inline-flex h-9 items-center rounded-lg border border-slate-200 px-3 text-sm text-slate-700 transition-colors duration-admin hover:bg-slate-50"
-                >
-                  View Responders
-                </Link>
-              </div>
-            </section>
-
-            <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-4">
+            <div className="flex flex-wrap gap-2 border-t border-admin-border pt-4">
               <Button type="button" variant="secondary" onClick={() => openEdit(selected)}>
                 Edit Agency
               </Button>
@@ -303,6 +333,9 @@ export default function AgenciesPage() {
                   Enable Agency
                 </Button>
               )}
+              <Button type="button" variant="danger" disabled={busy} onClick={() => setDeleting(selected)}>
+                Delete Agency
+              </Button>
             </div>
           </div>
         ) : null}
@@ -321,18 +354,47 @@ export default function AgenciesPage() {
         />
       </Dialog>
 
-      <Dialog open={editOpen} title="Edit Agency" onClose={() => !busy && setEditOpen(false)} widthClassName="max-w-lg">
+      <Dialog open={editOpen} title="Edit Agency" onClose={closeEdit} widthClassName="max-w-lg">
         <AgencyForm
           form={form}
           setForm={setForm}
           codeEditable={false}
           busy={busy}
-          onCancel={() => setEditOpen(false)}
+          onCancel={closeEdit}
           onSubmit={() => void saveAgency()}
           submitLabel="Save changes"
           busyLabel="Saving..."
         />
       </Dialog>
+
+      <DeleteConfirmationDialog
+        open={Boolean(deleting)}
+        title={`Delete ${deleting?.name || 'Agency'}?`}
+        entityName={deleting ? `${deleting.code}` : undefined}
+        description="Agencies with assigned staff accounts cannot be deleted. Reassign or remove those accounts first. Deleted agencies are removed from active management and cannot be assigned to new incidents or staff."
+        confirmLabel="Delete Agency"
+        busy={busy}
+        onClose={() => setDeleting(null)}
+        onConfirm={async (reason) => {
+          if (!deleting) return;
+          setBusy(true);
+          try {
+            await adminFetch(`/api/agencies/${encodeURIComponent(deleting.code)}/delete`, {
+              method: 'POST',
+              body: JSON.stringify({ reason }),
+            });
+            toast.success('Agency deleted successfully.');
+            setDeleting(null);
+            setSelected(null);
+            await list.refresh();
+          } catch (err) {
+            toast.error((err as Error).message || 'Unable to delete agency.');
+            console.error('[agencies] delete failed', err);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      />
     </>
   );
 }
@@ -348,7 +410,7 @@ function AgencyForm({
   busyLabel = 'Saving...',
 }: {
   form: typeof EMPTY_FORM;
-  setForm: (next: typeof EMPTY_FORM) => void;
+  setForm: Dispatch<SetStateAction<typeof EMPTY_FORM>>;
   codeEditable: boolean;
   busy: boolean;
   onCancel: () => void;
@@ -365,35 +427,39 @@ function AgencyForm({
       }}
     >
       <label className="block">
-        <span className="mb-1 block text-sm font-medium text-slate-700">Agency Name *</span>
+        <span className="mb-1 block text-sm font-medium text-admin-fg-muted">Agency Name *</span>
         <input
           required
           value={form.name}
-          onChange={(event) => setForm({ ...form, name: event.target.value })}
-          className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+          onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+          className="h-10 w-full rounded-lg border border-admin-border px-3 text-sm"
         />
       </label>
       <label className="block">
-        <span className="mb-1 block text-sm font-medium text-slate-700">Agency Code *</span>
+        <span className="mb-1 block text-sm font-medium text-admin-fg-muted">Agency Code *</span>
         <input
           required
           disabled={!codeEditable}
           value={form.code}
-          onChange={(event) => setForm({ ...form, code: normalizeAgencyCode(event.target.value) })}
-          className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm uppercase disabled:bg-slate-50"
+          onChange={(event) =>
+            setForm((current) => ({ ...current, code: normalizeAgencyCode(event.target.value) }))
+          }
+          className="h-10 w-full rounded-lg border border-admin-border px-3 text-sm uppercase disabled:bg-admin-muted"
           placeholder="BFP"
         />
         {!codeEditable ? (
-          <span className="mt-1 block text-xs text-slate-500">Code cannot change after creation.</span>
+          <span className="mt-1 block text-xs text-admin-fg-subtle">Code cannot change after creation.</span>
         ) : null}
       </label>
       <label className="block">
-        <span className="mb-1 block text-sm font-medium text-slate-700">Agency Type *</span>
+        <span className="mb-1 block text-sm font-medium text-admin-fg-muted">Agency Type *</span>
         <select
           required
           value={form.type}
-          onChange={(event) => setForm({ ...form, type: event.target.value as AgencyType })}
-          className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+          onChange={(event) =>
+            setForm((current) => ({ ...current, type: event.target.value as AgencyType }))
+          }
+          className="h-10 w-full rounded-lg border border-admin-border px-3 text-sm"
         >
           {AGENCY_TYPE_OPTIONS.map((item) => (
             <option key={item.value} value={item.value}>
@@ -403,45 +469,23 @@ function AgencyForm({
         </select>
       </label>
       <label className="block">
-        <span className="mb-1 block text-sm font-medium text-slate-700">Description</span>
-        <textarea
-          value={form.description}
-          onChange={(event) => setForm({ ...form, description: event.target.value })}
-          className="min-h-[80px] w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
-        />
-      </label>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block">
-          <span className="mb-1 block text-sm font-medium text-slate-700">Email</span>
-          <input
-            type="email"
-            value={form.contactEmail}
-            onChange={(event) => setForm({ ...form, contactEmail: event.target.value })}
-            className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-sm font-medium text-slate-700">Phone</span>
-          <input
-            value={form.contactPhone}
-            onChange={(event) => setForm({ ...form, contactPhone: event.target.value })}
-            className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
-          />
-        </label>
-      </div>
-      <label className="block">
-        <span className="mb-1 block text-sm font-medium text-slate-700">Address</span>
+        <span className="mb-1 block text-sm font-medium text-admin-fg-muted">Phone</span>
         <input
-          value={form.address}
-          onChange={(event) => setForm({ ...form, address: event.target.value })}
-          className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm"
+          value={form.contactPhone}
+          onChange={(event) =>
+            setForm((current) => ({ ...current, contactPhone: event.target.value }))
+          }
+          className="h-10 w-full rounded-lg border border-admin-border px-3 text-sm"
+          placeholder="Optional"
         />
       </label>
-      <label className="flex items-center gap-2 text-sm text-slate-700">
+      <label className="flex items-center gap-2 text-sm text-admin-fg-muted">
         <input
           type="checkbox"
           checked={form.isActive}
-          onChange={(event) => setForm({ ...form, isActive: event.target.checked })}
+          onChange={(event) =>
+            setForm((current) => ({ ...current, isActive: event.target.checked }))
+          }
         />
         Active
       </label>
