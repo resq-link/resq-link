@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,9 @@ import {
   ScrollView,
   Image,
   Alert,
+  KeyboardAvoidingView,
+  Keyboard,
+  Platform,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -74,6 +77,9 @@ export default function RegisterScreen() {
   const [showHeaderBorder, setShowHeaderBorder] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [keyboardInset, setKeyboardInset] = useState(0);
+  const scrollRef = useRef(null);
+  const phoneFieldY = useRef(0);
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -97,6 +103,32 @@ export default function RegisterScreen() {
 
   const canSubmit = Boolean(govIdType && idPhotoUri && acceptedLegal);
 
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const showSubscription = Keyboard.addListener(showEvent, (event) => {
+      setKeyboardInset(event.endCoordinates.height);
+    });
+    const hideSubscription = Keyboard.addListener(hideEvent, () => {
+      setKeyboardInset(0);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
+
+  const scrollFieldIntoView = (fieldY) => {
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({
+        y: Math.max(0, fieldY - 24),
+        animated: true,
+      });
+    });
+  };
+
   if (!fontsLoaded) {
     return null;
   }
@@ -105,30 +137,51 @@ export default function RegisterScreen() {
     setLocating(true);
     setError("");
     try {
+      const servicesEnabled = await Location.hasServicesEnabledAsync();
+      if (!servicesEnabled) {
+        setError("Turn on Location Services in your device settings, then try again.");
+        return;
+      }
+
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         setError("Location permission is required to fill your address.");
         return;
       }
-      const position = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      const [place] = await Location.reverseGeocodeAsync(position.coords);
-      if (!place) {
-        setError("Could not resolve an address from your location.");
-        return;
+
+      let position = await Location.getLastKnownPositionAsync();
+      if (!position) {
+        position = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
       }
-      const parts = [
-        place.name,
-        place.street,
-        place.district,
-        place.subregion,
-        place.city,
-        place.region,
-        place.postalCode,
-      ].filter(Boolean);
-      const unique = [...new Set(parts)];
-      setAddress(unique.join(", "));
+
+      const { latitude, longitude } = position.coords;
+      let resolvedAddress = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+
+      try {
+        const places = await Location.reverseGeocodeAsync({ latitude, longitude });
+        const place = places?.[0];
+        if (place) {
+          const parts = [
+            place.name,
+            place.street,
+            place.district,
+            place.subregion,
+            place.city,
+            place.region,
+            place.postalCode,
+          ].filter(Boolean);
+          const unique = [...new Set(parts)];
+          if (unique.length > 0) {
+            resolvedAddress = unique.join(", ");
+          }
+        }
+      } catch (geocodeError) {
+        console.error("Reverse geocoding error:", geocodeError);
+      }
+
+      setAddress(resolvedAddress);
     } catch (err) {
       setError(err.message || "Failed to get current location.");
     } finally {
@@ -334,21 +387,28 @@ export default function RegisterScreen() {
         </Text>
       </View>
 
-      <ScrollView
+      <KeyboardAvoidingView
         style={{ flex: 1 }}
-        contentContainerStyle={{
-          flexGrow: 1,
-          paddingHorizontal: 16,
-          paddingTop: insets.top + 180,
-          paddingBottom: insets.bottom + 24,
-        }}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        onScroll={(event) => {
-          setShowHeaderBorder(event.nativeEvent.contentOffset.y > 0);
-        }}
-        scrollEventThrottle={16}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 8 : 0}
       >
+        <ScrollView
+          ref={scrollRef}
+          style={{ flex: 1 }}
+          contentContainerStyle={{
+            flexGrow: 1,
+            paddingHorizontal: 16,
+            paddingTop: insets.top + 180,
+            paddingBottom: insets.bottom + keyboardInset + 24,
+          }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
+          onScroll={(event) => {
+            setShowHeaderBorder(event.nativeEvent.contentOffset.y > 0);
+          }}
+          scrollEventThrottle={16}
+        >
         <ErrorAlert
           message={error}
           onDismiss={() => setError("")}
@@ -398,6 +458,9 @@ export default function RegisterScreen() {
             </Text>
             <TouchableOpacity
               disabled={locating}
+              onPress={handleUseCurrentLocation}
+              accessibilityRole="button"
+              accessibilityLabel="Use current location"
               style={{
                 flexDirection: "row",
                 alignItems: "center",
@@ -417,15 +480,22 @@ export default function RegisterScreen() {
                 {locating ? "Getting location..." : "Use current location"}
               </Text>
             </TouchableOpacity>
-            <FormInput
-              label="Philippine Phone Number"
-              placeholder="+639171234567"
-              value={phoneNumber}
-              onChangeText={setPhoneNumber}
-              keyboardType="phone-pad"
-              variant="register"
-              required
-            />
+            <View
+              onLayout={(event) => {
+                phoneFieldY.current = event.nativeEvent.layout.y;
+              }}
+            >
+              <FormInput
+                label="Philippine Phone Number"
+                placeholder="+639171234567"
+                value={phoneNumber}
+                onChangeText={setPhoneNumber}
+                keyboardType="phone-pad"
+                variant="register"
+                required
+                onFocus={() => scrollFieldIntoView(phoneFieldY.current)}
+              />
+            </View>
             <CustomButton
               title="Continue"
               onPress={goNext}
@@ -674,7 +744,8 @@ export default function RegisterScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }

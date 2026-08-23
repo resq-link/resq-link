@@ -15,6 +15,8 @@ export default function FormInput({
   required = false,
   variant = "login",
   style,
+  onFocus,
+  onBlur,
   ...props
 }) {
   const { authTheme: theme } = useAppTheme();
@@ -55,8 +57,14 @@ export default function FormInput({
           placeholderTextColor={theme.mutedText}
           value={value}
           onChangeText={onChangeText}
-          onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+          onFocus={(event) => {
+            setFocused(true);
+            onFocus?.(event);
+          }}
+          onBlur={(event) => {
+            setFocused(false);
+            onBlur?.(event);
+          }}
           secureTextEntry={secureTextEntry && !showPassword}
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
