@@ -55,9 +55,16 @@ const isAnythingApp =
   Platform.OS !== "web" &&
   process.env.EXPO_PUBLIC_IS_ANYTHING_APP === JSON.stringify(true);
 
-const AnythingLauncher = isAnythingApp
-  ? requireNativeModule<AnythingLauncherModule>("AnythingLauncherModule")
-  : null;
+// Never call requireNativeModule in production RESQ-Link builds — missing
+// AnythingLauncherModule aborts the process via TurboModule SIGABRT.
+const AnythingLauncher = (() => {
+  if (!isAnythingApp) return null;
+  try {
+    return requireNativeModule<AnythingLauncherModule>("AnythingLauncherModule");
+  } catch {
+    return null;
+  }
+})();
 
 const RefreshIcon = memo(() => {
   return (

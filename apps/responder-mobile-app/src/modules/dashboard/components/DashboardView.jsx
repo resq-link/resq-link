@@ -200,6 +200,7 @@ export default function DashboardView() {
 
   const onRefresh = () => setRefreshing(true);
   const handleCasePress = (caseData) => {
+    if (!caseData?.id) return;
     router.push(`/incident/${caseData.id}`);
   };
   const handleCaseStatusUpdate = (caseId, status) => {

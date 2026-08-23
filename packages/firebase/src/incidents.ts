@@ -1438,7 +1438,18 @@ export function subscribeToResponderAssignedIncidents(
     const q = query(collection(db, 'incidents'), ...constraints);
     
     return onSnapshot(q, (snapshot) => {
-      const incidents = snapshot.docs.map(doc => doc.data() as IncidentRecord);
+      // Always derive `id` from the document path — createIncident does not
+      // persist `id` inside the document body, so doc.data().id is often missing.
+      const incidents = snapshot.docs
+        .map((item) => {
+          try {
+            return toIncidentRecord(item);
+          } catch (error) {
+            console.error('Failed to normalize assigned incident', item.id, error);
+            return null;
+          }
+        })
+        .filter((incident): incident is IncidentRecord => Boolean(incident));
       callback(incidents);
     }, (error) => {
       console.error('Error in incident subscription:', error);
@@ -1527,7 +1538,7 @@ export async function acceptIncident(incidentId: string): Promise<IncidentRecord
   await updateResourcesForIncidentStatus(incidentId, 'en_route');
   
   const updatedSnap = await getDoc(incidentRef);
-  return updatedSnap.data() as IncidentRecord;
+  return toIncidentRecord(updatedSnap);
 }
 
 export async function markIncidentTouchdown(
@@ -1573,7 +1584,7 @@ export async function markIncidentTouchdown(
   await updateResourcesForIncidentStatus(incidentId, 'on_scene');
   
   const updatedSnap = await getDoc(incidentRef);
-  return updatedSnap.data() as IncidentRecord;
+  return toIncidentRecord(updatedSnap);
 }
 
 export async function submitPostIncidentReportForIncident(
@@ -1624,7 +1635,7 @@ export async function submitPostIncidentReportForIncident(
   await propagateIncidentUpdatesToReports(incidentId, updateData);
   
   const updatedSnap = await getDoc(incidentRef);
-  return updatedSnap.data() as IncidentRecord;
+  return toIncidentRecord(updatedSnap);
 }
 
 export async function updateIncidentCaseStatus(
@@ -1664,7 +1675,7 @@ export async function updateIncidentCaseStatus(
   );
   
   const updatedSnap = await getDoc(incidentRef);
-  return updatedSnap.data() as IncidentRecord;
+  return toIncidentRecord(updatedSnap);
 }
 // Append this to incidents.ts
 export async function declineIncident(
@@ -1694,7 +1705,7 @@ export async function declineIncident(
   await propagateIncidentUpdatesToReports(incidentId, { status: updateData.status });
   
   const updatedSnap = await getDoc(incidentRef);
-  return updatedSnap.data() as IncidentRecord;
+  return toIncidentRecord(updatedSnap);
 }
 
 

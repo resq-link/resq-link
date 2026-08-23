@@ -143,10 +143,26 @@ export async function playPriorityAlert(priority, options = {}) {
  * Deliberately keyed to the signed-in responder rather than the incident's
  * dispatcher-side `alertAcknowledged`: a dispatcher clearing their console must
  * not silence a phone in the field.
+ *
+ * Only newly assigned / not-yet-accepted work should alarm. Cases already
+ * en route or on scene are being handled — spamming CRITICAL over the detail
+ * screen is noise, not a safety signal.
  */
 export function shouldAlertForIncident(incident, responderId) {
   if (!incident) return false;
   if (hasResponderAcknowledgedAlert(incident, responderId)) return false;
+
+  const status = String(incident.status || "").toLowerCase();
+  if (
+    status === "enroute" ||
+    status === "on_scene" ||
+    status === "resolved" ||
+    status === "done" ||
+    status === "unresolved"
+  ) {
+    return false;
+  }
+
   const priority = normalizePriority(incident.priority);
   return priority === "critical" || priority === "high" || priority === "medium";
 }

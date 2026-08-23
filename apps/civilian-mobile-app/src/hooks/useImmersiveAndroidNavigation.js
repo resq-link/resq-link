@@ -1,8 +1,15 @@
 import { useEffect, useRef } from "react";
 import { AppState, Keyboard, Platform } from "react-native";
-import * as NavigationBar from "expo-navigation-bar";
 
 const REHIDE_DELAY_MS = 150;
+
+async function getNavigationBar() {
+  if (Platform.OS !== "android") {
+    return null;
+  }
+  // Lazy-load so iOS never touches this TurboModule at import time.
+  return import("expo-navigation-bar");
+}
 
 /**
  * Hides the Android system navigation bar so RESQ-Link custom bottom nav is
@@ -15,6 +22,8 @@ export async function applyImmersiveAndroidNavigationBar() {
   }
 
   try {
+    const NavigationBar = await getNavigationBar();
+    if (!NavigationBar) return;
     await NavigationBar.setVisibilityAsync("hidden");
   } catch (error) {
     if (__DEV__) {
@@ -23,6 +32,8 @@ export async function applyImmersiveAndroidNavigationBar() {
   }
 
   try {
+    const NavigationBar = await getNavigationBar();
+    if (!NavigationBar) return;
     await NavigationBar.setStyle("dark");
   } catch (error) {
     if (__DEV__) {
@@ -43,6 +54,8 @@ export function useImmersiveAndroidNavigation() {
       return undefined;
     }
 
+    let visibilitySubscription = null;
+
     const scheduleRehide = () => {
       if (rehideTimerRef.current) {
         clearTimeout(rehideTimerRef.current);
@@ -60,13 +73,18 @@ export function useImmersiveAndroidNavigation() {
       }
     });
 
-    const visibilitySubscription = NavigationBar.addVisibilityListener(
-      ({ visibility }) => {
-        if (visibility === "visible") {
-          scheduleRehide();
-        }
-      }
-    );
+    getNavigationBar()
+      .then((NavigationBar) => {
+        if (!NavigationBar?.addVisibilityListener) return;
+        visibilitySubscription = NavigationBar.addVisibilityListener(
+          ({ visibility }) => {
+            if (visibility === "visible") {
+              scheduleRehide();
+            }
+          }
+        );
+      })
+      .catch(() => {});
 
     const keyboardSubscription = Keyboard.addListener(
       "keyboardDidHide",
@@ -75,7 +93,7 @@ export function useImmersiveAndroidNavigation() {
 
     return () => {
       appStateSubscription.remove();
-      visibilitySubscription.remove();
+      visibilitySubscription?.remove?.();
       keyboardSubscription.remove();
       if (rehideTimerRef.current) {
         clearTimeout(rehideTimerRef.current);

@@ -111,17 +111,18 @@ export default function IncidentAlertModal({
           <Text style={[styles.title, { color: colors.text }]}>
             {incident.incidentTypeLabel ||
               incident.incidentSubtypeLabel ||
+              incident.incidentCategory ||
               "New incident assigned"}
           </Text>
 
-          {incident.address || incident.barangay ? (
+          {incident.locationText || incident.address || incident.barangay ? (
             <View style={styles.locationRow}>
               <MapPin size={15} color={colors.textSecondary} />
               <Text
                 style={[styles.location, { color: colors.textSecondary }]}
                 numberOfLines={2}
               >
-                {incident.address || incident.barangay}
+                {incident.locationText || incident.address || incident.barangay}
               </Text>
             </View>
           ) : null}

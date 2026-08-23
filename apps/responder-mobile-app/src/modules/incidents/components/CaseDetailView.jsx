@@ -15,10 +15,18 @@ import {
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
 import { useFonts } from "expo-font";
-import { getDoc, doc, getFirebaseFirestore, onSnapshot } from "@packages/firebase";
+import {
+  getDoc,
+  doc,
+  getFirebaseFirestore,
+  onSnapshot,
+  acknowledgeIncidentAlert,
+} from "@packages/firebase";
 import CaseInfoCard from "@/modules/incidents/components/CaseInfoCard";
 import CaseDetailSkeleton from "@/modules/incidents/components/CaseDetailSkeleton";
 import ErrorAlert from "@/components/feedback/ErrorAlert";
+import { dismissIncidentNotifications } from "@/services/pushNotificationService";
+import { stopPriorityAlerts } from "@/services/priorityAlertService";
 import { spacing, useResqTheme } from "@/theme";
 
 const toDateValue = (value) => {
@@ -53,8 +61,26 @@ export default function CaseDetailView() {
     Inter_700Bold,
   });
 
+  // Opening a case is proof the responder saw the assignment — silence the alarm.
   useEffect(() => {
-    if (!caseId) {
+    if (!caseId || caseId === "undefined" || caseId === "null") return;
+    let cancelled = false;
+    (async () => {
+      try {
+        await stopPriorityAlerts();
+        await acknowledgeIncidentAlert(caseId);
+        if (!cancelled) void dismissIncidentNotifications(caseId);
+      } catch {
+        // Non-fatal: detail screen should still load even if ack write fails.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [caseId]);
+
+  useEffect(() => {
+    if (!caseId || caseId === "undefined" || caseId === "null") {
       setError("Case ID is missing");
       setLoading(false);
       return;

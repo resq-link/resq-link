@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "expo-router";
 import useUserStore from "@/store/userStore";
 import { useAssignedEmergencies } from "@/modules/incidents/hooks/useAssignedEmergencies";
 import {
@@ -40,6 +41,7 @@ export const useIncidentAlert = () => useContext(IncidentAlertContext);
  */
 export default function PriorityAlertProvider({ children }) {
   const { user } = useUserStore();
+  const pathname = usePathname();
   const { cases } = useAssignedEmergencies(user?.uid);
   const [isAcknowledging, setIsAcknowledging] = useState(false);
   const alarmingIdRef = useRef(null);
@@ -52,18 +54,27 @@ export default function PriorityAlertProvider({ children }) {
     void registerForIncidentPush().catch(() => {});
   }, [user?.uid]);
 
+  const viewingIncidentId = useMemo(() => {
+    const match = typeof pathname === "string" ? pathname.match(/\/incident\/([^/?#]+)/) : null;
+    const id = match?.[1] ? decodeURIComponent(match[1]) : null;
+    if (!id || id === "undefined" || id === "null") return null;
+    return id;
+  }, [pathname]);
+
   /** Unacknowledged, still-open incidents assigned to this responder. */
   const alertingCases = useMemo(() => {
     if (!user?.uid) return [];
     return cases
       .filter((c) => c.resolutionStatus === "open" && c.status !== "resolved")
       .filter((c) => c.id && shouldAlertForIncident(c, user.uid))
+      // Don't cover the case detail screen with the same incident's alarm sheet.
+      .filter((c) => c.id !== viewingIncidentId)
       .sort(
         (a, b) =>
           (PRIORITY_RANK[normalizePriority(b.priority)] ?? 0) -
           (PRIORITY_RANK[normalizePriority(a.priority)] ?? 0)
       );
-  }, [cases, user?.uid]);
+  }, [cases, user?.uid, viewingIncidentId]);
 
   const activeAlert = alertingCases[0] ?? null;
 
