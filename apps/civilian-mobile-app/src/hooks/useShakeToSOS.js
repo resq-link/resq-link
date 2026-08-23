@@ -8,11 +8,11 @@ import useUserStore from "@/stores/userStore";
 import useSOSStore from "@/stores/sosStore";
 import { HIDE_NAV_SCREENS } from "@/constants/routes";
 
-const UPDATE_INTERVAL_MS = 100;
-const SHAKE_THRESHOLD = 10;
-const SHAKE_WINDOW_MS = 1200;
-const REQUIRED_SHAKES = 5;
-const SHAKE_MIN_GAP_MS = 180;
+const UPDATE_INTERVAL_MS = 50;
+const SHAKE_THRESHOLD = 4.5;
+const SHAKE_WINDOW_MS = 2000;
+const REQUIRED_SHAKES = 3;
+const SHAKE_MIN_GAP_MS = 120;
 const SHAKE_COOLDOWN_MS = 15000;
 
 function isShakeScreen(pathname) {
@@ -76,7 +76,7 @@ export function useShakeToSOS() {
       lastReadingRef.current = { x, y, z, time: now };
 
       const isStrongShake =
-        speed > SHAKE_THRESHOLD && magnitude > 1.8;
+        speed > SHAKE_THRESHOLD && magnitude > 1.25;
 
       if (!isStrongShake) return;
       if (now - lastTriggerRef.current < SHAKE_COOLDOWN_MS) return;
