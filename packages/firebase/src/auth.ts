@@ -8,7 +8,17 @@ import {
   signInWithCredential,
   ConfirmationResult,
 } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import {
+  doc,
+  setDoc,
+  serverTimestamp,
+  getDoc,
+  collection,
+  getDocs,
+  query,
+  where,
+  onSnapshot,
+} from 'firebase/firestore';
 import { getFirebaseAuth, getFirebaseFirestore } from './config';
 import { firebaseInfo } from './logger';
 import { uploadImageToStorage } from './storage';
@@ -339,6 +349,66 @@ export interface CivilianUserProfile {
   updatedAt?: any;
 }
 
+function parseCivilianUserProfile(
+  uid: string,
+  profileData: Record<string, unknown>,
+  fallbacks?: { email?: string; phone?: string }
+): CivilianUserProfile {
+  const displayName =
+    (typeof profileData.name === 'string' && profileData.name) ||
+    (typeof profileData.fullName === 'string' && profileData.fullName) ||
+    '';
+  const rawStatus = profileData.status;
+  const status: CivilianAccountStatus =
+    rawStatus === 'pending_email_verification' ||
+    rawStatus === 'pending_kyc_review' ||
+    rawStatus === 'rejected' ||
+    rawStatus === 'active'
+      ? rawStatus
+      : 'active';
+
+  return {
+    uid,
+    name: displayName,
+    firstName: typeof profileData.firstName === 'string' ? profileData.firstName : undefined,
+    lastName: typeof profileData.lastName === 'string' ? profileData.lastName : undefined,
+    phone: (profileData.phone as string) || fallbacks?.phone || '',
+    email: (profileData.email as string) || fallbacks?.email || '',
+    role: (profileData.role as string) || 'civilian',
+    status,
+    govIdType: typeof profileData.govIdType === 'string' ? profileData.govIdType : undefined,
+    govIdFrontUrl: typeof profileData.govIdFrontUrl === 'string' ? profileData.govIdFrontUrl : undefined,
+    kycRejectionReason:
+      typeof profileData.kycRejectionReason === 'string' ? profileData.kycRejectionReason : undefined,
+    createdAt: profileData.createdAt,
+    updatedAt: profileData.updatedAt,
+  };
+}
+
+/**
+ * Real-time listener for civilian profile status changes (e.g. KYC approval).
+ */
+export function subscribeToCivilianUserProfile(
+  uid: string,
+  callback: (profile: CivilianUserProfile | null) => void,
+  onError?: (error: Error) => void
+): () => void {
+  const userDocRef = doc(getFirebaseFirestore(), 'users', uid);
+  return onSnapshot(
+    userDocRef,
+    (snapshot) => {
+      if (!snapshot.exists()) {
+        callback(null);
+        return;
+      }
+      callback(parseCivilianUserProfile(uid, snapshot.data() || {}));
+    },
+    (error) => {
+      onError?.(error as Error);
+    }
+  );
+}
+
 /**
  * Sign in civilian user with email and password and fetch profile from Firestore
  * @param email - Email address
@@ -375,35 +445,10 @@ export async function signInCivilian(
       userDoc = await getDoc(userDocRef);
     }
 
-    const profileData = userDoc.data() || {};
-    const displayName =
-      (typeof profileData.name === 'string' && profileData.name) ||
-      (typeof profileData.fullName === 'string' && profileData.fullName) ||
-      '';
-    const rawStatus = profileData.status;
-    const status: CivilianAccountStatus =
-      rawStatus === 'pending_email_verification' ||
-      rawStatus === 'pending_kyc_review' ||
-      rawStatus === 'rejected' ||
-      rawStatus === 'active'
-        ? rawStatus
-        : 'active';
-    const profile: CivilianUserProfile = {
-      uid: user.uid,
-      name: displayName,
-      firstName: typeof profileData.firstName === 'string' ? profileData.firstName : undefined,
-      lastName: typeof profileData.lastName === 'string' ? profileData.lastName : undefined,
-      phone: (profileData.phone as string) || user.phoneNumber || '',
-      email: (profileData.email as string) || user.email || normalizedEmail,
-      role: (profileData.role as string) || 'civilian',
-      status,
-      govIdType: typeof profileData.govIdType === 'string' ? profileData.govIdType : undefined,
-      govIdFrontUrl: typeof profileData.govIdFrontUrl === 'string' ? profileData.govIdFrontUrl : undefined,
-      kycRejectionReason:
-        typeof profileData.kycRejectionReason === 'string' ? profileData.kycRejectionReason : undefined,
-      createdAt: profileData.createdAt,
-      updatedAt: profileData.updatedAt,
-    };
+    const profile = parseCivilianUserProfile(user.uid, userDoc.data() || {}, {
+      email: user.email || normalizedEmail,
+      phone: user.phoneNumber || '',
+    });
 
     firebaseInfo('User authenticated');
     return { user, profile };

@@ -35,6 +35,7 @@ export {
   signInDispatcher,
   signInCommandCenter,
   signInCivilian,
+  subscribeToCivilianUserProfile,
   registerCivilian,
   GOV_ID_TYPES,
   getAllDispatchers,
