@@ -39,9 +39,28 @@ const getEnv = (name) =>
   localEnv[`NEXT_PUBLIC_${name}`] ||
   '';
 
+const navigationBarPlugin = [
+  'expo-navigation-bar',
+  {
+    visibility: 'hidden',
+    backgroundColor: '#00000000',
+  },
+];
+
 module.exports = ({ config }) => {
   const baseConfig = config;
   const googleMapsApiKey = getEnv('GOOGLE_MAPS_API_KEY');
+  const isAndroidBuild = process.env.EAS_BUILD_PLATFORM === 'android';
+
+  const plugins = (baseConfig.plugins ?? []).filter((plugin) => {
+    const name = Array.isArray(plugin) ? plugin[0] : plugin;
+    return name !== 'expo-navigation-bar';
+  });
+
+  if (isAndroidBuild) {
+    plugins.push(navigationBarPlugin);
+  }
+
   const androidConfig = googleMapsApiKey
     ? {
         ...baseConfig.android,
@@ -57,6 +76,7 @@ module.exports = ({ config }) => {
 
   return {
     ...baseConfig,
+    plugins,
     ios: {
       ...baseConfig.ios,
       bundleIdentifier: 'com.tuguegarao.resqlink.responder',

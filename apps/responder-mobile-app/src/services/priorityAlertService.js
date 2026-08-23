@@ -6,6 +6,7 @@ import {
   normalizePriority,
   requiresRepeatingAlert,
 } from "@packages/firebase";
+import { shouldPlayCaseAlert } from "@/services/notificationSettingsService";
 
 /**
  * Tiered field alerts for newly assigned incidents.
@@ -173,5 +174,6 @@ export function shouldAlertForIncident(incident, responderId, options = {}) {
   }
 
   const priority = normalizePriority(incident.priority);
+  if (!shouldPlayCaseAlert(priority)) return false;
   return priority === "critical" || priority === "high" || priority === "medium";
 }

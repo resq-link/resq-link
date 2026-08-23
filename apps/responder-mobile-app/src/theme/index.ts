@@ -23,7 +23,10 @@ export const radii = {
   md: 8,
   lg: 12,
   xl: 16,
+  pill: 999,
 };
+
+export { typography } from "./typography";
 
 export {
   dashboardThemeDark,

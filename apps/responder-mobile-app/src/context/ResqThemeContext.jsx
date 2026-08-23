@@ -22,6 +22,7 @@ export function buildSemanticColors(t) {
   return {
     background: t.bg,
     surface: t.surface,
+    surfaceCard: t.surfaceCard,
     surfaceElevated: t.surfaceCard,
     surfaceHighlight: t.surfaceCardHover,
     border: t.borderSolid,
@@ -29,6 +30,7 @@ export function buildSemanticColors(t) {
     textSecondary: t.textSecondary,
     textMuted: t.textMuted,
     accent: t.accent,
+    accentSubtle: t.accentSubtle,
     accentDim: t.accentDim,
     critical: t.critical,
     success: t.success,

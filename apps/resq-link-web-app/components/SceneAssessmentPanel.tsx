@@ -7,7 +7,6 @@ import {
   getSceneAssessmentEntries,
   hasResponderSceneAssessment,
 } from '@packages/firebase';
-import IncidentScenePhotos from '@/components/incident-media/IncidentScenePhotos';
 
 type SceneAssessmentPanelProps = {
   assessment: ResponderAssessmentRecord | null | undefined;
@@ -15,8 +14,6 @@ type SceneAssessmentPanelProps = {
   isLoading?: boolean;
   error?: string | null;
   onRetry?: () => void;
-  /** When the on-scene photo is shown in Post Report, hide it here to avoid duplication */
-  hideScenePhoto?: boolean;
 };
 
 const getDateLabel = (value: unknown) => {
@@ -36,7 +33,6 @@ export default function SceneAssessmentPanel({
   isLoading = false,
   error = null,
   onRetry,
-  hideScenePhoto = false,
 }: SceneAssessmentPanelProps) {
   const entries = useMemo(
     () => getSceneAssessmentEntries(assessment, incidentType),
@@ -47,23 +43,23 @@ export default function SceneAssessmentPanel({
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[120px] items-center justify-center gap-2 rounded-lg border border-dashed border-slate-800 bg-slate-950/40 p-4 text-slate-500">
-        <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
-        <span className="text-xs font-medium">Loading assessment…</span>
+      <div className="flex h-full min-h-[7rem] items-center justify-center gap-2 rounded-md border border-dashed border-slate-800 bg-slate-950/40 px-3 py-3 text-slate-500">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+        <span className="text-[11px] font-medium">Loading assessment…</span>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex min-h-[120px] flex-col items-center justify-center rounded-lg border border-dashed border-red-900/40 bg-red-950/20 p-4 text-center">
-        <p className="text-sm font-medium text-red-300">Unable to load scene assessment</p>
-        <p className="mt-1 text-xs text-slate-500">{error}</p>
+      <div className="flex h-full min-h-[7rem] flex-col items-center justify-center rounded-md border border-dashed border-red-900/40 bg-red-950/20 px-3 py-3 text-center">
+        <p className="text-xs font-medium text-red-300">Unable to load scene assessment</p>
+        <p className="mt-0.5 text-[10px] text-slate-500">{error}</p>
         {onRetry ? (
           <button
             type="button"
             onClick={onRetry}
-            className="mt-3 text-[10px] font-bold uppercase tracking-widest text-emerald-400 hover:text-emerald-300"
+            className="mt-2 text-[10px] font-bold uppercase tracking-widest text-emerald-400 hover:text-emerald-300"
           >
             Retry
           </button>
@@ -74,66 +70,44 @@ export default function SceneAssessmentPanel({
 
   if (!hasAssessment) {
     return (
-      <div className="flex min-h-[180px] flex-col items-center justify-center rounded-lg border border-dashed border-slate-800 bg-slate-950/40 p-4 text-center">
-        <AlertTriangle className="mb-2 h-7 w-7 text-slate-700" aria-hidden="true" />
-        <p className="text-sm font-medium text-slate-400">No on-scene assessment yet</p>
-        <p className="mt-1 text-xs text-slate-500">
-          Responder scene assessment will appear here once submitted.
-        </p>
+      <div className="flex h-full min-h-[7rem] flex-col items-center justify-center rounded-md border border-dashed border-slate-800 bg-slate-950/40 px-3 py-3 text-center">
+        <div className="mb-1 flex items-center justify-center gap-1.5 text-slate-500">
+          <AlertTriangle className="h-3.5 w-3.5" aria-hidden="true" />
+          <p className="text-xs font-medium text-slate-400">No scene assessment yet</p>
+        </div>
+        <p className="text-[10px] text-slate-500">Appears here once the responder submits.</p>
       </div>
     );
   }
 
   return (
-    <div>
-      {assessment?.updatedAt || (assessment?.updatedByName && !assessment?.scenePhotoUrl) ? (
-        <div className="mb-3 space-y-0.5 text-xs text-emerald-400">
-          {assessment.updatedByName && !assessment.scenePhotoUrl ? (
-            <p>
+    <div className="flex h-full min-h-0 flex-col space-y-2">
+      {(assessment?.updatedAt || assessment?.updatedByName) && (
+        <p className="text-[11px] leading-snug text-emerald-400/90">
+          {assessment.updatedByName ? (
+            <>
               Submitted by{' '}
               <span className="font-medium text-emerald-300">{assessment.updatedByName}</span>
-            </p>
-          ) : null}
+            </>
+          ) : (
+            'Submitted'
+          )}
           {assessment.updatedAt ? (
-            <p className="text-slate-500">Submitted {getDateLabel(assessment.updatedAt)}</p>
+            <span className="text-slate-500"> · {getDateLabel(assessment.updatedAt)}</span>
           ) : null}
-        </div>
-      ) : null}
+        </p>
+      )}
 
-      <div className="grid w-full grid-cols-[minmax(6.5rem,auto)_1fr] items-start gap-x-4 gap-y-3 text-[13px] leading-snug">
+      <div className="grid w-full grid-cols-[minmax(6rem,auto)_1fr] items-start gap-x-3 gap-y-1 text-xs leading-snug">
         {entries.map((field) => (
           <div key={field.key} className="contents">
-            <span className="font-medium text-slate-500">{field.label}</span>
+            <span className="text-slate-500">{field.label}</span>
             <span className="min-w-0 break-words text-right font-medium text-slate-100">
               {field.value}
             </span>
           </div>
         ))}
       </div>
-
-      {!hideScenePhoto ? (
-        <div className="mt-4 border-t border-slate-800/80 pt-3">
-          {assessment?.scenePhotoUrl ? (
-            <div>
-              <IncidentScenePhotos
-                imageUrls={[assessment.scenePhotoUrl]}
-                title="On-Scene Photo"
-                layout="row"
-                emptyMessage=""
-                photoAltLabel="On-scene photo"
-              />
-              {assessment.updatedByName ? (
-                <p className="mt-1 text-[10px] text-slate-500">
-                  By{' '}
-                  <span className="font-medium text-slate-400">{assessment.updatedByName}</span>
-                </p>
-              ) : null}
-            </div>
-          ) : (
-            <p className="text-[11px] italic text-slate-500">No on-scene photo submitted.</p>
-          )}
-        </div>
-      ) : null}
     </div>
   );
 }

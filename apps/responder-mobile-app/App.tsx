@@ -2,7 +2,6 @@ import { usePathname, useRouter } from 'expo-router';
 import { App } from 'expo-router/build/qualified-entry';
 import React, { memo, useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Toaster } from 'sonner-native';
 import './global.css';
 
 const GlobalErrorReporter = () => {
@@ -43,7 +42,6 @@ const Wrapper = memo(() => {
     >
       <App />
       <GlobalErrorReporter />
-      <Toaster />
     </SafeAreaProvider>
   );
 });

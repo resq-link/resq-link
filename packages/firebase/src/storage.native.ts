@@ -72,7 +72,9 @@ async function uploadViaRestApi(
 
   if (result.status < 200 || result.status >= 300) {
     const snippet = String(result.body || '').slice(0, 240);
-    throw new Error(`Storage upload failed (${result.status})${snippet ? `: ${snippet}` : ''}`);
+    throw new Error(
+      `Storage upload failed (${result.status}) for ${storagePath}${snippet ? `: ${snippet}` : ''}`
+    );
   }
 
   let payload: { name?: string; downloadTokens?: string };

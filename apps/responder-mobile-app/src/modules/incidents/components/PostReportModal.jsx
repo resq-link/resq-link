@@ -170,7 +170,7 @@ export default function PostReportModal({
                     Post Report
                   </Text>
                   <Text style={[styles.modalDescription, { color: colors.textSecondary }]}>
-                    Final scene outcome and handover notes.
+                    What We Did — document actions taken and scene resolution.
                   </Text>
                 </View>
               </View>
@@ -437,13 +437,16 @@ export default function PostReportModal({
               <View style={styles.sectionHeader}>
                 <Camera size={17} color={colors.accent} />
                 <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-                  Response Evidence
+                  Action Evidence
                 </Text>
               </View>
+              <Text style={[styles.evidenceHint, { color: colors.textMuted }]}>
+                Photo documenting responder actions or completed operations.
+              </Text>
 
               <IncidentPhotoField
                 label="Action Photo"
-                hint="Document the response action performed on scene."
+                hint="Document response actions or completed operations."
                 noun="action photo"
                 uri={form.actionPhotoUri}
                 onChange={handleActionPhotoChange}
@@ -598,6 +601,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textTransform: "uppercase",
     letterSpacing: 0.8,
+  },
+  evidenceHint: {
+    fontFamily: "Inter_400Regular",
+    fontSize: 12,
+    lineHeight: 17,
+    marginBottom: spacing.md,
+    marginTop: -4,
   },
   divider: {
     height: 1,

@@ -29,6 +29,7 @@ import { useDispatcherData } from "@/contexts/DispatcherDataContext";
 import PostIncidentReportPhotos from "@/components/PostIncidentReportPhotos";
 import IncidentScenePhotos from "@/components/incident-media/IncidentScenePhotos";
 import SceneAssessmentPanel from "@/components/SceneAssessmentPanel";
+import TouchdownArrivalPanel from "@/components/TouchdownArrivalPanel";
 import InitialNarrativeDisplay from "@/components/InitialNarrativeDisplay";
 import CitizenReportDetailDrawer from "@/components/CitizenReportDetailDrawer";
 import AssociatedCitizenReportList from "@/components/AssociatedCitizenReportList";
@@ -453,21 +454,6 @@ export default function IntakeDetailView({
       { ...candidates[0] }
     );
   }, [report?.postIncidentReport, incident?.postIncidentReport, associatedReports]);
-
-  const responderOnScenePhotoUrl = useMemo(() => {
-    const fromAssessment = sceneAssessmentContext.assessment?.scenePhotoUrl?.trim() || null;
-    if (fromAssessment) return fromAssessment;
-
-    const legacyPhoto = postIncidentReport?.photoUrl?.trim() || null;
-    const actionPhoto = postIncidentReport?.actionPhotoUrl?.trim() || null;
-    if (legacyPhoto && legacyPhoto !== actionPhoto) return legacyPhoto;
-
-    return null;
-  }, [
-    sceneAssessmentContext.assessment?.scenePhotoUrl,
-    postIncidentReport?.photoUrl,
-    postIncidentReport?.actionPhotoUrl,
-  ]);
 
   const showPostReportSection = useMemo(() => {
     const status = report?.status || incident?.status;
@@ -1169,10 +1155,12 @@ export default function IntakeDetailView({
                 />
               </div>
               {primarySceneImageUrls.length > 0 ? (
-                <div className="border-t border-slate-800/80 pt-3">
+                <div className="border-t border-slate-800/80 pt-2.5">
                   <IncidentScenePhotos
                     imageUrls={primarySceneImageUrls}
                     layout={primarySceneImageUrls.length > 1 ? "row" : "stack"}
+                    compact
+                    hideHint={primarySceneImageUrls.length > 1}
                     emptyMessage=""
                   />
                 </div>
@@ -1250,17 +1238,11 @@ export default function IntakeDetailView({
                 </div>
 
                 <PostIncidentReportPhotos
-                  onScenePhotoUrl={responderOnScenePhotoUrl}
                   actionPhotoUrl={postIncidentReport.actionPhotoUrl}
-                  onScenePhotoBy={
-                    sceneAssessmentContext.assessment?.updatedByName ||
-                    postIncidentReport.submittedByName ||
-                    null
-                  }
                 />
               </div>
             ) : (
-              <div className="rounded-lg border border-dashed border-slate-700 bg-slate-950/40 px-3 py-5 text-center">
+              <div className="rounded-md border border-dashed border-slate-700 bg-slate-950/40 px-3 py-3 text-center">
                 <p className="text-xs font-medium text-slate-400">No post-incident report yet</p>
                 <p className="mt-0.5 text-[10px] text-slate-500">
                   Resolved incident — awaiting responder summary.
@@ -1270,23 +1252,36 @@ export default function IntakeDetailView({
           </section>
         ) : null}
 
-        <DetailSection
-          compact
-          full
-          emphasis
-          icon={<AlertTriangle className="w-4 h-4" />}
-          title="Scene Assessment"
-        >
-          <SceneAssessmentPanel
-            assessment={sceneAssessmentContext.assessment}
-            incidentType={sceneAssessmentContext.incidentType}
-            isLoading={
-              !sceneAssessmentContext.assessment &&
-              (item?.channel === "incident" ? incidentsLoading : false)
-            }
-            hideScenePhoto={Boolean(postIncidentReport && responderOnScenePhotoUrl)}
-          />
-        </DetailSection>
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2 xl:items-stretch">
+          <DetailSection
+            compact
+            emphasis
+            className="flex h-full flex-col"
+            contentClassName="flex min-h-0 flex-1 flex-col"
+            icon={<MapPin className="w-4 h-4" />}
+            title="Touchdown / Arrival"
+          >
+            <TouchdownArrivalPanel incident={incident} report={report} />
+          </DetailSection>
+
+          <DetailSection
+            compact
+            emphasis
+            className="flex h-full flex-col"
+            contentClassName="flex min-h-0 flex-1 flex-col"
+            icon={<AlertTriangle className="w-4 h-4" />}
+            title="Scene Assessment"
+          >
+            <SceneAssessmentPanel
+              assessment={sceneAssessmentContext.assessment}
+              incidentType={sceneAssessmentContext.incidentType}
+              isLoading={
+                !sceneAssessmentContext.assessment &&
+                (item?.channel === "incident" ? incidentsLoading : false)
+              }
+            />
+          </DetailSection>
+        </div>
 
       </div>
     </div>

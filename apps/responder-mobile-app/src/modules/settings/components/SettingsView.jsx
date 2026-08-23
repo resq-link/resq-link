@@ -42,6 +42,7 @@ import {
 } from "@packages/firebase";
 import useUserStore from "@/store/userStore";
 import { radii, spacing, useResqTheme } from "@/theme";
+import { getBottomNavHeight } from "@/utils/navigationInsets";
 import { dashboardConstants as DC } from "@/theme";
 import { LOCATION_PAUSED_KEY } from "@/constants/location";
 
@@ -537,7 +538,7 @@ export default function SettingsView() {
         contentContainerStyle={{
           paddingHorizontal: spacing.md,
           paddingTop: spacing.sm,
-          paddingBottom: insets.bottom + 88,
+          paddingBottom: getBottomNavHeight(insets) + spacing.md,
         }}
         showsVerticalScrollIndicator={false}
       >

@@ -5,13 +5,12 @@ import {
   TouchableOpacity,
   StyleSheet,
   Switch,
-  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { toast } from "@/utils/toast";
 import {
   Inter_400Regular,
   Inter_600SemiBold,
@@ -19,15 +18,17 @@ import {
 } from "@expo-google-fonts/inter";
 import { useFonts } from "expo-font";
 import { spacing, radii, useResqTheme } from "@/theme";
-
-const STORAGE_KEY = "responder_notification_settings";
+import {
+  loadNotificationSettings,
+  saveNotificationSettings,
+} from "@/services/notificationSettingsService";
 
 export default function NotificationsView() {
   const { colors, t, statusBarStyle } = useResqTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [caseAlerts, setCaseAlerts] = useState(true);
-  const [statusUpdates, setStatusUpdates] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -73,6 +74,7 @@ export default function NotificationsView() {
         },
         toggleContent: {
           flex: 1,
+          paddingRight: spacing.md,
         },
         toggleLabel: {
           fontFamily: "Inter_600SemiBold",
@@ -84,11 +86,14 @@ export default function NotificationsView() {
           fontSize: 13,
           color: colors.textSecondary,
           marginTop: 4,
+          lineHeight: 18,
         },
-        separator: {
-          height: 1,
-          backgroundColor: colors.border,
-          marginVertical: spacing.lg,
+        note: {
+          fontFamily: "Inter_400Regular",
+          fontSize: 13,
+          color: colors.textMuted,
+          marginTop: spacing.lg,
+          lineHeight: 18,
         },
         saveButton: {
           marginTop: spacing.xxl,
@@ -96,6 +101,7 @@ export default function NotificationsView() {
           borderRadius: radii.lg,
           padding: 16,
           alignItems: "center",
+          minHeight: 48,
         },
         saveButtonText: {
           fontFamily: "Inter_600SemiBold",
@@ -107,18 +113,9 @@ export default function NotificationsView() {
   );
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
-        if (!raw) return;
-        const parsed = JSON.parse(raw);
-        setCaseAlerts(parsed.caseAlerts !== false);
-        setStatusUpdates(parsed.statusUpdates !== false);
-      } catch (e) {
-        console.error("Failed loading notification settings:", e);
-      }
-    };
-    load();
+    loadNotificationSettings().then((settings) => {
+      setCaseAlerts(settings.caseAlerts !== false);
+    });
   }, []);
 
   const goBackOrDashboard = () => {
@@ -131,36 +128,18 @@ export default function NotificationsView() {
 
   const handleSave = async () => {
     try {
-      await AsyncStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ caseAlerts, statusUpdates })
-      );
-      Alert.alert("Saved", "Notification settings updated.");
+      setIsSaving(true);
+      await saveNotificationSettings({ caseAlerts });
+      toast.success("Notification settings saved");
       goBackOrDashboard();
     } catch (e) {
-      Alert.alert("Error", "Could not save settings.");
+      toast.error("Could not save settings. Try again.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
   if (!fontsLoaded) return null;
-
-  const ToggleRow = ({ label, description, value, onValueChange }) => (
-    <View style={styles.toggleRow}>
-      <View style={styles.toggleContent}>
-        <Text style={styles.toggleLabel}>{label}</Text>
-        {description && (
-          <Text style={styles.toggleDescription}>{description}</Text>
-        )}
-      </View>
-      <Switch
-        value={value}
-        onValueChange={onValueChange}
-        trackColor={{ false: t.switchTrackOff, true: t.switchTrackOn }}
-        thumbColor={value ? t.switchThumbOn : t.switchThumbOff}
-        ios_backgroundColor={t.switchTrackOff}
-      />
-    </View>
-  );
 
   return (
     <View style={styles.container}>
@@ -183,27 +162,36 @@ export default function NotificationsView() {
       </View>
 
       <View style={styles.card}>
-        <ToggleRow
-          label="New case alerts"
-          description="Push when a case is assigned to you"
-          value={caseAlerts}
-          onValueChange={setCaseAlerts}
-        />
-        <View style={styles.separator} />
-        <ToggleRow
-          label="Status reminders"
-          description="Remind when case status needs update"
-          value={statusUpdates}
-          onValueChange={setStatusUpdates}
-        />
+        <View style={styles.toggleRow}>
+          <View style={styles.toggleContent}>
+            <Text style={styles.toggleLabel}>Assignment alerts</Text>
+            <Text style={styles.toggleDescription}>
+              Sound and vibration when a new incident is assigned while on duty.
+              Critical emergencies always alert.
+            </Text>
+          </View>
+          <Switch
+            value={caseAlerts}
+            onValueChange={setCaseAlerts}
+            trackColor={{ false: t.switchTrackOff, true: t.switchTrackOn }}
+            thumbColor={caseAlerts ? t.switchThumbOn : t.switchThumbOff}
+            ios_backgroundColor={t.switchTrackOff}
+          />
+        </View>
       </View>
 
+      <Text style={styles.note}>
+        Push notifications require a development or production build. In-app
+        assignment alerts work in all environments while you are on duty.
+      </Text>
+
       <TouchableOpacity
-        style={styles.saveButton}
+        style={[styles.saveButton, isSaving && { opacity: 0.6 }]}
         onPress={handleSave}
-        activeOpacity={0.85}
+        disabled={isSaving}
+        accessibilityRole="button"
       >
-        <Text style={styles.saveButtonText}>Save</Text>
+        <Text style={styles.saveButtonText}>{isSaving ? "Saving…" : "Save Settings"}</Text>
       </TouchableOpacity>
     </View>
   );

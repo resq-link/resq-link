@@ -1,7 +1,9 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { Image } from "expo-image";
-import { getSceneAssessmentEntries, hasResponderSceneAssessment } from "@packages/firebase";
+import { View, Text, StyleSheet } from "react-native";
+import {
+  getSceneAssessmentEntries,
+  hasResponderSceneAssessment,
+} from "@packages/firebase";
 import Section from "./Section";
 import { radii, spacing } from "@/theme";
 
@@ -10,7 +12,6 @@ export default function SceneAssessmentSection({
   colors,
   formatDate,
   embedded = false,
-  onPreviewPhoto,
 }) {
   const assessment = caseData.responderAssessment;
   const incidentType = caseData.assessmentIncidentType || caseData.incidentType;
@@ -51,29 +52,6 @@ export default function SceneAssessmentSection({
           <Text style={[styles.detailValue, { color: colors.text }]}>{entry.value}</Text>
         </View>
       ))}
-
-      <View style={[styles.photoBlock, { borderTopColor: colors.border }]}>
-        <Text style={[styles.detailLabel, { color: colors.textMuted }]}>On-Scene Photo</Text>
-        {assessment.scenePhotoUrl ? (
-          <TouchableOpacity
-            onPress={() => onPreviewPhoto?.(assessment.scenePhotoUrl)}
-            style={{ borderRadius: radii.md, overflow: "hidden", marginTop: spacing.xs }}
-            accessibilityRole="imagebutton"
-            accessibilityLabel="View on-scene photo"
-          >
-            <Image
-              source={{ uri: assessment.scenePhotoUrl }}
-              style={styles.photoPreview}
-              contentFit="contain"
-              transition={200}
-            />
-          </TouchableOpacity>
-        ) : (
-          <Text style={[styles.noPhotoText, { color: colors.textMuted }]}>
-            No on-scene photo submitted.
-          </Text>
-        )}
-      </View>
     </Section>
   );
 }
@@ -96,21 +74,5 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     fontSize: 15,
     lineHeight: 22,
-  },
-  photoBlock: {
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-  },
-  photoPreview: {
-    width: "100%",
-    height: 200,
-    borderRadius: radii.md,
-  },
-  noPhotoText: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 13,
-    marginTop: spacing.xs,
-    fontStyle: "italic",
   },
 });

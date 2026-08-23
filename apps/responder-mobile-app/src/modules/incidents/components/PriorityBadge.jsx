@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text } from "react-native";
 import { useResqTheme } from "@/theme";
 
-export default function PriorityBadge({ priority }) {
+export default function PriorityBadge({ priority, compact = false }) {
   const { colors } = useResqTheme();
 
   const getPriorityConfig = () => {
@@ -21,6 +21,23 @@ export default function PriorityBadge({ priority }) {
   };
 
   const config = getPriorityConfig();
+
+  if (compact) {
+    return (
+      <Text
+        style={{
+          fontFamily: "Inter_700Bold",
+          fontSize: 11,
+          color: config.color,
+          textTransform: "uppercase",
+          letterSpacing: 0.6,
+        }}
+        accessibilityLabel={`Priority ${config.text}`}
+      >
+        {config.text}
+      </Text>
+    );
+  }
 
   return (
     <View

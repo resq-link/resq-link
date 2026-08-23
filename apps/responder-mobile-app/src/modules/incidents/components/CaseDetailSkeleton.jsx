@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { View, StyleSheet, ScrollView, Animated, Platform } from "react-native";
+import { View, StyleSheet, ScrollView, Animated } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useResqTheme, radii, spacing } from "@/theme";
 
@@ -24,7 +24,6 @@ export default function CaseDetailSkeleton() {
       ])
     );
     pulse.start();
-
     return () => pulse.stop();
   }, [pulseAnim]);
 
@@ -40,99 +39,69 @@ export default function CaseDetailSkeleton() {
     />
   );
 
+  const mapHeight = Math.max(360, insets.top + 330);
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header Skeleton */}
+      {/* Map-first layout — matches CaseInfoCard */}
+      <ShimmerBlock style={[styles.mapStage, { height: mapHeight }]} />
+
       <View
         style={[
-          styles.headerSkeleton,
+          styles.detailsSheet,
           {
-            backgroundColor: colors.surface,
-            borderBottomColor: colors.border,
-            paddingTop: insets.top + 20,
+            backgroundColor: colors.background,
+            paddingBottom: insets.bottom + 100,
           },
         ]}
       >
-        <View style={styles.headerRow}>
-          <ShimmerBlock style={styles.backButtonSkeleton} />
-          <View style={styles.headerTitleContainer}>
-            <ShimmerBlock style={styles.titleSkeleton} />
-            <ShimmerBlock style={styles.subtitleSkeleton} />
-          </View>
+        <ShimmerBlock style={styles.sheetHandle} />
+
+        <ShimmerBlock style={styles.titleBone} />
+        <ShimmerBlock style={styles.addressBone} />
+
+        <View style={styles.badgeRow}>
+          <ShimmerBlock style={styles.badgeBone} />
+          <ShimmerBlock style={styles.badgeBone} />
+        </View>
+
+        <View style={styles.progressRow}>
+          {[0, 1, 2].map((i) => (
+            <View key={i} style={styles.progressStep}>
+              <ShimmerBlock style={styles.progressIcon} />
+              <ShimmerBlock style={styles.progressLabel} />
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.sectionBlock}>
+          <ShimmerBlock style={styles.sectionTitle} />
+          <ShimmerBlock style={styles.lineBone} />
+          <ShimmerBlock style={[styles.lineBone, { width: "85%" }]} />
+        </View>
+
+        <View style={styles.sectionBlock}>
+          <ShimmerBlock style={styles.sectionTitle} />
+          <ShimmerBlock style={styles.photoBone} />
+        </View>
+
+        <View style={styles.sectionBlock}>
+          <ShimmerBlock style={styles.sectionTitle} />
+          <ShimmerBlock style={styles.lineBone} />
         </View>
       </View>
 
-      {/* Main Content Scroll Skeleton */}
-      <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        <View style={[styles.scrollContent, { paddingBottom: insets.bottom + 160 }]}>
-          
-          {/* Card 1: Title block & Status Badge Skeleton */}
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <ShimmerBlock style={styles.categoryTitleSkeleton} />
-            <View style={styles.badgeRow}>
-              <ShimmerBlock style={styles.badgeSkeleton} />
-              <ShimmerBlock style={styles.badgeSkeleton} />
-            </View>
-          </View>
-
-          {/* Card 2: Map & Location Details Skeleton */}
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <ShimmerBlock style={styles.cardHeaderTitleSkeleton} />
-            <ShimmerBlock style={styles.mapSkeleton} />
-            <ShimmerBlock style={styles.locationTextSkeleton} />
-            <ShimmerBlock style={styles.landmarkTextSkeleton} />
-            <ShimmerBlock style={styles.coordTextSkeleton} />
-          </View>
-
-          {/* Card 3: Description Skeleton */}
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <ShimmerBlock style={styles.cardHeaderTitleSkeleton} />
-            <ShimmerBlock style={styles.descLine1} />
-            <ShimmerBlock style={styles.descLine2} />
-            <ShimmerBlock style={styles.descLine3} />
-          </View>
-
-          {/* Card 4: Collapsible Additional Details Skeleton */}
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={styles.collapsibleHeaderRow}>
-              <ShimmerBlock style={styles.collapsibleTitleSkeleton} />
-              <ShimmerBlock style={styles.chevronSkeleton} />
-            </View>
-          </View>
-
-          {/* Card 5: Collapsible Reporter Skeleton */}
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={styles.collapsibleHeaderRow}>
-              <ShimmerBlock style={styles.collapsibleTitleSkeleton} />
-              <ShimmerBlock style={styles.chevronSkeleton} />
-            </View>
-          </View>
-
-          {/* Card 6: Collapsible Timeline Skeleton */}
-          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={styles.collapsibleHeaderRow}>
-              <ShimmerBlock style={styles.collapsibleTitleSkeleton} />
-              <ShimmerBlock style={styles.chevronSkeleton} />
-            </View>
-          </View>
-
-        </View>
-      </ScrollView>
-
-      {/* Bottom Sticky Action Bar Skeleton */}
       <View
         style={[
-          styles.bottomBar,
+          styles.actionBar,
           {
-            backgroundColor: colors.surface,
-            borderTopColor: colors.border,
             paddingBottom: Math.max(insets.bottom, spacing.md),
+            backgroundColor: colors.background,
+            borderTopColor: colors.border,
           },
         ]}
       >
-        <View style={styles.bottomBarRow}>
-          <ShimmerBlock style={styles.primaryBtnSkeleton} />
-        </View>
+        <ShimmerBlock style={styles.actionButton} />
       </View>
     </View>
   );
@@ -142,150 +111,101 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  headerSkeleton: {
-    paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.lg,
-    borderBottomWidth: 1,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  backButtonSkeleton: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    marginRight: 16,
-  },
-  headerTitleContainer: {
-    flex: 1,
-    gap: 6,
-  },
-  titleSkeleton: {
-    width: 140,
-    height: 18,
-    borderRadius: radii.sm,
-  },
-  subtitleSkeleton: {
-    width: 80,
-    height: 12,
-    borderRadius: radii.sm,
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: spacing.lg,
-    gap: spacing.md,
-  },
-  card: {
-    borderRadius: radii.lg,
-    padding: spacing.lg,
-    borderWidth: 1,
-    gap: spacing.sm,
-  },
-  categoryTitleSkeleton: {
-    width: 180,
-    height: 22,
-    borderRadius: radii.sm,
-    marginBottom: spacing.xs,
-  },
-  badgeRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  badgeSkeleton: {
-    width: 70,
-    height: 20,
-    borderRadius: radii.sm,
-  },
-  cardHeaderTitleSkeleton: {
-    width: 120,
-    height: 14,
-    borderRadius: radii.sm,
-    textTransform: "uppercase",
-    marginBottom: spacing.xs,
-  },
-  mapSkeleton: {
+  mapStage: {
     width: "100%",
-    height: 200,
-    borderRadius: radii.md,
-    marginVertical: spacing.xs,
   },
-  locationTextSkeleton: {
+  detailsSheet: {
+    marginTop: -34,
+    padding: spacing.lg,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+  },
+  sheetHandle: {
+    alignSelf: "center",
+    width: 44,
+    height: 5,
+    borderRadius: radii.pill,
+    marginBottom: spacing.md,
+  },
+  titleBone: {
+    width: "70%",
+    height: 28,
+    borderRadius: radii.sm,
+    marginBottom: spacing.sm,
+  },
+  addressBone: {
     width: "90%",
     height: 16,
     borderRadius: radii.sm,
-    marginTop: spacing.xs,
+    marginBottom: spacing.md,
   },
-  landmarkTextSkeleton: {
-    width: "60%",
-    height: 14,
+  badgeRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  badgeBone: {
+    width: 72,
+    height: 24,
     borderRadius: radii.sm,
   },
-  coordTextSkeleton: {
-    width: "40%",
-    height: 12,
-    borderRadius: radii.sm,
-  },
-  descLine1: {
-    width: "100%",
-    height: 14,
-    borderRadius: radii.sm,
-  },
-  descLine2: {
-    width: "95%",
-    height: 14,
-    borderRadius: radii.sm,
-  },
-  descLine3: {
-    width: "75%",
-    height: 14,
-    borderRadius: radii.sm,
-  },
-  collapsibleHeaderRow: {
+  progressRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    marginBottom: spacing.lg,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: "transparent",
   },
-  collapsibleTitleSkeleton: {
-    width: 130,
+  progressStep: {
+    flex: 1,
+    alignItems: "center",
+    gap: 6,
+  },
+  progressIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+  },
+  progressLabel: {
+    width: 56,
+    height: 10,
+    borderRadius: radii.sm,
+  },
+  sectionBlock: {
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: "transparent",
+    gap: spacing.sm,
+  },
+  sectionTitle: {
+    width: 120,
     height: 14,
     borderRadius: radii.sm,
   },
-  chevronSkeleton: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
+  lineBone: {
+    width: "100%",
+    height: 14,
+    borderRadius: radii.sm,
   },
-  bottomBar: {
+  photoBone: {
+    width: "100%",
+    height: 200,
+    borderRadius: radii.md,
+  },
+  actionBar: {
     position: "absolute",
-    bottom: 0,
     left: 0,
     right: 0,
-    borderTopWidth: 1,
-    paddingTop: spacing.md,
+    bottom: 0,
     paddingHorizontal: spacing.lg,
-    ...Platform.select({
-      ios: {
-        shadowColor: "#000",
-        shadowOffset: { width: 0, height: -3 },
-        shadowOpacity: 0.1,
-        shadowRadius: 6,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
   },
-  bottomBarRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  primaryBtnSkeleton: {
+  actionButton: {
     width: "100%",
-    height: 48,
-    borderRadius: radii.md,
+    height: 52,
+    borderRadius: radii.lg,
   },
 });

@@ -56,6 +56,24 @@ service firebase.storage {
 
       allow read: if true;
     }
+
+    // Touchdown on-scene arrival photos - incidents/{incidentId}/on-scene/{photoId}
+    match /incidents/{incidentId}/on-scene/{photoId} {
+      allow write: if isAuthenticated()
+                   && request.resource.size < 10 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+
+      allow read: if true;
+    }
+
+    // Scene assessment action photos - incidents/{incidentId}/action/{photoId}
+    match /incidents/{incidentId}/action/{photoId} {
+      allow write: if isAuthenticated()
+                   && request.resource.size < 10 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+
+      allow read: if true;
+    }
     
     // Default: deny all other access
     match /{allPaths=**} {

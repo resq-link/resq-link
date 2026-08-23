@@ -16,6 +16,10 @@ import {
   shouldAlertForIncident,
 } from "@/services/priorityAlertService";
 import {
+  loadNotificationSettings,
+  subscribeNotificationSettings,
+} from "@/services/notificationSettingsService";
+import {
   dismissIncidentNotifications,
   registerForIncidentPush,
   subscribeToIncidentNotificationActions,
@@ -25,6 +29,7 @@ import IncidentAlertModal from "@/modules/incidents/components/IncidentAlertModa
 
 const IncidentAlertContext = createContext({
   activeAlert: null,
+  alertingCount: 0,
   acknowledge: async () => {},
   isAcknowledging: false,
   isOnDuty: false,
@@ -47,7 +52,13 @@ export default function PriorityAlertProvider({ children }) {
   const { cases } = useAssignedEmergencies(user?.uid);
   const [isAcknowledging, setIsAcknowledging] = useState(false);
   const [isOnDuty, setIsOnDuty] = useState(false);
+  const [settingsTick, setSettingsTick] = useState(0);
   const alarmingIdRef = useRef(null);
+
+  useEffect(() => {
+    void loadNotificationSettings();
+    return subscribeNotificationSettings(() => setSettingsTick((n) => n + 1));
+  }, []);
 
   // Live duty gate — off-duty phones must stay quiet even if still assigned.
   useEffect(() => {
@@ -99,9 +110,10 @@ export default function PriorityAlertProvider({ children }) {
           (PRIORITY_RANK[normalizePriority(b.priority)] ?? 0) -
           (PRIORITY_RANK[normalizePriority(a.priority)] ?? 0)
       );
-  }, [cases, user?.uid, viewingIncidentId, isOnDuty]);
+  }, [cases, user?.uid, viewingIncidentId, isOnDuty, settingsTick]);
 
   const activeAlert = alertingCases[0] ?? null;
+  const alertingCount = alertingCases.length;
 
   // Start, switch, or stop the alarm as the top unacknowledged incident changes.
   useEffect(() => {
@@ -165,8 +177,8 @@ export default function PriorityAlertProvider({ children }) {
   }, [activeAlert?.id]);
 
   const value = useMemo(
-    () => ({ activeAlert, acknowledge, isAcknowledging, isOnDuty }),
-    [activeAlert, acknowledge, isAcknowledging, isOnDuty]
+    () => ({ activeAlert, alertingCount, acknowledge, isAcknowledging, isOnDuty }),
+    [activeAlert, alertingCount, acknowledge, isAcknowledging, isOnDuty]
   );
 
   return (

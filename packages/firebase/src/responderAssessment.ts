@@ -4,8 +4,10 @@ import { mapIncidentCategoryToEmergencyType } from './civilianFieldAssessment';
 
 export type ResponderAssessmentRecord = {
   fields: Record<string, string>;
-  /** Responder on-scene arrival evidence — distinct from post-report action photo */
+  /** @deprecated Legacy on-scene photo stored on assessment — use incident.onScenePhotoUrl for arrival evidence */
   scenePhotoUrl?: string | null;
+  /** @deprecated Action evidence now lives on postIncidentReport.actionPhotoUrl */
+  actionPhotoUrl?: string | null;
   updatedAt?: Date | Timestamp | null;
   updatedById?: string | null;
   updatedByName?: string | null;
@@ -100,18 +102,24 @@ export function parseResponderAssessment(raw: unknown): ResponderAssessmentRecor
       ? normalizeAssessmentFields(data.fields as Record<string, string>)
       : {};
 
-  if (Object.keys(fields).length === 0) {
-    return null;
-  }
-
   const scenePhotoUrl =
     typeof data.scenePhotoUrl === 'string' && data.scenePhotoUrl.trim()
       ? data.scenePhotoUrl.trim()
       : null;
 
+  const actionPhotoUrl =
+    typeof data.actionPhotoUrl === 'string' && data.actionPhotoUrl.trim()
+      ? data.actionPhotoUrl.trim()
+      : null;
+
+  if (Object.keys(fields).length === 0) {
+    return null;
+  }
+
   return {
     fields,
     scenePhotoUrl,
+    actionPhotoUrl,
     updatedAt:
       data.updatedAt && typeof data.updatedAt === 'object' && 'toDate' in data.updatedAt
         ? (data.updatedAt as Timestamp).toDate()
@@ -161,11 +169,23 @@ export function hasResponderSceneAssessment(
   return getSceneAssessmentEntries(assessment).length > 0;
 }
 
+/** Action photo for display — prefers dedicated field, legacy scenePhotoUrl only in assessment context. */
+export function getResponderAssessmentActionPhotoUrl(
+  assessment: ResponderAssessmentRecord | null | undefined,
+): string | null {
+  if (!assessment) return null;
+  return assessment.actionPhotoUrl?.trim() || assessment.scenePhotoUrl?.trim() || null;
+}
+
 async function writeResponderAssessment(
   refPath: 'emergencies' | 'incidents',
   docId: string,
   fields: Record<string, string>,
-  options?: { updatedByName?: string | null; scenePhotoUrl?: string | null },
+  options?: {
+    updatedByName?: string | null;
+    actionPhotoUrl?: string | null;
+    scenePhotoUrl?: string | null;
+  },
 ): Promise<ResponderAssessmentRecord> {
   const currentUser = getFirebaseAuth().currentUser;
   if (!currentUser) {
@@ -186,6 +206,12 @@ async function writeResponderAssessment(
   }
 
   const existingAssessment = parseResponderAssessment(snap.data()?.responderAssessment);
+  // Preserve legacy photo fields if present; new action photos belong on post-report.
+  const actionPhotoUrl =
+    options?.actionPhotoUrl !== undefined
+      ? options.actionPhotoUrl?.trim() || null
+      : existingAssessment?.actionPhotoUrl ?? null;
+
   const scenePhotoUrl =
     options?.scenePhotoUrl !== undefined
       ? options.scenePhotoUrl?.trim() || null
@@ -193,6 +219,7 @@ async function writeResponderAssessment(
 
   const payload: ResponderAssessmentRecord = {
     fields: normalizedFields,
+    actionPhotoUrl,
     scenePhotoUrl,
     updatedAt: now,
     updatedById: currentUser.uid,
@@ -214,7 +241,11 @@ async function writeResponderAssessment(
 export async function submitResponderSceneAssessmentForEmergency(
   reportId: string,
   fields: Record<string, string>,
-  options?: { updatedByName?: string | null; scenePhotoUrl?: string | null },
+  options?: {
+    updatedByName?: string | null;
+    actionPhotoUrl?: string | null;
+    scenePhotoUrl?: string | null;
+  },
 ): Promise<ResponderAssessmentRecord> {
   return writeResponderAssessment('emergencies', reportId, fields, options);
 }
@@ -222,7 +253,11 @@ export async function submitResponderSceneAssessmentForEmergency(
 export async function submitResponderSceneAssessmentForIncident(
   incidentId: string,
   fields: Record<string, string>,
-  options?: { updatedByName?: string | null; scenePhotoUrl?: string | null },
+  options?: {
+    updatedByName?: string | null;
+    actionPhotoUrl?: string | null;
+    scenePhotoUrl?: string | null;
+  },
 ): Promise<ResponderAssessmentRecord> {
   const assessment = await writeResponderAssessment(
     'incidents',

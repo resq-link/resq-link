@@ -30,7 +30,10 @@ import {
   normalizePriorityFromRecord,
   type IncidentPriority,
 } from './priority';
-import { mapEmergencyTypeToIncidentCategory } from './civilianFieldAssessment';
+import {
+  mapEmergencyTypeToIncidentCategory,
+  resolveIncidentDisplayFields,
+} from './civilianFieldAssessment';
 import {
   hasResponderSceneAssessment,
   parseResponderAssessment,
@@ -93,6 +96,10 @@ export interface IncidentRecord {
   createdByUserId: string;
   commandCenterAdminId: string;
   incidentCategory: IncidentCategory;
+  /** Civilian emergency type key derived from incidentCategory when not stored explicitly */
+  incidentType?: string;
+  /** Human-readable category label (e.g. "Fire Emergency") */
+  incidentTypeLabel?: string;
   incidentSubtypeId: string;
   incidentSubtypeLabel: string;
   priority: IncidentPriority;
@@ -156,6 +163,10 @@ export interface IncidentRecord {
   touchdownByName?: string | null;
   touchdownSource?: 'gps' | 'manual' | null;
   touchdownDistanceMeters?: number | null;
+  /** Responder arrival evidence captured at manual Touchdown */
+  onScenePhotoUrl?: string | null;
+  onScenePhotoUploadedAt?: Date | Timestamp | null;
+  onScenePhotoUploadedBy?: string | null;
   postIncidentReport?: {
     reasonForIncident?: string | null;
     notes?: string | null;
@@ -329,6 +340,16 @@ const arraysMatch = (left: string[], right: string[]) => {
 
 const toIncidentRecord = (snapshot: DocumentData): IncidentRecord => {
   const data = snapshot.data();
+  const incidentCategory = (data.incidentCategory || 'other') as IncidentCategory;
+  const displayFields = resolveIncidentDisplayFields({
+    incidentType: data.incidentType || data.incident_type || null,
+    incidentCategory,
+    incidentSubtypeLabel: data.incidentSubtypeLabel || '',
+    description: data.description || null,
+    typeProfile: data.typeProfile || data.type_profile || data.profile || null,
+    incidentTypeLabel: data.incidentTypeLabel || null,
+  });
+
   return {
     id: snapshot.id,
     referenceNumber: data.referenceNumber || '',
@@ -336,7 +357,9 @@ const toIncidentRecord = (snapshot: DocumentData): IncidentRecord => {
     source: data.source || 'manual',
     createdByUserId: data.createdByUserId || '',
     commandCenterAdminId: data.commandCenterAdminId || '',
-    incidentCategory: data.incidentCategory || 'other',
+    incidentCategory,
+    incidentType: displayFields.incidentType,
+    incidentTypeLabel: displayFields.incidentTypeLabel,
     incidentSubtypeId: data.incidentSubtypeId || '',
     incidentSubtypeLabel: data.incidentSubtypeLabel || '',
     priority: normalizePriorityFromRecord(
@@ -425,6 +448,22 @@ const toIncidentRecord = (snapshot: DocumentData): IncidentRecord => {
     resolvedAt: data.resolvedAt?.toDate ? data.resolvedAt.toDate() : null,
     acceptedAt: data.acceptedAt?.toDate ? data.acceptedAt.toDate() : (data.acceptedAt ? new Date(data.acceptedAt) : null),
     touchdownAt: data.touchdownAt?.toDate ? data.touchdownAt.toDate() : (data.touchdownAt ? new Date(data.touchdownAt) : null),
+    touchdownByDispatcherId: data.touchdownByDispatcherId || null,
+    touchdownByName: data.touchdownByName || null,
+    touchdownSource: data.touchdownSource || null,
+    touchdownDistanceMeters:
+      typeof data.touchdownDistanceMeters === 'number' ? data.touchdownDistanceMeters : null,
+    onScenePhotoUrl:
+      typeof data.onScenePhotoUrl === 'string' && data.onScenePhotoUrl.trim()
+        ? data.onScenePhotoUrl.trim()
+        : null,
+    onScenePhotoUploadedAt: data.onScenePhotoUploadedAt?.toDate
+      ? data.onScenePhotoUploadedAt.toDate()
+      : data.onScenePhotoUploadedAt
+        ? new Date(data.onScenePhotoUploadedAt)
+        : null,
+    onScenePhotoUploadedBy:
+      typeof data.onScenePhotoUploadedBy === 'string' ? data.onScenePhotoUploadedBy : null,
     responseTimeSeconds: typeof data.responseTimeSeconds === 'number' ? data.responseTimeSeconds : null,
     postIncidentReport:
       data.postIncidentReport && typeof data.postIncidentReport === 'object'
@@ -1485,6 +1524,13 @@ async function propagateIncidentUpdatesToReports(incidentId: string, updates: an
     if (updates.acceptedAt) reportUpdates.acceptedAt = updates.acceptedAt;
     if (updates.touchdownAt) reportUpdates.touchdownAt = updates.touchdownAt;
     if (updates.responseTimeSeconds) reportUpdates.responseTimeSeconds = updates.responseTimeSeconds;
+    if (updates.onScenePhotoUrl) reportUpdates.onScenePhotoUrl = updates.onScenePhotoUrl;
+    if (updates.onScenePhotoUploadedAt) {
+      reportUpdates.onScenePhotoUploadedAt = updates.onScenePhotoUploadedAt;
+    }
+    if (updates.onScenePhotoUploadedBy) {
+      reportUpdates.onScenePhotoUploadedBy = updates.onScenePhotoUploadedBy;
+    }
     if (updates.postIncidentReport) reportUpdates.postIncidentReport = updates.postIncidentReport;
     if (updates.resolvedAt && !reportUpdates.resolvedAt) reportUpdates.resolvedAt = updates.resolvedAt;
     
@@ -1546,7 +1592,12 @@ export async function acceptIncident(incidentId: string): Promise<IncidentRecord
 
 export async function markIncidentTouchdown(
   incidentId: string,
-  options: { source: 'gps' | 'manual'; distanceMeters?: number | null; }
+  options: {
+    source: 'gps' | 'manual';
+    distanceMeters?: number | null;
+    touchdownAt?: Date | string | number | Timestamp | null;
+    onScenePhotoUrl?: string | null;
+  }
 ): Promise<IncidentRecord> {
   const currentUser = ensureAuthenticated();
   const db = getFirebaseFirestore();
@@ -1558,14 +1609,51 @@ export async function markIncidentTouchdown(
   if (!currentData.assignedResourceIds.includes(currentUser.uid)) {
     throw new Error('Only an assigned responder can mark touchdown');
   }
-  
-  const touchdownAt = currentData.touchdownAt || Timestamp.now();
+
+  const resolveTouchdownTimestamp = (
+    value: Date | string | number | Timestamp | null | undefined,
+  ): Timestamp => {
+    if (value instanceof Timestamp) return value;
+    if (value instanceof Date) return Timestamp.fromDate(value);
+    if (typeof value === 'number') return Timestamp.fromMillis(value);
+    if (typeof value === 'string') {
+      const parsed = new Date(value);
+      if (!Number.isNaN(parsed.getTime())) return Timestamp.fromDate(parsed);
+    }
+    throw new Error('Touchdown time is required');
+  };
+
+  const touchdownAt = currentData.touchdownAt
+    ? currentData.touchdownAt instanceof Timestamp
+      ? currentData.touchdownAt
+      : Timestamp.fromDate(new Date(currentData.touchdownAt))
+    : resolveTouchdownTimestamp(options.touchdownAt);
+
+  const touchdownMs = touchdownAt.toDate().getTime();
+  if (touchdownMs > Date.now() + 60_000) {
+    throw new Error('Touchdown time cannot be in the future');
+  }
+
   let responseTimeSeconds: number | null = null;
   if (currentData.acceptedAt) {
     const acceptedMs = currentData.acceptedAt instanceof Timestamp ? currentData.acceptedAt.toDate().getTime() : new Date(currentData.acceptedAt).getTime();
-    const touchdownMs = touchdownAt instanceof Timestamp ? touchdownAt.toDate().getTime() : new Date(touchdownAt).getTime();
+    if (touchdownMs < acceptedMs) {
+      throw new Error('Touchdown time cannot be before case acceptance');
+    }
     const diff = Math.round((touchdownMs - acceptedMs) / 1000);
     if (diff >= 0) responseTimeSeconds = diff;
+  }
+
+  const existingTouchdown = Boolean(currentData.touchdownAt);
+  const onScenePhotoUrl =
+    typeof options.onScenePhotoUrl === 'string' && options.onScenePhotoUrl.trim()
+      ? options.onScenePhotoUrl.trim()
+      : typeof currentData.onScenePhotoUrl === 'string' && currentData.onScenePhotoUrl.trim()
+        ? currentData.onScenePhotoUrl.trim()
+        : null;
+
+  if (!existingTouchdown && !onScenePhotoUrl) {
+    throw new Error('On-scene photo is required to confirm touchdown');
   }
   
   const updateData: any = {
@@ -1575,8 +1663,15 @@ export async function markIncidentTouchdown(
     touchdownSource: options.source,
     touchdownDistanceMeters: typeof options.distanceMeters === 'number' ? options.distanceMeters : null,
     responseTimeSeconds,
-    updatedAt: Timestamp.now()
+    updatedAt: Timestamp.now(),
   };
+
+  if (onScenePhotoUrl && !existingTouchdown) {
+    updateData.onScenePhotoUrl = onScenePhotoUrl;
+    updateData.onScenePhotoUploadedAt = Timestamp.now();
+    updateData.onScenePhotoUploadedBy =
+      currentUser.displayName || currentUser.email || currentUser.uid;
+  }
   
   if (currentData.status !== 'on_scene') {
     updateData.status = 'on_scene' as IncidentStatus;

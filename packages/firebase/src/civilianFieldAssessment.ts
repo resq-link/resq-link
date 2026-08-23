@@ -11,12 +11,21 @@ export const TYPE_PROFILE_LABELS: Record<string, string> = {
 };
 
 const INCIDENT_TYPE_LABELS: Record<string, string> = {
-  fire: 'Fire',
+  fire: 'Fire Emergency',
   medical: 'Medical Emergency',
   vehicular_accident: 'Vehicular Accident',
   police_emergency: 'Police Emergency',
   electrical_powerline_hazard: 'Electrical / Powerline Hazard',
   other_emergency: 'Other Emergency',
+};
+
+const INCIDENT_TYPE_SHORT_LABELS: Record<string, string> = {
+  fire: 'Fire',
+  medical: 'Medical',
+  vehicular_accident: 'Vehicular',
+  police_emergency: 'Police',
+  electrical_powerline_hazard: 'Electrical',
+  other_emergency: 'Other',
 };
 
 export function getCivilianEmergencyTypeLabel(
@@ -30,6 +39,56 @@ export function getCivilianEmergencyTypeLabel(
     return INCIDENT_TYPE_LABELS[incidentType];
   }
   return 'Emergency';
+}
+
+export function getIncidentEmergencyTypeLabel(
+  incidentType?: string | null,
+  options?: { short?: boolean; typeProfile?: string | null },
+): string {
+  if (options?.short && incidentType && INCIDENT_TYPE_SHORT_LABELS[incidentType]) {
+    return INCIDENT_TYPE_SHORT_LABELS[incidentType];
+  }
+  return getCivilianEmergencyTypeLabel(incidentType, options?.typeProfile ?? null);
+}
+
+export function resolveIncidentEmergencyType(incident: {
+  incidentType?: string | null;
+  incident_type?: string | null;
+  incidentCategory?: string | null;
+}): string {
+  const rawType = (incident.incidentType || incident.incident_type || '').trim();
+  if (rawType) {
+    if (INCIDENT_TYPE_LABELS[rawType]) {
+      return rawType;
+    }
+    return mapIncidentCategoryToEmergencyType(rawType);
+  }
+  return mapIncidentCategoryToEmergencyType(incident.incidentCategory);
+}
+
+export function resolveIncidentDisplayFields(incident: {
+  incidentType?: string | null;
+  incident_type?: string | null;
+  incidentCategory?: string | null;
+  incidentSubtypeLabel?: string | null;
+  description?: string | null;
+  typeProfile?: string | null;
+  incidentTypeLabel?: string | null;
+}): {
+  incidentType: string;
+  incidentTypeLabel: string;
+  incidentTitle: string | null;
+} {
+  const incidentType = resolveIncidentEmergencyType(incident);
+  const incidentTypeLabel =
+    incident.incidentTypeLabel ||
+    getCivilianEmergencyTypeLabel(incidentType, null);
+  const incidentTitle =
+    incident.incidentSubtypeLabel?.trim() ||
+    incident.description?.trim() ||
+    null;
+
+  return { incidentType, incidentTypeLabel, incidentTitle };
 }
 
 export function mapEmergencyTypeToIncidentCategory(incidentType?: string | null): string {

@@ -1,18 +1,23 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { MapPin, Clock, ArrowRight, ShieldAlert, CheckCircle } from "lucide-react-native";
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
+import { MapPin, Clock, ArrowRight, Check } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
+import { toast } from "@/utils/toast";
 import useUserStore from "@/store/userStore";
 import { acceptIncidentCase } from "@/services/incidentService";
+import { normalizePriority, resolveIncidentDisplayFields } from "@packages/firebase";
+import { toOperationalError } from "@/utils/operationalError";
+import { getPriorityColor } from "@/utils/priorityColors";
 import CaseStatusBadge from "./CaseStatusBadge";
 import PriorityBadge from "./PriorityBadge";
-import { normalizePriority } from "@packages/firebase";
 import { radii, spacing, useResqTheme } from "@/theme";
+
 
 export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
   const { colors, resolvedScheme } = useResqTheme();
   const isLight = resolvedScheme === "light";
   const priority = normalizePriority(caseData.priority);
+  const priorityColor = getPriorityColor(priority, colors);
   const [isAccepting, setIsAccepting] = useState(false);
   const { user } = useUserStore();
 
@@ -25,15 +30,19 @@ export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
       caseData.status === "awaiting_resources" ||
       caseData.status === "active");
 
-  const handleAcceptCase = async () => {
+  const handleAcceptCase = async (e) => {
+    e?.stopPropagation?.();
     if (!caseData.id) return;
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       setIsAccepting(true);
+      toast.message("Accepting incident…");
       const updatedCase = await acceptIncidentCase(caseData.id);
       onStatusUpdate?.(caseData.id, updatedCase.status || "enroute");
+      toast.success("Incident accepted");
     } catch (err) {
-      console.error("Error accepting case:", err);
+      console.error("[accept]", err);
+      toast.error(toOperationalError(err, "Unable to accept incident"));
     } finally {
       setIsAccepting(false);
     }
@@ -63,33 +72,11 @@ export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
-    return dateObj.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
+    return dateObj.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   };
 
-  const getIncidentTypeName = (type) => {
-    const typeMap = {
-      fire: "Fire Emergency",
-      medical: "Medical Emergency",
-      vehicular_accident: "Vehicular Accident",
-      police_emergency: "Police Emergency",
-      electrical_powerline_hazard: "Powerline Hazard",
-      other_emergency: "Other Emergency",
-      flood_rescue: "Flood Rescue",
-    };
-    return typeMap[type] || "Emergency Incident";
-  };
-
-  const getPriorityColor = () => {
-    if (priority === "critical") return "#DC2626";
-    if (priority === "high") return "#7C3AED";
-    if (priority === "medium") return "#EAB308";
-    return "#10B981";
-  };
-
-  const priorityColor = getPriorityColor();
+  const { incidentTypeLabel } = resolveIncidentDisplayFields(caseData);
+  const incidentLabel = incidentTypeLabel || "Emergency Incident";
 
   return (
     <TouchableOpacity
@@ -98,158 +85,92 @@ export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
       style={[
         styles.card,
         {
-          backgroundColor: isLight ? "#FFFFFF" : "#101E34",
-          borderColor: isLight
-            ? priority === "critical"
-              ? "rgba(220, 38, 38, 0.45)"
-              : "rgba(0, 0, 0, 0.08)"
-            : priority === "critical"
-            ? "rgba(220, 38, 38, 0.55)"
-            : "rgba(255, 255, 255, 0.08)",
-          shadowColor: isLight ? "#000000" : priorityColor,
-          shadowOpacity: isLight ? 0.06 : 0.16,
+          backgroundColor: colors.surfaceCard,
+          borderColor: isLight ? colors.border : colors.borderSolid,
         },
       ]}
     >
-      {/* Left priority accent indicator bar */}
-      <View
-        style={[
-          styles.accentBar,
-          {
-            backgroundColor: priorityColor,
-          },
-        ]}
-      />
+      <View style={[styles.accentBar, { backgroundColor: priorityColor }]} />
 
       <View style={styles.content}>
-        {/* Top meta row: Category, Reference, and Priority Badge */}
         <View style={styles.topRow}>
           <View style={{ flex: 1 }}>
             <View style={styles.typeHeaderRow}>
-              <Text
-                style={[
-                  styles.title,
-                  { color: isLight ? "#0F172A" : "#F8FAFC" },
-                ]}
-                numberOfLines={1}
-              >
-                {getIncidentTypeName(caseData.incidentType)}
+              <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
+                {incidentLabel}
               </Text>
-              {caseData.referenceNumber && (
+              {caseData.referenceNumber ? (
                 <View
                   style={[
                     styles.refBadge,
-                    {
-                      backgroundColor: isLight
-                        ? "rgba(59, 130, 246, 0.10)"
-                        : "rgba(59, 130, 246, 0.18)",
-                    },
+                    { backgroundColor: colors.accentSubtle ?? colors.chipBg },
                   ]}
                 >
-                  <Text style={styles.refBadgeText}>
+                  <Text style={[styles.refBadgeText, { color: colors.accent }]}>
                     #{caseData.referenceNumber}
                   </Text>
                 </View>
-              )}
+              ) : null}
             </View>
 
             <View style={styles.badgesRow}>
-              <CaseStatusBadge status={caseData.status} />
               <PriorityBadge priority={priority} />
+              <CaseStatusBadge status={caseData.status} />
             </View>
           </View>
 
-          <ArrowRight
-            size={18}
-            color={isLight ? "#94A3B8" : "#64748B"}
-            strokeWidth={2}
-          />
+          <ArrowRight size={18} color={colors.textMuted} strokeWidth={2} />
         </View>
 
-        {/* Incident description */}
         {caseData.description ? (
           <Text
-            style={[
-              styles.description,
-              { color: isLight ? "#475569" : "#94A3B8" },
-            ]}
+            style={[styles.description, { color: colors.textSecondary }]}
             numberOfLines={2}
           >
             {caseData.description}
           </Text>
         ) : null}
 
-        {/* Location & Time Footer */}
-        <View
-          style={[
-            styles.footer,
-            {
-              borderTopColor: isLight
-                ? "rgba(0, 0, 0, 0.05)"
-                : "rgba(255, 255, 255, 0.06)",
-            },
-          ]}
-        >
+        <View style={[styles.footer, { borderTopColor: colors.divider ?? colors.border }]}>
           <View style={styles.locationRow}>
-            <MapPin
-              size={13}
-              color={isLight ? "#64748B" : "#94A3B8"}
-              strokeWidth={2.2}
-            />
-            <Text
-              style={[
-                styles.locationText,
-                { color: isLight ? "#475569" : "#CBD5E1" },
-              ]}
-              numberOfLines={1}
-            >
+            <MapPin size={13} color={colors.textMuted} strokeWidth={2.2} />
+            <Text style={[styles.locationText, { color: colors.textSecondary }]} numberOfLines={1}>
               {caseData.locationText || caseData.address || "Location on map"}
             </Text>
           </View>
 
           <View style={styles.timeRow}>
-            <Clock
-              size={12}
-              color={isLight ? "#94A3B8" : "#64748B"}
-              strokeWidth={2}
-            />
-            <Text
-              style={[
-                styles.timeText,
-                { color: isLight ? "#64748B" : "#94A3B8" },
-              ]}
-            >
+            <Clock size={12} color={colors.textMuted} strokeWidth={2} />
+            <Text style={[styles.timeText, { color: colors.textMuted }]}>
               {formatRelativeTime(caseData.createdAt)}
             </Text>
           </View>
         </View>
 
-        {/* Quick Accept CTA Button */}
-        {showAcceptButton && (
+        <View style={styles.viewRow}>
+          <Text style={[styles.viewText, { color: colors.accent }]}>View Incident →</Text>
+        </View>
+
+        {showAcceptButton ? (
           <TouchableOpacity
-            onPress={(e) => {
-              e.stopPropagation();
-              handleAcceptCase();
-            }}
+            onPress={handleAcceptCase}
             disabled={isAccepting}
             activeOpacity={0.88}
             style={[
               styles.acceptButton,
-              {
-                backgroundColor: isAccepting
-                  ? isLight
-                    ? "#CBD5E1"
-                    : "#334155"
-                  : "#2563EB",
-              },
+              { backgroundColor: isAccepting ? colors.disabled : colors.accent },
             ]}
           >
-            <ShieldAlert size={16} color="#FFFFFF" strokeWidth={2.4} />
+            {isAccepting ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Check size={16} color="#FFFFFF" strokeWidth={2.4} />
+            )}
             <Text style={styles.acceptButtonText}>
-              {isAccepting ? "Accepting Dispatch..." : "Accept Case & En Route"}
+              {isAccepting ? "Accepting…" : "Accept Incident"}
             </Text>
           </TouchableOpacity>
-        )}
+        ) : null}
       </View>
     </TouchableOpacity>
   );
@@ -257,24 +178,21 @@ export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 20,
-    marginBottom: 14,
+    borderRadius: radii.lg,
+    marginBottom: spacing.md,
     borderWidth: 1,
     overflow: "hidden",
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 10,
-    elevation: 3,
   },
   accentBar: {
     position: "absolute",
     left: 0,
     top: 0,
     bottom: 0,
-    width: 5,
+    width: 4,
   },
   content: {
-    padding: 16,
-    paddingLeft: 20,
+    padding: spacing.lg,
+    paddingLeft: spacing.lg + 4,
   },
   topRow: {
     flexDirection: "row",
@@ -285,44 +203,41 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flexWrap: "wrap",
-    gap: 8,
+    gap: spacing.sm,
     marginBottom: 6,
   },
   title: {
     fontFamily: "Inter_700Bold",
-    fontSize: 16,
-    letterSpacing: 0.2,
+    fontSize: 17,
   },
   refBadge: {
     paddingHorizontal: 7,
     paddingVertical: 2,
-    borderRadius: 6,
+    borderRadius: radii.sm,
   },
   refBadgeText: {
     fontFamily: "Inter_600SemiBold",
     fontSize: 11,
-    color: "#3B82F6",
   },
   badgesRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 7,
-    marginTop: 2,
-    marginBottom: 10,
+    marginBottom: spacing.sm,
   },
   description: {
     fontFamily: "Inter_400Regular",
-    fontSize: 13.5,
-    lineHeight: 19,
-    marginBottom: 12,
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: spacing.sm,
   },
   footer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingTop: 10,
+    paddingTop: spacing.sm,
     borderTopWidth: 1,
-    gap: 8,
+    gap: spacing.sm,
   },
   locationRow: {
     flex: 1,
@@ -333,7 +248,7 @@ const styles = StyleSheet.create({
   locationText: {
     flex: 1,
     fontFamily: "Inter_500Medium",
-    fontSize: 12.5,
+    fontSize: 13,
   },
   timeRow: {
     flexDirection: "row",
@@ -342,22 +257,28 @@ const styles = StyleSheet.create({
   },
   timeText: {
     fontFamily: "Inter_500Medium",
-    fontSize: 11.5,
+    fontSize: 12,
+  },
+  viewRow: {
+    marginTop: spacing.sm,
+  },
+  viewText: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 13,
   },
   acceptButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    marginTop: 14,
-    borderRadius: 14,
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    borderRadius: radii.lg,
     paddingVertical: 12,
-    paddingHorizontal: 16,
+    minHeight: 48,
   },
   acceptButtonText: {
     fontFamily: "Inter_700Bold",
-    fontSize: 14,
+    fontSize: 15,
     color: "#FFFFFF",
-    letterSpacing: 0.2,
   },
 });

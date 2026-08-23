@@ -15,6 +15,7 @@
     "seed:incident-types": "ts-node scripts/seed-incident-type-rules.ts",
     "seed:civilians": "ts-node scripts/create-civilian-users.ts",
     "deploy:indexes": "firebase deploy --only firestore:indexes",
+    "deploy:storage": "firebase deploy --only storage",
     "cleanup:qa": "ts-node scripts/cleanup-qa-records.ts",
     "cleanup:qa:notifications": "ts-node scripts/cleanup-qa-records.ts --notifications-only",
     "cleanup:routine-notifications": "ts-node scripts/cleanup-routine-notifications.ts",

@@ -22,7 +22,7 @@ import {
   onSnapshot,
   acknowledgeIncidentAlert,
   parseResponderAssessment,
-  mapIncidentCategoryToEmergencyType,
+  resolveIncidentDisplayFields,
 } from "@packages/firebase";
 import CaseInfoCard from "@/modules/incidents/components/CaseInfoCard";
 import CaseDetailSkeleton from "@/modules/incidents/components/CaseDetailSkeleton";
@@ -103,14 +103,22 @@ export default function CaseDetailView() {
           const longitude = toCoordinateValue(data.longitude ?? data.location?.longitude);
           const incidentCategory =
             data.incidentCategory || data.incidentType || data.incident_type || "other";
-          const assessmentIncidentType = mapIncidentCategoryToEmergencyType(incidentCategory);
+          const displayFields = resolveIncidentDisplayFields({
+            incidentType: data.incidentType || data.incident_type || null,
+            incidentCategory,
+            incidentSubtypeLabel: data.incidentSubtypeLabel || "",
+            description: data.description || null,
+            typeProfile: data.typeProfile || data.type_profile || data.profile || null,
+            incidentTypeLabel: data.incidentTypeLabel || null,
+          });
 
           const caseInfo = {
             id: docSnap.id,
             userId: data.createdByUserId || data.userId || data.user_id || "",
             incidentCategory,
-            incidentType: assessmentIncidentType,
-            assessmentIncidentType,
+            incidentType: displayFields.incidentType,
+            incidentTypeLabel: displayFields.incidentTypeLabel,
+            assessmentIncidentType: displayFields.incidentType,
             locationText: data.locationText || data.location_text || "",
             landmark: data.landmark || null,
             peopleInvolved:
@@ -145,6 +153,9 @@ export default function CaseDetailView() {
               typeof data.touchdownDistanceMeters === "number"
                 ? data.touchdownDistanceMeters
                 : null,
+            onScenePhotoUrl: data.onScenePhotoUrl || null,
+            onScenePhotoUploadedAt: toDateValue(data.onScenePhotoUploadedAt),
+            onScenePhotoUploadedBy: data.onScenePhotoUploadedBy || null,
             responseTimeSeconds:
               typeof data.responseTimeSeconds === "number"
                 ? data.responseTimeSeconds

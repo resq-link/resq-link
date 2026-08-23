@@ -44,10 +44,10 @@ import { getMapTheme, MAP_DARK_STYLE, MAP_LIGHT_STYLE } from "@/theme";
 import { useAssignedEmergencies } from "@/modules/incidents/hooks/useAssignedEmergencies";
 import {
   MAP_LOGO,
-  NAV_CLEARANCE,
   SHEET_COLLAPSED_MAX,
   SHEET_EXPANDED_MAX,
 } from "@/modules/map/constants";
+import { getBottomNavHeight } from "@/utils/navigationInsets";
 import {
   distanceKm,
   formatDistance,
@@ -398,12 +398,12 @@ export default function ResponderMapExplorer() {
           gap: spacing.xs,
         },
         mapUnavailableTitle: {
-          fontFamily: "SpaceGrotesk_700Bold",
+          fontFamily: "Inter_700Bold",
           fontSize: 15,
           color: D.text,
         },
         mapUnavailableText: {
-          fontFamily: "SpaceGrotesk_400Regular",
+          fontFamily: "Inter_400Regular",
           fontSize: 12,
           lineHeight: 17,
           color: D.textSecondary,
@@ -627,7 +627,7 @@ export default function ResponderMapExplorer() {
     [D, M, colors, resolvedScheme]
   );
 
-  const sheetBottomPad = insets.bottom + NAV_CLEARANCE;
+  const sheetBottomPad = getBottomNavHeight(insets) + spacing.sm;
 
   const sheetMax = useSharedValue(SHEET_COLLAPSED_MAX);
   const gestureStartSheetMax = useSharedValue(SHEET_COLLAPSED_MAX);
@@ -795,7 +795,7 @@ export default function ResponderMapExplorer() {
                     latitude: caseData.latitude,
                     longitude: caseData.longitude,
                   }}
-                  title={getIncidentTypeName(caseData.incidentType, true)}
+                  title={getIncidentTypeName(caseData, true)}
                   description={caseData.locationText || undefined}
                   pinColor={pinColorFor(
                     caseData.priority || "medium",
@@ -902,7 +902,7 @@ export default function ResponderMapExplorer() {
                     activeOpacity={0.88}
                   >
                     <Text style={styles.caseChipTitle} numberOfLines={1}>
-                      {getIncidentTypeName(c.incidentType, true)}
+                      {getIncidentTypeName(c, true)}
                     </Text>
                     <ChevronRight size={14} color={M.accent} />
                   </TouchableOpacity>
@@ -918,7 +918,7 @@ export default function ResponderMapExplorer() {
             >
               <View style={styles.detailHeader}>
                 <Text style={styles.detailType}>
-                  {getIncidentTypeName(selectedCase.incidentType, true)}
+                  {getIncidentTypeName(selectedCase, true)}
                 </Text>
                 {isActiveIncident(selectedCase.status) && (
                   <View style={styles.urgentChip}>

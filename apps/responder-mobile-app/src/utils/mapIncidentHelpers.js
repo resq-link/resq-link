@@ -1,3 +1,9 @@
+import {
+  getIncidentEmergencyTypeLabel,
+  resolveIncidentDisplayFields,
+  resolveIncidentEmergencyType,
+} from "@packages/firebase";
+
 export function distanceKm(from, to) {
   if (!from || !to) return null;
   const R = 6371;
@@ -35,16 +41,20 @@ export function formatReported(createdAt) {
   });
 }
 
-export function getIncidentTypeName(incidentType, short = false) {
-  const typeMap = {
-    fire: short ? "Fire" : "Fire",
-    medical: short ? "Medical" : "Medical Emergency",
-    vehicular_accident: short ? "Vehicular" : "Vehicular Accident",
-    police_emergency: short ? "Police" : "Police Emergency",
-    electrical_powerline_hazard: short ? "Electrical" : "Electrical / Powerline Hazard",
-    other_emergency: short ? "Other" : "Other Emergency",
-  };
-  return typeMap[incidentType] || "Emergency";
+export function getIncidentTypeName(incidentOrType, short = false) {
+  if (typeof incidentOrType === "object" && incidentOrType !== null) {
+    const { incidentType } = resolveIncidentDisplayFields(incidentOrType);
+    return getIncidentEmergencyTypeLabel(incidentType, {
+      short,
+      typeProfile: short ? incidentOrType.typeProfile : null,
+    });
+  }
+
+  const incidentType = resolveIncidentEmergencyType({
+    incidentType: incidentOrType,
+    incidentCategory: incidentOrType,
+  });
+  return getIncidentEmergencyTypeLabel(incidentType, { short });
 }
 
 export function isActiveIncident(status) {

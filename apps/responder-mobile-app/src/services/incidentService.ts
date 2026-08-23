@@ -29,7 +29,15 @@ export async function declineIncidentCase(caseId: string, reason: string) {
   return declineIncident(caseId, reason);
 }
 
-export async function markIncidentCaseTouchdown(caseId: string, options: { source: 'gps' | 'manual'; distanceMeters?: number | null; }) {
+export async function markIncidentCaseTouchdown(
+  caseId: string,
+  options: {
+    source: 'gps' | 'manual';
+    distanceMeters?: number | null;
+    touchdownAt?: Date | string | number;
+    onScenePhotoUrl?: string | null;
+  }
+) {
   return markIncidentTouchdown(caseId, options);
 }
 
@@ -40,7 +48,7 @@ export async function submitIncidentPostReport(caseId: string, postReport: any) 
 export async function submitIncidentSceneAssessment(
   caseId: string,
   fields: Record<string, string>,
-  options?: { updatedByName?: string | null; scenePhotoUrl?: string | null },
+  options?: { updatedByName?: string | null; actionPhotoUrl?: string | null },
 ) {
   return submitResponderSceneAssessmentForIncident(caseId, fields, options);
 }

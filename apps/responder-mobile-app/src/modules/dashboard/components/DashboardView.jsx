@@ -1,15 +1,20 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import {
   View,
   Text,
   ScrollView,
   RefreshControl,
-  StyleSheet,
   Platform,
-  Animated,
-  Easing,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import {
+  Activity,
+  CalendarDays,
+  CheckCircle2,
+  ClipboardList,
+  List,
+  Radio,
+  ShieldCheck,
+} from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useRouter, useFocusEffect } from "expo-router";
@@ -21,102 +26,87 @@ import {
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
 import { useFonts } from "expo-font";
-import Svg, { Circle, Path, Defs, RadialGradient, Stop } from "react-native-svg";
-import {
-  Activity,
-  CheckCircle2,
-  Radio,
-  ClipboardList,
-  Shield,
-} from "lucide-react-native";
 import useUserStore from "@/store/userStore";
 import { getFirebaseAuth, waitForFirebaseAuthUser } from "@packages/firebase";
-import CaseCard from "@/modules/incidents/components/CaseCard";
+import ActiveAssignmentCard from "@/modules/dashboard/components/ActiveAssignmentCard";
+import DashboardTopBar from "@/modules/dashboard/components/DashboardTopBar";
+import DashboardIncidentRow from "@/modules/dashboard/components/DashboardIncidentRow";
+import DashboardSectionLabel from "@/modules/dashboard/components/DashboardSectionLabel";
+import DashboardStatCell from "@/modules/dashboard/components/DashboardStatCell";
 import LoadingScreen from "@/components/ui/LoadingScreen";
 import {
   spacing,
   useResqTheme,
   dashboardThemeDark,
   dashboardThemeLight,
-  dashboardConstants,
 } from "@/theme";
 import { LOCATION_PAUSED_KEY } from "@/constants/location";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/query/queryKeys";
 import { useAssignedEmergencies } from "@/modules/incidents/hooks/useAssignedEmergencies";
-import { useOnlineResponderCount } from "@/modules/dashboard/hooks/useOnlineResponderCount";
 import { useResponderDuty } from "@/modules/dashboard/hooks/useResponderDuty";
 import DutyResourceCard from "@/modules/dashboard/components/DutyResourceCard";
 import { useDashboardLocationTracking } from "@/modules/dashboard/hooks/useDashboardLocationTracking";
+import { useResponderLocationSnapshot } from "@/modules/dashboard/hooks/useResponderLocationSnapshot";
 import {
   formatResponderName,
-  initialsFromEmail,
+  getResponderInitials,
+  getResponderRoleLabel,
 } from "@/utils/formatResponderIdentity";
+import { getBottomNavHeight } from "@/utils/navigationInsets";
+import { useIncidentAlert } from "@/providers/PriorityAlertProvider";
 import { buildDashboardStyles } from "./dashboardView.styles";
 
+const ACTIVE_STATUSES = new Set([
+  "pending",
+  "dispatched",
+  "awaiting_resources",
+  "active",
+  "enroute",
+  "on_scene",
+]);
+
+function pickActiveAssignment(cases) {
+  const open = cases.filter((c) => {
+    const status = String(c.status || "").toLowerCase();
+    return (
+      ACTIVE_STATUSES.has(status) &&
+      status !== "done" &&
+      status !== "resolved" &&
+      !c.postIncidentReport?.submittedAt
+    );
+  });
+
+  if (open.length === 0) return null;
+
+  const priorityRank = { critical: 4, high: 3, medium: 2, low: 1 };
+  return [...open].sort((a, b) => {
+    const pa = priorityRank[String(a.priority || "medium").toLowerCase()] ?? 2;
+    const pb = priorityRank[String(b.priority || "medium").toLowerCase()] ?? 2;
+    if (pb !== pa) return pb - pa;
+    const ta = a.updatedAt?.toDate?.() ?? a.updatedAt ?? a.createdAt;
+    const tb = b.updatedAt?.toDate?.() ?? b.updatedAt ?? b.createdAt;
+    return new Date(tb) - new Date(ta);
+  })[0];
+}
+
 export default function DashboardView() {
-  const pulseA = useRef(new Animated.Value(0)).current;
-  const pulseB = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const mkLoop = (v, delay) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(delay),
-          Animated.timing(v, {
-            toValue: 1,
-            duration: 2200,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-          Animated.timing(v, {
-            toValue: 0,
-            duration: 2200,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-        ])
-      );
-    const l1 = mkLoop(pulseA, 0);
-    const l2 = mkLoop(pulseB, 350);
-    l1.start();
-    l2.start();
-    return () => {
-      l1.stop();
-      l2.stop();
-    };
-  }, [pulseA, pulseB]);
-
-  const pulseOuterOpacity = pulseA.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.12, 0.42],
-  });
-  const pulseOuterScale = pulseA.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 1.06],
-  });
-  const pulseMidOpacity = pulseB.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.18, 0.38],
-  });
-  const pulseMidScale = pulseB.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 1.045],
-  });
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user } = useUserStore();
+  const { alertingCount } = useIncidentAlert();
   const authUid = getFirebaseAuth().currentUser?.uid ?? user?.uid;
   const [refreshing, setRefreshing] = useState(false);
   const [locationPaused, setLocationPaused] = useState(false);
+  const scrollRef = useRef(null);
+  const dutySectionYRef = useRef(0);
 
   const { cases, initialSyncPending } = useAssignedEmergencies(
     user && authUid ? authUid : undefined,
     { onRealtimeSnapshot: () => setRefreshing(false) }
   );
 
-  const { count: onlineResponderCount } = useOnlineResponderCount(!!user);
   const duty = useResponderDuty(authUid);
 
   const [fontsLoaded] = useFonts({
@@ -128,47 +118,13 @@ export default function DashboardView() {
 
   const { resolvedScheme } = useResqTheme();
   const D = useMemo(
-    () =>
-      resolvedScheme === "dark" ? dashboardThemeDark : dashboardThemeLight,
+    () => ({
+      ...(resolvedScheme === "dark" ? dashboardThemeDark : dashboardThemeLight),
+      alertBadge: "#DC2626",
+    }),
     [resolvedScheme]
   );
   const styles = useMemo(() => buildDashboardStyles(D), [D]);
-
-  const StatCard = useCallback(
-    ({ label, value, Icon, accent, topTint, iconWellBg }) => {
-      const light = D.visualScheme === "light";
-      return (
-        <View style={styles.statCardOuter}>
-          <LinearGradient
-            colors={[topTint, D.statCardBottom]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.statCardGradient}
-          >
-            <View style={styles.statTopRow}>
-              {light && iconWellBg ? (
-                <View style={[styles.statIconWell, { backgroundColor: iconWellBg }]}>
-                  <Icon size={15} color={accent} strokeWidth={2.25} />
-                </View>
-              ) : (
-                <Icon size={14} color={accent} strokeWidth={2.25} />
-              )}
-              <Text
-                style={[styles.statValue, { color: accent }]}
-                numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.85}
-              >
-                {value}
-              </Text>
-            </View>
-            <Text style={styles.statLabel}>{label}</Text>
-          </LinearGradient>
-        </View>
-      );
-    },
-    [styles, D]
-  );
 
   const [authReady, setAuthReady] = React.useState(false);
   const [firebaseUid, setFirebaseUid] = React.useState(
@@ -183,8 +139,6 @@ export default function DashboardView() {
 
     let cancelled = false;
     (async () => {
-      // Wait for RN Firebase Auth persistence — sync currentUser is often null
-      // for a moment after cold start even when the session is valid.
       const firebaseUser = await waitForFirebaseAuthUser();
       if (cancelled) return;
       setAuthReady(true);
@@ -200,13 +154,16 @@ export default function DashboardView() {
     };
   }, [user, router]);
 
-  useDashboardLocationTracking(
-    !!(user && authReady && firebaseUid && !locationPaused),
-    { resourceId: duty.duty.resourceId, isPrimary: duty.isPrimary },
-  );
+  const trackingEnabled = !!(user && authReady && firebaseUid && !locationPaused);
+  useDashboardLocationTracking(trackingEnabled, {
+    resourceId: duty.duty.resourceId,
+    isPrimary: duty.isPrimary,
+  });
+
+  const responderCoords = useResponderLocationSnapshot(trackingEnabled);
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       let cancelled = false;
       AsyncStorage.getItem(LOCATION_PAUSED_KEY).then((raw) => {
         if (!cancelled) setLocationPaused(raw === "true");
@@ -233,14 +190,32 @@ export default function DashboardView() {
     );
   };
 
-  const identity = useMemo(() => {
-    const email = user?.email || "";
-    return {
-      email,
-      displayName: formatResponderName(email),
-      initials: initialsFromEmail(email),
-    };
-  }, [user]);
+  const displayName = useMemo(
+    () => formatResponderName(user?.email || ""),
+    [user?.email]
+  );
+  const initials = useMemo(
+    () => getResponderInitials({ email: user?.email, displayName }),
+    [user?.email, displayName]
+  );
+  const roleLabel = useMemo(
+    () => getResponderRoleLabel(duty.activeResource),
+    [duty.activeResource]
+  );
+
+  const onDuty = Boolean(duty.activeResource);
+  const dutyUnitLabel = duty.activeResource?.name ?? null;
+
+  const handlePressDuty = useCallback(() => {
+    if (onDuty) {
+      scrollRef.current?.scrollToEnd({ animated: true });
+      return;
+    }
+    scrollRef.current?.scrollTo({
+      y: Math.max(dutySectionYRef.current - 12, 0),
+      animated: true,
+    });
+  }, [onDuty]);
 
   if (!fontsLoaded) return null;
   if (initialSyncPending) {
@@ -252,17 +227,42 @@ export default function DashboardView() {
     );
   }
 
-  const activeCount = cases.filter(
-    (c) =>
-      c.status === "pending" ||
-      c.status === "enroute" ||
-      c.status === "on_scene" ||
-      c.status === "active"
+  const activeAssignment = pickActiveAssignment(cases);
+  const otherCases = activeAssignment
+    ? cases.filter((c) => c.id !== activeAssignment.id)
+    : cases;
+
+  const activeCount = cases.filter((c) =>
+    ACTIVE_STATUSES.has(String(c.status || "").toLowerCase())
   ).length;
-  const resolvedCount = cases.filter(
+  const completedCount = cases.filter(
     (c) => c.status === "done" || c.status === "resolved"
   ).length;
-  const headerTopPad = insets.top + (Platform.OS === "android" ? 4 : spacing.sm);
+  const assignedCount = cases.length;
+
+  const dutySection = (
+    <View
+      style={[styles.content, styles.dutySection]}
+      onLayout={(event) => {
+        dutySectionYRef.current = event.nativeEvent.layout.y;
+      }}
+    >
+      <DutyResourceCard
+        D={D}
+        activeResource={duty.activeResource}
+        claimableResources={duty.claimableResources}
+        isPrimary={duty.isPrimary}
+        isSaving={duty.isSaving}
+        error={duty.error}
+        clearError={duty.clearError}
+        onGoOnDuty={duty.goOnDuty}
+        onGoOffDuty={duty.goOffDuty}
+        showStatusPill={false}
+      />
+    </View>
+  );
+
+  const headerTopPad = insets.top + (Platform.OS === "android" ? 4 : spacing.xs);
 
   return (
     <View style={styles.root}>
@@ -271,16 +271,11 @@ export default function DashboardView() {
         backgroundColor={D.bgBottom}
       />
 
-      <LinearGradient
-        colors={[D.bgTop, D.bgMid, D.bgBottom]}
-        locations={[0, 0.45, 1]}
-        style={StyleSheet.absoluteFillObject}
-      />
-
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={{
-          paddingBottom: insets.bottom + 100,
+          paddingBottom: getBottomNavHeight(insets) + spacing.md,
         }}
         refreshControl={
           <RefreshControl
@@ -292,232 +287,138 @@ export default function DashboardView() {
         }
         showsVerticalScrollIndicator={false}
       >
-        <LinearGradient
-          colors={[D.headerGlowTop, D.bgMid, "transparent"]}
-          locations={[0, 0.55, 1]}
-          style={[styles.hero, { paddingTop: headerTopPad }]}
-        >
-          <View style={styles.heroDecor} pointerEvents="none">
-            <Svg width="100%" height={130} style={styles.heroSvg}>
-              <Defs>
-                <RadialGradient id="dashGlow" cx="50%" cy="0%" rx="65%" ry="55%">
-                  <Stop offset="0%" stopColor={D.decorRadialStart} />
-                  <Stop offset="55%" stopColor={D.decorRadialEnd} />
-                </RadialGradient>
-              </Defs>
-              <Circle cx="75%" cy="18" r="120" fill="url(#dashGlow)" />
-              <Circle
-                cx="18%"
-                cy="40%"
-                r="56"
-                stroke={D.decorArc}
-                strokeWidth={1}
-                fill="none"
-              />
-              <Circle
-                cx="20%"
-                cy="42%"
-                r="78"
-                stroke={D.decorArc}
-                strokeOpacity={0.35}
-                strokeWidth={1}
-                fill="none"
-              />
-              <Path
-                d="M 0 120 Q 140 72 280 118 T 420 104"
-                stroke={D.decorArc}
-                strokeOpacity={0.2}
-                strokeWidth={1}
-                fill="none"
-              />
-              <Circle cx="88%" cy="64%" r="3" fill={D.decorDot} />
-              <Circle cx="12%" cy="68%" r="2" fill={D.decorDot} opacity={0.55} />
-            </Svg>
-          </View>
+        <DashboardTopBar
+          initials={initials}
+          displayName={displayName}
+          roleLabel={roleLabel}
+          onDuty={onDuty}
+          dutyUnitLabel={dutyUnitLabel}
+          onPressDuty={handlePressDuty}
+          notificationCount={alertingCount}
+          onPressNotifications={() => router.push("/notifications")}
+          onPressProfile={() => router.push("/settings")}
+          topInset={headerTopPad}
+          theme={D}
+        />
 
-          <View style={styles.brandRow}>
-            <View style={styles.brandTextBlock}>
-              <Text style={styles.brandTitle} accessibilityRole="header">
-                {dashboardConstants.appTitle}
-              </Text>
-              <Text style={styles.brandSubtitle}>
-                {dashboardConstants.appSubtitle}
-              </Text>
-            </View>
-            <View style={styles.liveBadge}>
-              <View style={styles.liveDot} />
-              <Text style={styles.liveBadgeText}>
-                {locationPaused ? "Idle" : "Live"}
-              </Text>
-            </View>
-          </View>
+        <View style={styles.divider} />
 
-          <View style={styles.welcomeRow}>
-            <View style={styles.responderBadge}>
-              <Shield size={12} color={D.accentBright} strokeWidth={2.25} />
-              <Text style={styles.responderBadgeText}>Responder</Text>
-            </View>
-          </View>
+        {!onDuty ? dutySection : null}
 
-          <View style={styles.identityCard}>
-            <LinearGradient
-              colors={[D.identityShine, D.surfaceCardInner]}
-              style={styles.identityGradient}
-            >
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{identity.initials}</Text>
-              </View>
-              <View style={styles.identityBody}>
-                <Text style={styles.nameLine} numberOfLines={1}>
-                  {identity.displayName}
-                </Text>
-                <Text style={styles.metaLine} numberOfLines={1}>
-                  {dashboardConstants.unitLabel}
-                </Text>
-                <Text style={styles.emailLine} numberOfLines={1}>
-                  Station: {dashboardConstants.stationLabel}
-                  {"  ·  "}
-                  {locationPaused ? "Idle" : "Available"}
-                </Text>
-              </View>
-            </LinearGradient>
-          </View>
-        </LinearGradient>
-
-        <View style={styles.statsSection}>
-          <View style={styles.statsRow}>
-            <StatCard
-              label="Active"
-              value={String(activeCount)}
-              Icon={Activity}
-              accent={D.statActive}
-              topTint={D.statCardActiveTop}
-              iconWellBg={D.statCardActiveIconBg}
-            />
-            <StatCard
-              label="Done"
-              value={String(resolvedCount)}
-              Icon={CheckCircle2}
-              accent={D.statResolved}
-              topTint={D.statCardResolvedTop}
-              iconWellBg={D.statCardResolvedIconBg}
-            />
-            <StatCard
-              label="Online"
-              value={String(onlineResponderCount)}
-              Icon={Radio}
-              accent={D.statOnline}
-              topTint={D.statCardOnlineTop}
-              iconWellBg={D.statCardOnlineIconBg}
-            />
-          </View>
-        </View>
-
-        <View style={{ paddingHorizontal: spacing.lg }}>
-          <DutyResourceCard
-            D={D}
-            activeResource={duty.activeResource}
-            claimableResources={duty.claimableResources}
-            isPrimary={duty.isPrimary}
-            isSaving={duty.isSaving}
-            error={duty.error}
-            clearError={duty.clearError}
-            onGoOnDuty={duty.goOnDuty}
-            onGoOffDuty={duty.goOffDuty}
+        <View style={[styles.content, styles.section]}>
+          <DashboardSectionLabel
+            Icon={CalendarDays}
+            label="Response Summary"
+            color={D.accent}
+            theme={D}
           />
+          <View style={styles.statsRow}>
+            <DashboardStatCell
+              Icon={Activity}
+              value={activeCount}
+              label="Active"
+              valueColor={D.statActive}
+              iconColor={D.statActive}
+              iconBg={D.statCardActiveTop ?? D.accentSoft}
+              bordered
+              theme={D}
+            />
+            <DashboardStatCell
+              Icon={CheckCircle2}
+              value={completedCount}
+              label="Done"
+              valueColor={D.statResolved}
+              iconColor={D.statResolved}
+              iconBg={D.statCardResolvedTop ?? D.accentSoft}
+              bordered
+              theme={D}
+            />
+            <DashboardStatCell
+              Icon={ClipboardList}
+              value={assignedCount}
+              label="All"
+              iconColor={D.accent}
+              iconBg={D.statCardOnlineTop ?? D.accentSoft}
+              theme={D}
+            />
+          </View>
         </View>
 
-        <View style={[styles.mainBlock, { paddingHorizontal: spacing.lg }]}>
-          <View
-            style={{
-              flexDirection: "row",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: 12,
-              marginTop: 6,
-            }}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <Text
-                style={{
-                  fontFamily: "Inter_700Bold",
-                  fontSize: 16,
-                  color: D.textPrimary,
-                  letterSpacing: 0.2,
-                }}
-              >
-                Assigned Incidents
-              </Text>
-              {cases.length > 0 && (
-                <View
-                  style={{
-                    backgroundColor: "rgba(59, 130, 246, 0.16)",
-                    borderRadius: 12,
-                    paddingHorizontal: 8,
-                    paddingVertical: 2,
-                  }}
-                >
-                  <Text
-                    style={{
-                      fontFamily: "Inter_700Bold",
-                      fontSize: 12,
-                      color: D.accentBright,
-                    }}
-                  >
-                    {cases.length}
-                  </Text>
-                </View>
-              )}
+        <View style={[styles.content, styles.section]}>
+          <DashboardSectionLabel
+            Icon={Radio}
+            label="Active"
+            color={D.accent}
+            theme={D}
+          />
+          {activeAssignment ? (
+            <ActiveAssignmentCard
+              case={activeAssignment}
+              onPress={() => handleCasePress(activeAssignment)}
+              onStatusUpdate={handleCaseStatusUpdate}
+              responderCoords={responderCoords}
+            />
+          ) : (
+            <View style={styles.activeEmpty}>
+              <View style={[styles.emptyIconWell, { backgroundColor: D.accentSoft }]}>
+                <ShieldCheck size={16} color={D.accent} strokeWidth={2} />
+              </View>
+              <View style={styles.emptyCopy}>
+                <Text style={styles.activeEmptyTitle}>Clear</Text>
+                <Text style={styles.activeEmptyText}>No active assignment</Text>
+              </View>
             </View>
+          )}
+        </View>
+
+        <View style={[styles.content, styles.section]}>
+          <View style={styles.listHeader}>
+            <DashboardSectionLabel
+              Icon={List}
+              label="Queue"
+              color={D.accent}
+              theme={D}
+              style={{ flex: 1, marginBottom: 0 }}
+            />
+            {otherCases.length > 0 ? (
+              <Text style={styles.listCount}>{otherCases.length}</Text>
+            ) : null}
           </View>
 
           {cases.length === 0 ? (
             <View style={styles.emptyWrap}>
-              <View style={styles.emptyOrb}>
-                <Animated.View
-                  style={[
-                    styles.pulseRing,
-                    styles.pulseRingOuter,
-                    {
-                      opacity: pulseOuterOpacity,
-                      transform: [{ scale: pulseOuterScale }],
-                    },
-                  ]}
-                />
-                <Animated.View
-                  style={[
-                    styles.pulseRing,
-                    styles.pulseRingMid,
-                    {
-                      opacity: pulseMidOpacity,
-                      transform: [{ scale: pulseMidScale }],
-                    },
-                  ]}
-                />
-                <LinearGradient
-                  colors={[D.surfaceCard, D.surfaceCardInner]}
-                  style={styles.emptyIconDisc}
-                >
-                  <ClipboardList size={22} color={D.accentBright} strokeWidth={2} />
-                </LinearGradient>
+              <View style={[styles.emptyIconWell, { backgroundColor: D.accentSoft }]}>
+                <ClipboardList size={16} color={D.accent} strokeWidth={2} />
               </View>
-
-              <Text style={styles.emptyTitle}>No Active Incidents</Text>
-              <Text style={styles.emptySubtitle}>
-                You&apos;re ready for the next dispatch.
-              </Text>
+              <View style={styles.emptyCopy}>
+                <Text style={styles.emptyTitle}>No incidents</Text>
+                <Text style={styles.emptySubtitle}>Waiting for dispatch</Text>
+              </View>
+            </View>
+          ) : otherCases.length === 0 ? (
+            <View style={styles.activeEmpty}>
+              <View style={[styles.emptyIconWell, { backgroundColor: D.accentSoft }]}>
+                <ShieldCheck size={16} color={D.accent} strokeWidth={2} />
+              </View>
+              <View style={styles.emptyCopy}>
+                <Text style={styles.activeEmptyTitle}>Queue empty</Text>
+                <Text style={styles.activeEmptyText}>Only active case shown above</Text>
+              </View>
             </View>
           ) : (
-            cases.map((caseData) => (
-              <CaseCard
+            otherCases.map((caseData) => (
+              <DashboardIncidentRow
                 key={caseData.id}
                 case={caseData}
                 onPress={() => handleCasePress(caseData)}
                 onStatusUpdate={handleCaseStatusUpdate}
+                responderCoords={responderCoords}
               />
             ))
           )}
         </View>
+
+        {onDuty ? dutySection : null}
       </ScrollView>
     </View>
   );

@@ -11,18 +11,18 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import * as Location from "expo-location";
-import { BlurView } from "expo-blur";
 import MapView, { Marker } from "react-native-maps";
 import {
   ArrowLeft,
-  ClipboardList,
   Check,
   MapPin,
+  MessageSquare,
   Navigation,
   Navigation2,
 } from "lucide-react-native";
 import { uploadImageToStorage, hasResponderSceneAssessment } from "@packages/firebase";
-import { toast } from "sonner-native";
+import { toast } from "@/utils/toast";
+import * as Haptics from "expo-haptics";
 import {
   acceptIncidentCase as acceptCase,
   declineIncidentCase as declineCase,
@@ -34,6 +34,7 @@ import useUserStore from "@/store/userStore";
 
 import PostReportModal from "./PostReportModal";
 import SceneAssessmentModal from "./SceneAssessmentModal";
+import TouchdownTimeModal from "./TouchdownTimeModal";
 import SceneAssessmentSection from "./SceneAssessmentSection";
 import DeclineModal from "./DeclineModal";
 import CaseTimeline from "./CaseTimeline";
@@ -41,8 +42,12 @@ import Section from "./Section";
 import AdditionalDetailsSection from "./AdditionalDetailsSection";
 import ReporterSection from "./ReporterSection";
 import CaseStatusBadge from "./CaseStatusBadge";
-import ErrorAlert from "@/components/feedback/ErrorAlert";
+import PhotoPurposeBadge from "@/components/badges/PhotoPurposeBadge";
+import WorkflowActionPanel from "./WorkflowActionPanel";
+import { toOperationalError } from "@/utils/operationalError";
+import { getPriorityColor } from "@/utils/priorityColors";
 import { radii, spacing, useResqTheme } from "@/theme";
+import { useRouter } from "expo-router";
 import {
   canRenderNativeMap,
   getNativeMapProvider,
@@ -101,21 +106,6 @@ const getPriorityLabel = (priority) => {
   }
 };
 
-const getPriorityColor = (priority, colors) => {
-  switch (priority?.toLowerCase()) {
-    case "critical":
-      return colors.priorityCritical;
-    case "high":
-      return colors.priorityHigh;
-    case "medium":
-      return colors.priorityMedium;
-    case "low":
-      return colors.priorityLow;
-    default:
-      return colors.priorityMedium;
-  }
-};
-
 const formatStreetLevelAddress = (address) => {
   if (!address) return null;
 
@@ -165,6 +155,7 @@ export default function CaseInfoCard({
 }) {
   const { colors, resolvedScheme } = useResqTheme();
   const insets = useSafeAreaInsets();
+  const router = useRouter();
 
   const [imageModalVisible, setImageModalVisible] = useState(false);
   const [previewImageUri, setPreviewImageUri] = useState(null);
@@ -176,6 +167,7 @@ export default function CaseInfoCard({
   const [locationError, setLocationError] = useState("");
   const [now, setNow] = useState(new Date());
   const [isTouchdownUpdating, setIsTouchdownUpdating] = useState(false);
+  const [isTouchdownModalVisible, setIsTouchdownModalVisible] = useState(false);
   const [isPostReportModalVisible, setIsPostReportModalVisible] = useState(false);
   const [isSubmittingPostReport, setIsSubmittingPostReport] = useState(false);
   const [isSceneAssessmentModalVisible, setIsSceneAssessmentModalVisible] = useState(false);
@@ -193,16 +185,21 @@ export default function CaseInfoCard({
 
   const handleAcceptCase = async () => {
     if (!caseData.id) {
-      setError("Case ID is missing");
+      setError("Incident information is unavailable.");
       return;
     }
     try {
       setIsUpdating(true);
       setError("");
+      toast.message("Accepting incident…");
       await acceptCase(caseData.id);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      toast.success("Incident accepted");
       onStatusUpdate?.();
     } catch (err) {
-      setError(err.message || "Failed to accept case");
+      const message = toOperationalError(err, "Unable to accept incident");
+      setError(message);
+      toast.error(message);
     } finally {
       setIsUpdating(false);
     }
@@ -210,11 +207,11 @@ export default function CaseInfoCard({
 
   const handleDeclineCase = async () => {
     if (!caseData.id) {
-      setError("Case ID is missing");
+      setError("Incident information is unavailable.");
       return;
     }
     if (!declineReason.trim()) {
-      setError("Decline reason is required");
+      setError("Please provide a reason for declining.");
       return;
     }
     try {
@@ -223,9 +220,12 @@ export default function CaseInfoCard({
       await declineCase(caseData.id, declineReason.trim());
       setDeclineReason("");
       setIsDeclineModalVisible(false);
+      toast.success("Incident declined");
       onStatusUpdate?.();
     } catch (err) {
-      setError(err.message || "Failed to decline case");
+      const message = toOperationalError(err, "Unable to decline incident");
+      setError(message);
+      toast.error(message);
     } finally {
       setIsUpdating(false);
     }
@@ -310,6 +310,10 @@ export default function CaseInfoCard({
     !caseData.touchdownAt &&
     (caseData.status === "enroute" || caseData.status === "on_scene");
   const hasSceneAssessment = hasResponderSceneAssessment(caseData.responderAssessment);
+  const sceneAssessmentInitialFields = useMemo(
+    () => caseData.responderAssessment?.fields ?? {},
+    [caseData.responderAssessment?.fields],
+  );
   const canSubmitSceneAssessment =
     isAssignedResponder &&
     !!caseData.touchdownAt &&
@@ -429,16 +433,36 @@ export default function CaseInfoCard({
     return () => clearInterval(interval);
   }, [enRouteActive]);
 
-  const handleTouchdown = async (source = "manual", distanceMeters = null) => {
-    if (!caseData.id || !canMarkTouchdown || isTouchdownUpdating) return;
+  const handleTouchdown = async (touchdownAt, onScenePhotoUri, distanceMeters = null) => {
+    if (!caseData.id || !canMarkTouchdown || isTouchdownUpdating || !touchdownAt || !onScenePhotoUri?.trim()) {
+      return;
+    }
 
+    let loadingId;
     try {
       setIsTouchdownUpdating(true);
       setError("");
-      await markCaseTouchdown(caseData.id, { source, distanceMeters });
+      loadingId = toast.loading("Uploading on-scene photo…");
+      const onScenePhotoUrl = await uploadImageToStorage(
+        onScenePhotoUri,
+        "emergencies/photos/",
+        `responder-on-scene_${caseData.id}_${Date.now()}.jpg`,
+      );
+      toast.loading("Confirming touchdown…", { id: loadingId });
+      await markCaseTouchdown(caseData.id, {
+        source: "manual",
+        distanceMeters,
+        touchdownAt,
+        onScenePhotoUrl,
+      });
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      toast.success("On Scene", { id: loadingId });
+      setIsTouchdownModalVisible(false);
       onStatusUpdate?.();
     } catch (err) {
-      setError(err.message || "Failed to mark touchdown");
+      const message = toOperationalError(err, "Unable to mark touchdown");
+      setError(message);
+      toast.error(message, loadingId ? { id: loadingId } : undefined);
     } finally {
       setIsTouchdownUpdating(false);
     }
@@ -477,7 +501,8 @@ export default function CaseInfoCard({
       if (postReportForm.actionPhotoUri?.trim()) {
         actionPhotoUrl = await uploadImageToStorage(
           postReportForm.actionPhotoUri,
-          `post-reports/${caseData.id}/`
+          "emergencies/photos/",
+          `responder-post-report_${caseData.id}_${Date.now()}.jpg`,
         );
       }
       await submitPostIncidentReport(caseData.id, {
@@ -501,14 +526,14 @@ export default function CaseInfoCard({
       toast.success("Post report submitted successfully.");
     } catch (err) {
       console.error("[post-report] Submit failed:", err);
-      setError("Unable to submit post report. Please try again.");
-      toast.error("Unable to submit post report. Please try again.");
+      setError("Unable to submit post report. Check your connection and try again.");
+      toast.error("Unable to submit post report. Check your connection and try again.");
     } finally {
       setIsSubmittingPostReport(false);
     }
   };
 
-  const handleSubmitSceneAssessment = async (fields, scenePhotoUri) => {
+  const handleSubmitSceneAssessment = async (fields) => {
     if (!caseData.id) return;
 
     try {
@@ -517,25 +542,16 @@ export default function CaseInfoCard({
       const responderName =
         user?.displayName || user?.email || user?.uid || null;
 
-      let scenePhotoUrl = undefined;
-      if (scenePhotoUri?.trim()) {
-        scenePhotoUrl = await uploadImageToStorage(
-          scenePhotoUri,
-          `scene-assessment/${caseData.id}/`,
-        );
-      }
-
       await submitIncidentSceneAssessment(caseData.id, fields, {
         updatedByName: responderName,
-        scenePhotoUrl,
       });
       setIsSceneAssessmentModalVisible(false);
       toast.success("Scene Assessment submitted successfully.");
       onStatusUpdate?.();
     } catch (err) {
       console.error("[scene-assessment] Submit failed:", err);
-      setError("Unable to submit scene assessment. Please try again.");
-      toast.error("Unable to submit scene assessment. Please try again.");
+      setError("Unable to submit scene assessment. Check your connection and try again.");
+      toast.error("Unable to submit scene assessment. Check your connection and try again.");
     } finally {
       setIsSubmittingSceneAssessment(false);
     }
@@ -606,6 +622,11 @@ export default function CaseInfoCard({
           flexDirection: "row",
           alignItems: "center",
           justifyContent: "space-between",
+        },
+        mapOverlayActions: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: spacing.sm,
         },
         floatingIconButton: {
           width: 44,
@@ -1008,7 +1029,7 @@ export default function CaseInfoCard({
                   latitude: caseData.latitude,
                   longitude: caseData.longitude,
                 }}
-                title={getIncidentTypeName(caseData.incidentType)}
+                title={getIncidentTypeName(caseData)}
                 description={displayLocationText || "Pinned incident location"}
                 pinColor={colors.accent}
               />
@@ -1039,16 +1060,28 @@ export default function CaseInfoCard({
             >
               <ArrowLeft size={22} color={colors.text} />
             </TouchableOpacity>
-            {hasPinnedLocation ? (
-              <TouchableOpacity
-                onPress={handleOpenNavigation}
-                style={styles.floatingIconButton}
-                accessibilityRole="button"
-                accessibilityLabel="Open Google Maps navigation"
-              >
-                <Navigation2 size={21} color={colors.info} />
-              </TouchableOpacity>
-            ) : null}
+            <View style={styles.mapOverlayActions}>
+              {caseData.id ? (
+                <TouchableOpacity
+                  onPress={() => router.push(`/incident/${caseData.id}/messages`)}
+                  style={styles.floatingIconButton}
+                  accessibilityRole="button"
+                  accessibilityLabel="Open messages"
+                >
+                  <MessageSquare size={21} color={colors.info} />
+                </TouchableOpacity>
+              ) : null}
+              {hasPinnedLocation ? (
+                <TouchableOpacity
+                  onPress={handleOpenNavigation}
+                  style={styles.floatingIconButton}
+                  accessibilityRole="button"
+                  accessibilityLabel="Open Google Maps navigation"
+                >
+                  <Navigation2 size={21} color={colors.info} />
+                </TouchableOpacity>
+              ) : null}
+            </View>
           </View>
         </View>
 
@@ -1057,7 +1090,7 @@ export default function CaseInfoCard({
 
           <View style={styles.caseTitleRow}>
             <Text style={styles.caseTitle} numberOfLines={2}>
-              {getIncidentTypeName(caseData.incidentType)}
+              {getIncidentTypeName(caseData)}
             </Text>
             <MapPin size={24} color={colors.info} />
           </View>
@@ -1134,8 +1167,8 @@ export default function CaseInfoCard({
           </View>
 
           <View style={styles.contentStack}>
-            {caseData.description && (
-              <Section title="Description" colors={colors} embedded={true}>
+            {caseData.description ? (
+              <Section title="Incident Summary" colors={colors} embedded={true}>
                 <Text
                   style={{
                     fontFamily: "Inter_400Regular",
@@ -1147,10 +1180,11 @@ export default function CaseInfoCard({
                   {caseData.description}
                 </Text>
               </Section>
-            )}
+            ) : null}
 
-            {caseData.imageUrl && (
-              <Section title="Photo" colors={colors} embedded={true}>
+            {caseData.imageUrl ? (
+              <Section title="Civilian Report" colors={colors} embedded={true}>
+                <PhotoPurposeBadge purpose="civilian" colors={colors} />
                 <TouchableOpacity
                   onPress={() => {
                     setPreviewImageUri(caseData.imageUrl);
@@ -1158,8 +1192,7 @@ export default function CaseInfoCard({
                   }}
                   style={{ borderRadius: radii.md, overflow: "hidden" }}
                   accessibilityRole="imagebutton"
-                  accessibilityLabel="View full-size incident photo"
-                  accessibilityHint="Double tap to open full-screen image viewer"
+                  accessibilityLabel="View civilian scene photo"
                 >
                   <Image
                     source={{ uri: caseData.imageUrl }}
@@ -1170,14 +1203,68 @@ export default function CaseInfoCard({
                     }}
                     contentFit="cover"
                     transition={200}
-                    accessibilityLabel="Incident photo uploaded by civilian"
                   />
                 </TouchableOpacity>
               </Section>
-            )}
+            ) : null}
+
+            {hasTouchdown ? (
+              <Section title="Touchdown — On-Scene Photo" colors={colors} embedded={true}>
+                <PhotoPurposeBadge purpose="onScene" colors={colors} />
+                {caseData.onScenePhotoUrl ? (
+                  <TouchableOpacity
+                    onPress={() => {
+                      setPreviewImageUri(caseData.onScenePhotoUrl);
+                      setImageModalVisible(true);
+                    }}
+                    style={{ borderRadius: radii.md, overflow: "hidden", marginTop: spacing.xs }}
+                    accessibilityRole="imagebutton"
+                    accessibilityLabel="View on-scene arrival photo"
+                  >
+                    <Image
+                      source={{ uri: caseData.onScenePhotoUrl }}
+                      style={{
+                        width: "100%",
+                        height: 200,
+                        borderRadius: radii.md,
+                      }}
+                      contentFit="contain"
+                      transition={200}
+                    />
+                  </TouchableOpacity>
+                ) : (
+                  <Text
+                    style={{
+                      fontFamily: "Inter_400Regular",
+                      fontSize: 13,
+                      color: colors.textMuted,
+                      fontStyle: "italic",
+                      marginTop: spacing.xs,
+                    }}
+                  >
+                    No on-scene photo recorded.
+                  </Text>
+                )}
+              </Section>
+            ) : null}
+
+            <ReporterSection
+              reporterInfo={reporterInfo}
+              colors={colors}
+              handleMakeCall={handleMakeCall}
+              handleSendEmail={handleSendEmail}
+              embedded={true}
+            />
+
+            <SceneAssessmentSection
+              caseData={caseData}
+              colors={colors}
+              formatDate={formatDate}
+              embedded={true}
+            />
 
             {hasPostReport && caseData.postIncidentReport ? (
-              <Section title="Post Report" colors={colors} embedded={true}>
+              <Section title="Post Report — What We Did" colors={colors} embedded={true}>
                 {caseData.postIncidentReport.reasonForIncident ? (
                   <Text style={styles.postReportLine}>
                     <Text style={styles.postReportLabel}>Reason: </Text>
@@ -1230,10 +1317,8 @@ export default function CaseInfoCard({
                 ]
                   .filter((photo) => photo.url)
                   .map((photo) => (
-                    <View key={photo.label}>
-                      <Text style={[styles.postReportMeta, { marginTop: spacing.md }]}>
-                        {photo.label}
-                      </Text>
+                    <View key={photo.label} style={{ marginTop: spacing.md }}>
+                      <PhotoPurposeBadge purpose="action" colors={colors} />
                       <TouchableOpacity
                         onPress={() => {
                           setPreviewImageUri(photo.url);
@@ -1273,25 +1358,6 @@ export default function CaseInfoCard({
               caseData={caseData}
               colors={colors}
               formatDate={formatDate}
-              embedded={true}
-            />
-
-            <SceneAssessmentSection
-              caseData={caseData}
-              colors={colors}
-              formatDate={formatDate}
-              embedded={true}
-              onPreviewPhoto={(uri) => {
-                setPreviewImageUri(uri);
-                setImageModalVisible(true);
-              }}
-            />
-
-            <ReporterSection
-              reporterInfo={reporterInfo}
-              colors={colors}
-              handleMakeCall={handleMakeCall}
-              handleSendEmail={handleSendEmail}
               embedded={true}
             />
 
@@ -1396,181 +1462,65 @@ export default function CaseInfoCard({
           onSubmit={handleSubmitSceneAssessment}
           isSubmitting={isSubmittingSceneAssessment}
           incidentType={caseData.assessmentIncidentType || caseData.incidentType}
-          initialFields={caseData.responderAssessment?.fields || {}}
-          initialScenePhotoUrl={caseData.responderAssessment?.scenePhotoUrl || null}
+          initialFields={sceneAssessmentInitialFields}
+          error={error}
+          colors={colors}
+        />
+
+        <TouchdownTimeModal
+          visible={isTouchdownModalVisible}
+          onClose={() => {
+            if (!isTouchdownUpdating) {
+              setIsTouchdownModalVisible(false);
+              setError("");
+            }
+          }}
+          onSubmit={(touchdownAt, photoUri) =>
+            handleTouchdown(touchdownAt, photoUri, touchdownDistanceMeters)
+          }
+          isSubmitting={isTouchdownUpdating}
+          acceptedAt={acceptedTime}
           error={error}
           colors={colors}
         />
       </ScrollView>
 
-      <View style={styles.actionPanel}>
-        {error ? (
-          <View style={styles.sheetError}>
-            <ErrorAlert message={error} onDismiss={() => setError("")} />
-          </View>
-        ) : null}
-
-        {showAcceptButton ? (
-          <View style={styles.actionRow}>
-            <TouchableOpacity
-              onPress={handleAcceptCase}
-              disabled={isUpdating}
-              activeOpacity={0.85}
-              style={[
-                styles.primaryActionButton,
-                { backgroundColor: colors.accent },
-                isUpdating && styles.actionDisabled,
-              ]}
-              accessibilityRole="button"
-              accessibilityLabel="Accept this emergency case"
-            >
-              <Check size={19} color="#FFFFFF" style={styles.actionIcon} />
-              <Text style={styles.primaryActionText}>
-                {isUpdating ? "Accepting..." : "Accept Case"}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => {
-                setError("");
-                setIsDeclineModalVisible(true);
-              }}
-              disabled={isUpdating}
-              activeOpacity={0.85}
-              style={[styles.secondaryActionButton, isUpdating && styles.actionDisabled]}
-              accessibilityRole="button"
-              accessibilityLabel="Decline this emergency case"
-            >
-              <Text style={styles.secondaryActionText}>Decline</Text>
-            </TouchableOpacity>
-          </View>
-        ) : canMarkTouchdown ? (
-          <TouchableOpacity
-            onPress={() => handleTouchdown("manual", touchdownDistanceMeters)}
-            disabled={isTouchdownUpdating}
-            activeOpacity={0.85}
-            style={[
-              styles.primaryActionButton,
-              { backgroundColor: colors.accent },
-              isTouchdownUpdating && styles.actionDisabled,
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Mark arrival at scene - Touchdown"
-          >
-            <Navigation size={20} color="#FFFFFF" style={styles.actionIcon} />
-            <Text style={styles.primaryActionText}>
-              {isTouchdownUpdating ? "Marking Touchdown..." : "Touchdown"}
-            </Text>
-          </TouchableOpacity>
-        ) : canSubmitSceneAssessment || canSubmitPostReport ? (
-          <View style={styles.onScenePanel}>
-            <Text style={styles.onSceneHeader}>On Scene</Text>
-            <View style={styles.onSceneStatusRow}>
-              <Check size={14} color={colors.success} />
-              <Text style={styles.onSceneStatusText}>Touchdown recorded</Text>
-            </View>
-            {hasSceneAssessment ? (
-              <View style={styles.onSceneStatusRow}>
-                <Check size={14} color={colors.success} />
-                <Text style={styles.onSceneStatusText}>Scene Assessment submitted</Text>
-              </View>
-            ) : null}
-
-            {canSubmitSceneAssessment ? (
-              <TouchableOpacity
-                onPress={() => {
-                  setError("");
-                  setIsSceneAssessmentModalVisible(true);
-                }}
-                disabled={isSubmittingSceneAssessment}
-                activeOpacity={0.85}
-                style={[
-                  hasSceneAssessment
-                    ? styles.secondaryOutlineActionButton
-                    : styles.primaryActionButton,
-                  !hasSceneAssessment && { backgroundColor: colors.accent },
-                  isSubmittingSceneAssessment && styles.actionDisabled,
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  hasSceneAssessment ? "Update scene assessment" : "Submit scene assessment"
-                }
-              >
-                <ClipboardList
-                  size={19}
-                  color={hasSceneAssessment ? colors.text : "#FFFFFF"}
-                  style={styles.actionIcon}
-                />
-                <Text
-                  style={
-                    hasSceneAssessment
-                      ? styles.secondaryOutlineActionText
-                      : styles.primaryActionText
-                  }
-                >
-                  {isSubmittingSceneAssessment
-                    ? "Submitting..."
-                    : hasSceneAssessment
-                      ? "Update Assessment"
-                      : "Scene Assessment"}
-                </Text>
-              </TouchableOpacity>
-            ) : null}
-
-            {canSubmitPostReport ? (
-              <TouchableOpacity
-                onPress={() => {
-                  setError("");
-                  setIsPostReportModalVisible(true);
-                }}
-                disabled={isSubmittingPostReport}
-                activeOpacity={0.85}
-                style={[
-                  styles.primaryActionButton,
-                  { backgroundColor: colors.accent },
-                  isSubmittingPostReport && styles.actionDisabled,
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel="Submit post incident report"
-              >
-                <Check size={19} color="#FFFFFF" style={styles.actionIcon} />
-                <Text style={styles.primaryActionText}>
-                  {isSubmittingPostReport ? "Submitting..." : "Post Report"}
-                </Text>
-              </TouchableOpacity>
-            ) : showPostReportBlocked ? (
-              <>
-                <TouchableOpacity
-                  onPress={() => toast.message("Complete Scene Assessment first")}
-                  disabled={isSubmittingPostReport}
-                  activeOpacity={0.85}
-                  style={styles.disabledPostReportButton}
-                  accessibilityRole="button"
-                  accessibilityLabel="Post report unavailable until scene assessment is complete"
-                  accessibilityState={{ disabled: true }}
-                >
-                  <Check size={19} color={colors.textMuted} style={styles.actionIcon} />
-                  <Text style={styles.disabledPostReportText}>Post Report</Text>
-                </TouchableOpacity>
-                <Text style={styles.postReportHelperText}>
-                  Complete Scene Assessment before submitting your final report.
-                </Text>
-              </>
-            ) : null}
-          </View>
-        ) : caseData.status === "done" || caseData.status === "resolved" ? (
-          <BlurView
-            intensity={80}
-            tint={resolvedScheme === "dark" ? "dark" : "light"}
-            style={styles.completedPanel}
-          >
-            <Check size={20} color={colors.accent} style={styles.actionIcon} />
-            <View>
-              <Text style={styles.completedText}>Case Completed</Text>
-              <Text style={styles.completedSubtext}>This case is finalized.</Text>
-            </View>
-          </BlurView>
-        ) : null}
-      </View>
+      <WorkflowActionPanel
+        colors={colors}
+        resolvedScheme={resolvedScheme}
+        insets={insets}
+        error={error}
+        onDismissError={() => setError("")}
+        showAcceptButton={showAcceptButton}
+        isUpdating={isUpdating}
+        onAccept={handleAcceptCase}
+        onDecline={() => {
+          setError("");
+          setIsDeclineModalVisible(true);
+        }}
+        canMarkTouchdown={canMarkTouchdown}
+        isTouchdownUpdating={isTouchdownUpdating}
+        touchdownDistanceMeters={touchdownDistanceMeters}
+        onTouchdown={() => {
+          setError("");
+          setIsTouchdownModalVisible(true);
+        }}
+        canSubmitSceneAssessment={canSubmitSceneAssessment}
+        canSubmitPostReport={canSubmitPostReport}
+        showPostReportBlocked={showPostReportBlocked}
+        hasSceneAssessment={hasSceneAssessment}
+        isSubmittingSceneAssessment={isSubmittingSceneAssessment}
+        isSubmittingPostReport={isSubmittingPostReport}
+        onOpenSceneAssessment={() => {
+          setError("");
+          setIsSceneAssessmentModalVisible(true);
+        }}
+        onOpenPostReport={() => {
+          setError("");
+          setIsPostReportModalVisible(true);
+        }}
+        isResolved={caseData.status === "done" || caseData.status === "resolved"}
+      />
 
     </View>
   );

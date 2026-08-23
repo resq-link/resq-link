@@ -118,6 +118,9 @@ export interface EmergencyReport {
   touchdownByName?: string | null;
   touchdownSource?: 'gps' | 'manual' | null;
   touchdownDistanceMeters?: number | null;
+  onScenePhotoUrl?: string | null;
+  onScenePhotoUploadedAt?: Date | Timestamp | null;
+  onScenePhotoUploadedBy?: string | null;
   movedToHistoryAt?: Date | Timestamp | null;
   movedToHistoryBy?: string | null;
   postIncidentReport?: {
@@ -255,6 +258,15 @@ export const convertFirestoreDoc = (doc: DocumentData): EmergencyReport => {
       typeof data.touchdownDistanceMeters === 'number'
         ? data.touchdownDistanceMeters
         : null,
+    onScenePhotoUrl:
+      typeof data.onScenePhotoUrl === 'string' && data.onScenePhotoUrl.trim()
+        ? data.onScenePhotoUrl.trim()
+        : null,
+    onScenePhotoUploadedAt: data.onScenePhotoUploadedAt?.toDate
+      ? data.onScenePhotoUploadedAt.toDate()
+      : null,
+    onScenePhotoUploadedBy:
+      typeof data.onScenePhotoUploadedBy === 'string' ? data.onScenePhotoUploadedBy : null,
     movedToHistoryAt: data.movedToHistoryAt?.toDate ? data.movedToHistoryAt.toDate() : null,
     movedToHistoryBy: data.movedToHistoryBy || null,
     postIncidentReport:

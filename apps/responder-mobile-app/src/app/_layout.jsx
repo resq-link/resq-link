@@ -21,16 +21,35 @@ import {
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
 import useUserStore from "@/store/userStore";
-import { ResqThemeProvider } from "@/theme";
-import ResponderMessagingWidget from "@/modules/messaging/components/ResponderMessagingWidget";
+import { ResqThemeProvider, useResqTheme } from "@/theme";
+import MessagingProvider from "@/providers/MessagingProvider";
+import MessagingUnreadTracker from "@/modules/messaging/components/MessagingUnreadTracker";
 import PriorityAlertProvider from "@/providers/PriorityAlertProvider";
 import { Toaster } from "sonner-native";
+import { useImmersiveAndroidNavigation } from "@/hooks/useImmersiveAndroidNavigation";
+
+function ThemedToaster() {
+  const { colors, resolvedScheme } = useResqTheme();
+  return (
+    <Toaster
+      theme={resolvedScheme === "dark" ? "dark" : "light"}
+      toastOptions={{
+        style: {
+          backgroundColor: colors.surfaceCard,
+          borderColor: colors.border,
+          borderWidth: 1,
+        },
+      }}
+    />
+  );
+}
 
 // Do not call SplashScreen.preventAutoHideAsync() at module scope.
 // On TestFlight (New Arch), that TurboModule void call can SIGABRT before JS catch runs.
 
 export default function RootLayout() {
   const { loadUser, user } = useUserStore();
+  useImmersiveAndroidNavigation();
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -85,6 +104,7 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <ResqThemeProvider>
+        <MessagingProvider>
         <PriorityAlertProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <View style={{ flex: 1 }}>
@@ -93,11 +113,12 @@ export default function RootLayout() {
                 headerShown: false,
               }}
             />
-            <ResponderMessagingWidget />
-            <Toaster />
+            <MessagingUnreadTracker />
+            <ThemedToaster />
           </View>
         </GestureHandlerRootView>
         </PriorityAlertProvider>
+        </MessagingProvider>
       </ResqThemeProvider>
     </QueryClientProvider>
   );

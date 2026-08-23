@@ -40,3 +40,45 @@ export function initialsFromEmail(email) {
   }
   return "R";
 }
+
+const RESOURCE_ROLE_LABELS = {
+  BFP: "BFP Responder",
+  AMBULANCE: "Ambulance Responder",
+  PNP: "PNP Responder",
+  MDRRMO: "MDRRMO Responder",
+  PCG: "PCG Responder",
+  OTHER: "Responder",
+};
+
+/** Display label for the responder's operational role (from crewed unit when available). */
+export function getResponderRoleLabel(activeResource) {
+  const type = activeResource?.type;
+  if (!type) return "Responder";
+  return RESOURCE_ROLE_LABELS[type] || "Responder";
+}
+
+/**
+ * Initials for compact avatar (max 2 characters).
+ * Supports multi-word names, single names, and email fallback.
+ */
+export function getResponderInitials({ email, displayName } = {}) {
+  const name = (displayName || formatResponderName(email || "")).trim();
+  if (!name || name === "Responder") {
+    return initialsFromEmail(email);
+  }
+
+  const words = name.split(/\s+/).filter(Boolean);
+  if (words.length >= 2) {
+    const first = words[0].replace(/[^a-zA-Z0-9]/g, "");
+    const last = words[words.length - 1].replace(/[^a-zA-Z0-9]/g, "");
+    if (first && last) {
+      return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase();
+    }
+  }
+
+  const single = words[0]?.replace(/[^a-zA-Z0-9]/g, "") || "";
+  if (single.length >= 2) return single.slice(0, 2).toUpperCase();
+  if (single.length === 1) return `${single.charAt(0)}${single.charAt(0)}`.toUpperCase();
+
+  return initialsFromEmail(email);
+}

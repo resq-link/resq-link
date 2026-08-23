@@ -2,22 +2,98 @@ import React, { useMemo } from "react";
 import {
   View,
   Text,
-  Modal,
   TextInput,
-  TouchableOpacity,
-  ScrollView,
   StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
 } from "react-native";
-import { Camera, ClipboardList, X } from "lucide-react-native";
+import { ClipboardList } from "lucide-react-native";
 import { getSceneAssessmentFieldDefs } from "@packages/firebase";
-import IncidentPhotoField from "./IncidentPhotoField";
+import OperationalFormSheet from "@/components/forms/OperationalFormSheet";
 import { radii, spacing } from "@/theme";
 
-function FieldLabel({ label, colors }) {
+/** Group field keys into operational sections when labels match known patterns. */
+const FIELD_GROUPS = [
+  {
+    title: "Scene Conditions",
+    keys: [
+      "fireScale",
+      "affectedArea",
+      "collisionType",
+      "hazardType",
+      "utilityStatus",
+      "incidentSummary",
+      "sceneStatus",
+      "patientCondition",
+    ],
+  },
+  {
+    title: "People / Casualties",
+    keys: [
+      "confirmedCasualties",
+      "peopleRescued",
+      "patientsOnScene",
+      "injuredPersons",
+      "treatmentProvided",
+      "transportStatus",
+    ],
+  },
+  {
+    title: "Hazards",
+    keys: ["hazards", "threatNature", "suspectStatus"],
+  },
+  {
+    title: "Current Operations",
+    keys: ["currentOperations"],
+  },
+  {
+    title: "Remarks",
+    keys: ["remarks"],
+  },
+];
+
+function groupFields(fieldDefs) {
+  const assigned = new Set();
+  const groups = [];
+
+  FIELD_GROUPS.forEach(({ title, keys }) => {
+    const fields = fieldDefs.filter((f) => keys.includes(f.key));
+    if (fields.length === 0) return;
+    fields.forEach((f) => assigned.add(f.key));
+    groups.push({ title, fields });
+  });
+
+  const remaining = fieldDefs.filter((f) => !assigned.has(f.key));
+  if (remaining.length > 0) {
+    groups.push({ title: "Additional Details", fields: remaining });
+  }
+
+  return groups.length > 0 ? groups : [{ title: "Scene Assessment", fields: fieldDefs }];
+}
+
+function FieldInput({ field, value, onChange, isSubmitting, colors }) {
+  const isRemarks = field.key === "remarks";
   return (
-    <Text style={[styles.fieldLabel, { color: colors.text }]}>{label}</Text>
+    <View style={styles.fieldContainer}>
+      <Text style={[styles.fieldLabel, { color: colors.text }]}>{field.label}</Text>
+      <TextInput
+        value={value || ""}
+        onChangeText={onChange}
+        placeholder={`Enter ${field.label.toLowerCase()}`}
+        placeholderTextColor={colors.textMuted}
+        multiline={isRemarks}
+        numberOfLines={isRemarks ? 4 : 1}
+        editable={!isSubmitting}
+        style={[
+          styles.input,
+          isRemarks && styles.inputMultiline,
+          {
+            color: colors.text,
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+          },
+        ]}
+        accessibilityLabel={field.label}
+      />
+    </View>
   );
 }
 
@@ -28,26 +104,30 @@ export default function SceneAssessmentModal({
   isSubmitting,
   incidentType,
   initialFields = {},
-  initialScenePhotoUrl = null,
   error,
   colors,
 }) {
   const [fields, setFields] = React.useState({});
-  const [scenePhotoUri, setScenePhotoUri] = React.useState("");
+  const wasVisibleRef = React.useRef(false);
 
   const fieldDefs = useMemo(
     () => getSceneAssessmentFieldDefs(incidentType),
-    [incidentType],
+    [incidentType]
   );
 
+  const groupedFields = useMemo(() => groupFields(fieldDefs), [fieldDefs]);
+
   React.useEffect(() => {
-    if (!visible) return;
+    const justOpened = visible && !wasVisibleRef.current;
+    wasVisibleRef.current = visible;
+
+    if (!justOpened) return;
+
     const next = {};
     fieldDefs.forEach((field) => {
       next[field.key] = initialFields[field.key] || "";
     });
     setFields(next);
-    setScenePhotoUri("");
   }, [visible, fieldDefs, initialFields]);
 
   const hasValue = Object.values(fields).some((value) => String(value || "").trim());
@@ -58,164 +138,57 @@ export default function SceneAssessmentModal({
       if (trimmed) acc[key] = trimmed;
       return acc;
     }, {});
-    onSubmit(payload, scenePhotoUri || null);
+    onSubmit(payload);
   };
 
   return (
-    <Modal
+    <OperationalFormSheet
       visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
+      onClose={onClose}
+      title="Scene Assessment"
+      subtitle="Document on-scene conditions and response actions."
+      icon={ClipboardList}
+      onSubmit={handleSubmit}
+      submitLabel="Submit Assessment"
+      submittingLabel="Submitting Assessment…"
+      isSubmitting={isSubmitting}
+      submitDisabled={!hasValue}
+      colors={colors}
+      presentation="pageSheet"
     >
-      <KeyboardAvoidingView
-        style={[styles.container, { backgroundColor: colors.background }]}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <View style={[styles.header, { borderBottomColor: colors.border }]}>
-          <View style={styles.headerTitleRow}>
-            <ClipboardList size={20} color={colors.accent} />
-            <Text style={[styles.title, { color: colors.text }]}>Scene Assessment</Text>
-          </View>
-          <TouchableOpacity
-            onPress={onClose}
-            disabled={isSubmitting}
-            style={[styles.closeButton, { borderColor: colors.border }]}
-            accessibilityRole="button"
-            accessibilityLabel="Close scene assessment form"
-          >
-            <X size={18} color={colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          <Text style={[styles.intro, { color: colors.textSecondary }]}>
-            Document on-scene conditions for dispatch. At least one field is required.
-          </Text>
-
-          {fieldDefs.map((field) => (
-            <View key={field.key} style={styles.fieldContainer}>
-              <FieldLabel label={field.label} colors={colors} />
-              <TextInput
-                value={fields[field.key] || ""}
-                onChangeText={(text) =>
-                  setFields((prev) => ({ ...prev, [field.key]: text }))
-                }
-                placeholder={`Enter ${field.label.toLowerCase()}`}
-                placeholderTextColor={colors.textMuted}
-                multiline={field.key === "remarks"}
-                numberOfLines={field.key === "remarks" ? 4 : 1}
-                editable={!isSubmitting}
-                style={[
-                  styles.input,
-                  field.key === "remarks" && styles.inputMultiline,
-                  {
-                    color: colors.text,
-                    backgroundColor: colors.surface,
-                    borderColor: colors.border,
-                  },
-                ]}
-                accessibilityLabel={field.label}
-              />
-            </View>
+      {groupedFields.map((group) => (
+        <View key={group.title} style={styles.group}>
+          <Text style={[styles.groupTitle, { color: colors.textMuted }]}>{group.title}</Text>
+          {group.fields.map((field) => (
+            <FieldInput
+              key={field.key}
+              field={field}
+              value={fields[field.key]}
+              onChange={(text) => setFields((prev) => ({ ...prev, [field.key]: text }))}
+              isSubmitting={isSubmitting}
+              colors={colors}
+            />
           ))}
-
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-          <View style={styles.sectionHeader}>
-            <Camera size={17} color={colors.accent} />
-            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-              On-Scene Evidence
-            </Text>
-          </View>
-
-          {initialScenePhotoUrl && !scenePhotoUri ? (
-            <Text style={[styles.existingPhotoNote, { color: colors.textMuted }]}>
-              A previous on-scene photo is saved. Upload a new photo below to replace it.
-            </Text>
-          ) : null}
-
-          <IncidentPhotoField
-            label="On-Scene Photo"
-            hint="Capture the scene condition upon arrival."
-            noun="on-scene photo"
-            uri={scenePhotoUri}
-            onChange={setScenePhotoUri}
-            disabled={isSubmitting}
-            colors={colors}
-          />
-
-          {error ? (
-            <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
-          ) : null}
-        </ScrollView>
-
-        <View style={[styles.footer, { borderTopColor: colors.border }]}>
-          <TouchableOpacity
-            onPress={handleSubmit}
-            disabled={isSubmitting || !hasValue}
-            activeOpacity={0.85}
-            style={[
-              styles.submitButton,
-              { backgroundColor: colors.accent },
-              (isSubmitting || !hasValue) && styles.disabledButton,
-            ]}
-            accessibilityRole="button"
-            accessibilityLabel="Submit scene assessment"
-          >
-            <Text style={styles.submitButtonText}>
-              {isSubmitting ? "Submitting..." : "Submit Assessment"}
-            </Text>
-          </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
-    </Modal>
+      ))}
+
+      {error ? (
+        <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
+      ) : null}
+    </OperationalFormSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.md,
-    borderBottomWidth: 1,
-  },
-  headerTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-  title: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 18,
-  },
-  closeButton: {
-    borderWidth: 1,
-    borderRadius: radii.md,
-    padding: spacing.sm,
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xl,
-  },
-  intro: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 14,
-    lineHeight: 20,
+  group: {
     marginBottom: spacing.lg,
+  },
+  groupTitle: {
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 11,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    marginBottom: spacing.sm,
   },
   fieldContainer: {
     marginBottom: spacing.md,
@@ -232,7 +205,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    minHeight: 44,
+    minHeight: 48,
   },
   inputMultiline: {
     minHeight: 96,
@@ -243,43 +216,5 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     fontSize: 13,
     marginTop: spacing.sm,
-  },
-  footer: {
-    padding: spacing.lg,
-    borderTopWidth: 1,
-  },
-  submitButton: {
-    borderRadius: radii.md,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  submitButtonText: {
-    fontFamily: "Inter_600SemiBold",
-    fontSize: 16,
-    color: "#FFFFFF",
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-  divider: {
-    height: 1,
-    marginVertical: spacing.lg,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  sectionTitle: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 12,
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-  },
-  existingPhotoNote: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 12,
-    marginBottom: spacing.sm,
   },
 });

@@ -55,6 +55,7 @@ export default function DutyResourceCard({
   clearError,
   onGoOnDuty,
   onGoOffDuty,
+  showStatusPill = true,
 }) {
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const styles = buildStyles(D);
@@ -75,28 +76,30 @@ export default function DutyResourceCard({
     <>
       <View style={styles.card}>
         <View style={styles.headerRow}>
-          <Text style={styles.eyebrow}>DUTY STATUS</Text>
-          <View
-            style={[
-              styles.statusPill,
-              { backgroundColor: onDuty ? `${D.statOnline}22` : D.chipBg },
-            ]}
-          >
+          <Text style={styles.eyebrow}>DUTY</Text>
+          {showStatusPill ? (
             <View
               style={[
-                styles.statusDot,
-                { backgroundColor: onDuty ? D.statOnline : D.textMuted },
-              ]}
-            />
-            <Text
-              style={[
-                styles.statusPillText,
-                { color: onDuty ? D.statOnline : D.textMuted },
+                styles.statusPill,
+                { backgroundColor: onDuty ? `${D.statOnline}22` : D.chipBg },
               ]}
             >
-              {onDuty ? "ON DUTY" : "OFF DUTY"}
-            </Text>
-          </View>
+              <View
+                style={[
+                  styles.statusDot,
+                  { backgroundColor: onDuty ? D.statOnline : D.textMuted },
+                ]}
+              />
+              <Text
+                style={[
+                  styles.statusPillText,
+                  { color: onDuty ? D.statOnline : D.textMuted },
+                ]}
+              >
+                {onDuty ? "ON DUTY" : "OFF DUTY"}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         {onDuty ? (
@@ -119,8 +122,8 @@ export default function DutyResourceCard({
               <Radio size={13} color={isPrimary ? D.statOnline : D.textMuted} />
               <Text style={styles.roleText}>
                 {isPrimary
-                  ? "Your GPS is tracking this unit"
-                  : "Riding as crew — the primary responder's GPS tracks this unit"}
+                  ? "GPS tracking this unit"
+                  : "Crew — primary GPS tracks unit"}
               </Text>
             </View>
 
@@ -132,7 +135,7 @@ export default function DutyResourceCard({
                 accessibilityRole="button"
                 accessibilityLabel="Change vehicle"
               >
-                <Text style={styles.secondaryButtonText}>Change unit</Text>
+                <Text style={styles.secondaryButtonText}>Change</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={onGoOffDuty}
@@ -142,7 +145,7 @@ export default function DutyResourceCard({
                 accessibilityLabel="Go off duty"
               >
                 <Text style={styles.dangerButtonText}>
-                  {isSaving ? "…" : "Go off duty"}
+                  {isSaving ? "…" : "Off duty"}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -150,7 +153,7 @@ export default function DutyResourceCard({
         ) : (
           <>
             <Text style={styles.emptyText}>
-              Choose the unit you are crewing so dispatch can track it.
+              Select the unit you are crewing.
             </Text>
             <TouchableOpacity
               onPress={openPicker}
@@ -259,67 +262,68 @@ export default function DutyResourceCard({
 const buildStyles = (D) =>
   StyleSheet.create({
     card: {
-      backgroundColor: D.surfaceCard,
-      borderRadius: radii.lg,
+      // Solid opaque fill — never transparent
+      backgroundColor: D.visualScheme === "light" ? "#FFFFFF" : D.surfaceCard,
+      borderRadius: radii.md,
       borderWidth: 1,
       borderColor: D.borderSubtle,
-      padding: spacing.lg,
-      marginBottom: spacing.md,
+      padding: spacing.md,
+      marginBottom: spacing.sm,
     },
     headerRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      marginBottom: spacing.md,
+      marginBottom: spacing.sm,
     },
     eyebrow: {
       fontSize: 10,
       fontWeight: "800",
-      letterSpacing: 1.6,
+      letterSpacing: 1.2,
       color: D.textMuted,
     },
     statusPill: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 6,
-      paddingHorizontal: 10,
-      paddingVertical: 4,
+      gap: 5,
+      paddingHorizontal: 8,
+      paddingVertical: 3,
       borderRadius: 999,
     },
     statusDot: { width: 6, height: 6, borderRadius: 3 },
-    statusPillText: { fontSize: 10, fontWeight: "800", letterSpacing: 1.2 },
-    activeRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+    statusPillText: { fontSize: 10, fontWeight: "800", letterSpacing: 1 },
+    activeRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
     iconWell: {
-      width: 44,
-      height: 44,
+      width: 36,
+      height: 36,
       borderRadius: radii.md,
       alignItems: "center",
       justifyContent: "center",
     },
     activeText: { flex: 1, minWidth: 0 },
-    activeName: { fontSize: 17, fontWeight: "700", color: D.textPrimary },
-    activeMeta: { fontSize: 12, color: D.textSecondary, marginTop: 2 },
+    activeName: { fontSize: 15, fontWeight: "700", color: D.textPrimary },
+    activeMeta: { fontSize: 11, color: D.textSecondary, marginTop: 1 },
     roleRow: {
       flexDirection: "row",
       alignItems: "center",
-      gap: 7,
-      marginTop: spacing.md,
+      gap: 6,
+      marginTop: spacing.sm,
     },
-    roleText: { fontSize: 11.5, color: D.textMuted, flex: 1 },
-    actionRow: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.lg },
+    roleText: { fontSize: 11, color: D.textMuted, flex: 1 },
+    actionRow: { flexDirection: "row", gap: spacing.sm, marginTop: spacing.md },
     secondaryButton: {
       flex: 1,
-      height: 42,
+      height: 38,
       borderRadius: radii.md,
       borderWidth: 1,
       borderColor: D.borderSubtle,
       alignItems: "center",
       justifyContent: "center",
     },
-    secondaryButtonText: { fontSize: 13, fontWeight: "700", color: D.textSecondary },
+    secondaryButtonText: { fontSize: 12, fontWeight: "700", color: D.textSecondary },
     dangerButton: {
       flex: 1,
-      height: 42,
+      height: 38,
       borderRadius: radii.md,
       backgroundColor: "#ef444422",
       borderWidth: 1,
@@ -327,18 +331,18 @@ const buildStyles = (D) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    dangerButtonText: { fontSize: 13, fontWeight: "700", color: "#f87171" },
-    emptyText: { fontSize: 13, color: D.textSecondary, marginBottom: spacing.lg },
+    dangerButtonText: { fontSize: 12, fontWeight: "700", color: "#f87171" },
+    emptyText: { fontSize: 12, color: D.textSecondary, marginBottom: spacing.md },
     primaryButton: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
       gap: 6,
-      height: 46,
+      height: 40,
       borderRadius: radii.md,
       backgroundColor: D.accent,
     },
-    primaryButtonText: { fontSize: 14, fontWeight: "800", color: "#06111f" },
+    primaryButtonText: { fontSize: 13, fontWeight: "800", color: "#06111f" },
     errorText: { fontSize: 12, color: "#f87171", marginTop: spacing.sm },
     sheetBackdrop: {
       flex: 1,
