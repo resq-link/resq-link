@@ -66,6 +66,18 @@ resolve_firebase_value() {
       for src in EXPO_PUBLIC_GOOGLE_MAPS_API_KEY GOOGLE_MAPS_API_KEY; do
         get_env "$src" 2>/dev/null && return 0
       done ;;
+    EXPO_PUBLIC_API_URL)
+      for src in EXPO_PUBLIC_API_URL API_URL; do
+        get_env "$src" 2>/dev/null && return 0
+      done
+      echo "https://www.resq-link.com"
+      return 0 ;;
+    EXPO_PUBLIC_OTP_API_URL)
+      for src in EXPO_PUBLIC_OTP_API_URL OTP_API_URL EXPO_PUBLIC_API_URL API_URL; do
+        get_env "$src" 2>/dev/null && return 0
+      done
+      echo "https://www.resq-link.com"
+      return 0 ;;
   esac
   return 1
 }
@@ -78,6 +90,8 @@ EAS_NAMES=(
   FIREBASE_MESSAGING_SENDER_ID
   FIREBASE_APP_ID
   GOOGLE_MAPS_API_KEY
+  EXPO_PUBLIC_API_URL
+  EXPO_PUBLIC_OTP_API_URL
 )
 
 cd "$ROOT"

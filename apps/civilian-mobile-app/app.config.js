@@ -30,6 +30,9 @@ function loadLocalEnv() {
 
 const localEnv = loadLocalEnv();
 
+/** Production RESQ-LINK web app (email OTP, password reset). */
+const PRODUCTION_API_URL = 'https://www.resq-link.com';
+
 const getEnv = (name) =>
   process.env[name] ||
   process.env[`EXPO_PUBLIC_${name}`] ||
@@ -50,6 +53,16 @@ const navigationBarPlugin = [
 module.exports = ({ config }) => {
   const baseConfig = config;
   const googleMapsApiKey = getEnv('GOOGLE_MAPS_API_KEY');
+  const apiUrl =
+    getEnv('EXPO_PUBLIC_API_URL') ||
+    getEnv('API_URL') ||
+    baseConfig.extra?.apiUrl ||
+    PRODUCTION_API_URL;
+  const otpApiUrl =
+    getEnv('EXPO_PUBLIC_OTP_API_URL') ||
+    getEnv('OTP_API_URL') ||
+    baseConfig.extra?.otpApiUrl ||
+    apiUrl;
   const isAndroidBuild = process.env.EAS_BUILD_PLATFORM === 'android';
 
   const plugins = (baseConfig.plugins ?? []).filter((plugin) => {
@@ -102,6 +115,8 @@ module.exports = ({ config }) => {
     android: androidConfig,
     extra: {
       ...baseConfig.extra,
+      apiUrl,
+      otpApiUrl,
       firebase: {
         apiKey: getEnv('FIREBASE_API_KEY'),
         authDomain: getEnv('FIREBASE_AUTH_DOMAIN'),

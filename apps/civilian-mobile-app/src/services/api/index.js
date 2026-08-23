@@ -8,10 +8,19 @@ import { appDebug, appInfo } from '@/utils/logger';
 export const UI_MODE = Constants.expoConfig?.extra?.uiMode === true;
 
 const LOCALHOST_PATTERN = /localhost|127\.0\.0\.1/i;
+const PRODUCTION_WEB_URL = 'https://www.resq-link.com';
 
 const trimTrailingSlash = (url) => url.replace(/\/$/, '');
 
 const isLocalhostHost = (url) => LOCALHOST_PATTERN.test(url);
+
+const getExtraApiUrl = (key) => {
+  const value = Constants.expoConfig?.extra?.[key];
+  if (typeof value === 'string' && value.length > 0 && !isLocalhostHost(value)) {
+    return trimTrailingSlash(value);
+  }
+  return null;
+};
 
 /** Dev machine IP from Metro / Expo (e.g. "192.168.1.100:8081"). */
 const getDebuggerHostIp = () => {
@@ -32,51 +41,56 @@ const getDebuggerHostIp = () => {
 };
 
 // Get the API base URL
-// Priority: 1. EXPO_PUBLIC_API_URL, 2. non-localhost app config, 3. Expo dev IP, 4. platform fallback
+// Priority: env override, app config extra, Expo dev IP, localhost (dev only), production web app
 const getApiBaseUrl = () => {
   const envUrl = process.env.EXPO_PUBLIC_API_URL;
   if (envUrl) {
     return trimTrailingSlash(envUrl);
   }
 
-  const configUrl = Constants.expoConfig?.extra?.apiUrl
-    ? trimTrailingSlash(Constants.expoConfig.extra.apiUrl)
-    : null;
-  const devHostIp = getDebuggerHostIp();
+  const extraUrl = getExtraApiUrl('apiUrl');
+  if (extraUrl) {
+    return extraUrl;
+  }
 
+  const devHostIp = getDebuggerHostIp();
   if (devHostIp) {
     return `http://${devHostIp}:4000`;
   }
 
-  if (configUrl && !isLocalhostHost(configUrl)) {
-    return configUrl;
+  if (__DEV__) {
+    if (Platform.OS === 'android') {
+      // Android emulator alias for the host machine.
+      return 'http://10.0.2.2:4000';
+    }
+    return 'http://localhost:4000';
   }
 
-  if (Platform.OS === 'android') {
-    // Android emulator alias for the host machine.
-    return 'http://10.0.2.2:4000';
-  }
-
-  // iOS simulator can reach the host via localhost.
-  if (configUrl) {
-    return configUrl;
-  }
-
-  return 'http://localhost:4000';
+  return PRODUCTION_WEB_URL;
 };
 
 const API_BASE_URL = getApiBaseUrl();
 
-/** Unified RESQ-LINK web app (email OTP / password-reset APIs). Defaults to port 3000. */
+/** Unified RESQ-LINK web app (email OTP / password-reset APIs). */
 const getOtpApiBaseUrl = () => {
   const dedicatedUrl = process.env.EXPO_PUBLIC_OTP_API_URL;
   if (dedicatedUrl) {
     return trimTrailingSlash(dedicatedUrl);
   }
 
+  const extraOtpUrl = getExtraApiUrl('otpApiUrl');
+  if (extraOtpUrl) {
+    return extraOtpUrl;
+  }
+
   const envUrl = process.env.EXPO_PUBLIC_API_URL;
   if (envUrl) {
     return trimTrailingSlash(envUrl);
+  }
+
+  const extraApiUrl = getExtraApiUrl('apiUrl');
+  if (extraApiUrl) {
+    return extraApiUrl;
   }
 
   const devHostIp = getDebuggerHostIp();
@@ -84,11 +98,14 @@ const getOtpApiBaseUrl = () => {
     return `http://${devHostIp}:3000`;
   }
 
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:3000';
+  if (__DEV__) {
+    if (Platform.OS === 'android') {
+      return 'http://10.0.2.2:3000';
+    }
+    return 'http://localhost:3000';
   }
 
-  return 'http://localhost:3000';
+  return PRODUCTION_WEB_URL;
 };
 
 export const OTP_API_BASE_URL = getOtpApiBaseUrl();

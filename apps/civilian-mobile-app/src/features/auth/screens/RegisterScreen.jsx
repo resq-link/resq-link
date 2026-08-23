@@ -243,7 +243,6 @@ export default function RegisterScreen() {
         govIdFrontUri: idPhotoUri,
       });
 
-      await sendEmailOtp({ uid, email: profile.email });
       await setUser({
         uid: profile.uid,
         email: profile.email,
@@ -255,11 +254,21 @@ export default function RegisterScreen() {
         status: profile.status,
       });
 
+      try {
+        await sendEmailOtp({ uid, email: profile.email });
+      } catch (otpError) {
+        console.warn("Account created but verification email failed:", otpError);
+        router.replace("/email-verification");
+        return;
+      }
+
       router.replace("/email-verification");
     } catch (err) {
       let message = err.message || "Failed to create account.";
       if (message.includes("email-already-in-use")) {
         message = "An account with this email already exists. Try logging in.";
+      } else if (/network-request-failed|network request failed|failed to fetch|could not connect|network error/i.test(message)) {
+        message = "Could not connect to the server. Check your internet connection and try again.";
       }
       setError(message);
     } finally {

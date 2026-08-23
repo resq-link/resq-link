@@ -1,10 +1,29 @@
 import { getOtpApiUrl, apiConfig } from "@/services/api";
 
+async function postJson(url, body) {
+  let response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch (error) {
+    const message = error?.message || "";
+    if (/network request failed|failed to fetch|could not connect|network error/i.test(message)) {
+      throw new Error(
+        "Could not reach the RESQ-Link server. Check your internet connection and try again."
+      );
+    }
+    throw error;
+  }
+  return response;
+}
+
 export async function sendEmailOtp({ uid, email }) {
-  const response = await fetch(getOtpApiUrl(apiConfig.endpoints.emailOtpSend), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ uid, email }),
+  const response = await postJson(getOtpApiUrl(apiConfig.endpoints.emailOtpSend), {
+    uid,
+    email,
   });
   let data = {};
   try {
@@ -19,10 +38,9 @@ export async function sendEmailOtp({ uid, email }) {
 }
 
 export async function verifyEmailOtp({ email, otp }) {
-  const response = await fetch(getOtpApiUrl(apiConfig.endpoints.emailOtpVerify), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, otp }),
+  const response = await postJson(getOtpApiUrl(apiConfig.endpoints.emailOtpVerify), {
+    email,
+    otp,
   });
   let data = {};
   try {
@@ -37,10 +55,8 @@ export async function verifyEmailOtp({ email, otp }) {
 }
 
 export async function sendForgotPasswordOtp({ email }) {
-  const response = await fetch(getOtpApiUrl(apiConfig.endpoints.forgotPasswordSend), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
+  const response = await postJson(getOtpApiUrl(apiConfig.endpoints.forgotPasswordSend), {
+    email,
   });
   let data = {};
   try {
@@ -55,10 +71,10 @@ export async function sendForgotPasswordOtp({ email }) {
 }
 
 export async function resetPassword({ email, otp, newPassword }) {
-  const response = await fetch(getOtpApiUrl(apiConfig.endpoints.forgotPasswordReset), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, otp, newPassword }),
+  const response = await postJson(getOtpApiUrl(apiConfig.endpoints.forgotPasswordReset), {
+    email,
+    otp,
+    newPassword,
   });
   let data = {};
   try {
