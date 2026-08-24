@@ -1561,15 +1561,13 @@ async function propagateIncidentUpdatesToReports(incidentId: string, updates: an
   }
 }
 
-async function updateResourcesForIncidentStatus(
+export async function updateResourcesForIncidentStatus(
   incidentId: string,
   status: ResourceStatus,
   options?: { clearAssignment?: boolean }
 ) {
   try {
     const db = getFirebaseFirestore();
-    const q = query(collection(db, 'resources'), where('assignedIncidentId', '==', incidentId));
-    const snap = await getDocs(q);
     const timestamp = Timestamp.now();
     const updates: Record<string, unknown> = {
       status,
@@ -1580,7 +1578,61 @@ async function updateResourcesForIncidentStatus(
       updates.assignedIncidentId = null;
     }
 
-    await Promise.all(snap.docs.map((resourceDoc) => updateDoc(resourceDoc.ref, updates)));
+    const updatedResourceDocIds = new Set<string>();
+    const updatePromises: Promise<void>[] = [];
+
+    // 1. Query resources by assignedIncidentId
+    const q = query(collection(db, 'resources'), where('assignedIncidentId', '==', incidentId));
+    const snap = await getDocs(q);
+    snap.docs.forEach((resourceDoc) => {
+      updatedResourceDocIds.add(resourceDoc.id);
+      updatePromises.push(updateDoc(resourceDoc.ref, updates));
+    });
+
+    // 2. Also inspect the incident record's assignedResourceIds directly
+    try {
+      const incidentSnap = await getDoc(doc(db, 'incidents', incidentId));
+      if (incidentSnap.exists()) {
+        const incidentData = incidentSnap.data() as IncidentRecord;
+        const resourceOrUserIds = incidentData.assignedResourceIds || [];
+
+        for (const targetId of resourceOrUserIds) {
+          if (!targetId) continue;
+          if (!updatedResourceDocIds.has(targetId)) {
+            try {
+              const resDocSnap = await getDoc(doc(db, 'resources', targetId));
+              if (resDocSnap.exists()) {
+                updatedResourceDocIds.add(resDocSnap.id);
+                updatePromises.push(updateDoc(resDocSnap.ref, updates));
+              }
+            } catch {
+              // Not a resource ID, might be a responder user ID
+            }
+          }
+
+          // Check if targetId is a responder UID assigned to a resource
+          try {
+            const responderResourceQuery = query(
+              collection(db, 'resources'),
+              where('primaryResponderId', '==', targetId)
+            );
+            const responderResSnap = await getDocs(responderResourceQuery);
+            responderResSnap.docs.forEach((rDoc) => {
+              if (!updatedResourceDocIds.has(rDoc.id)) {
+                updatedResourceDocIds.add(rDoc.id);
+                updatePromises.push(updateDoc(rDoc.ref, updates));
+              }
+            });
+          } catch {
+            // Ignore sub-query failure
+          }
+        }
+      }
+    } catch (incErr) {
+      console.warn('[updateResourcesForIncidentStatus] could not inspect incident assignedResourceIds:', incErr);
+    }
+
+    await Promise.all(updatePromises);
   } catch (error) {
     console.error('Error updating resources for incident status:', error);
   }
@@ -1754,6 +1806,7 @@ export async function submitPostIncidentReportForIncident(
   
   await updateDoc(incidentRef, updateData);
   await propagateIncidentUpdatesToReports(incidentId, updateData);
+  await updateResourcesForIncidentStatus(incidentId, 'available', { clearAssignment: true });
   
   const updatedSnap = await getDoc(incidentRef);
   return toIncidentRecord(updatedSnap);

@@ -351,6 +351,7 @@ export {
   declineIncident,
   markIncidentTouchdown,
   submitPostIncidentReportForIncident,
+  updateResourcesForIncidentStatus,
   acknowledgeIncidentAlert,
   hasResponderAcknowledgedAlert,
   updateIncidentCaseStatus,
