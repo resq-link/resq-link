@@ -31,7 +31,9 @@ import {
   ShieldAlert,
   MessageSquare,
   Megaphone,
+  Radio,
 } from "lucide-react";
+import SmsGatewaySettingsModal from "@/components/SmsGatewaySettingsModal";
 
 type NavBadgeKey = "intakeCount" | "pendingFootageCount";
 
@@ -117,11 +119,19 @@ const BrandBlock = ({ compact = false, onNavigate }: { compact?: boolean, onNavi
   </Link>
 );
 
-const UserMenu = ({ user, userMenuOpen, setUserMenuOpen, handleSignOut, alignUp = false }: { 
+const UserMenu = ({
+  user,
+  userMenuOpen,
+  setUserMenuOpen,
+  handleSignOut,
+  onOpenSmsSettings,
+  alignUp = false,
+}: { 
   user: any, 
   userMenuOpen: boolean, 
   setUserMenuOpen: (o: boolean) => void, 
   handleSignOut: () => void, 
+  onOpenSmsSettings?: () => void,
   alignUp?: boolean 
 }) =>
   user ? (
@@ -168,6 +178,19 @@ const UserMenu = ({ user, userMenuOpen, setUserMenuOpen, handleSignOut, alignUp 
               Signed in to Command Center
             </p>
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              setUserMenuOpen(false);
+              onOpenSmsSettings?.();
+            }}
+            className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-800/80 hover:text-primary-300 transition-colors"
+            role="menuitem"
+          >
+            <Radio size={16} className="shrink-0 text-primary-400" aria-hidden />
+            SMS Gateway Settings
+          </button>
+          <div className="border-t border-slate-700/60 my-1" />
           <button
             type="button"
             onClick={handleSignOut}
@@ -257,6 +280,7 @@ const SidebarChrome = ({
   userMenuOpen,
   setUserMenuOpen,
   handleSignOut,
+  onOpenSmsSettings,
   pathname,
   badges,
   onNavigate,
@@ -266,6 +290,7 @@ const SidebarChrome = ({
   userMenuOpen: boolean;
   setUserMenuOpen: (o: boolean) => void;
   handleSignOut: () => void;
+  onOpenSmsSettings?: () => void;
   pathname: string;
   badges: Record<NavBadgeKey, number>;
   onNavigate?: () => void;
@@ -299,6 +324,7 @@ const SidebarChrome = ({
           userMenuOpen={userMenuOpen}
           setUserMenuOpen={setUserMenuOpen}
           handleSignOut={handleSignOut}
+          onOpenSmsSettings={onOpenSmsSettings}
           alignUp 
         />
       </div>
@@ -311,6 +337,7 @@ export default function Navigation({ children }: NavigationProps) {
   const { user, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [smsGatewaySettingsOpen, setSmsGatewaySettingsOpen] = useState(false);
   const { footageRequests } = useDispatcherData();
   const { unacknowledgedCriticalCount, intakeAwaitingTriageCount } = usePriorityAlerts();
   const pendingFootageCount = useMemo(
@@ -372,6 +399,7 @@ export default function Navigation({ children }: NavigationProps) {
           userMenuOpen={userMenuOpen}
           setUserMenuOpen={setUserMenuOpen}
           handleSignOut={handleSignOut}
+          onOpenSmsSettings={() => setSmsGatewaySettingsOpen(true)}
           pathname={pathname}
           badges={badges}
         />
@@ -397,6 +425,7 @@ export default function Navigation({ children }: NavigationProps) {
               userMenuOpen={userMenuOpen}
               setUserMenuOpen={setUserMenuOpen}
               handleSignOut={handleSignOut}
+              onOpenSmsSettings={() => setSmsGatewaySettingsOpen(true)}
               pathname={pathname}
               badges={badges}
               onNavigate={() => setMobileMenuOpen(false)}
@@ -446,6 +475,10 @@ export default function Navigation({ children }: NavigationProps) {
       </div>
       <RoutePrefetcher />
       <AppShellWidgets />
+      <SmsGatewaySettingsModal
+        isOpen={smsGatewaySettingsOpen}
+        onClose={() => setSmsGatewaySettingsOpen(false)}
+      />
     </div>
   );
 }

@@ -172,6 +172,9 @@ export function getAdminAuth(): admin.auth.Auth {
   return adminAuth();
 }
 
+export { admin };
+export const FieldValue = admin.firestore.FieldValue;
+
 export function emailOtpDocId(email: string): string {
   return email.trim().toLowerCase().replace(/\//g, '_');
 }

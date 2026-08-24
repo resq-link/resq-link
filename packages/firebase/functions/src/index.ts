@@ -50,9 +50,11 @@ async function assertDispatcher(request: { get(name: string): string | undefined
 export const smsGatewayInbound = onRequest(
   { region: 'asia-southeast1', secrets: [gatewayWebhookSecret] },
   async (request: any, response: any) => {
-    const receivedToken = Array.isArray(request.query.token) ? request.query.token[0] : request.query.token;
-    const expectedToken = gatewayWebhookSecret.value().trim();
-    if (request.method !== 'POST' || String(receivedToken ?? '').trim() !== expectedToken) {
+    const receivedToken = String((Array.isArray(request.query.token) ? request.query.token[0] : request.query.token) ?? '').trim();
+    const settingsSnap = await db.doc('systemSettings/smsGateway').get();
+    const settings = settingsSnap.data();
+    let expectedToken = (typeof settings?.webhookSecret === 'string' ? settings.webhookSecret.trim() : '') || gatewayWebhookSecret.value().trim();
+    if (request.method !== 'POST' || !receivedToken || receivedToken !== expectedToken) {
       response.status(401).send('Unauthorized');
       return;
     }
@@ -88,6 +90,13 @@ export const smsGatewayInbound = onRequest(
         updatedAt: FieldValue.serverTimestamp(), createdAt: FieldValue.serverTimestamp(),
       }, { merge: true });
     });
+    // Mark gateway as active/connected
+    await db.doc('systemSettings/smsGateway').set({
+      status: 'connected',
+      lastConnectedAt: FieldValue.serverTimestamp(),
+      lastPingAt: FieldValue.serverTimestamp(),
+      lastError: null,
+    }, { merge: true }).catch(() => undefined);
     response.status(204).end();
   }
 );
@@ -102,13 +111,34 @@ export const sendSms = onRequest(
       const body = typeof request.body?.body === 'string' ? request.body.body.trim() : '';
       const threadId = typeof request.body?.threadId === 'string' ? request.body.threadId : null;
       if (!phoneNumber || !threadId || !body || body.length > 480) return response.status(400).send('Invalid message.');
+      
+      const settingsSnap = await db.doc('systemSettings/smsGateway').get();
+      const settings = settingsSnap.data();
+      const baseUrl = (typeof settings?.gatewayBaseUrl === 'string' ? settings.gatewayBaseUrl.trim() : '') || gatewayBaseUrl.value().trim();
+      const username = (typeof settings?.gatewayUsername === 'string' ? settings.gatewayUsername.trim() : '') || gatewayUsername.value().trim();
+      const password = (typeof settings?.gatewayPassword === 'string' ? settings.gatewayPassword.trim() : '') || gatewayPassword.value().trim();
+      const simSlot = typeof settings?.simSlot === 'number' ? settings.simSlot : undefined;
+
+      if (!baseUrl) {
+        throw new Error('SMS Gateway Base URL is not configured.');
+      }
+
       const outgoingRef = db.collection('smsMessages').doc();
       await outgoingRef.set({ threadId, phoneNumber, body, direction: 'outbound', status: 'queued', dispatcherId: dispatcher.uid, createdAt: FieldValue.serverTimestamp() });
-      const gatewayResponse = await fetch(`${gatewayBaseUrl.value().trim().replace(/\/$/, '')}/messages`, {
+      
+      const payload: Record<string, unknown> = {
+        phoneNumbers: [phoneNumber],
+        textMessage: { text: body },
+      };
+      if (simSlot) {
+        payload.simNumber = simSlot;
+      }
+
+      const gatewayResponse = await fetch(`${baseUrl.replace(/\/$/, '')}/messages`, {
         method: 'POST', headers: {
-          authorization: `Basic ${Buffer.from(`${gatewayUsername.value().trim()}:${gatewayPassword.value().trim()}`).toString('base64')}`,
+          authorization: `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`,
           'content-type': 'application/json',
-        }, body: JSON.stringify({ phoneNumbers: [phoneNumber], textMessage: { text: body } }),
+        }, body: JSON.stringify(payload),
       });
       const gatewayResponseText = await gatewayResponse.text();
       let gatewayPayload: { id?: string } | null = null;
@@ -127,10 +157,21 @@ export const sendSms = onRequest(
       await Promise.all([
         outgoingRef.update({ status: 'sent', gatewayMessageId: gatewayPayload?.id ?? null, sentAt: FieldValue.serverTimestamp() }),
         db.doc(`smsThreads/${threadId}`).set({ preview: body, lastMessageAt: FieldValue.serverTimestamp(), lastDirection: 'outbound', updatedAt: FieldValue.serverTimestamp() }, { merge: true }),
+        db.doc('systemSettings/smsGateway').set({
+          status: 'connected',
+          lastConnectedAt: FieldValue.serverTimestamp(),
+          lastPingAt: FieldValue.serverTimestamp(),
+          lastError: null,
+        }, { merge: true }).catch(() => undefined),
       ]);
       response.status(201).json({ id: outgoingRef.id });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to send SMS.';
+      await db.doc('systemSettings/smsGateway').set({
+        status: 'error',
+        lastError: message,
+        lastPingAt: FieldValue.serverTimestamp(),
+      }, { merge: true }).catch(() => undefined);
       response.status(error instanceof HttpsError ? 401 : 500).json({ error: message });
     }
   }

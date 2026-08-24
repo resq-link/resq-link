@@ -365,6 +365,8 @@ export {
   createSmsQuickReply,
   deleteSmsQuickReply,
   defaultSmsQuickReplies,
+  subscribeToSmsGatewaySettings,
+  type SmsGatewaySettings,
   type SmsIntake,
   type SmsIntakeStatus,
   type SmsMessage,

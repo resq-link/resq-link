@@ -211,6 +211,12 @@ service cloud.firestore {
       allow create, update, delete: if isCommandCenter() || isDispatcher() || isSuperAdmin();
     }
 
+    // System Settings (SMS Gateway configuration, etc.)
+    match /systemSettings/{settingId} {
+      allow read: if isCommandCenter() || isDispatcher() || isSuperAdmin();
+      allow create, update, delete: if isCommandCenter() || isSuperAdmin();
+    }
+
     // Resources collection
     match /resources/{resourceId} {
       allow read: if isAuthenticated();

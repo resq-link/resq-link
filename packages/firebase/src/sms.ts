@@ -24,3 +24,30 @@ export const subscribeToSmsMessages = (threadId: string, callback: (items: SmsMe
 export const subscribeToSmsQuickReplies = (callback: (items: SmsQuickReply[]) => void) => onSnapshot(query(collection(getFirebaseFirestore(), 'smsQuickReplies'), orderBy('sortOrder', 'asc')), snap => callback(snap.docs.map(item => map<SmsQuickReply>(item.id, item.data()))));
 export const createSmsQuickReply = async (input: Omit<SmsQuickReply, 'id'>) => addDoc(collection(getFirebaseFirestore(), 'smsQuickReplies'), { ...input, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
 export const deleteSmsQuickReply = async (id: string) => deleteDoc(doc(getFirebaseFirestore(), 'smsQuickReplies', id));
+
+export interface SmsGatewaySettings {
+  id?: string;
+  enabled: boolean;
+  gatewayBaseUrl: string;
+  gatewayUsername: string;
+  gatewayPassword?: string;
+  hasPassword?: boolean;
+  webhookSecret: string;
+  webhookUrl?: string;
+  simSlot?: number;
+  status: 'connected' | 'disconnected' | 'unconfigured' | 'error';
+  lastPingAt?: Date | Timestamp;
+  lastConnectedAt?: Date | Timestamp;
+  lastError?: string | null;
+  updatedAt?: Date | Timestamp;
+  updatedBy?: string;
+}
+
+export const subscribeToSmsGatewaySettings = (callback: (settings: SmsGatewaySettings | null) => void) =>
+  onSnapshot(doc(getFirebaseFirestore(), 'systemSettings', 'smsGateway'), (snap) => {
+    if (!snap.exists()) {
+      callback(null);
+      return;
+    }
+    callback(map<SmsGatewaySettings>(snap.id, snap.data()));
+  });
