@@ -675,7 +675,7 @@ export default function ResponderMapExplorer() {
 
   const canRenderMap = canRenderNativeMap();
   const mapProvider = getNativeMapProvider();
-  const useGoogleMapStyle = hasGoogleMapsApiKey();
+  const useGoogleMapStyle = Platform.OS === "android" && hasGoogleMapsApiKey();
 
   let headerSub = "";
   if (casesWithLocation.length === 0) headerSub = "No pins";
