@@ -69,19 +69,28 @@ export default function SmsGatewaySettingsModal({ isOpen, onClose }: SmsGatewayS
       });
 
       if (res.ok) {
-        const data = await res.json();
-        setEnabled(data.enabled ?? true);
-        setGatewayBaseUrl(data.gatewayBaseUrl || '');
-        setGatewayUsername(data.gatewayUsername || 'sms');
-        setHasPassword(data.hasPassword ?? false);
-        setGatewayPassword(data.hasPassword ? '••••••••' : '');
-        setWebhookSecret(data.webhookSecret || '');
-        setWebhookUrl(data.webhookUrl || '');
-        setSimSlot(data.simSlot ?? 1);
-        setStatus(data.status || 'unconfigured');
-        setLastPingAt(data.lastPingAt || null);
-        setLastConnectedAt(data.lastConnectedAt || null);
-        setLastError(data.lastError || null);
+        const text = await res.text();
+        let data: any = null;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          console.warn('[sms-gateway] Non-JSON response received:', text.slice(0, 100));
+        }
+
+        if (data) {
+          setEnabled(data.enabled ?? true);
+          setGatewayBaseUrl(data.gatewayBaseUrl || '');
+          setGatewayUsername(data.gatewayUsername || 'sms');
+          setHasPassword(data.hasPassword ?? false);
+          setGatewayPassword(data.hasPassword ? '••••••••' : '');
+          setWebhookSecret(data.webhookSecret || '');
+          setWebhookUrl(data.webhookUrl || '');
+          setSimSlot(data.simSlot ?? 1);
+          setStatus(data.status || 'unconfigured');
+          setLastPingAt(data.lastPingAt || null);
+          setLastConnectedAt(data.lastConnectedAt || null);
+          setLastError(data.lastError || null);
+        }
       }
     } catch (err) {
       console.error('Failed to load SMS gateway settings:', err);
@@ -153,7 +162,14 @@ export default function SmsGatewaySettingsModal({ isOpen, onClose }: SmsGatewayS
         }),
       });
 
-      const data = await res.json();
+      const text = await res.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error(`Server returned status ${res.status}: ${text.slice(0, 100) || res.statusText}`);
+      }
+
       if (!res.ok) {
         throw new Error(data.error || 'Failed to save settings');
       }
@@ -194,7 +210,14 @@ export default function SmsGatewaySettingsModal({ isOpen, onClose }: SmsGatewayS
         }),
       });
 
-      const data = await res.json();
+      const text = await res.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error(`Server returned status ${res.status}: ${text.slice(0, 100) || res.statusText}`);
+      }
+
       if (res.ok && data.success) {
         setStatus('connected');
         setLastError(null);
@@ -247,7 +270,14 @@ export default function SmsGatewaySettingsModal({ isOpen, onClose }: SmsGatewayS
         }),
       });
 
-      const data = await res.json();
+      const text = await res.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(text);
+      } catch {
+        throw new Error(`Server returned status ${res.status}: ${text.slice(0, 100) || res.statusText}`);
+      }
+
       if (res.ok && data.success) {
         setStatus('connected');
         setLastError(null);
@@ -474,14 +504,24 @@ export default function SmsGatewaySettingsModal({ isOpen, onClose }: SmsGatewayS
 
                   <div className="flex items-start gap-2.5 p-3 rounded-lg bg-primary-950/30 border border-primary-900/50 text-xs text-primary-200/90 leading-relaxed">
                     <Info size={16} className="text-primary-400 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-semibold text-primary-200">Android App Setup Steps:</p>
-                      <ol className="list-decimal list-inside space-y-1 mt-1 text-slate-300">
-                        <li>Open the Android SMS Gateway app on your phone.</li>
-                        <li>Go to <strong>Settings → Webhooks → Add Webhook</strong>.</li>
-                        <li>Paste the Webhook URL above.</li>
-                        <li>Select event: <strong>SMS Received (sms:received)</strong>.</li>
-                      </ol>
+                    <div className="space-y-2">
+                      <div>
+                        <p className="font-semibold text-primary-200">How to connect the Android SMS Gateway App:</p>
+                        <p className="text-slate-300 mt-0.5">
+                          <strong>Cloud Mode (Recommended):</strong> In the Android app, toggle <strong>Cloud Server</strong> ON (keep default Server URL <code>https://api.sms-gate.app</code>). Tap <strong>Online</strong> to register. Copy the displayed <em>Gateway URL</em>, <em>Username</em>, and <em>Password</em> into Section 1 above.
+                        </p>
+                        <p className="text-slate-300 mt-1">
+                          <strong>Local Mode (Same Wi-Fi):</strong> Toggle <strong>Local Server</strong> ON in the Android app. Copy the local address (e.g. <code>http://192.168.1.50:8080</code>) and set credentials in Section 1.
+                        </p>
+                      </div>
+                      <div className="pt-1.5 border-t border-primary-900/40">
+                        <p className="font-semibold text-primary-200">Inbound SMS Webhook Setup:</p>
+                        <ol className="list-decimal list-inside space-y-0.5 mt-0.5 text-slate-300">
+                          <li>In the Android app, go to <strong>Settings → Webhooks → Add Webhook</strong>.</li>
+                          <li>Paste the Webhook URL from above.</li>
+                          <li>Select event: <strong>SMS Received (sms:received)</strong>.</li>
+                        </ol>
+                      </div>
                     </div>
                   </div>
                 </div>

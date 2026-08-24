@@ -72,3 +72,5 @@ apps/civilian-mobile-app/caches/*
 /apps/dispatcher-web-app/
 /*.docx
 /resq_responder_*.png
+
+.vercel
