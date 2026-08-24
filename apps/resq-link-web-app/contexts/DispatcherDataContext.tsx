@@ -15,6 +15,7 @@ import {
   subscribeToIncidentTypeRules,
   subscribeToIncidents,
   subscribeToResources,
+  updateResource,
   type DispatcherLocation,
   type EmergencyReport,
   type EmergencyReportsSnapshotMeta,
@@ -168,6 +169,38 @@ export function DispatcherDataProvider({ children }: { children: ReactNode }) {
       unsubscribeLocations()
     }
   }, [user, workspace])
+
+  // Auto-heal / reconcile resources assigned to resolved/closed incidents
+  useEffect(() => {
+    if (!user || incidentsLoading || resourcesLoading || !resources.length || !incidents.length) {
+      return
+    }
+
+    const incidentById = new Map(incidents.map((inc) => [inc.id, inc]))
+
+    resources.forEach((resource) => {
+      if (
+        resource.id &&
+        (resource.status === 'en_route' || resource.status === 'on_scene' || resource.status === 'assigned') &&
+        resource.assignedIncidentId
+      ) {
+        const assignedInc = incidentById.get(resource.assignedIncidentId)
+        if (
+          assignedInc &&
+          (assignedInc.status === 'resolved' ||
+            assignedInc.resolutionStatus === 'resolved' ||
+            Boolean(assignedInc.movedToHistoryAt))
+        ) {
+          updateResource(resource.id, {
+            status: 'available',
+            assignedIncidentId: null,
+          }).catch((err) =>
+            console.warn('[DispatcherDataContext] Failed to auto-reconcile resource:', err)
+          )
+        }
+      }
+    })
+  }, [user, incidents, resources, incidentsLoading, resourcesLoading])
 
   const value = useMemo<DispatcherDataContextValue>(
     () => ({
