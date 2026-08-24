@@ -19,9 +19,11 @@
         "NSCameraUsageDescription": "RESQ-Link uses the camera to photograph your government ID for identity verification and to attach images to emergency reports you choose to submit.",
         "NSPhotoLibraryUsageDescription": "RESQ-Link uses your photo library so you can upload a government ID photo for identity verification or attach images to emergency reports.",
         "NSLocationWhenInUseUsageDescription": "RESQ-Link uses your location to attach accurate coordinates to emergency reports and to help fill your registration address when you choose to use current location.",
+        "NSMicrophoneUsageDescription": "RESQ-Link uses the microphone for emergency voice calls with dispatchers and responders.",
         "NSContactsUsageDescription": "RESQ-Link does not access your contacts. This description is required because a bundled system library references the Contacts API; the app never reads or stores contact information.",
         "UIBackgroundModes": [
-          "remote-notification"
+          "remote-notification",
+          "audio"
         ]
       }
     },
@@ -33,10 +35,11 @@
       "permissions": [
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.POST_NOTIFICATIONS"
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ],
       "blockedPermissions": [
-        "android.permission.RECORD_AUDIO",
         "android.permission.READ_CONTACTS",
         "android.permission.WRITE_CONTACTS",
         "android.permission.READ_CALENDAR",

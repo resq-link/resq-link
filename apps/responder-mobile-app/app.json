@@ -22,6 +22,7 @@
         "NSLocationWhenInUseUsageDescription": "RESQ-Link Responder uses your location to share live GPS with dispatch when enabled and to navigate to incident locations.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "RESQ-Link Responder uses your location to share live GPS with dispatch when enabled and to navigate to incident locations.",
         "NSContactsUsageDescription": "RESQ-Link Responder does not access your contacts. This description is required because a bundled system library may reference the Contacts API; the app never reads or stores contact information.",
+        "NSMicrophoneUsageDescription": "RESQ-Link Responder uses the microphone for tactical voice communication with dispatchers and civilians.",
         "UIBackgroundModes": [
           "remote-notification",
           "audio"
@@ -39,11 +40,11 @@
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.VIBRATE",
         "android.permission.WAKE_LOCK",
-        "android.permission.ACCESS_NOTIFICATION_POLICY"
+        "android.permission.ACCESS_NOTIFICATION_POLICY",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ],
       "blockedPermissions": [
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.READ_CONTACTS",
         "android.permission.WRITE_CONTACTS",
         "android.permission.READ_CALENDAR",
