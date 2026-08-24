@@ -351,15 +351,18 @@ export {
   declineIncident,
   markIncidentTouchdown,
   submitPostIncidentReportForIncident,
+  updateResourcesForIncidentStatus,
   acknowledgeIncidentAlert,
   hasResponderAcknowledgedAlert,
   updateIncidentCaseStatus,
+  getResponderAssignment,
   type AgencyCode,
   type CreateIncidentInput,
   type IncidentCategory,
   type IncidentDispatchRecord,
   type IncidentPriority,
   type IncidentRecord,
+  type IncidentResponderAssignment,
   type IncidentSource,
   type IncidentStatus,
   type IncidentTypeRule,
@@ -368,6 +371,16 @@ export {
   type ScheduleOfDuty,
   type SaveIncidentTypeRuleInput,
 } from './incidents';
+
+export {
+  getAllAgencies,
+  subscribeToAgencies,
+  mapAgencyDoc,
+  buildFallbackAgencies,
+  SEED_AGENCIES,
+  type AgencyRecord,
+  type AgencyType,
+} from './agencies';
 
 export {
   subscribeToSmsIntakes,

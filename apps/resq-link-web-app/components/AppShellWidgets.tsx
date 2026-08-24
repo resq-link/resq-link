@@ -3,7 +3,6 @@
 import { memo } from 'react'
 import dynamic from 'next/dynamic'
 import DeferredOperationalChatWidget from '@/components/DeferredOperationalChatWidget'
-import DeferredAgentAssistant from '@/components/DeferredAgentAssistant'
 
 const CriticalAlertModal = dynamic(() => import('@/components/CriticalAlertModal'), {
   ssr: false,
@@ -26,7 +25,6 @@ function AppShellWidgets() {
       <IncomingCallAlertBanner />
       <DispatcherCallQueueSidebar />
       <DeferredOperationalChatWidget />
-      <DeferredAgentAssistant />
     </>
   )
 }

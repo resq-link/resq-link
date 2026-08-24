@@ -447,7 +447,11 @@ export default function ResourcesPage() {
 
     setPageError(null)
     try {
-      await updateResource(resource.id, { status })
+      const updates: Partial<ResourceRecord> = { status }
+      if (status === 'available') {
+        updates.assignedIncidentId = null
+      }
+      await updateResource(resource.id, updates)
     } catch (error: any) {
       setPageError(error.message || 'Failed to update resource status.')
     }
@@ -635,6 +639,16 @@ export default function ResourcesPage() {
                           </option>
                         ))}
                       </select>
+                      {resource.status !== 'available' && (
+                        <button
+                          type="button"
+                          onClick={() => handleStatusChange(resource, 'available')}
+                          className="inline-flex items-center justify-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-300 transition-colors hover:bg-emerald-500/20"
+                        >
+                          <ShieldCheck size={16} />
+                          Set Available
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => setMapResource(resolveResourceLocation(resource))}

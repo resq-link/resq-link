@@ -338,14 +338,20 @@ export default function CaseInfoCard({
     }
   };
 
+  const userAssignment = user?.uid && caseData?.responderAssignments?.[user.uid];
   const isAssignedResponder =
-    user && caseData.assignedResourceIds && caseData.assignedResourceIds.includes(user.uid);
+    (user && caseData.assignedResourceIds && caseData.assignedResourceIds.includes(user.uid)) ||
+    Boolean(userAssignment);
+
   const showAcceptButton =
     isAssignedResponder &&
-    (caseData.status === "pending" ||
-      caseData.status === "dispatched" ||
-      caseData.status === "awaiting_resources" ||
-      caseData.status === "active");
+    (userAssignment
+      ? userAssignment.status === "assigned"
+      : caseData.status === "pending" ||
+        caseData.status === "dispatched" ||
+        caseData.status === "awaiting_resources" ||
+        caseData.status === "active");
+
   const formatDate = (dateString) => {
     if (!dateString) return "Unknown";
     const date = new Date(dateString);
@@ -412,39 +418,80 @@ export default function CaseInfoCard({
         })
       : null;
 
+  const userTouchdownAt = userAssignment?.touchdownAt || caseData.touchdownAt;
+  const userHasTouchdown = Boolean(userTouchdownAt);
+  const userStatus = userAssignment?.status || caseData.status;
+
   const canMarkTouchdown =
     isAssignedResponder &&
-    !caseData.touchdownAt &&
-    (caseData.status === "enroute" || caseData.status === "on_scene");
-  const hasSceneAssessment = hasResponderSceneAssessment(caseData.responderAssessment);
+    !userHasTouchdown &&
+    (userStatus === "enroute" || userStatus === "on_scene" || caseData.status === "enroute" || caseData.status === "on_scene");
+
+  const hasSceneAssessment = hasResponderSceneAssessment(caseData.responderAssessment || userAssignment?.responderAssessment);
   const sceneAssessmentInitialFields = useMemo(
-    () => caseData.responderAssessment?.fields ?? {},
-    [caseData.responderAssessment?.fields],
+    () => (caseData.responderAssessment?.fields || userAssignment?.responderAssessment?.fields) ?? {},
+    [caseData.responderAssessment?.fields, userAssignment?.responderAssessment?.fields],
   );
+
+  const userPostReport = userAssignment?.postIncidentReport || caseData.postIncidentReports?.[user?.uid] || (isAssignedResponder ? caseData.postIncidentReport : null);
+  const hasUserPostReport = Boolean(userPostReport?.submittedAt);
+
   const canSubmitSceneAssessment =
     isAssignedResponder &&
-    !!caseData.touchdownAt &&
+    userHasTouchdown &&
+    userStatus !== "done" &&
+    userStatus !== "resolved" &&
+    !hasUserPostReport &&
     caseData.status !== "done" &&
     caseData.status !== "resolved";
+
   const canSubmitPostReport =
     canSubmitSceneAssessment &&
     hasSceneAssessment &&
-    !caseData.postIncidentReport?.submittedAt;
+    !hasUserPostReport;
+
   const showPostReportBlocked =
     canSubmitSceneAssessment && !hasSceneAssessment;
+
   const displayLocationText = streetLevelLocation || caseData.locationText;
-  const status = String(caseData.status || "").toLowerCase();
-  const hasTouchdown = !!caseData.touchdownAt;
-  const hasPostReport = !!caseData.postIncidentReport?.submittedAt;
+  const status = String(userStatus || caseData.status || "").toLowerCase();
+  const hasTouchdown = userHasTouchdown;
+  const hasPostReport = hasUserPostReport;
   const isResolved = status === "done" || status === "resolved" || hasPostReport;
   const isEnRouteOrBeyond =
     status === "enroute" ||
     status === "on_scene" ||
     isResolved ||
     hasTouchdown;
-  const acceptedTime = caseData.acceptedAt || (isEnRouteOrBeyond ? caseData.createdAt : null);
+  const acceptedTime = userAssignment?.acceptedAt || caseData.acceptedAt || (isEnRouteOrBeyond ? caseData.createdAt : null);
   const touchdownComplete = hasTouchdown || status === "on_scene" || isResolved;
   const enRouteActive = !!acceptedTime && !touchdownComplete && isEnRouteOrBeyond;
+  const postReportsList = useMemo(() => {
+    const list = [];
+    if (caseData.postIncidentReports && typeof caseData.postIncidentReports === "object") {
+      Object.entries(caseData.postIncidentReports).forEach(([uid, rep]) => {
+        if (rep?.submittedAt) {
+          const assignment = caseData.responderAssignments?.[uid];
+          list.push({
+            ...rep,
+            agency: assignment?.agency,
+            responderName: assignment?.responderName || rep.submittedByName,
+            id: uid,
+          });
+        }
+      });
+    }
+    if (list.length === 0 && caseData.postIncidentReport?.submittedAt) {
+      list.push({
+        ...caseData.postIncidentReport,
+        agency: caseData.assignedAgencies?.[0],
+        responderName: caseData.postIncidentReport.submittedByName,
+        id: "primary",
+      });
+    }
+    return list;
+  }, [caseData.postIncidentReports, caseData.postIncidentReport, caseData.responderAssignments, caseData.assignedAgencies]);
+
   const priorityColor = getPriorityColor(caseData.priority, colors);
 
   const mapRegion =
@@ -1227,7 +1274,7 @@ export default function CaseInfoCard({
             <View style={styles.priorityBadge}>
               <Text style={styles.priorityBadgeText}>{getPriorityLabel(caseData.priority)}</Text>
             </View>
-            <CaseStatusBadge status={caseData.status} />
+            <CaseStatusBadge status={userAssignment ? userAssignment.status : caseData.status} />
           </View>
 
           <View style={styles.locationBlock}>
@@ -1248,6 +1295,43 @@ export default function CaseInfoCard({
               </View>
             ) : null}
           </View>
+
+          {caseData.responderAssignments && Object.keys(caseData.responderAssignments).length > 0 ? (
+            <Section title="Assigned Response Units" colors={colors} embedded={true}>
+              <View style={{ gap: spacing.xs }}>
+                {Object.entries(caseData.responderAssignments).map(([rId, assignment]) => (
+                  <View
+                    key={rId}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      paddingVertical: spacing.xs,
+                      paddingHorizontal: spacing.sm,
+                      borderRadius: radii.sm,
+                      backgroundColor: colors.surfaceHighlight,
+                    }}
+                  >
+                    <View style={{ flex: 1, marginRight: spacing.sm }}>
+                      <Text style={{ fontFamily: "Inter_600SemiBold", fontSize: 13, color: colors.text }}>
+                        {assignment.agency ? `[${assignment.agency}] ` : ""}{assignment.responderName || rId}
+                      </Text>
+                      {assignment.touchdownAt ? (
+                        <Text style={{ fontFamily: "Inter_400Regular", fontSize: 11, color: colors.textMuted }}>
+                          On scene · {formatDate(assignment.touchdownAt)}
+                        </Text>
+                      ) : assignment.acceptedAt ? (
+                        <Text style={{ fontFamily: "Inter_400Regular", fontSize: 11, color: colors.textMuted }}>
+                          En route · {formatDate(assignment.acceptedAt)}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <CaseStatusBadge status={assignment.status} />
+                  </View>
+                ))}
+              </View>
+            </Section>
+          ) : null}
 
           <View style={styles.progressShell}>
             <View style={styles.progressLineWrap} pointerEvents="none">
@@ -1388,94 +1472,114 @@ export default function CaseInfoCard({
               embedded={true}
             />
 
-            {hasPostReport && caseData.postIncidentReport ? (
-              <Section title="Post Report — What We Did" colors={colors} embedded={true}>
-                {caseData.postIncidentReport.reasonForIncident ? (
-                  <Text style={styles.postReportLine}>
-                    <Text style={styles.postReportLabel}>Reason: </Text>
-                    {caseData.postIncidentReport.reasonForIncident}
-                  </Text>
-                ) : null}
-                {caseData.postIncidentReport.notes ? (
-                  <Text style={[styles.postReportLine, { marginTop: spacing.sm }]}>
-                    <Text style={styles.postReportLabel}>Notes: </Text>
-                    {caseData.postIncidentReport.notes}
-                  </Text>
-                ) : null}
-                {caseData.postIncidentReport.peopleStatus ? (
-                  <Text style={[styles.postReportLine, { marginTop: spacing.sm }]}>
-                    <Text style={styles.postReportLabel}>Condition: </Text>
-                    {caseData.postIncidentReport.peopleStatus}
-                  </Text>
-                ) : null}
-                {caseData.postIncidentReport.peopleInvolved != null ? (
-                  <Text style={[styles.postReportLine, { marginTop: spacing.sm }]}>
-                    <Text style={styles.postReportLabel}>People involved: </Text>
-                    {caseData.postIncidentReport.peopleInvolved}
-                  </Text>
-                ) : null}
-                {caseData.postIncidentReport.hospital ? (
-                  <Text style={[styles.postReportLine, { marginTop: spacing.sm }]}>
-                    <Text style={styles.postReportLabel}>Transport: </Text>
-                    {caseData.postIncidentReport.hospital}
-                  </Text>
-                ) : null}
-                {caseData.postIncidentReport.submittedAt ? (
-                  <Text style={[styles.postReportMeta, { marginTop: spacing.md }]}>
-                    Submitted {formatDate(caseData.postIncidentReport.submittedAt)}
-                    {caseData.postIncidentReport.submittedByName
-                      ? ` · ${caseData.postIncidentReport.submittedByName}`
-                      : ""}
-                  </Text>
-                ) : null}
-                {[
-                  { url: caseData.postIncidentReport.actionPhotoUrl, label: "Action photo" },
-                  {
-                    url:
-                      caseData.postIncidentReport.photoUrl &&
-                      caseData.postIncidentReport.photoUrl !==
-                        caseData.postIncidentReport.actionPhotoUrl
-                        ? caseData.postIncidentReport.photoUrl
-                        : null,
-                    label: "Legacy report photo",
-                  },
-                ]
-                  .filter((photo) => photo.url)
-                  .map((photo) => (
-                    <View key={photo.label} style={{ marginTop: spacing.md }}>
-                      <PhotoPurposeBadge purpose="action" colors={colors} />
-                      <TouchableOpacity
-                        onPress={() => {
-                          setPreviewImageUri(photo.url);
-                          setImageModalVisible(true);
-                        }}
-                        style={{ borderRadius: radii.md, overflow: "hidden", marginTop: spacing.xs }}
-                        accessibilityRole="imagebutton"
-                        accessibilityLabel={`View post-report ${photo.label.toLowerCase()}`}
-                      >
-                        <Image
-                          source={{ uri: photo.url }}
-                          style={{
-                            width: "100%",
-                            height: 200,
-                            borderRadius: radii.md,
-                          }}
-                          contentFit="contain"
-                          transition={200}
-                        />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
-                {!caseData.postIncidentReport.actionPhotoUrl &&
-                !(
-                  caseData.postIncidentReport.photoUrl &&
-                  caseData.postIncidentReport.photoUrl !==
-                    caseData.postIncidentReport.actionPhotoUrl
-                ) ? (
-                  <Text style={[styles.postReportMeta, { marginTop: spacing.md, fontStyle: "italic" }]}>
-                    No action photo submitted.
-                  </Text>
-                ) : null}
+            {postReportsList.length > 0 ? (
+              <Section
+                title={postReportsList.length > 1 ? "Post-Incident Reports (Multi-Agency)" : "Post Report — What We Did"}
+                colors={colors}
+                embedded={true}
+              >
+                {postReportsList.map((report, idx) => (
+                  <View
+                    key={report.id || idx}
+                    style={{
+                      marginTop: idx > 0 ? spacing.md : 0,
+                      paddingTop: idx > 0 ? spacing.md : 0,
+                      borderTopWidth: idx > 0 ? 1 : 0,
+                      borderTopColor: colors.border,
+                    }}
+                  >
+                    {report.agency ? (
+                      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: spacing.xs }}>
+                        <Text style={{ fontFamily: "Inter_700Bold", fontSize: 13, color: colors.accent }}>
+                          [{report.agency}] {report.responderName ? `· ${report.responderName}` : ""}
+                        </Text>
+                      </View>
+                    ) : null}
+
+                    {report.reasonForIncident ? (
+                      <Text style={styles.postReportLine}>
+                        <Text style={styles.postReportLabel}>Reason: </Text>
+                        {report.reasonForIncident}
+                      </Text>
+                    ) : null}
+                    {report.notes ? (
+                      <Text style={[styles.postReportLine, { marginTop: spacing.sm }]}>
+                        <Text style={styles.postReportLabel}>Notes: </Text>
+                        {report.notes}
+                      </Text>
+                    ) : null}
+                    {report.peopleStatus ? (
+                      <Text style={[styles.postReportLine, { marginTop: spacing.sm }]}>
+                        <Text style={styles.postReportLabel}>Condition: </Text>
+                        {report.peopleStatus}
+                      </Text>
+                    ) : null}
+                    {report.peopleInvolved != null ? (
+                      <Text style={[styles.postReportLine, { marginTop: spacing.sm }]}>
+                        <Text style={styles.postReportLabel}>People involved: </Text>
+                        {report.peopleInvolved}
+                      </Text>
+                    ) : null}
+                    {report.hospital ? (
+                      <Text style={[styles.postReportLine, { marginTop: spacing.sm }]}>
+                        <Text style={styles.postReportLabel}>Transport: </Text>
+                        {report.hospital}
+                      </Text>
+                    ) : null}
+                    {report.submittedAt ? (
+                      <Text style={[styles.postReportMeta, { marginTop: spacing.md }]}>
+                        Submitted {formatDate(report.submittedAt)}
+                        {report.submittedByName ? ` · ${report.submittedByName}` : ""}
+                      </Text>
+                    ) : null}
+                    {[
+                      { url: report.actionPhotoUrl, label: "Action photo" },
+                      {
+                        url:
+                          report.photoUrl &&
+                          report.photoUrl !== report.actionPhotoUrl
+                            ? report.photoUrl
+                            : null,
+                        label: "Legacy report photo",
+                      },
+                    ]
+                      .filter((photo) => photo.url)
+                      .map((photo) => (
+                        <View key={photo.label} style={{ marginTop: spacing.md }}>
+                          <PhotoPurposeBadge purpose="action" colors={colors} />
+                          <TouchableOpacity
+                            onPress={() => {
+                              setPreviewImageUri(photo.url);
+                              setImageModalVisible(true);
+                            }}
+                            style={{ borderRadius: radii.md, overflow: "hidden", marginTop: spacing.xs }}
+                            accessibilityRole="imagebutton"
+                            accessibilityLabel={`View post-report ${photo.label.toLowerCase()}`}
+                          >
+                            <Image
+                              source={{ uri: photo.url }}
+                              style={{
+                                width: "100%",
+                                height: 200,
+                                borderRadius: radii.md,
+                              }}
+                              contentFit="contain"
+                              transition={200}
+                            />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    {!report.actionPhotoUrl &&
+                    !(
+                      report.photoUrl &&
+                      report.photoUrl !== report.actionPhotoUrl
+                    ) ? (
+                      <Text style={[styles.postReportMeta, { marginTop: spacing.md, fontStyle: "italic" }]}>
+                        No action photo submitted.
+                      </Text>
+                    ) : null}
+                  </View>
+                ))}
               </Section>
             ) : null}
 

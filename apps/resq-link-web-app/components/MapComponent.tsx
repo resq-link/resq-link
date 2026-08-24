@@ -591,43 +591,43 @@ export default function MapComponent({
             }}
           >
             <Popup>
-              <div className="p-2">
-                <h3 className="font-bold text-slate-100 mb-1">
+              <div className="p-2 min-w-[200px]">
+                <h3 className="font-bold text-slate-100 text-base mb-1">
                   {incident.type}
                 </h3>
-                <p className="text-sm text-slate-400 mb-2">
+                <p className="text-xs text-slate-400 mb-2.5">
                   {incident.location}
                 </p>
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center gap-2 mb-2.5">
                   <span
-                    className={`px-2 py-1 text-xs font-medium rounded ${
+                    className={`px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded border ${
                       incident.priority === 'critical'
-                        ? 'bg-red-100 text-red-800'
+                        ? 'bg-red-500/20 text-red-300 border-red-500/30'
                         : incident.priority === 'high'
-                        ? 'bg-violet-100 text-violet-800'
-                        : 'bg-yellow-100 text-yellow-800'
+                        ? 'bg-violet-500/20 text-violet-300 border-violet-500/30'
+                        : 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30'
                     }`}
                   >
                     {incident.priority}
                   </span>
                   <span
-                    className={`px-2 py-1 text-xs font-medium rounded ${
+                    className={`px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded border ${
                       incident.status === 'active'
-                        ? 'bg-red-100 text-red-800'
+                        ? 'bg-red-500/20 text-red-300 border-red-500/30'
                         : incident.status === 'pending'
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-green-100 text-green-800'
+                        ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30'
+                        : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
                     }`}
                   >
                     {incident.status}
                   </span>
                 </div>
                 {incident.responder && (
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-300 font-medium">
                     Responder: {incident.responder}
                   </p>
                 )}
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-[11px] text-slate-500 mt-1">
                   {incident.reportedAt.toLocaleString()}
                 </p>
               </div>

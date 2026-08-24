@@ -64,6 +64,14 @@ export async function GET(request: NextRequest) {
   }
 }
 
+function normalizeGatewayBaseUrl(url: string): string {
+  let clean = (url || '').trim().replace(/\/+$/, '');
+  if (clean === 'https://api.sms-gate.app' || clean === 'http://api.sms-gate.app') {
+    clean = 'https://api.sms-gate.app/3rdparty/v1';
+  }
+  return clean;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const authResult = await requireCommandCenter(request);
@@ -86,7 +94,7 @@ export async function POST(request: NextRequest) {
     const existingSnap = await docRef.get();
     const existing = existingSnap.data() || {};
 
-    const cleanBaseUrl = typeof gatewayBaseUrl === 'string' ? gatewayBaseUrl.trim().replace(/\/$/, '') : '';
+    const cleanBaseUrl = normalizeGatewayBaseUrl(typeof gatewayBaseUrl === 'string' ? gatewayBaseUrl : '');
     const cleanUsername = typeof gatewayUsername === 'string' ? gatewayUsername.trim() : 'sms';
     let cleanSecret = typeof webhookSecret === 'string' ? webhookSecret.trim() : '';
 
@@ -129,10 +137,42 @@ export async function POST(request: NextRequest) {
     }).catch((auditErr: any) => console.warn('[sms-gateway] Audit log error:', auditErr));
 
     const origin = request.nextUrl.origin || 'http://localhost:3000';
+    const effectivePassword = typeof updatePayload.gatewayPassword === 'string'
+      ? updatePayload.gatewayPassword
+      : (typeof existing.gatewayPassword === 'string' ? existing.gatewayPassword : '');
+
+    let webhookRegistered = false;
+    if (cleanBaseUrl && effectivePassword) {
+      try {
+        const targetWebhookUrl = normalizeWebhookUrl(origin, cleanSecret);
+        const authHeader = `Basic ${Buffer.from(`${cleanUsername}:${effectivePassword}`).toString('base64')}`;
+
+        const hookRes = await fetch(`${cleanBaseUrl}/webhooks`, {
+          method: 'POST',
+          headers: {
+            Authorization: authHeader,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id: 'resqlink-sms-inbound',
+            url: targetWebhookUrl,
+            event: 'sms:received',
+          }),
+        });
+
+        if (hookRes.ok || hookRes.status === 200 || hookRes.status === 201 || hookRes.status === 204) {
+          webhookRegistered = true;
+        }
+      } catch (hookErr: any) {
+        console.warn('[sms-gateway] Auto webhook registration note:', hookErr?.message);
+      }
+    }
+
     const hasPassword = Boolean(updatePayload.gatewayPassword || existing.gatewayPassword);
 
     return NextResponse.json({
       success: true,
+      webhookRegistered,
       settings: {
         enabled: updatePayload.enabled,
         gatewayBaseUrl: updatePayload.gatewayBaseUrl,

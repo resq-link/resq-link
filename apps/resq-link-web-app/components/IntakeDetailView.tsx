@@ -58,6 +58,9 @@ import {
   MessageSquare,
   Phone,
   Radio,
+  Ambulance,
+  Truck,
+  ShieldCheck,
 } from "lucide-react";
 
 const PinnedLocationMap = dynamic(() => import("./PinnedLocationMap"), {
@@ -111,13 +114,13 @@ const getResponderResource = (resources: ResourceRecord[], responderId: string) 
       resource.assignedResponderId,
       ...(Array.isArray(resource.assignedResponderIds) ? resource.assignedResponderIds : []),
     ];
-    return resource.status === "available" && ids.includes(responderId);
+    return ids.includes(responderId);
   }) || null;
 
 const isSuggestedResourceForAgencies = (resource: ResourceRecord | null, agencies: string[]) => {
   if (!resource) return false;
-  const haystack = `${resource.type} ${resource.agency || ""} ${resource.department || ""}`.toUpperCase();
-  return agencies.some((agency) => haystack.includes(agency));
+  const haystack = `${resource.name || ""} ${resource.type || ""} ${resource.agency || ""} ${resource.department || ""}`.toUpperCase();
+  return agencies.some((agency) => haystack.includes(agency.toUpperCase()));
 };
 
 interface IntakeDetailViewProps {
@@ -125,7 +128,7 @@ interface IntakeDetailViewProps {
   recentIncidents?: IncidentRecord[]
   allCivilianReports?: EmergencyReport[]
   onRespondStart?: (report: EmergencyReport) => void
-  onRespond?: (report: EmergencyReport, responder: any) => void
+  onRespond?: (report: EmergencyReport, responder: any, extra?: any) => void
   onReject?: (report: EmergencyReport) => void
   onMoveToHistory?: (report: EmergencyReport) => void
   onCloseDetail?: () => void
@@ -164,7 +167,7 @@ export default function IntakeDetailView({
     setMounted(true);
   }, []);
   const [responders, setResponders] = useState<any[]>([]);
-  const [selectedResponderId, setSelectedResponderId] = useState("");
+  const [selectedResponderIds, setSelectedResponderIds] = useState<string[]>([]);
   const [isLoadingResponders, setIsLoadingResponders] = useState(false);
   const [responderError, setResponderError] = useState<string | null>(null);
   const [responderLocation, setResponderLocation] = useState<DispatcherLocation | null>(null);
@@ -178,7 +181,7 @@ export default function IntakeDetailView({
 
   useEffect(() => {
     setIsElevateModalOpen(false);
-    setSelectedResponderId("");
+    setSelectedResponderIds([]);
     setResponderError(null);
     setSelectedCitizenReport(null);
     setIsMessagingOpen(false);
@@ -438,44 +441,64 @@ export default function IntakeDetailView({
     return { assessment: null, incidentType };
   }, [report, incident, associatedReports, recentIncidents]);
 
+  const postIncidentReportsList = useMemo(() => {
+    type PostReport = NonNullable<IncidentRecord["postIncidentReport"]> & {
+      agency?: string;
+      responderName?: string;
+      id?: string;
+    };
+    const list: PostReport[] = [];
+
+    if (incident?.postIncidentReports && typeof incident.postIncidentReports === "object") {
+      Object.entries(incident.postIncidentReports).forEach(([uid, rep]) => {
+        if (rep?.submittedAt || rep?.reasonForIncident || rep?.notes) {
+          const assignment = incident.responderAssignments?.[uid];
+          list.push({
+            ...rep,
+            agency: assignment?.agency,
+            responderName: assignment?.responderName || rep.submittedByName || undefined,
+            id: uid,
+          });
+        }
+      });
+    }
+
+    if (list.length === 0) {
+      const singleReport = incident?.postIncidentReport || report?.postIncidentReport;
+      if (singleReport?.submittedAt || singleReport?.reasonForIncident || singleReport?.notes) {
+        list.push({
+          ...singleReport,
+          agency: incident?.assignedAgencies?.[0] || (report as any)?.assignedAgency,
+          responderName: singleReport.submittedByName || undefined,
+          id: "primary",
+        });
+      }
+    }
+
+    return list;
+  }, [
+    incident?.postIncidentReports,
+    incident?.postIncidentReport,
+    incident?.responderAssignments,
+    incident?.assignedAgencies,
+    report?.postIncidentReport,
+    (report as any)?.assignedAgency,
+  ]);
+
   const postIncidentReport = useMemo(() => {
-    type PostReport = NonNullable<IncidentRecord["postIncidentReport"]>;
-    const candidates: PostReport[] = [
-      incident?.postIncidentReport,
-      report?.postIncidentReport,
-      ...associatedReports.map((r) => r.postIncidentReport),
-    ].filter((entry): entry is PostReport => Boolean(entry));
-
-    if (candidates.length === 0) return null;
-
-    return candidates.reduce<PostReport>(
-      (merged, current) => ({
-        reasonForIncident: merged.reasonForIncident || current.reasonForIncident || null,
-        notes: merged.notes || current.notes || null,
-        peopleInvolved: merged.peopleInvolved ?? current.peopleInvolved ?? null,
-        peopleStatus: merged.peopleStatus || current.peopleStatus || null,
-        hospital: merged.hospital || current.hospital || null,
-        photoUrl: merged.photoUrl || current.photoUrl || null,
-        actionPhotoUrl: merged.actionPhotoUrl || current.actionPhotoUrl || null,
-        submittedAt: merged.submittedAt || current.submittedAt || null,
-        submittedByDispatcherId:
-          merged.submittedByDispatcherId || current.submittedByDispatcherId || null,
-        submittedByName: merged.submittedByName || current.submittedByName || null,
-      }),
-      { ...candidates[0] }
-    );
-  }, [report?.postIncidentReport, incident?.postIncidentReport, associatedReports]);
+    return postIncidentReportsList[0] || null;
+  }, [postIncidentReportsList]);
 
   const showPostReportSection = useMemo(() => {
     const status = report?.status || incident?.status;
     const resolutionStatus = incident?.resolutionStatus;
     return (
-      Boolean(postIncidentReport) ||
+      postIncidentReportsList.length > 0 ||
       status === "resolved" ||
       status === "done" ||
       resolutionStatus === "resolved"
     );
-  }, [postIncidentReport, report?.status, incident?.status, incident?.resolutionStatus]);
+  }, [postIncidentReportsList.length, report?.status, incident?.status, incident?.resolutionStatus]);
 
   useEffect(() => {
     if (!assignedResponderId) {
@@ -519,6 +542,23 @@ export default function IntakeDetailView({
     }
     return item?.incidentSubtypeLabel || null;
   }, [report, primaryCivilianReport, incident, item?.incidentSubtypeLabel]);
+
+  const assignedResourcesForIncident = useMemo(() => {
+    const resourceIds = incident?.assignedResourceIds || [];
+    const targetIncidentId = incident?.id || report?.incidentId || report?.id;
+
+    return resources.filter((res) => {
+      if (res.id && resourceIds.includes(res.id)) return true;
+      if (res.assignedIncidentId && targetIncidentId && res.assignedIncidentId === targetIncidentId) return true;
+      const ids = [
+        res.primaryResponderId,
+        res.assignedResponderId,
+        ...(Array.isArray(res.assignedResponderIds) ? res.assignedResponderIds : []),
+      ];
+      if (assignedResponderId && ids.includes(assignedResponderId)) return true;
+      return resourceIds.some((id) => ids.includes(id));
+    });
+  }, [incident, report, assignedResponderId, resources]);
 
   const reportSourceLabel = isEmergency
     ? "Civilian App"
@@ -606,12 +646,33 @@ export default function IntakeDetailView({
         return (left.account.fullName || left.account.email || left.uid).localeCompare(right.account.fullName || right.account.email || right.uid);
       });
       setResponders(finalPool);
-      if (finalPool.length > 0) setSelectedResponderId(finalPool[0].uid);
+      if (finalPool.length > 0) {
+        // Pre-select top suggested responders
+        const suggestedResponders = finalPool.filter((r) => {
+          const rResource = getResponderResource(resources, r.uid);
+          return (
+            reportSuggestedAgencies.includes(r.account.role) ||
+            isSuggestedResourceForAgencies(rResource, reportSuggestedAgencies)
+          );
+        });
+        if (suggestedResponders.length > 0) {
+          // Preselect up to 2 suggested units if available across different roles
+          setSelectedResponderIds(suggestedResponders.slice(0, 2).map((r) => r.uid));
+        } else {
+          setSelectedResponderIds([finalPool[0].uid]);
+        }
+      }
     } catch (error: any) {
       setResponderError("Failed to fetch responder pool.");
     } finally {
       setIsLoadingResponders(false);
     }
+  };
+
+  const toggleResponderSelection = (uid: string) => {
+    setSelectedResponderIds((current) =>
+      current.includes(uid) ? current.filter((id) => id !== uid) : [...current, uid]
+    );
   };
 
   const handleStartElevate = async () => {
@@ -636,15 +697,38 @@ export default function IntakeDetailView({
   };
 
   const handleConfirmRespond = async () => {
-    if (!selectedResponderId) return;
-    const selected = responders.find(r => r.uid === selectedResponderId);
-    if (onRespond && selected && report) {
-      await onRespond(report, {
-        uid: selected.uid,
-        label: selected.account.fullName || selected.account.email,
-        agency: selected.account.role,
-        suggestedAgency: primarySuggestedAgency,
-      });
+    if (selectedResponderIds.length === 0) return;
+    const selectedList = responders.filter((r) => selectedResponderIds.includes(r.uid));
+    if (selectedList.length === 0) return;
+
+    const primarySelected = selectedList[0];
+    const allAgencies = Array.from(new Set(selectedList.map((r) => r.account.role)));
+    const allLabels = selectedList.map((r) => r.account.fullName || r.account.email);
+    const boundResourceIds: string[] = [];
+    selectedList.forEach((r) => {
+      const bound = getResponderResource(resources, r.uid);
+      if (bound?.id) boundResourceIds.push(bound.id);
+    });
+
+    if (onRespond && report) {
+      await onRespond(
+        report,
+        {
+          uid: primarySelected.uid,
+          label: allLabels.join(', '),
+          agency: primarySelected.account.role,
+          suggestedAgency: primarySuggestedAgency,
+        },
+        {
+          responders: selectedList.map((r) => ({
+            uid: r.uid,
+            label: r.account.fullName || r.account.email,
+            agency: r.account.role,
+          })),
+          agencies: allAgencies,
+          resourceIds: boundResourceIds,
+        }
+      );
       setIsElevateModalOpen(false);
     }
   };
@@ -1170,6 +1254,61 @@ export default function IntakeDetailView({
                   <span className="font-medium text-slate-500">Responder</span>
                   <span className="min-w-0 break-all text-right font-medium text-slate-100">{displayResponder}</span>
 
+                  <span className="font-medium text-slate-500">Assigned Unit</span>
+                  <div className="flex flex-col items-end gap-1 text-right">
+                    {assignedResourcesForIncident.length > 0 ? (
+                      assignedResourcesForIncident.map((res) => (
+                        <span
+                          key={res.id}
+                          className="inline-flex items-center gap-1.5 rounded-md border border-slate-800 bg-slate-950 px-2 py-0.5 text-xs font-semibold text-slate-200"
+                        >
+                          <Ambulance className="w-3.5 h-3.5 text-primary-400 shrink-0" />
+                          <span className="text-slate-100">{res.name}</span>
+                          <span className="text-[10px] text-slate-400">({res.type})</span>
+                          <span className="rounded border border-slate-700 bg-slate-900 px-1 py-0.2 text-[9px] uppercase font-bold text-slate-300">
+                            {res.status.replace('_', ' ')}
+                          </span>
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-right font-medium text-slate-400">
+                        {(incident?.assignedResourceIds?.length || 0) > 0
+                          ? `${incident?.assignedResourceIds?.length} unit(s) dispatched`
+                          : 'No unit linked'}
+                      </span>
+                    )}
+                  </div>
+
+                  {incident?.responderAssignments && Object.keys(incident.responderAssignments).length > 0 ? (
+                    <>
+                      <span className="font-medium text-slate-500">Units & Status</span>
+                      <div className="flex flex-col items-end gap-1.5 text-right">
+                        {Object.entries(incident.responderAssignments).map(([rid, assign]) => {
+                          const statusColor =
+                            assign.status === 'on_scene'
+                              ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+                              : assign.status === 'enroute'
+                              ? 'border-blue-500/40 bg-blue-500/10 text-blue-300'
+                              : assign.status === 'resolved'
+                              ? 'border-purple-500/40 bg-purple-500/10 text-purple-300'
+                              : assign.status === 'declined'
+                              ? 'border-red-500/40 bg-red-500/10 text-red-300'
+                              : 'border-amber-500/40 bg-amber-500/10 text-amber-300';
+                          return (
+                            <div key={rid} className="flex items-center gap-1.5">
+                              <span className="text-xs font-semibold text-slate-200">
+                                {assign.agency ? `[${assign.agency}] ` : ''}{assign.responderName || rid}:
+                              </span>
+                              <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider border ${statusColor}`}>
+                                {assign.status.replace('_', ' ')}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  ) : null}
+
                   <span className="self-start pt-0.5 font-medium text-slate-500">Team</span>
                   <div className="flex justify-end">
                     <TeamBadge label={assignedTeamLabel} size="sm" />
@@ -1302,73 +1441,87 @@ export default function IntakeDetailView({
               <div className="flex items-center gap-1.5">
                 <CheckCircle className="h-3.5 w-3.5 text-emerald-400" />
                 <h3 className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
-                  Post-Incident Report
+                  {postIncidentReportsList.length > 1 ? "Post-Incident Reports (Multi-Agency)" : "Post-Incident Report"}
                 </h3>
               </div>
-              {postIncidentReport ? (
+              {postIncidentReportsList.length > 0 ? (
                 <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-px text-[9px] font-black uppercase tracking-wider text-emerald-300">
-                  Submitted
+                  {postIncidentReportsList.length} Submitted
                 </span>
               ) : null}
             </div>
 
-            {postIncidentReport ? (
-              <div className="w-full space-y-2">
-                <div className="w-full">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-emerald-400/80">
-                    Responder summary
-                  </p>
-                  <p className="mt-0.5 w-full break-words text-sm font-medium leading-snug text-slate-100">
-                    {postIncidentReport.notes?.trim()
-                      ? `“${postIncidentReport.notes.trim()}”`
-                      : "No summary notes provided."}
-                  </p>
-                </div>
+            {postIncidentReportsList.length > 0 ? (
+              <div className="w-full space-y-3">
+                {postIncidentReportsList.map((pReport, idx) => (
+                  <div
+                    key={pReport.id || idx}
+                    className={`w-full space-y-2 ${
+                      idx > 0 ? "border-t border-slate-800/80 pt-3" : ""
+                    }`}
+                  >
+                    {pReport.agency ? (
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-black tracking-wider text-emerald-300">
+                          [{pReport.agency}] {pReport.responderName ? `· ${pReport.responderName}` : ""}
+                        </span>
+                        {pReport.submittedAt ? (
+                          <span className="text-[10px] text-slate-400">
+                            {getDateLabel(pReport.submittedAt)}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
 
-                <div className="grid w-full grid-cols-[minmax(5.5rem,auto)_1fr] items-center gap-x-3 gap-y-1 border-t border-slate-800/60 pt-2 text-xs leading-snug">
-                  <span className="text-slate-500">Reason</span>
-                  <span className="min-w-0 break-words text-right font-medium text-slate-100">
-                    {postIncidentReport.reasonForIncident || "—"}
-                  </span>
-                  <span className="text-slate-500">Status</span>
-                  <span className="min-w-0 break-words text-right font-medium text-slate-100">
-                    {postIncidentReport.peopleStatus || "—"}
-                  </span>
-                  <span className="text-slate-500">People</span>
-                  <span className="min-w-0 break-words text-right font-medium text-slate-100">
-                    {String(postIncidentReport.peopleInvolved ?? "—")}
-                  </span>
-                  <span className="text-slate-500">Transport</span>
-                  <span className="min-w-0 break-words text-right font-medium text-slate-100">
-                    {postIncidentReport.hospital || "—"}
-                  </span>
-                  {postIncidentReport.submittedAt ? (
-                    <>
-                      <span className="text-slate-500">Submitted</span>
+                    <div className="w-full">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-emerald-400/80">
+                        Summary
+                      </p>
+                      <p className="mt-0.5 w-full break-words text-sm font-medium leading-snug text-slate-100">
+                        {pReport.notes?.trim()
+                          ? `“${pReport.notes.trim()}”`
+                          : "No summary notes provided."}
+                      </p>
+                    </div>
+
+                    <div className="grid w-full grid-cols-[minmax(5.5rem,auto)_1fr] items-center gap-x-3 gap-y-1 border-t border-slate-800/60 pt-2 text-xs leading-snug">
+                      <span className="text-slate-500">Reason</span>
                       <span className="min-w-0 break-words text-right font-medium text-slate-100">
-                        {getDateLabel(postIncidentReport.submittedAt)}
+                        {pReport.reasonForIncident || "—"}
                       </span>
-                    </>
-                  ) : null}
-                  {postIncidentReport.submittedByName ? (
-                    <>
-                      <span className="text-slate-500">By</span>
-                      <span className="min-w-0 break-all text-right font-medium text-slate-100">
-                        {postIncidentReport.submittedByName}
+                      <span className="text-slate-500">Status</span>
+                      <span className="min-w-0 break-words text-right font-medium text-slate-100">
+                        {pReport.peopleStatus || "—"}
                       </span>
-                    </>
-                  ) : null}
-                </div>
+                      <span className="text-slate-500">People</span>
+                      <span className="min-w-0 break-words text-right font-medium text-slate-100">
+                        {String(pReport.peopleInvolved ?? "—")}
+                      </span>
+                      <span className="text-slate-500">Transport</span>
+                      <span className="min-w-0 break-words text-right font-medium text-slate-100">
+                        {pReport.hospital || "—"}
+                      </span>
+                      {pReport.submittedByName ? (
+                        <>
+                          <span className="text-slate-500">By</span>
+                          <span className="min-w-0 break-all text-right font-medium text-slate-100">
+                            {pReport.submittedByName}
+                          </span>
+                        </>
+                      ) : null}
+                    </div>
 
-                <PostIncidentReportPhotos
-                  actionPhotoUrl={postIncidentReport.actionPhotoUrl}
-                />
+                    <PostIncidentReportPhotos
+                      actionPhotoUrl={pReport.actionPhotoUrl}
+                    />
+                  </div>
+                ))}
               </div>
             ) : (
               <div className="rounded-md border border-dashed border-slate-700 bg-slate-950/40 px-3 py-3 text-center">
                 <p className="text-xs font-medium text-slate-400">No post-incident report yet</p>
                 <p className="mt-0.5 text-[10px] text-slate-500">
-                  Resolved incident — awaiting responder summary.
+                  Awaiting agency responder post-incident report.
                 </p>
               </div>
             )}
@@ -1504,37 +1657,118 @@ export default function IntakeDetailView({
               </div>
 
               {/* Responder Assignment */}
-              <div className="space-y-2">
-                <label className="text-[9px] uppercase tracking-[0.2em] font-black text-slate-500 block">
-                  Select Dispatch Responder / Unit
-                </label>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-[9px] uppercase tracking-[0.2em] font-black text-slate-500 block">
+                    Select Dispatch Responder(s) / Unit(s)
+                  </label>
+                  {suggestedAgencies.length > 0 && (
+                    <div className="flex items-center gap-1">
+                      <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Recommended:</span>
+                      <div className="flex flex-wrap gap-1">
+                        {suggestedAgencies.map((agency) => {
+                          const isCovered = responders.some(
+                            (r) => selectedResponderIds.includes(r.uid) && r.account.role === agency
+                          );
+                          return (
+                            <span
+                              key={agency}
+                              className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border ${
+                                isCovered
+                                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                                  : 'bg-slate-800 text-slate-400 border-slate-700'
+                              }`}
+                            >
+                              {isCovered ? '✓ ' : ''}{agency}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {!hasLocalSuggestedAppResource && reportQuadrant ? (
                   <p className="text-[10px] font-bold text-amber-300">
                     No suggested available resource is bound in this report quadrant; nearby fallback units are included.
                   </p>
                 ) : null}
-                <div className="relative">
-                  <select
-                    value={selectedResponderId}
-                    onChange={(e) => setSelectedResponderId(e.target.value)}
-                    className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 px-4 outline-none focus:ring-1 focus:ring-emerald-500/50 appearance-none transition-colors"
-                  >
-                    {isLoadingResponders ? (
-                      <option>Loading responder units...</option>
-                    ) : responders.length === 0 ? (
-                      <option>No responder units available</option>
-                    ) : (
-                      responders.map((r) => (
-                        <option key={r.uid} value={r.uid}>
-                          {r.account.fullName || r.account.email} ({r.account.role}){getResponderFallbackLabel(r) || (suggestedAgencies.includes(r.account.role) ? " - Suggested" : "")}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                  <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                    ▼
-                  </div>
+
+                <div className="max-h-56 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950 p-2 space-y-1.5 custom-scrollbar">
+                  {isLoadingResponders ? (
+                    <div className="p-4 text-center text-xs text-slate-500">Loading responder units...</div>
+                  ) : responders.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-500">No responder units available</div>
+                  ) : (
+                    responders.map((r) => {
+                      const boundResource = getResponderResource(resources, r.uid);
+                      const isSelected = selectedResponderIds.includes(r.uid);
+                      const fallbackLabel = getResponderFallbackLabel(r);
+                      const isSuggested = suggestedAgencies.includes(r.account.role);
+
+                      return (
+                        <label
+                          key={r.uid}
+                          className={`flex items-center justify-between p-2.5 rounded-lg border cursor-pointer transition-all ${
+                            isSelected
+                              ? 'bg-emerald-950/30 border-emerald-500/50 shadow-sm'
+                              : 'bg-slate-900/60 border-slate-800/80 hover:border-slate-700 hover:bg-slate-900'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleResponderSelection(r.uid)}
+                              className="h-4 w-4 rounded border-slate-700 bg-slate-950 text-emerald-500 focus:ring-emerald-500/50 shrink-0"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-slate-200 truncate">
+                                  {r.account.fullName || r.account.email}
+                                </span>
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700">
+                                  {r.account.role}
+                                </span>
+                              </div>
+                              {boundResource ? (
+                                <p className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1.5">
+                                  <span>Unit: <strong className="text-slate-300 font-semibold">{boundResource.name}</strong></span>
+                                  <span className={`inline-block w-1.5 h-1.5 rounded-full ${
+                                    boundResource.status === 'available' ? 'bg-emerald-400' : 'bg-amber-400'
+                                  }`} />
+                                  <span className="capitalize">{boundResource.status.replace('_', ' ')}</span>
+                                </p>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                            {fallbackLabel ? (
+                              <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                                Fallback
+                              </span>
+                            ) : isSuggested ? (
+                              <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                                Suggested
+                              </span>
+                            ) : null}
+                          </div>
+                        </label>
+                      );
+                    })
+                  )}
                 </div>
+
+                {selectedResponderIds.length > 0 && (
+                  <p className="text-[10px] font-medium text-slate-400">
+                    Selected: <strong className="text-emerald-400 font-bold">{selectedResponderIds.length} unit{selectedResponderIds.length > 1 ? 's' : ''}</strong> from{' '}
+                    <span className="text-slate-200">
+                      {Array.from(new Set(responders.filter((r) => selectedResponderIds.includes(r.uid)).map((r) => r.account.role))).join(', ')}
+                    </span>
+                  </p>
+                )}
+
                 {responderError && (
                   <p className="text-[10px] font-bold text-red-400 mt-1">
                     {responderError}
@@ -1555,12 +1789,12 @@ export default function IntakeDetailView({
 
               <button
                 type="button"
-                disabled={isLoadingResponders || !selectedResponderId}
+                disabled={isLoadingResponders || selectedResponderIds.length === 0}
                 onClick={handleConfirmRespond}
                 className="h-9 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-[10px] font-black text-white uppercase tracking-widest shadow-lg shadow-emerald-900/20 transition-all flex items-center gap-2"
               >
                 <CheckCircle className="w-3.5 h-3.5" />
-                <span>Confirm Elevation</span>
+                <span>Confirm Elevation ({selectedResponderIds.length})</span>
               </button>
             </div>
           </div>

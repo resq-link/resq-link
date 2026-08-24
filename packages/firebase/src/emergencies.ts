@@ -30,6 +30,7 @@ import {
   isFirestoreMissingIndexError,
 } from './logger';
 import { parseResponderAssessment, type ResponderAssessmentRecord } from './responderAssessment';
+import { updateResourcesForIncidentStatus } from './incidents';
 
 /** After first missing-index error, skip composite queries for this session. */
 let userEmergenciesCompositeIndexAvailable: boolean | null = null;
@@ -1589,12 +1590,17 @@ async function propagateUpdatesToSecondaries(primaryReportId: string, updates: a
 
       // Map report statuses to incident statuses if status is being updated
       if (updates.status) {
-        if (updates.status === 'enroute') incidentUpdates.status = 'enroute';
-        else if (updates.status === 'on_scene') incidentUpdates.status = 'on_scene';
-        else if (updates.status === 'done' || updates.status === 'resolved') {
+        if (updates.status === 'enroute') {
+          incidentUpdates.status = 'enroute';
+          updateResourcesForIncidentStatus(primaryData.incidentId, 'en_route').catch(() => {});
+        } else if (updates.status === 'on_scene') {
+          incidentUpdates.status = 'on_scene';
+          updateResourcesForIncidentStatus(primaryData.incidentId, 'on_scene').catch(() => {});
+        } else if (updates.status === 'done' || updates.status === 'resolved') {
           incidentUpdates.status = 'resolved';
           incidentUpdates.resolutionStatus = 'resolved';
           incidentUpdates.resolvedAt = Timestamp.now();
+          updateResourcesForIncidentStatus(primaryData.incidentId, 'available', { clearAssignment: true }).catch(() => {});
         }
       }
 

@@ -9,12 +9,15 @@ import {
   type ReactNode,
 } from 'react'
 import {
+  subscribeToAgencies,
   subscribeToDispatcherLocations,
   subscribeToEmergencyReports,
   subscribeToFootageRequests,
   subscribeToIncidentTypeRules,
   subscribeToIncidents,
   subscribeToResources,
+  updateResource,
+  type AgencyRecord,
   type DispatcherLocation,
   type EmergencyReport,
   type EmergencyReportsSnapshotMeta,
@@ -36,6 +39,7 @@ type DispatcherDataContextValue = {
   footageRequests: FootageRequest[]
   incidentTypeRules: IncidentTypeRule[]
   dispatcherLocations: DispatcherLocation[]
+  agencies: AgencyRecord[]
 }
 
 const DispatcherDataContext = createContext<DispatcherDataContextValue | null>(null)
@@ -71,6 +75,7 @@ export function DispatcherDataProvider({ children }: { children: ReactNode }) {
   const [footageRequests, setFootageRequests] = useState<FootageRequest[]>([])
   const [incidentTypeRules, setIncidentTypeRules] = useState<IncidentTypeRule[]>([])
   const [dispatcherLocations, setDispatcherLocations] = useState<DispatcherLocation[]>([])
+  const [agencies, setAgencies] = useState<AgencyRecord[]>([])
 
   useEffect(() => {
     if (!user || workspace !== 'command_center') {
@@ -84,6 +89,7 @@ export function DispatcherDataProvider({ children }: { children: ReactNode }) {
       setFootageRequests([])
       setIncidentTypeRules([])
       setDispatcherLocations([])
+      setAgencies([])
       return
     }
 
@@ -158,6 +164,9 @@ export function DispatcherDataProvider({ children }: { children: ReactNode }) {
       }
       setDispatcherLocations(locations.filter(isValidDispatcherLocation))
     })
+    const unsubscribeAgencies = subscribeToAgencies((agencyItems) => {
+      setAgencies(agencyItems)
+    })
 
     return () => {
       unsubscribeReports()
@@ -166,8 +175,41 @@ export function DispatcherDataProvider({ children }: { children: ReactNode }) {
       unsubscribeFootage()
       unsubscribeRules()
       unsubscribeLocations()
+      unsubscribeAgencies()
     }
   }, [user, workspace])
+
+  // Auto-heal / reconcile resources assigned to resolved/closed incidents
+  useEffect(() => {
+    if (!user || incidentsLoading || resourcesLoading || !resources.length || !incidents.length) {
+      return
+    }
+
+    const incidentById = new Map(incidents.map((inc) => [inc.id, inc]))
+
+    resources.forEach((resource) => {
+      if (
+        resource.id &&
+        (resource.status === 'en_route' || resource.status === 'on_scene' || resource.status === 'assigned') &&
+        resource.assignedIncidentId
+      ) {
+        const assignedInc = incidentById.get(resource.assignedIncidentId)
+        if (
+          assignedInc &&
+          (assignedInc.status === 'resolved' ||
+            assignedInc.resolutionStatus === 'resolved' ||
+            Boolean(assignedInc.movedToHistoryAt))
+        ) {
+          updateResource(resource.id, {
+            status: 'available',
+            assignedIncidentId: null,
+          }).catch((err) =>
+            console.warn('[DispatcherDataContext] Failed to auto-reconcile resource:', err)
+          )
+        }
+      }
+    })
+  }, [user, incidents, resources, incidentsLoading, resourcesLoading])
 
   const value = useMemo<DispatcherDataContextValue>(
     () => ({
@@ -181,6 +223,7 @@ export function DispatcherDataProvider({ children }: { children: ReactNode }) {
       footageRequests,
       incidentTypeRules,
       dispatcherLocations,
+      agencies,
     }),
     [
       emergencyReports,
@@ -193,6 +236,7 @@ export function DispatcherDataProvider({ children }: { children: ReactNode }) {
       footageRequests,
       incidentTypeRules,
       dispatcherLocations,
+      agencies,
     ]
   )
 

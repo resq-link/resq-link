@@ -10,6 +10,15 @@ function normalizePhone(value: unknown): string | null {
   return null;
 }
 
+function normalizeGatewayBaseUrl(url: string): string {
+  let clean = (url || '').trim().replace(/\/+$/, '');
+  clean = clean.replace(/\/(messages|message)$/i, '').replace(/\/+$/, '');
+  if (clean === 'https://api.sms-gate.app' || clean === 'http://api.sms-gate.app') {
+    clean = 'https://api.sms-gate.app/3rdparty/v1';
+  }
+  return clean;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const authResult = await requireCommandCenter(request);
@@ -30,8 +39,9 @@ export async function POST(request: NextRequest) {
     const settingsSnap = await db.doc('systemSettings/smsGateway').get();
     const settings = settingsSnap.data();
 
-    const baseUrl = (typeof settings?.gatewayBaseUrl === 'string' ? settings.gatewayBaseUrl.trim() : '') ||
+    const rawBaseUrl = (typeof settings?.gatewayBaseUrl === 'string' ? settings.gatewayBaseUrl.trim() : '') ||
       (process.env.SMS_GATEWAY_BASE_URL || '').trim();
+    const baseUrl = normalizeGatewayBaseUrl(rawBaseUrl);
     const username = (typeof settings?.gatewayUsername === 'string' ? settings.gatewayUsername.trim() : '') ||
       (process.env.SMS_GATEWAY_USERNAME || 'sms').trim();
     const password = (typeof settings?.gatewayPassword === 'string' ? settings.gatewayPassword.trim() : '') ||
@@ -57,23 +67,42 @@ export async function POST(request: NextRequest) {
     });
 
     const smsPayload: Record<string, unknown> = {
-      phoneNumbers: [phoneNumber],
       textMessage: { text: messageBody },
+      phoneNumbers: [phoneNumber],
     };
-    if (simSlot) {
+    if (typeof simSlot === 'number' && simSlot > 0) {
       smsPayload.simNumber = simSlot;
     }
 
-    const gatewayResponse = await fetch(`${baseUrl.replace(/\/$/, '')}/messages`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(smsPayload),
-    });
+    const candidateEndpoints = [
+      `${baseUrl}/message?skipPhoneValidation=true`,
+      `${baseUrl}/message`,
+      `${baseUrl}/messages?skipPhoneValidation=true`,
+      `${baseUrl}/messages`,
+    ];
 
-    const gatewayResponseText = await gatewayResponse.text();
+    let gatewayResponse: Response | null = null;
+    let gatewayResponseText = '';
+
+    for (const url of candidateEndpoints) {
+      try {
+        gatewayResponse = await fetch(url, {
+          method: 'POST',
+          headers: {
+            Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(smsPayload),
+        });
+
+        gatewayResponseText = await gatewayResponse.text();
+        if (gatewayResponse.ok || gatewayResponse.status === 200 || gatewayResponse.status === 201 || gatewayResponse.status === 204) {
+          break;
+        }
+      } catch (subErr) {
+        console.warn(`[sms-send] Attempt to ${url} failed:`, subErr);
+      }
+    }
     let gatewayPayload: { id?: string } | null = null;
     try {
       gatewayPayload = gatewayResponseText ? (JSON.parse(gatewayResponseText) as { id?: string }) : null;
@@ -81,17 +110,18 @@ export async function POST(request: NextRequest) {
       gatewayPayload = null;
     }
 
-    if (!gatewayResponse.ok) {
+    if (!gatewayResponse || !gatewayResponse.ok) {
+      const responseStatus = gatewayResponse?.status ?? 502;
       console.error('[sms-send] Gateway rejected message:', {
-        status: gatewayResponse.status,
+        status: responseStatus,
         detail: gatewayResponseText.slice(0, 300),
       });
       await outgoingRef.update({
         status: 'failed',
-        error: `Gateway returned status ${gatewayResponse.status}`,
+        error: `Gateway returned status ${responseStatus}`,
       });
       return NextResponse.json(
-        { error: `Android SMS Gateway rejected the message (${gatewayResponse.status}).` },
+        { error: `Android SMS Gateway rejected the message (${responseStatus}).` },
         { status: 502 }
       );
     }

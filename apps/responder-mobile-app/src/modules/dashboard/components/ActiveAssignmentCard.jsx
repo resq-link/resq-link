@@ -199,7 +199,13 @@ export default function ActiveAssignmentCard({
         </View>
 
         <View style={styles.footerRow}>
-          <CaseStatusBadge status={caseData.status} />
+          <CaseStatusBadge
+            status={
+              user?.uid && caseData.responderAssignments?.[user.uid]
+                ? caseData.responderAssignments[user.uid].status
+                : caseData.status
+            }
+          />
           {!showInlineAccept ? (
             <View style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
               <Text style={styles.cta}>{nextAction}</Text>

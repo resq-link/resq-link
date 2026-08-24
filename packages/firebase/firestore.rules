@@ -189,6 +189,13 @@ service cloud.firestore {
       // Command centers or super admins can remove incidents
       allow delete: if isSuperAdmin()
         || isCommandCenter();
+
+      // Team assignment history audit subcollection
+      match /teamAssignmentHistory/{historyId} {
+        allow read: if isAuthenticated();
+        allow create: if isSuperAdmin() || isCommandCenter() || isDispatcher();
+        allow update, delete: if isSuperAdmin() || isCommandCenter();
+      }
     }
 
     // SMS records are written only by the gateway Cloud Functions. Dispatcher-side
@@ -220,7 +227,8 @@ service cloud.firestore {
     // Resources collection
     match /resources/{resourceId} {
       allow read: if isAuthenticated();
-      allow create, update, delete: if isAuthenticated() && (isCommandCenter() || isDispatcher());
+      allow create, delete: if isAuthenticated() && (isCommandCenter() || isDispatcher() || isSuperAdmin());
+      allow update: if isAuthenticated();
     }
 
     // Resource dispatch ledger for incident/resource assignments.
