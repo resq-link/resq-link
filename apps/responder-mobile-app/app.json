@@ -104,7 +104,8 @@
           "photosPermission": "Allow $(PRODUCT_NAME) to access photos so you can attach scene images to incident reports.",
           "cameraPermission": "Allow $(PRODUCT_NAME) to use the camera to capture post-incident scene photos."
         }
-      ]
+      ],
+      "./plugins/withReactNativeMaps"
     ],
     "web": {
       "bundler": "metro",
