@@ -39,8 +39,8 @@ export default function OngoingIncidentFloatingCard({
 
   if (!incident) return null;
 
-  const meta = getIncidentMeta(incident.incidentType, incident.typeProfile);
-  const Icon = meta.icon;
+  const meta = getIncidentMeta(incident.incidentType, incident.typeProfile) || {};
+  const Icon = meta.Icon || meta.icon || AlertTriangle;
 
   const statusLabel =
     incident.status === "pending"
@@ -84,8 +84,8 @@ export default function OngoingIncidentFloatingCard({
           accessibilityRole="button"
           accessibilityLabel={`Ongoing emergency ${meta.label}, status: ${statusLabel}`}
         >
-          <View style={[styles.iconWrap, { backgroundColor: meta.badgeBg }]}>
-            <Icon size={18} color={meta.iconColor} strokeWidth={2.4} />
+          <View style={[styles.iconWrap, { backgroundColor: meta.badgeBg || "rgba(255, 59, 48, 0.16)" }]}>
+            {Icon && <Icon size={18} color={meta.iconColor || "#EF4444"} strokeWidth={2.4} />}
           </View>
 
           <View style={styles.headerTextCol}>
