@@ -452,7 +452,12 @@ export default function CaseInfoCard({
     ],
   );
 
-  const userPostReport = userAssignment?.postIncidentReport || caseData.postIncidentReports?.[user?.uid] || (isAssignedResponder ? caseData.postIncidentReport : null);
+  // Multi-agency: only read own UID-keyed sources. The shared caseData.postIncidentReport is
+  // overwritten by the last submitter, so PNP must NOT pick up BFP's completed report.
+  // Single-agency / legacy: shared field fallback is acceptable.
+  const userPostReport = hasMultipleAssignments
+    ? (userAssignment?.postIncidentReport || caseData.postIncidentReports?.[user?.uid])
+    : (userAssignment?.postIncidentReport || caseData.postIncidentReports?.[user?.uid] || (isAssignedResponder ? caseData.postIncidentReport : null));
   const hasUserPostReport = Boolean(userPostReport?.submittedAt);
 
   const canSubmitSceneAssessment =
