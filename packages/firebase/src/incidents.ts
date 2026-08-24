@@ -1348,6 +1348,24 @@ export async function elevateEmergencyToIncident(
     updatedAt: timestamp,
   };
 
+  // 2.1 Include bound resource IDs in assignedResourceIds
+  if (input.assignedResponderId) {
+    try {
+      const qRes = query(
+        collection(db, 'resources'),
+        where('primaryResponderId', '==', input.assignedResponderId)
+      );
+      const resSnap = await getDocs(qRes);
+      resSnap.docs.forEach((docSnap) => {
+        if (!incidentPayload.assignedResourceIds.includes(docSnap.id)) {
+          incidentPayload.assignedResourceIds.push(docSnap.id);
+        }
+      });
+    } catch {
+      // Non-critical
+    }
+  }
+
   // 3. Update the civilian report: point to new master incident, inherit responder and agency
   const reportUpdatePayload: Record<string, unknown> = {
     incidentId: incidentDocRef.id,
@@ -1393,6 +1411,10 @@ export async function elevateEmergencyToIncident(
   });
 
   await batch.commit();
+
+  if (isAssigned) {
+    await updateResourcesForIncidentStatus(incidentDocRef.id, 'assigned');
+  }
 
   return incidentPayload;
 }
@@ -1578,6 +1600,8 @@ export async function updateResourcesForIncidentStatus(
 
     if (options?.clearAssignment) {
       updates.assignedIncidentId = null;
+    } else if (status !== 'available') {
+      updates.assignedIncidentId = incidentId;
     }
 
     const updatedResourceDocIds = new Set<string>();
@@ -1612,18 +1636,21 @@ export async function updateResourcesForIncidentStatus(
             }
           }
 
-          // Check if targetId is a responder UID assigned to a resource
+          // Check if targetId is a responder UID assigned to a resource across any responder field
           try {
-            const responderResourceQuery = query(
-              collection(db, 'resources'),
-              where('primaryResponderId', '==', targetId)
-            );
-            const responderResSnap = await getDocs(responderResourceQuery);
-            responderResSnap.docs.forEach((rDoc) => {
-              if (!updatedResourceDocIds.has(rDoc.id)) {
-                updatedResourceDocIds.add(rDoc.id);
-                updatePromises.push(updateDoc(rDoc.ref, updates));
-              }
+            const queries = [
+              query(collection(db, 'resources'), where('primaryResponderId', '==', targetId)),
+              query(collection(db, 'resources'), where('assignedResponderId', '==', targetId)),
+              query(collection(db, 'resources'), where('assignedResponderIds', 'array-contains', targetId)),
+            ];
+            const querySnaps = await Promise.all(queries.map((qItem) => getDocs(qItem)));
+            querySnaps.forEach((resSnap) => {
+              resSnap.docs.forEach((rDoc) => {
+                if (!updatedResourceDocIds.has(rDoc.id)) {
+                  updatedResourceDocIds.add(rDoc.id);
+                  updatePromises.push(updateDoc(rDoc.ref, updates));
+                }
+              });
             });
           } catch {
             // Ignore sub-query failure

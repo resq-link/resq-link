@@ -227,7 +227,8 @@ service cloud.firestore {
     // Resources collection
     match /resources/{resourceId} {
       allow read: if isAuthenticated();
-      allow create, update, delete: if isAuthenticated() && (isCommandCenter() || isDispatcher());
+      allow create, delete: if isAuthenticated() && (isCommandCenter() || isDispatcher() || isSuperAdmin());
+      allow update: if isAuthenticated();
     }
 
     // Resource dispatch ledger for incident/resource assignments.
