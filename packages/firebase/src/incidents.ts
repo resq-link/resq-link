@@ -1920,9 +1920,29 @@ export async function acceptIncident(incidentId: string): Promise<IncidentRecord
     },
   };
 
+  // Compute most-advanced top-level status across all assignments
+  const statusPriority: Record<string, number> = {
+    assigned: 0,
+    dispatched: 0,
+    awaiting_resources: 0,
+    enroute: 1,
+    on_scene: 2,
+    resolved: 3,
+    done: 3,
+    declined: -1,
+  };
+  const topLevelStatus = Object.values(updatedAssignments).reduce<IncidentStatus>(
+    (best, a) => {
+      const aPrio = statusPriority[a.status] ?? 0;
+      const bPrio = statusPriority[best] ?? 0;
+      return aPrio > bPrio ? (a.status as IncidentStatus) : best;
+    },
+    currentData.status || ('enroute' as IncidentStatus),
+  );
+
   const updateData: any = {
     responderAssignments: updatedAssignments,
-    status: 'enroute' as IncidentStatus,
+    status: topLevelStatus,
     acceptedAt: currentData.acceptedAt || acceptedAt,
     updatedAt: Timestamp.now(),
   };
@@ -2023,9 +2043,23 @@ export async function markIncidentTouchdown(
     [currentUser.uid]: updatedAssignment,
   };
 
+  // Compute most-advanced top-level status across all assignments
+  const statusPriority: Record<string, number> = {
+    assigned: 0, dispatched: 0, awaiting_resources: 0,
+    enroute: 1, on_scene: 2, resolved: 3, done: 3, declined: -1,
+  };
+  const topLevelStatus = Object.values(updatedAssignments).reduce<IncidentStatus>(
+    (best, a) => {
+      const aPrio = statusPriority[a.status] ?? 0;
+      const bPrio = statusPriority[best] ?? 0;
+      return aPrio > bPrio ? (a.status as IncidentStatus) : best;
+    },
+    currentData.status || ('on_scene' as IncidentStatus),
+  );
+
   const updateData: any = {
     responderAssignments: updatedAssignments,
-    status: 'on_scene' as IncidentStatus,
+    status: topLevelStatus,
     touchdownAt: currentData.touchdownAt || touchdownAt,
     touchdownByDispatcherId: currentData.touchdownByDispatcherId || currentUser.uid,
     touchdownByName: currentData.touchdownByName || (currentUser.displayName || currentUser.email || currentUser.uid),

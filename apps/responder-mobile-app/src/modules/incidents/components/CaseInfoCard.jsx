@@ -418,14 +418,19 @@ export default function CaseInfoCard({
         })
       : null;
 
-  const userTouchdownAt = userAssignment?.touchdownAt || caseData.touchdownAt;
+  const hasMultipleAssignments = caseData?.responderAssignments && Object.keys(caseData.responderAssignments).length > 1;
+  const userTouchdownAt = hasMultipleAssignments
+    ? userAssignment?.touchdownAt
+    : (userAssignment?.touchdownAt || caseData.touchdownAt);
   const userHasTouchdown = Boolean(userTouchdownAt);
-  const userStatus = userAssignment?.status || caseData.status;
+  const userStatus = hasMultipleAssignments
+    ? (userAssignment?.status || 'assigned')
+    : (userAssignment?.status || caseData.status);
 
   const canMarkTouchdown =
     isAssignedResponder &&
     !userHasTouchdown &&
-    (userStatus === "enroute" || userStatus === "on_scene" || caseData.status === "enroute" || caseData.status === "on_scene");
+    (userStatus === "enroute" || userStatus === "on_scene");
 
   const hasSceneAssessment = hasResponderSceneAssessment(caseData.responderAssessment || userAssignment?.responderAssessment);
   const sceneAssessmentInitialFields = useMemo(
@@ -442,8 +447,7 @@ export default function CaseInfoCard({
     userStatus !== "done" &&
     userStatus !== "resolved" &&
     !hasUserPostReport &&
-    caseData.status !== "done" &&
-    caseData.status !== "resolved";
+    (!hasMultipleAssignments ? (caseData.status !== "done" && caseData.status !== "resolved") : true);
 
   const canSubmitPostReport =
     canSubmitSceneAssessment &&
