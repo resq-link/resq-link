@@ -17,7 +17,7 @@ export const hasGoogleMapsApiKey = () => getConfiguredGoogleMapsKey().length > 0
 
 /**
  * Android needs a Maps SDK key for Google tiles.
- * iOS can fall back to Apple Maps when no Google key is configured.
+ * iOS uses Apple Maps (MapKit) natively which works reliably on all iOS devices.
  */
 export const canRenderNativeMap = () => {
   if (Platform.OS === "ios") return true;
@@ -29,12 +29,12 @@ export const canRenderNativeMap = () => {
 export const canRenderGoogleMapsProvider = canRenderNativeMap;
 
 /**
- * Prefer Google when a key is baked into the native build; otherwise Apple Maps on iOS.
+ * Android uses Google Maps; iOS uses Apple Maps (MapKit) natively.
  */
 export const getNativeMapProvider = () => {
-  if (hasGoogleMapsApiKey()) {
+  if (Platform.OS === "android") {
     return PROVIDER_GOOGLE;
   }
-  // undefined = platform default (Apple Maps on iOS)
+  // undefined = native Apple Maps (MapKit) on iOS
   return undefined;
 };
