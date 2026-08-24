@@ -10,6 +10,14 @@ function normalizePhone(value: unknown): string | null {
   return null;
 }
 
+function normalizeGatewayBaseUrl(url: string): string {
+  let clean = (url || '').trim().replace(/\/+$/, '');
+  if (clean === 'https://api.sms-gate.app' || clean === 'http://api.sms-gate.app') {
+    clean = 'https://api.sms-gate.app/3rdparty/v1';
+  }
+  return clean;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const authResult = await requireCommandCenter(request);
@@ -30,8 +38,9 @@ export async function POST(request: NextRequest) {
     const settingsSnap = await db.doc('systemSettings/smsGateway').get();
     const settings = settingsSnap.data();
 
-    const baseUrl = (typeof settings?.gatewayBaseUrl === 'string' ? settings.gatewayBaseUrl.trim() : '') ||
+    const rawBaseUrl = (typeof settings?.gatewayBaseUrl === 'string' ? settings.gatewayBaseUrl.trim() : '') ||
       (process.env.SMS_GATEWAY_BASE_URL || '').trim();
+    const baseUrl = normalizeGatewayBaseUrl(rawBaseUrl);
     const username = (typeof settings?.gatewayUsername === 'string' ? settings.gatewayUsername.trim() : '') ||
       (process.env.SMS_GATEWAY_USERNAME || 'sms').trim();
     const password = (typeof settings?.gatewayPassword === 'string' ? settings.gatewayPassword.trim() : '') ||
@@ -57,14 +66,17 @@ export async function POST(request: NextRequest) {
     });
 
     const smsPayload: Record<string, unknown> = {
-      phoneNumbers: [phoneNumber],
+      message: messageBody,
       textMessage: { text: messageBody },
+      phoneNumbers: [phoneNumber],
+      phone: [phoneNumber],
     };
     if (simSlot) {
       smsPayload.simNumber = simSlot;
+      smsPayload.simSlot = simSlot;
     }
 
-    const gatewayResponse = await fetch(`${baseUrl.replace(/\/$/, '')}/messages`, {
+    let gatewayResponse = await fetch(`${baseUrl}/message`, {
       method: 'POST',
       headers: {
         Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`,
@@ -72,6 +84,17 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify(smsPayload),
     });
+
+    if (gatewayResponse.status === 404) {
+      gatewayResponse = await fetch(`${baseUrl}/messages`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(smsPayload),
+      });
+    }
 
     const gatewayResponseText = await gatewayResponse.text();
     let gatewayPayload: { id?: string } | null = null;

@@ -10,6 +10,31 @@ function normalizePhone(value: unknown): string | null {
   return null;
 }
 
+function normalizeGatewayBaseUrl(url: string): string {
+  let clean = (url || '').trim().replace(/\/+$/, '');
+  if (clean === 'https://api.sms-gate.app' || clean === 'http://api.sms-gate.app') {
+    clean = 'https://api.sms-gate.app/3rdparty/v1';
+  }
+  return clean;
+}
+
+function sanitizeGatewayErrorMessage(status: number, rawText: string): string {
+  const isHtml = rawText.trim().startsWith('<') || rawText.includes('<!DOCTYPE') || rawText.includes('<html');
+  if (status === 502 || status === 504 || status === 503) {
+    return `Cloud Gateway returned HTTP ${status}. Your Android phone appears to be OFFLINE or disconnected from Cloud Server. In the Android SMS Gateway app, ensure Cloud Server is toggled ON and showing "Online".`;
+  }
+  if (status === 401 || status === 403) {
+    return 'Authentication failed (401/403). Please verify your Username and Password/Token match the Android SMS Gateway app.';
+  }
+  if (status === 404) {
+    return 'Endpoint not found (404). Please verify your Gateway Base URL (e.g. https://api.sms-gate.app/3rdparty/v1 or http://192.168.x.x:8080).';
+  }
+  if (isHtml) {
+    return `Gateway returned HTTP ${status} error page.`;
+  }
+  return rawText.slice(0, 200) || `Device returned HTTP ${status}`;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const authResult = await requireCommandCenter(request);
@@ -23,9 +48,10 @@ export async function POST(request: NextRequest) {
     const existingSnap = await docRef.get();
     const existing = existingSnap.data() || {};
 
-    const baseUrl = (typeof body.gatewayBaseUrl === 'string' && body.gatewayBaseUrl.trim()
+    const rawBaseUrl = typeof body.gatewayBaseUrl === 'string' && body.gatewayBaseUrl.trim()
       ? body.gatewayBaseUrl.trim()
-      : (existing.gatewayBaseUrl || '')).replace(/\/$/, '');
+      : (existing.gatewayBaseUrl || '');
+    const baseUrl = normalizeGatewayBaseUrl(rawBaseUrl);
 
     const username = (typeof body.gatewayUsername === 'string' && body.gatewayUsername.trim()
       ? body.gatewayUsername.trim()
@@ -40,7 +66,7 @@ export async function POST(request: NextRequest) {
 
     if (!baseUrl) {
       return NextResponse.json(
-        { success: false, error: 'Please enter a Gateway Base URL (e.g. http://192.168.1.50:8080 or Cloud URL).' },
+        { success: false, error: 'Please enter a Gateway Base URL (e.g. https://api.sms-gate.app/3rdparty/v1 or http://192.168.1.50:8080).' },
         { status: 400 }
       );
     }
@@ -54,15 +80,20 @@ export async function POST(request: NextRequest) {
     try {
       if (testPhoneNumber) {
         // Send a live test SMS
+        const textMsg = `[RESQ-Link] Test message: Gateway connected successfully at ${new Date().toLocaleTimeString('en-PH', { timeZone: 'Asia/Manila' })}.`;
         const smsPayload: Record<string, unknown> = {
+          message: textMsg,
+          textMessage: { text: textMsg },
           phoneNumbers: [testPhoneNumber],
-          textMessage: { text: `[RESQ-Link] Test message: Gateway connected successfully at ${new Date().toLocaleTimeString('en-PH', { timeZone: 'Asia/Manila' })}.` },
+          phone: [testPhoneNumber],
         };
         if (simSlot) {
           smsPayload.simNumber = simSlot;
+          smsPayload.simSlot = simSlot;
         }
 
-        const res = await fetch(`${baseUrl}/messages`, {
+        // Try /message first, then fallback to /messages
+        let res = await fetch(`${baseUrl}/message`, {
           method: 'POST',
           headers: {
             Authorization: authHeader,
@@ -72,12 +103,24 @@ export async function POST(request: NextRequest) {
           signal: controller.signal,
         });
 
+        if (res.status === 404) {
+          res = await fetch(`${baseUrl}/messages`, {
+            method: 'POST',
+            headers: {
+              Authorization: authHeader,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(smsPayload),
+            signal: controller.signal,
+          });
+        }
+
         clearTimeout(timeoutId);
         const latencyMs = Date.now() - startTime;
         const resText = await res.text();
 
         if (!res.ok) {
-          throw new Error(`Device returned HTTP ${res.status}: ${resText.slice(0, 200) || res.statusText}`);
+          throw new Error(sanitizeGatewayErrorMessage(res.status, resText));
         }
 
         await docRef.set({
@@ -94,44 +137,38 @@ export async function POST(request: NextRequest) {
           message: `Test SMS dispatched successfully to ${testPhoneNumber} (${latencyMs}ms).`,
         });
       } else {
-        // Ping connectivity using /messages or /status
+        // Ping connectivity using /message, /messages, or /status
         let pingSuccess = false;
-        let responseStatus = 0;
-        let responseSnippet = '';
+        let lastStatus = 0;
+        let lastBody = '';
 
-        try {
-          const res = await fetch(`${baseUrl}/messages`, {
-            method: 'GET',
-            headers: { Authorization: authHeader },
-            signal: controller.signal,
-          });
-          responseStatus = res.status;
-          responseSnippet = (await res.text()).slice(0, 200);
-          if (res.ok || res.status === 200 || res.status === 204) {
-            pingSuccess = true;
-          }
-        } catch {
-          // Fallback to GET /
-          const res = await fetch(`${baseUrl}/`, {
-            method: 'GET',
-            headers: { Authorization: authHeader },
-            signal: controller.signal,
-          });
-          responseStatus = res.status;
-          if (res.ok || res.status === 200 || res.status === 401 || res.status === 403 || res.status === 404) {
-            // Reached device
-            if (res.status === 401) {
-              throw new Error('Authentication failed (401 Unauthorized). Please check Username and Password.');
+        for (const endpoint of ['/message', '/messages', '/status', '']) {
+          try {
+            const res = await fetch(`${baseUrl}${endpoint}`, {
+              method: 'GET',
+              headers: { Authorization: authHeader },
+              signal: controller.signal,
+            });
+            lastStatus = res.status;
+            lastBody = await res.text();
+
+            if (res.ok || res.status === 200 || res.status === 204) {
+              pingSuccess = true;
+              break;
             }
-            pingSuccess = true;
+            if (res.status === 401 || res.status === 403) {
+              throw new Error('Authentication failed (401/403). Please check your Username and Password/Token.');
+            }
+          } catch (err: any) {
+            if (err.message?.includes('Authentication failed')) throw err;
           }
         }
 
         clearTimeout(timeoutId);
         const latencyMs = Date.now() - startTime;
 
-        if (!pingSuccess && responseStatus >= 400 && responseStatus !== 404) {
-          throw new Error(`Device responded with error status ${responseStatus}: ${responseSnippet}`);
+        if (!pingSuccess && lastStatus >= 400 && lastStatus !== 404) {
+          throw new Error(sanitizeGatewayErrorMessage(lastStatus, lastBody));
         }
 
         await docRef.set({
@@ -153,7 +190,7 @@ export async function POST(request: NextRequest) {
       const latencyMs = Date.now() - startTime;
       let errorMsg = fetchErr.message || 'Unable to connect to Android SMS Gateway.';
       if (fetchErr.name === 'AbortError') {
-        errorMsg = 'Connection timed out after 10 seconds. Verify the Android phone is on the same network or the URL/port is open.';
+        errorMsg = 'Connection timed out after 10 seconds. Verify the Android phone is online, on the same network, or reachable.';
       }
 
       await docRef.set({
@@ -167,7 +204,7 @@ export async function POST(request: NextRequest) {
         status: 'error',
         latencyMs,
         error: errorMsg,
-      }, { status: 502 });
+      }, { status: 400 });
     }
   } catch (error) {
     console.error('[sms-gateway-test] Internal error:', error);
