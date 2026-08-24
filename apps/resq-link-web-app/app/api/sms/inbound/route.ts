@@ -33,19 +33,26 @@ export async function POST(request: NextRequest) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    const event = (await request.json().catch(() => null)) as GatewayInbound | null;
-    if (!event || event.event !== 'sms:received' || !event.payload?.messageId) {
+    const rawBody = (await request.json().catch(() => null)) as Record<string, any> | null;
+    if (!rawBody) {
       return new NextResponse(null, { status: 204 });
     }
 
-    const phoneNumber = normalizePhone(event.payload.phoneNumber);
-    const body = event.payload.message?.trim();
+    const payload = rawBody.payload || rawBody;
+    const rawPhone = payload.phoneNumber || payload.phone || payload.from || payload.address || rawBody.phoneNumber || rawBody.phone;
+    const rawMessage = payload.message || payload.text || payload.body || rawBody.message || rawBody.text;
+    const rawMessageId = payload.messageId || payload.id || rawBody.messageId || rawBody.id || `msg_${Date.now()}`;
+
+    const phoneNumber = normalizePhone(rawPhone);
+    const body = typeof rawMessage === 'string' ? rawMessage.trim() : '';
+
     if (!phoneNumber || !body) {
+      console.warn('[sms-inbound] Received webhook but missing phone or body:', rawBody);
       return new NextResponse('Invalid SMS payload', { status: 400 });
     }
 
     const threadId = stableId(phoneNumber);
-    const messageId = stableId(`gateway:${event.payload.messageId}`);
+    const messageId = stableId(`gateway:${rawMessageId}`);
     const messageRef = db.doc(`smsMessages/${messageId}`);
     const threadRef = db.doc(`smsThreads/${threadId}`);
     const intakeRef = db.doc(`smsIntakes/${threadId}`);
