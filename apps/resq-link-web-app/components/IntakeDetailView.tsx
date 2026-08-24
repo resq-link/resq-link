@@ -58,6 +58,9 @@ import {
   MessageSquare,
   Phone,
   Radio,
+  Ambulance,
+  Truck,
+  ShieldCheck,
 } from "lucide-react";
 
 const PinnedLocationMap = dynamic(() => import("./PinnedLocationMap"), {
@@ -111,13 +114,13 @@ const getResponderResource = (resources: ResourceRecord[], responderId: string) 
       resource.assignedResponderId,
       ...(Array.isArray(resource.assignedResponderIds) ? resource.assignedResponderIds : []),
     ];
-    return resource.status === "available" && ids.includes(responderId);
+    return ids.includes(responderId);
   }) || null;
 
 const isSuggestedResourceForAgencies = (resource: ResourceRecord | null, agencies: string[]) => {
   if (!resource) return false;
-  const haystack = `${resource.type} ${resource.agency || ""} ${resource.department || ""}`.toUpperCase();
-  return agencies.some((agency) => haystack.includes(agency));
+  const haystack = `${resource.name || ""} ${resource.type || ""} ${resource.agency || ""} ${resource.department || ""}`.toUpperCase();
+  return agencies.some((agency) => haystack.includes(agency.toUpperCase()));
 };
 
 interface IntakeDetailViewProps {
@@ -668,6 +671,23 @@ export default function IntakeDetailView({
     ? derivedResponders.join(", ")
     : ((incident?.assignedResourceIds?.length || 0) > 0 ? `${incident?.assignedResourceIds?.length} resource(s) dispatched` : 'Unassigned');
 
+  const assignedResourcesForIncident = useMemo(() => {
+    const resourceIds = incident?.assignedResourceIds || [];
+    const targetIncidentId = incident?.id || report?.incidentId || report?.id;
+
+    return resources.filter((res) => {
+      if (res.id && resourceIds.includes(res.id)) return true;
+      if (res.assignedIncidentId && targetIncidentId && res.assignedIncidentId === targetIncidentId) return true;
+      const ids = [
+        res.primaryResponderId,
+        res.assignedResponderId,
+        ...(Array.isArray(res.assignedResponderIds) ? res.assignedResponderIds : []),
+      ];
+      if (assignedResponderId && ids.includes(assignedResponderId)) return true;
+      return resourceIds.some((id) => ids.includes(id));
+    });
+  }, [incident, report, assignedResponderId, resources]);
+
   const assignedTeamLabel = incident ? getAssignedTeamName(incident) : null;
   const canReassignTeam =
     Boolean(incident?.id) &&
@@ -1170,6 +1190,31 @@ export default function IntakeDetailView({
                   <span className="font-medium text-slate-500">Responder</span>
                   <span className="min-w-0 break-all text-right font-medium text-slate-100">{displayResponder}</span>
 
+                  <span className="font-medium text-slate-500">Assigned Unit</span>
+                  <div className="flex flex-col items-end gap-1 text-right">
+                    {assignedResourcesForIncident.length > 0 ? (
+                      assignedResourcesForIncident.map((res) => (
+                        <span
+                          key={res.id}
+                          className="inline-flex items-center gap-1.5 rounded-md border border-slate-800 bg-slate-950 px-2 py-0.5 text-xs font-semibold text-slate-200"
+                        >
+                          <Ambulance className="w-3.5 h-3.5 text-primary-400 shrink-0" />
+                          <span className="text-slate-100">{res.name}</span>
+                          <span className="text-[10px] text-slate-400">({res.type})</span>
+                          <span className="rounded border border-slate-700 bg-slate-900 px-1 py-0.2 text-[9px] uppercase font-bold text-slate-300">
+                            {res.status.replace('_', ' ')}
+                          </span>
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-right font-medium text-slate-400">
+                        {(incident?.assignedResourceIds?.length || 0) > 0
+                          ? `${incident?.assignedResourceIds?.length} unit(s) dispatched`
+                          : 'No unit linked'}
+                      </span>
+                    )}
+                  </div>
+
                   <span className="self-start pt-0.5 font-medium text-slate-500">Team</span>
                   <div className="flex justify-end">
                     <TeamBadge label={assignedTeamLabel} size="sm" />
@@ -1524,11 +1569,16 @@ export default function IntakeDetailView({
                     ) : responders.length === 0 ? (
                       <option>No responder units available</option>
                     ) : (
-                      responders.map((r) => (
-                        <option key={r.uid} value={r.uid}>
-                          {r.account.fullName || r.account.email} ({r.account.role}){getResponderFallbackLabel(r) || (suggestedAgencies.includes(r.account.role) ? " - Suggested" : "")}
-                        </option>
-                      ))
+                      responders.map((r) => {
+                        const boundResource = getResponderResource(resources, r.uid);
+                        const unitLabel = boundResource ? ` [Unit: ${boundResource.name} • ${boundResource.status.replace('_', ' ')}]` : '';
+                        const fallbackLabel = getResponderFallbackLabel(r) || (suggestedAgencies.includes(r.account.role) ? " - Suggested" : "");
+                        return (
+                          <option key={r.uid} value={r.uid}>
+                            {r.account.fullName || r.account.email} ({r.account.role}){unitLabel}{fallbackLabel}
+                          </option>
+                        );
+                      })
                     )}
                   </select>
                   <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">

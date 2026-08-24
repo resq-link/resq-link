@@ -546,14 +546,14 @@ const toDispatchRecord = (
   updatedAt: new Date(),
 });
 
-const inferAgencyCodeForResource = (resource: Pick<ResourceRecord, 'agency' | 'type'>): AgencyCode => {
-  const haystack = `${resource.agency || ''} ${resource.type}`.toLowerCase();
-  if (haystack.includes('bfp')) return 'BFP';
-  if (haystack.includes('pnp')) return 'PNP';
+const inferAgencyCodeForResource = (resource: Pick<ResourceRecord, 'agency' | 'type'> & { name?: string }): AgencyCode => {
+  const haystack = `${(resource as any).name || ''} ${resource.agency || ''} ${resource.type}`.toLowerCase();
+  if (haystack.includes('bfp') || haystack.includes('fire') || haystack.includes('engine') || haystack.includes('tanker')) return 'BFP';
+  if (haystack.includes('pnp') || haystack.includes('police')) return 'PNP';
   if (haystack.includes('coast') || haystack.includes('pcg')) return 'PCG';
   if (haystack.includes('hospital') || haystack.includes('tcpgh')) return 'TCPGH';
   if (haystack.includes('health') || haystack.includes('cho')) return 'CHO';
-  if (resource.type === 'AMBULANCE') return 'TCPGH';
+  if (resource.type === 'AMBULANCE' || haystack.includes('ambulance')) return 'TCPGH';
   if (haystack.includes('rescue') || haystack.includes('mdrrmo')) return 'RESCUE_1111';
   if (haystack.includes('lingkod') || haystack.includes('tflc')) return 'TFLC';
   if (haystack.includes('psso') || haystack.includes('tctmg') || haystack.includes('traffic')) return 'PSSO_TCTMG';
@@ -1072,15 +1072,11 @@ export function getIncidentResourceMatch(
     return false;
   }
 
-  if (normalizeResponderIds(resource).length === 0) {
-    return false;
-  }
-
   return true;
 }
 
 export function isIncidentResourceSuggested(
-  resource: Pick<ResourceRecord, 'agency' | 'department' | 'type' | 'status' | 'primaryResponderId' | 'assignedResponderId' | 'assignedResponderIds'>,
+  resource: Pick<ResourceRecord, 'agency' | 'department' | 'type' | 'status' | 'primaryResponderId' | 'assignedResponderId' | 'assignedResponderIds'> & { name?: string },
   rule: IncidentTypeRule
 ): boolean {
   if (!getIncidentResourceMatch(resource, rule)) {
@@ -1088,7 +1084,13 @@ export function isIncidentResourceSuggested(
   }
 
   const inferredAgency = inferAgencyCodeForResource(resource);
-  return rule.recommendedAgencies.includes(inferredAgency) || rule.suggestedResourceTypes.includes(resource.type);
+  const resourceName = ((resource as any).name || '').toLowerCase();
+  const isFireType = resource.type === 'BFP' || resourceName.includes('fire') || resourceName.includes('engine') || resourceName.includes('tanker');
+  const matchesSuggestedType =
+    rule.suggestedResourceTypes.includes(resource.type) ||
+    (rule.recommendedAgencies.includes('BFP') && isFireType);
+
+  return rule.recommendedAgencies.includes(inferredAgency) || matchesSuggestedType;
 }
 
 export function validateIncidentAgencyRouting(
