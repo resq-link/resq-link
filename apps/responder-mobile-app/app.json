@@ -118,10 +118,22 @@
         "sitemap": false
       },
       "uiMode": false,
+      "firebase": {
+        "apiKey": "AIzaSyCWLfP5vbHiFTiDQCG3YVxKu8iehstmo0g",
+        "authDomain": "city-rescue-dispatch.firebaseapp.com",
+        "projectId": "city-rescue-dispatch",
+        "storageBucket": "city-rescue-dispatch.firebasestorage.app",
+        "messagingSenderId": "665229808010",
+        "appId": "1:665229808010:web:4f51791af88672b027f873",
+        "databaseURL": ""
+      },
+      "googleMaps": {
+        "apiKey": ""
+      },
       "eas": {
-        "projectId": "12355ad0-d170-4727-9799-dba31b6d403b"
+        "projectId": "4b72a598-9efc-45d0-abc1-5af5af3640e3"
       }
     },
-    "owner": "grymarkers-team"
+    "owner": "spup-innovations"
   }
 }
