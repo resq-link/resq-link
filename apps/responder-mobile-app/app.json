@@ -69,14 +69,6 @@
           "backgroundColor": "#ffffff"
         }
       ],
-      [
-        "expo-build-properties",
-        {
-          "ios": {
-            "useFrameworks": "static"
-          }
-        }
-      ],
       "expo-font",
       "expo-secure-store",
       "expo-web-browser",
