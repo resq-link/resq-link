@@ -67,14 +67,11 @@ export async function POST(request: NextRequest) {
     });
 
     const smsPayload: Record<string, unknown> = {
-      message: messageBody,
       textMessage: { text: messageBody },
       phoneNumbers: [phoneNumber],
-      phone: [phoneNumber],
     };
-    if (simSlot) {
+    if (typeof simSlot === 'number' && simSlot > 0) {
       smsPayload.simNumber = simSlot;
-      smsPayload.simSlot = simSlot;
     }
 
     const candidateEndpoints = [

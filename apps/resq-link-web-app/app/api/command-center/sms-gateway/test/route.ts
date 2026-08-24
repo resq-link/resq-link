@@ -21,6 +21,9 @@ function normalizeGatewayBaseUrl(url: string): string {
 
 function sanitizeGatewayErrorMessage(status: number, rawText: string): string {
   const isHtml = rawText.trim().startsWith('<') || rawText.includes('<!DOCTYPE') || rawText.includes('<html');
+  if (status === 500) {
+    return `Device returned HTTP 500 error. Check on your Android phone: (1) Ensure SMS Gateway app has 'Send & View SMS' permissions allowed, (2) Verify the SIM card has cellular load/credits & signal, (3) Verify the SIM slot number (1 or 2).`;
+  }
   if (status === 502 || status === 504 || status === 503) {
     return `Cloud Gateway returned HTTP ${status}. Your Android phone appears to be OFFLINE or disconnected from Cloud Server. In the Android SMS Gateway app, ensure Cloud Server is toggled ON and showing "Online".`;
   }
@@ -83,14 +86,11 @@ export async function POST(request: NextRequest) {
         // Send a live test SMS
         const textMsg = `[RESQ-Link] Test message: Gateway connected successfully at ${new Date().toLocaleTimeString('en-PH', { timeZone: 'Asia/Manila' })}.`;
         const smsPayload: Record<string, unknown> = {
-          message: textMsg,
           textMessage: { text: textMsg },
           phoneNumbers: [testPhoneNumber],
-          phone: [testPhoneNumber],
         };
-        if (simSlot) {
+        if (typeof simSlot === 'number' && simSlot > 0) {
           smsPayload.simNumber = simSlot;
-          smsPayload.simSlot = simSlot;
         }
 
         // Try /message?skipPhoneValidation=true first, then fallback to /message, then /messages
