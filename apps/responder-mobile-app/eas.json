@@ -23,6 +23,9 @@
   },
   "submit": {
     "production": {
+      "android": {
+        "track": "internal"
+      },
       "ios": {
         "ascAppId": "6804334951",
         "bundleIdentifier": "com.tuguegarao.resqlink.responder"
