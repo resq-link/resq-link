@@ -67,7 +67,10 @@ const ensureAuthenticated = () => {
 
 const isResponderDesignation = (value?: unknown): boolean => {
   const normalized = typeof value === 'string' ? value.trim().toLowerCase() : '';
-  return normalized.includes('responder');
+  if (!normalized) return false;
+  if (normalized.includes('responder')) return true;
+  const responderAgencies = ['bfp', 'pnp', 'mdrrmo', 'cdrrmo', 'ambulance', 'ems', 'pcg', 'traffic', 'posu', 'rescue'];
+  return responderAgencies.includes(normalized);
 };
 
 const toDateValue = (value: unknown): Date | Timestamp | null => {
@@ -93,28 +96,38 @@ async function resolveParticipant(uid: string): Promise<ChatParticipant> {
     const data = commandCenterSnapshot.data();
     return {
       uid,
-      name: data.name || data.email || uid,
+      name: data.name || data.fullName || data.email || 'Command Center',
       email: data.email || null,
       role: 'command_center',
     };
   }
 
   const dispatcherSnapshot = await getDoc(doc(db, 'dispatchers', uid));
-  if (!dispatcherSnapshot.exists()) {
-    throw new Error(`Participant ${uid} was not found.`);
+  if (dispatcherSnapshot.exists()) {
+    const data = dispatcherSnapshot.data();
+    if (data.active === false) {
+      throw new Error(`Participant ${data.email || uid} is inactive.`);
+    }
+    return {
+      uid,
+      name: data.fullName || data.name || data.email || uid,
+      email: data.email || null,
+      role: isResponderDesignation(data.designation || data.role) ? 'responder' : 'dispatcher',
+    };
   }
 
-  const data = dispatcherSnapshot.data();
-  if (data.active === false) {
-    throw new Error(`Participant ${data.email || uid} is inactive.`);
+  const adminSnapshot = await getDoc(doc(db, 'admins', uid));
+  if (adminSnapshot.exists()) {
+    const data = adminSnapshot.data();
+    return {
+      uid,
+      name: data.fullName || data.name || data.email || 'Admin',
+      email: data.email || null,
+      role: 'command_center',
+    };
   }
 
-  return {
-    uid,
-    name: data.fullName || data.email || uid,
-    email: data.email || null,
-    role: isResponderDesignation(data.designation) ? 'responder' : 'dispatcher',
-  };
+  throw new Error(`Participant ${uid} was not found.`);
 }
 
 const toThreadRecord = (snapshot: DocumentData): ChatThreadRecord => {
@@ -401,19 +414,46 @@ export async function sendChatMessage(threadId: string, text: string): Promise<C
 
 export async function getMessagingParticipants(): Promise<ChatParticipant[]> {
   ensureAuthenticated();
-  const snapshot = await getDocs(collection(getFirebaseFirestore(), 'dispatchers'));
+  const db = getFirebaseFirestore();
   const participants: ChatParticipant[] = [];
+  const seenUids = new Set<string>();
 
-  snapshot.forEach((item) => {
-    const data = item.data();
-    if (data.active === false) return;
-    participants.push({
-      uid: item.id,
-      name: data.fullName || data.email || item.id,
-      email: data.email || null,
-      role: isResponderDesignation(data.designation) ? 'responder' : 'dispatcher',
+  // 1. Fetch Command Centers
+  try {
+    const ccSnapshot = await getDocs(collection(db, 'commandCenters'));
+    ccSnapshot.forEach((item) => {
+      const data = item.data();
+      if (data.active === false) return;
+      seenUids.add(item.id);
+      participants.push({
+        uid: item.id,
+        name: data.name || data.fullName || data.email || 'Command Center',
+        email: data.email || null,
+        role: 'command_center',
+      });
     });
-  });
+  } catch (err) {
+    console.warn('[getMessagingParticipants] could not fetch commandCenters:', err);
+  }
+
+  // 2. Fetch Dispatchers / Responders
+  try {
+    const dispatcherSnapshot = await getDocs(collection(db, 'dispatchers'));
+    dispatcherSnapshot.forEach((item) => {
+      if (seenUids.has(item.id)) return;
+      const data = item.data();
+      if (data.active === false) return;
+      seenUids.add(item.id);
+      participants.push({
+        uid: item.id,
+        name: data.fullName || data.name || data.email || item.id,
+        email: data.email || null,
+        role: isResponderDesignation(data.designation || data.role) ? 'responder' : 'dispatcher',
+      });
+    });
+  } catch (err) {
+    console.warn('[getMessagingParticipants] could not fetch dispatchers:', err);
+  }
 
   return participants.sort((left, right) => left.name.localeCompare(right.name));
 }

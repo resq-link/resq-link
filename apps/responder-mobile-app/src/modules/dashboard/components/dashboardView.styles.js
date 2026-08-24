@@ -100,5 +100,8 @@ export function buildDashboardStyles(D) {
     dutySection: {
       marginTop: 4,
     },
+    queueScrollContainer: {
+      maxHeight: 410,
+    },
   });
 }

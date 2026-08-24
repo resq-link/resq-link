@@ -341,7 +341,7 @@ export default function ResponderMessagesScreen() {
     });
   }, [user]);
 
-  useEffect(() => {
+  const loadParticipants = useCallback(() => {
     if (!user) return;
     getMessagingParticipants()
       .then((items) => {
@@ -354,6 +354,10 @@ export default function ResponderMessagesScreen() {
         setParticipants([]);
       });
   }, [user]);
+
+  useEffect(() => {
+    loadParticipants();
+  }, [loadParticipants]);
 
   useEffect(() => {
     if (!selectedThreadId) {
@@ -523,7 +527,10 @@ export default function ResponderMessagesScreen() {
             activeOpacity={0.85}
             onPress={() => {
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              setShowNewChat((current) => !current);
+              setShowNewChat((current) => {
+                if (!current) loadParticipants();
+                return !current;
+              });
             }}
             style={[
               styles.iconBtn,

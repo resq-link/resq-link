@@ -207,15 +207,11 @@ export default function DashboardView() {
   const dutyUnitLabel = duty.activeResource?.name ?? null;
 
   const handlePressDuty = useCallback(() => {
-    if (onDuty) {
-      scrollRef.current?.scrollToEnd({ animated: true });
-      return;
-    }
     scrollRef.current?.scrollTo({
       y: Math.max(dutySectionYRef.current - 12, 0),
       animated: true,
     });
-  }, [onDuty]);
+  }, []);
 
   if (!fontsLoaded) return null;
   if (initialSyncPending) {
@@ -303,7 +299,7 @@ export default function DashboardView() {
 
         <View style={styles.divider} />
 
-        {!onDuty ? dutySection : null}
+        {dutySection}
 
         <View style={[styles.content, styles.section]}>
           <DashboardSectionLabel
@@ -406,19 +402,23 @@ export default function DashboardView() {
               </View>
             </View>
           ) : (
-            otherCases.map((caseData) => (
-              <DashboardIncidentRow
-                key={caseData.id}
-                case={caseData}
-                onPress={() => handleCasePress(caseData)}
-                onStatusUpdate={handleCaseStatusUpdate}
-                responderCoords={responderCoords}
-              />
-            ))
+            <ScrollView
+              nestedScrollEnabled={true}
+              style={styles.queueScrollContainer}
+              showsVerticalScrollIndicator={otherCases.length > 5}
+            >
+              {otherCases.map((caseData) => (
+                <DashboardIncidentRow
+                  key={caseData.id}
+                  case={caseData}
+                  onPress={() => handleCasePress(caseData)}
+                  onStatusUpdate={handleCaseStatusUpdate}
+                  responderCoords={responderCoords}
+                />
+              ))}
+            </ScrollView>
           )}
         </View>
-
-        {onDuty ? dutySection : null}
       </ScrollView>
     </View>
   );

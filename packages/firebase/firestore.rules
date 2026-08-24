@@ -102,7 +102,7 @@ service cloud.firestore {
     
     // Command Centers collection - command centers can read their own
     match /commandCenters/{userId} {
-      allow read: if isOwner(userId) || isCommandCenter() || isSuperAdmin();
+      allow read: if isOwner(userId) || isCommandCenter() || isSuperAdmin() || isDispatcher();
       allow create: if (isAuthenticated() && isOwner(userId)) || isSuperAdmin();
       allow update: if isOwner(userId) || isSuperAdmin();
       allow delete: if isOwner(userId) || isSuperAdmin();
