@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react'
 import {
+  subscribeToAgencies,
   subscribeToDispatcherLocations,
   subscribeToEmergencyReports,
   subscribeToFootageRequests,
@@ -16,6 +17,7 @@ import {
   subscribeToIncidents,
   subscribeToResources,
   updateResource,
+  type AgencyRecord,
   type DispatcherLocation,
   type EmergencyReport,
   type EmergencyReportsSnapshotMeta,
@@ -37,6 +39,7 @@ type DispatcherDataContextValue = {
   footageRequests: FootageRequest[]
   incidentTypeRules: IncidentTypeRule[]
   dispatcherLocations: DispatcherLocation[]
+  agencies: AgencyRecord[]
 }
 
 const DispatcherDataContext = createContext<DispatcherDataContextValue | null>(null)
@@ -72,6 +75,7 @@ export function DispatcherDataProvider({ children }: { children: ReactNode }) {
   const [footageRequests, setFootageRequests] = useState<FootageRequest[]>([])
   const [incidentTypeRules, setIncidentTypeRules] = useState<IncidentTypeRule[]>([])
   const [dispatcherLocations, setDispatcherLocations] = useState<DispatcherLocation[]>([])
+  const [agencies, setAgencies] = useState<AgencyRecord[]>([])
 
   useEffect(() => {
     if (!user || workspace !== 'command_center') {
@@ -85,6 +89,7 @@ export function DispatcherDataProvider({ children }: { children: ReactNode }) {
       setFootageRequests([])
       setIncidentTypeRules([])
       setDispatcherLocations([])
+      setAgencies([])
       return
     }
 
@@ -159,6 +164,9 @@ export function DispatcherDataProvider({ children }: { children: ReactNode }) {
       }
       setDispatcherLocations(locations.filter(isValidDispatcherLocation))
     })
+    const unsubscribeAgencies = subscribeToAgencies((agencyItems) => {
+      setAgencies(agencyItems)
+    })
 
     return () => {
       unsubscribeReports()
@@ -167,6 +175,7 @@ export function DispatcherDataProvider({ children }: { children: ReactNode }) {
       unsubscribeFootage()
       unsubscribeRules()
       unsubscribeLocations()
+      unsubscribeAgencies()
     }
   }, [user, workspace])
 
@@ -214,6 +223,7 @@ export function DispatcherDataProvider({ children }: { children: ReactNode }) {
       footageRequests,
       incidentTypeRules,
       dispatcherLocations,
+      agencies,
     }),
     [
       emergencyReports,
@@ -226,6 +236,7 @@ export function DispatcherDataProvider({ children }: { children: ReactNode }) {
       footageRequests,
       incidentTypeRules,
       dispatcherLocations,
+      agencies,
     ]
   )
 

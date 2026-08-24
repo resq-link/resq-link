@@ -1004,9 +1004,18 @@ function IntakeContent() {
     responder: {
       uid: string;
       label: string;
-      agency: DispatcherRole;
+      agency: DispatcherRole | string;
       suggestedAgency: DispatcherRole | null;
       assignedTeamId?: string;
+    },
+    extra?: {
+      responders?: Array<{
+        uid: string;
+        label: string;
+        agency: DispatcherRole | string;
+      }>;
+      agencies?: string[];
+      resourceIds?: string[];
     },
   ) => {
     if (!report.id) return;
@@ -1032,6 +1041,10 @@ function IntakeContent() {
       const subtypeLabel = matchingRule?.label || "Request for Assistance";
       const priority = matchingRule?.priority || report.priority || "medium";
 
+      const assignedResponderIds = extra?.responders?.map((r) => r.uid) || [responder.uid];
+      const assignedAgencies = extra?.agencies || [responder.agency];
+      const responderNames = extra?.responders?.map((r) => r.label) || [responder.label];
+
       // Elevate civilian report to master INC incident atomically
       const incident = await elevateEmergencyToIncident(report.id, {
         priority: priority as any,
@@ -1039,8 +1052,12 @@ function IntakeContent() {
         incidentSubtypeId: subtypeId,
         incidentSubtypeLabel: subtypeLabel,
         assignedResponderId: responder.uid,
+        assignedResponderIds,
         responderName: responder.label,
-        assignedAgency: responder.agency,
+        responderNames,
+        assignedAgency: responder.agency as any,
+        assignedAgencies: assignedAgencies as any,
+        assignedResourceIds: extra?.resourceIds || [],
         incidentDate: formState.incidentDate || getPhilippineDateString(new Date()),
         incidentTime: formState.incidentTime || getPhilippineTimeString(new Date()),
       });
@@ -1052,7 +1069,7 @@ function IntakeContent() {
         status: "active",
         assignedResponderId: responder.uid,
         responder: responder.label,
-        assignedAgency: responder.agency,
+        assignedAgency: responder.agency as any,
         updatedAt: Timestamp.now(),
       };
 
@@ -1063,7 +1080,7 @@ function IntakeContent() {
       );
 
       setPageSuccess(
-        `Report APP-${report.id.slice(-6).toUpperCase()} elevated to master incident ${incident.referenceNumber} and assigned to ${responder.label}.`,
+        `Report APP-${report.id.slice(-6).toUpperCase()} elevated to master incident ${incident.referenceNumber} and assigned to ${assignedAgencies.join(', ')} (${responder.label}).`,
       );
     
       setTimeout(() => {

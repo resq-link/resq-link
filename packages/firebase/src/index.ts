@@ -371,6 +371,16 @@ export {
 } from './incidents';
 
 export {
+  getAllAgencies,
+  subscribeToAgencies,
+  mapAgencyDoc,
+  buildFallbackAgencies,
+  SEED_AGENCIES,
+  type AgencyRecord,
+  type AgencyType,
+} from './agencies';
+
+export {
   subscribeToSmsIntakes,
   subscribeToSmsMessages,
   subscribeToSmsQuickReplies,

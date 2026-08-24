@@ -128,7 +128,7 @@ interface IntakeDetailViewProps {
   recentIncidents?: IncidentRecord[]
   allCivilianReports?: EmergencyReport[]
   onRespondStart?: (report: EmergencyReport) => void
-  onRespond?: (report: EmergencyReport, responder: any) => void
+  onRespond?: (report: EmergencyReport, responder: any, extra?: any) => void
   onReject?: (report: EmergencyReport) => void
   onMoveToHistory?: (report: EmergencyReport) => void
   onCloseDetail?: () => void
@@ -167,7 +167,7 @@ export default function IntakeDetailView({
     setMounted(true);
   }, []);
   const [responders, setResponders] = useState<any[]>([]);
-  const [selectedResponderId, setSelectedResponderId] = useState("");
+  const [selectedResponderIds, setSelectedResponderIds] = useState<string[]>([]);
   const [isLoadingResponders, setIsLoadingResponders] = useState(false);
   const [responderError, setResponderError] = useState<string | null>(null);
   const [responderLocation, setResponderLocation] = useState<DispatcherLocation | null>(null);
@@ -181,7 +181,7 @@ export default function IntakeDetailView({
 
   useEffect(() => {
     setIsElevateModalOpen(false);
-    setSelectedResponderId("");
+    setSelectedResponderIds([]);
     setResponderError(null);
     setSelectedCitizenReport(null);
     setIsMessagingOpen(false);
@@ -626,12 +626,33 @@ export default function IntakeDetailView({
         return (left.account.fullName || left.account.email || left.uid).localeCompare(right.account.fullName || right.account.email || right.uid);
       });
       setResponders(finalPool);
-      if (finalPool.length > 0) setSelectedResponderId(finalPool[0].uid);
+      if (finalPool.length > 0) {
+        // Pre-select top suggested responders
+        const suggestedResponders = finalPool.filter((r) => {
+          const rResource = getResponderResource(resources, r.uid);
+          return (
+            reportSuggestedAgencies.includes(r.account.role) ||
+            isSuggestedResourceForAgencies(rResource, reportSuggestedAgencies)
+          );
+        });
+        if (suggestedResponders.length > 0) {
+          // Preselect up to 2 suggested units if available across different roles
+          setSelectedResponderIds(suggestedResponders.slice(0, 2).map((r) => r.uid));
+        } else {
+          setSelectedResponderIds([finalPool[0].uid]);
+        }
+      }
     } catch (error: any) {
       setResponderError("Failed to fetch responder pool.");
     } finally {
       setIsLoadingResponders(false);
     }
+  };
+
+  const toggleResponderSelection = (uid: string) => {
+    setSelectedResponderIds((current) =>
+      current.includes(uid) ? current.filter((id) => id !== uid) : [...current, uid]
+    );
   };
 
   const handleStartElevate = async () => {
@@ -656,15 +677,38 @@ export default function IntakeDetailView({
   };
 
   const handleConfirmRespond = async () => {
-    if (!selectedResponderId) return;
-    const selected = responders.find(r => r.uid === selectedResponderId);
-    if (onRespond && selected && report) {
-      await onRespond(report, {
-        uid: selected.uid,
-        label: selected.account.fullName || selected.account.email,
-        agency: selected.account.role,
-        suggestedAgency: primarySuggestedAgency,
-      });
+    if (selectedResponderIds.length === 0) return;
+    const selectedList = responders.filter((r) => selectedResponderIds.includes(r.uid));
+    if (selectedList.length === 0) return;
+
+    const primarySelected = selectedList[0];
+    const allAgencies = Array.from(new Set(selectedList.map((r) => r.account.role)));
+    const allLabels = selectedList.map((r) => r.account.fullName || r.account.email);
+    const boundResourceIds: string[] = [];
+    selectedList.forEach((r) => {
+      const bound = getResponderResource(resources, r.uid);
+      if (bound?.id) boundResourceIds.push(bound.id);
+    });
+
+    if (onRespond && report) {
+      await onRespond(
+        report,
+        {
+          uid: primarySelected.uid,
+          label: allLabels.join(', '),
+          agency: primarySelected.account.role,
+          suggestedAgency: primarySuggestedAgency,
+        },
+        {
+          responders: selectedList.map((r) => ({
+            uid: r.uid,
+            label: r.account.fullName || r.account.email,
+            agency: r.account.role,
+          })),
+          agencies: allAgencies,
+          resourceIds: boundResourceIds,
+        }
+      );
       setIsElevateModalOpen(false);
     }
   };
@@ -1549,42 +1593,118 @@ export default function IntakeDetailView({
               </div>
 
               {/* Responder Assignment */}
-              <div className="space-y-2">
-                <label className="text-[9px] uppercase tracking-[0.2em] font-black text-slate-500 block">
-                  Select Dispatch Responder / Unit
-                </label>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-[9px] uppercase tracking-[0.2em] font-black text-slate-500 block">
+                    Select Dispatch Responder(s) / Unit(s)
+                  </label>
+                  {suggestedAgencies.length > 0 && (
+                    <div className="flex items-center gap-1">
+                      <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Recommended:</span>
+                      <div className="flex flex-wrap gap-1">
+                        {suggestedAgencies.map((agency) => {
+                          const isCovered = responders.some(
+                            (r) => selectedResponderIds.includes(r.uid) && r.account.role === agency
+                          );
+                          return (
+                            <span
+                              key={agency}
+                              className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider border ${
+                                isCovered
+                                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                                  : 'bg-slate-800 text-slate-400 border-slate-700'
+                              }`}
+                            >
+                              {isCovered ? '✓ ' : ''}{agency}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {!hasLocalSuggestedAppResource && reportQuadrant ? (
                   <p className="text-[10px] font-bold text-amber-300">
                     No suggested available resource is bound in this report quadrant; nearby fallback units are included.
                   </p>
                 ) : null}
-                <div className="relative">
-                  <select
-                    value={selectedResponderId}
-                    onChange={(e) => setSelectedResponderId(e.target.value)}
-                    className="w-full h-11 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 px-4 outline-none focus:ring-1 focus:ring-emerald-500/50 appearance-none transition-colors"
-                  >
-                    {isLoadingResponders ? (
-                      <option>Loading responder units...</option>
-                    ) : responders.length === 0 ? (
-                      <option>No responder units available</option>
-                    ) : (
-                      responders.map((r) => {
-                        const boundResource = getResponderResource(resources, r.uid);
-                        const unitLabel = boundResource ? ` [Unit: ${boundResource.name} • ${boundResource.status.replace('_', ' ')}]` : '';
-                        const fallbackLabel = getResponderFallbackLabel(r) || (suggestedAgencies.includes(r.account.role) ? " - Suggested" : "");
-                        return (
-                          <option key={r.uid} value={r.uid}>
-                            {r.account.fullName || r.account.email} ({r.account.role}){unitLabel}{fallbackLabel}
-                          </option>
-                        );
-                      })
-                    )}
-                  </select>
-                  <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                    ▼
-                  </div>
+
+                <div className="max-h-56 overflow-y-auto rounded-xl border border-slate-800 bg-slate-950 p-2 space-y-1.5 custom-scrollbar">
+                  {isLoadingResponders ? (
+                    <div className="p-4 text-center text-xs text-slate-500">Loading responder units...</div>
+                  ) : responders.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-500">No responder units available</div>
+                  ) : (
+                    responders.map((r) => {
+                      const boundResource = getResponderResource(resources, r.uid);
+                      const isSelected = selectedResponderIds.includes(r.uid);
+                      const fallbackLabel = getResponderFallbackLabel(r);
+                      const isSuggested = suggestedAgencies.includes(r.account.role);
+
+                      return (
+                        <label
+                          key={r.uid}
+                          className={`flex items-center justify-between p-2.5 rounded-lg border cursor-pointer transition-all ${
+                            isSelected
+                              ? 'bg-emerald-950/30 border-emerald-500/50 shadow-sm'
+                              : 'bg-slate-900/60 border-slate-800/80 hover:border-slate-700 hover:bg-slate-900'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleResponderSelection(r.uid)}
+                              className="h-4 w-4 rounded border-slate-700 bg-slate-950 text-emerald-500 focus:ring-emerald-500/50 shrink-0"
+                            />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-slate-200 truncate">
+                                  {r.account.fullName || r.account.email}
+                                </span>
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-slate-800 text-slate-300 border border-slate-700">
+                                  {r.account.role}
+                                </span>
+                              </div>
+                              {boundResource ? (
+                                <p className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1.5">
+                                  <span>Unit: <strong className="text-slate-300 font-semibold">{boundResource.name}</strong></span>
+                                  <span className={`inline-block w-1.5 h-1.5 rounded-full ${
+                                    boundResource.status === 'available' ? 'bg-emerald-400' : 'bg-amber-400'
+                                  }`} />
+                                  <span className="capitalize">{boundResource.status.replace('_', ' ')}</span>
+                                </p>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                            {fallbackLabel ? (
+                              <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                                Fallback
+                              </span>
+                            ) : isSuggested ? (
+                              <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                                Suggested
+                              </span>
+                            ) : null}
+                          </div>
+                        </label>
+                      );
+                    })
+                  )}
                 </div>
+
+                {selectedResponderIds.length > 0 && (
+                  <p className="text-[10px] font-medium text-slate-400">
+                    Selected: <strong className="text-emerald-400 font-bold">{selectedResponderIds.length} unit{selectedResponderIds.length > 1 ? 's' : ''}</strong> from{' '}
+                    <span className="text-slate-200">
+                      {Array.from(new Set(responders.filter((r) => selectedResponderIds.includes(r.uid)).map((r) => r.account.role))).join(', ')}
+                    </span>
+                  </p>
+                )}
+
                 {responderError && (
                   <p className="text-[10px] font-bold text-red-400 mt-1">
                     {responderError}
@@ -1605,12 +1725,12 @@ export default function IntakeDetailView({
 
               <button
                 type="button"
-                disabled={isLoadingResponders || !selectedResponderId}
+                disabled={isLoadingResponders || selectedResponderIds.length === 0}
                 onClick={handleConfirmRespond}
                 className="h-9 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-[10px] font-black text-white uppercase tracking-widest shadow-lg shadow-emerald-900/20 transition-all flex items-center gap-2"
               >
                 <CheckCircle className="w-3.5 h-3.5" />
-                <span>Confirm Elevation</span>
+                <span>Confirm Elevation ({selectedResponderIds.length})</span>
               </button>
             </div>
           </div>

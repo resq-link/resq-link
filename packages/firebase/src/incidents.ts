@@ -72,7 +72,8 @@ export type AgencyCode =
   | 'WATER_DISTRICT'
   | 'CAGELCO_1'
   | 'COMMAND_CENTER'
-  | 'OTHER';
+  | 'OTHER'
+  | (string & {});
 
 export type TeamOnDuty = string;
 export type ScheduleOfDuty = 'AM' | 'PM';
@@ -547,6 +548,10 @@ const toDispatchRecord = (
 });
 
 const inferAgencyCodeForResource = (resource: Pick<ResourceRecord, 'agency' | 'type'> & { name?: string }): AgencyCode => {
+  if (resource.agency) {
+    const rawAgency = String(resource.agency).trim().toUpperCase();
+    if (rawAgency) return rawAgency;
+  }
   const haystack = `${(resource as any).name || ''} ${resource.agency || ''} ${resource.type}`.toLowerCase();
   if (haystack.includes('bfp') || haystack.includes('fire') || haystack.includes('engine') || haystack.includes('tanker')) return 'BFP';
   if (haystack.includes('pnp') || haystack.includes('police')) return 'PNP';
@@ -1261,8 +1266,12 @@ export async function elevateEmergencyToIncident(
     incidentSubtypeId: string;
     incidentSubtypeLabel: string;
     assignedResponderId?: string | null;
+    assignedResponderIds?: string[] | null;
     responderName?: string | null;
-    assignedAgency?: DispatcherRole | null;
+    responderNames?: string[] | null;
+    assignedAgency?: DispatcherRole | string | null;
+    assignedAgencies?: (AgencyCode | string)[] | null;
+    assignedResourceIds?: string[] | null;
     incidentDate?: string | null;
     incidentTime?: string | null;
   }
@@ -1290,13 +1299,82 @@ export async function elevateEmergencyToIncident(
   const timestamp = Timestamp.now();
   const teamSnapshot = buildAssignedTeamSnapshot(resolvedTeam, currentUser.uid, timestamp);
 
-  const isAssigned = Boolean(input.assignedResponderId || input.responderName);
+  const rawResponderIds = Array.from(
+    new Set(
+      [
+        input.assignedResponderId,
+        ...(Array.isArray(input.assignedResponderIds) ? input.assignedResponderIds : []),
+      ].filter((id): id is string => Boolean(id?.trim()))
+    )
+  );
+
+  const rawAgencies = Array.from(
+    new Set(
+      [
+        input.assignedAgency,
+        ...(Array.isArray(input.assignedAgencies) ? input.assignedAgencies : []),
+      ].filter((a): a is string => Boolean(a?.trim()))
+    )
+  );
+
+  const rawResponderNames = Array.from(
+    new Set(
+      [
+        input.responderName,
+        ...(Array.isArray(input.responderNames) ? input.responderNames : []),
+      ].filter((n): n is string => Boolean(n?.trim()))
+    )
+  );
+
+  const primaryResponderId = rawResponderIds[0] || null;
+  const primaryAgency = rawAgencies[0] || null;
+  const primaryResponderName = rawResponderNames.join(', ') || null;
+
+  const isAssigned = rawResponderIds.length > 0 || Boolean(input.responderName);
   const initialStatus: IncidentStatus = isAssigned ? 'dispatched' : 'awaiting_resources';
 
   const dutyDate = input.incidentDate || new Date().toISOString().split('T')[0];
   const dutyTime =
     input.incidentTime ||
     new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+  const assignedResourceIds = Array.from(
+    new Set(
+      [
+        ...rawResponderIds,
+        ...(Array.isArray(input.assignedResourceIds) ? input.assignedResourceIds : []),
+      ].filter((id): id is string => Boolean(id?.trim()))
+    )
+  );
+
+  // 2.1 Include bound resource IDs for all assigned responders
+  for (const responderId of rawResponderIds) {
+    try {
+      const qRes = query(
+        collection(db, 'resources'),
+        where('primaryResponderId', '==', responderId)
+      );
+      const resSnap = await getDocs(qRes);
+      resSnap.docs.forEach((docSnap) => {
+        if (!assignedResourceIds.includes(docSnap.id)) {
+          assignedResourceIds.push(docSnap.id);
+        }
+      });
+
+      const qRes2 = query(
+        collection(db, 'resources'),
+        where('assignedResponderId', '==', responderId)
+      );
+      const resSnap2 = await getDocs(qRes2);
+      resSnap2.docs.forEach((docSnap) => {
+        if (!assignedResourceIds.includes(docSnap.id)) {
+          assignedResourceIds.push(docSnap.id);
+        }
+      });
+    } catch {
+      // Non-critical
+    }
+  }
 
   const incidentPayload: IncidentRecord = {
     id: incidentDocRef.id,
@@ -1338,8 +1416,8 @@ export async function elevateEmergencyToIncident(
     resolutionStatus: 'open',
     requiresExternalAgency: false,
     recommendedAgencies: [],
-    assignedAgencies: input.assignedAgency ? [input.assignedAgency as any] : [],
-    assignedResourceIds: input.assignedResponderId ? [input.assignedResponderId] : [],
+    assignedAgencies: rawAgencies as any,
+    assignedResourceIds,
     incidentDate: dutyDate,
     incidentTime: dutyTime,
     dateOfDuty: dutyDate,
@@ -1348,32 +1426,16 @@ export async function elevateEmergencyToIncident(
     updatedAt: timestamp,
   };
 
-  // 2.1 Include bound resource IDs in assignedResourceIds
-  if (input.assignedResponderId) {
-    try {
-      const qRes = query(
-        collection(db, 'resources'),
-        where('primaryResponderId', '==', input.assignedResponderId)
-      );
-      const resSnap = await getDocs(qRes);
-      resSnap.docs.forEach((docSnap) => {
-        if (!incidentPayload.assignedResourceIds.includes(docSnap.id)) {
-          incidentPayload.assignedResourceIds.push(docSnap.id);
-        }
-      });
-    } catch {
-      // Non-critical
-    }
-  }
-
   // 3. Update the civilian report: point to new master incident, inherit responder and agency
   const reportUpdatePayload: Record<string, unknown> = {
     incidentId: incidentDocRef.id,
     status: isAssigned ? 'active' : 'linked',
-    assignedResponderId: input.assignedResponderId || null,
-    dispatcherId: input.assignedResponderId || null,
-    responder: input.responderName || null,
-    assignedAgency: input.assignedAgency || null,
+    assignedResponderId: primaryResponderId,
+    assignedResponderIds: rawResponderIds,
+    dispatcherId: primaryResponderId,
+    responder: primaryResponderName,
+    assignedAgency: primaryAgency,
+    assignedAgencies: rawAgencies,
     assignedTeamId: teamSnapshot.assignedTeamId,
     assignedTeamName: teamSnapshot.assignedTeamName,
     assignedTeamCode: teamSnapshot.assignedTeamCode,
@@ -1399,10 +1461,12 @@ export async function elevateEmergencyToIncident(
     batch.update(secDoc.ref, {
       incidentId: incidentDocRef.id,
       status: isAssigned ? 'active' : 'linked',
-      assignedResponderId: input.assignedResponderId || null,
-      dispatcherId: input.assignedResponderId || null,
-      responder: input.responderName || null,
-      assignedAgency: input.assignedAgency || null,
+      assignedResponderId: primaryResponderId,
+      assignedResponderIds: rawResponderIds,
+      dispatcherId: primaryResponderId,
+      responder: primaryResponderName,
+      assignedAgency: primaryAgency,
+      assignedAgencies: rawAgencies,
       assignedTeamId: teamSnapshot.assignedTeamId,
       assignedTeamName: teamSnapshot.assignedTeamName,
       assignedTeamCode: teamSnapshot.assignedTeamCode,

@@ -22,22 +22,6 @@ type RuleFormState = {
   requiresVehicularReason: boolean
 }
 
-const agencyOptions: AgencyCode[] = [
-  'PNP',
-  'RESCUE_1111',
-  'TCPGH',
-  'CHO',
-  'BFP',
-  'TFLC',
-  'PCG',
-  'PSSO_TCTMG',
-  'BARANGAY_OFFICIALS',
-  'WATER_DISTRICT',
-  'CAGELCO_1',
-  'COMMAND_CENTER',
-  'OTHER',
-]
-
 const resourceTypeOptions: ResourceType[] = ['AMBULANCE', 'BFP', 'PNP', 'MDRRMO', 'PCG', 'OTHER']
 const priorityOptions: IncidentPriority[] = ['low', 'medium', 'high', 'critical']
 
@@ -87,7 +71,7 @@ const getCategoryTab = (category: string): CategoryTab => {
 }
 
 export default function IncidentManagementPage() {
-  const { incidentTypeRules: rules } = useDispatcherData()
+  const { incidentTypeRules: rules, agencies } = useDispatcherData()
   const [selectedRuleId, setSelectedRuleId] = useState('')
   const [search, setSearch] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<CategoryTab>('all')
@@ -95,6 +79,18 @@ export default function IncidentManagementPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [pageError, setPageError] = useState<string | null>(null)
   const [pageSuccess, setPageSuccess] = useState<string | null>(null)
+
+  const agencyMap = useMemo(() => {
+    const map = new Map<string, string>()
+    agencies.forEach((a) => {
+      map.set(a.code.toUpperCase(), a.name)
+    })
+    return map
+  }, [agencies])
+
+  const getAgencyDisplayName = (code: string) => {
+    return agencyMap.get(code.toUpperCase()) || getAgencyLabel(code as any) || code
+  }
 
   useEffect(() => {
     if (rules.length === 0) {
@@ -109,7 +105,7 @@ export default function IncidentManagementPage() {
   const filteredRules = useMemo(() => {
     const needle = search.trim().toLowerCase()
     return rules.filter((rule) => {
-      const agencyText = rule.recommendedAgencies.map((agency) => getAgencyLabel(agency)).join(' ').toLowerCase()
+      const agencyText = rule.recommendedAgencies.map((agency) => getAgencyDisplayName(agency)).join(' ').toLowerCase()
       const matchesCategory = selectedCategory === 'all' || getCategoryTab(rule.category) === selectedCategory
       if (!matchesCategory) {
         return false
@@ -123,7 +119,7 @@ export default function IncidentManagementPage() {
         agencyText.includes(needle)
       )
     })
-  }, [rules, search, selectedCategory])
+  }, [rules, search, selectedCategory, agencyMap])
 
   const selectedRule = useMemo(
     () => rules.find((rule) => rule.id === selectedRuleId) || null,
@@ -411,20 +407,20 @@ export default function IncidentManagementPage() {
                   <section className="rounded-xl border border-slate-800 bg-slate-950/40 p-4">
                     <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Assigned Agencies</p>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {agencyOptions.map((agency) => {
-                        const selected = formState.recommendedAgencies.includes(agency)
+                      {agencies.filter((a) => a.isActive !== false).map((agency) => {
+                        const selected = formState.recommendedAgencies.includes(agency.code)
                         return (
                           <button
-                            key={agency}
+                            key={agency.code}
                             type="button"
-                            onClick={() => handleAgencyToggle(agency)}
+                            onClick={() => handleAgencyToggle(agency.code)}
                             className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide transition ${
                               selected
                                 ? 'border-primary-500 bg-primary-500/20 text-primary-200'
                                 : 'border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600'
                             }`}
                           >
-                            {getAgencyLabel(agency)}
+                            {agency.name} ({agency.code})
                           </button>
                         )
                       })}
