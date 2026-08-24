@@ -523,6 +523,23 @@ export default function IntakeDetailView({
     return item?.incidentSubtypeLabel || null;
   }, [report, primaryCivilianReport, incident, item?.incidentSubtypeLabel]);
 
+  const assignedResourcesForIncident = useMemo(() => {
+    const resourceIds = incident?.assignedResourceIds || [];
+    const targetIncidentId = incident?.id || report?.incidentId || report?.id;
+
+    return resources.filter((res) => {
+      if (res.id && resourceIds.includes(res.id)) return true;
+      if (res.assignedIncidentId && targetIncidentId && res.assignedIncidentId === targetIncidentId) return true;
+      const ids = [
+        res.primaryResponderId,
+        res.assignedResponderId,
+        ...(Array.isArray(res.assignedResponderIds) ? res.assignedResponderIds : []),
+      ];
+      if (assignedResponderId && ids.includes(assignedResponderId)) return true;
+      return resourceIds.some((id) => ids.includes(id));
+    });
+  }, [incident, report, assignedResponderId, resources]);
+
   const reportSourceLabel = isEmergency
     ? "Civilian App"
     : incident?.source
@@ -670,23 +687,6 @@ export default function IntakeDetailView({
   const displayResponder = derivedResponders.length > 0
     ? derivedResponders.join(", ")
     : ((incident?.assignedResourceIds?.length || 0) > 0 ? `${incident?.assignedResourceIds?.length} resource(s) dispatched` : 'Unassigned');
-
-  const assignedResourcesForIncident = useMemo(() => {
-    const resourceIds = incident?.assignedResourceIds || [];
-    const targetIncidentId = incident?.id || report?.incidentId || report?.id;
-
-    return resources.filter((res) => {
-      if (res.id && resourceIds.includes(res.id)) return true;
-      if (res.assignedIncidentId && targetIncidentId && res.assignedIncidentId === targetIncidentId) return true;
-      const ids = [
-        res.primaryResponderId,
-        res.assignedResponderId,
-        ...(Array.isArray(res.assignedResponderIds) ? res.assignedResponderIds : []),
-      ];
-      if (assignedResponderId && ids.includes(assignedResponderId)) return true;
-      return resourceIds.some((id) => ids.includes(id));
-    });
-  }, [incident, report, assignedResponderId, resources]);
 
   const assignedTeamLabel = incident ? getAssignedTeamName(incident) : null;
   const canReassignTeam =
