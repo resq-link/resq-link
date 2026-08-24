@@ -230,10 +230,17 @@ async function writeResponderAssessment(
       currentUser.uid,
   };
 
-  await updateDoc(docRef, {
+  // Keep shared root field for emergencies sync / command-center backward compat.
+  // For incidents, also store per-responder so agencies (e.g. BFP vs PNP) stay independent.
+  const updatePayload: Record<string, unknown> = {
     responderAssessment: payload,
     updatedAt: now,
-  });
+  };
+  if (refPath === 'incidents') {
+    updatePayload[`responderAssignments.${currentUser.uid}.responderAssessment`] = payload;
+  }
+
+  await updateDoc(docRef, updatePayload);
 
   return payload;
 }

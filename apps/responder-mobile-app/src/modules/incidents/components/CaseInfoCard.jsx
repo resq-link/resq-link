@@ -432,10 +432,24 @@ export default function CaseInfoCard({
     !userHasTouchdown &&
     (userStatus === "enroute" || userStatus === "on_scene");
 
-  const hasSceneAssessment = hasResponderSceneAssessment(caseData.responderAssessment || userAssignment?.responderAssessment);
+  // Multi-agency: only own assignment assessment counts (BFP must not unlock PNP).
+  // Single-agency / legacy: fall back to shared root responderAssessment.
+  const hasSceneAssessment = hasResponderSceneAssessment(
+    hasMultipleAssignments
+      ? userAssignment?.responderAssessment
+      : (userAssignment?.responderAssessment || caseData.responderAssessment),
+  );
   const sceneAssessmentInitialFields = useMemo(
-    () => (caseData.responderAssessment?.fields || userAssignment?.responderAssessment?.fields) ?? {},
-    [caseData.responderAssessment?.fields, userAssignment?.responderAssessment?.fields],
+    () =>
+      (hasMultipleAssignments
+        ? userAssignment?.responderAssessment?.fields
+        : (userAssignment?.responderAssessment?.fields || caseData.responderAssessment?.fields)
+      ) ?? {},
+    [
+      hasMultipleAssignments,
+      userAssignment?.responderAssessment?.fields,
+      caseData.responderAssessment?.fields,
+    ],
   );
 
   const userPostReport = userAssignment?.postIncidentReport || caseData.postIncidentReports?.[user?.uid] || (isAssignedResponder ? caseData.postIncidentReport : null);
@@ -645,7 +659,10 @@ export default function CaseInfoCard({
   const handleSubmitPostReport = async () => {
     if (!caseData.id) return;
 
-    if (!hasResponderSceneAssessment(caseData.responderAssessment)) {
+    const ownAssessment = hasMultipleAssignments
+      ? userAssignment?.responderAssessment
+      : (userAssignment?.responderAssessment || caseData.responderAssessment);
+    if (!hasResponderSceneAssessment(ownAssessment)) {
       setError("Complete the Scene Assessment before submitting the Post Report.");
       toast.message("Complete Scene Assessment first");
       return;
@@ -1471,6 +1488,11 @@ export default function CaseInfoCard({
 
             <SceneAssessmentSection
               caseData={caseData}
+              assessment={
+                hasMultipleAssignments
+                  ? userAssignment?.responderAssessment
+                  : (userAssignment?.responderAssessment || caseData.responderAssessment)
+              }
               colors={colors}
               formatDate={formatDate}
               embedded={true}
@@ -1752,7 +1774,7 @@ export default function CaseInfoCard({
           setError("");
           setIsPostReportModalVisible(true);
         }}
-        isResolved={caseData.status === "done" || caseData.status === "resolved"}
+        isResolved={isResolved}
       />
 
       <ResponderCallModal

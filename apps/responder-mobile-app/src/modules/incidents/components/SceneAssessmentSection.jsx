@@ -9,11 +9,12 @@ import { radii, spacing } from "@/theme";
 
 export default function SceneAssessmentSection({
   caseData,
+  assessment: assessmentProp,
   colors,
   formatDate,
   embedded = false,
 }) {
-  const assessment = caseData.responderAssessment;
+  const assessment = assessmentProp ?? caseData.responderAssessment;
   const incidentType = caseData.assessmentIncidentType || caseData.incidentType;
 
   if (!hasResponderSceneAssessment(assessment)) {

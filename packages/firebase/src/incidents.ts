@@ -2107,7 +2107,16 @@ export async function submitPostIncidentReportForIncident(
     throw new Error('Only an assigned responder can submit a post report');
   }
 
-  const assessment = parseResponderAssessment(currentData.responderAssessment);
+  // Require THIS responder's scene assessment. With multiple agencies assigned, do not
+  // accept a shared root assessment written by another agency (e.g. BFP unlocking PNP).
+  const myAssignment = currentData.responderAssignments?.[currentUser.uid];
+  const hasMultipleAssignments =
+    Object.keys(currentData.responderAssignments || {}).length > 1;
+  const assessment = parseResponderAssessment(
+    hasMultipleAssignments
+      ? myAssignment?.responderAssessment
+      : (myAssignment?.responderAssessment ?? currentData.responderAssessment),
+  );
   if (!hasResponderSceneAssessment(assessment)) {
     throw new Error('Complete the Scene Assessment before submitting the Post Report.');
   }
