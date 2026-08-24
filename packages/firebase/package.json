@@ -19,6 +19,8 @@
     "cleanup:qa": "ts-node scripts/cleanup-qa-records.ts",
     "cleanup:qa:notifications": "ts-node scripts/cleanup-qa-records.ts --notifications-only",
     "cleanup:routine-notifications": "ts-node scripts/cleanup-routine-notifications.ts",
+    "cleanup:app-data": "ts-node scripts/cleanup-app-data.ts",
+    "cleanup:app-data:dry": "ts-node scripts/cleanup-app-data.ts --dry-run",
     "prepare": "node -e \"try{require('child_process').execSync('tsc',{stdio:'inherit'})}catch(e){if(!require('fs').existsSync('dist/index.js')){console.error(e);process.exit(1)}console.warn('[firebase] tsc unavailable; using existing dist')}\""
   },
   "dependencies": {
