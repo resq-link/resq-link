@@ -49,57 +49,21 @@ export const SEED_AGENCIES: Array<{
   },
   {
     code: 'MDRRMO',
-    name: 'MDRRMO / Rescue 1111',
+    name: 'MDRRMO',
     type: 'disaster_response',
     description: 'Municipal disaster risk reduction and management.',
   },
   {
     code: 'AMBULANCE',
-    name: 'Ambulance Service / TCPGH / CHO',
+    name: 'Ambulance Service',
     type: 'medical_response',
-    description: 'Emergency medical transport and hospital response.',
+    description: 'Emergency medical transport and response.',
   },
   {
     code: 'PCG',
     name: 'Philippine Coast Guard',
     type: 'maritime_response',
     description: 'Maritime safety and coastal response.',
-  },
-  {
-    code: 'TFLC',
-    name: 'Task Force Lingkod Cagayan',
-    type: 'disaster_response',
-    description: 'Provincial and municipal emergency task force.',
-  },
-  {
-    code: 'PSSO_TCTMG',
-    name: 'PSSO / TCTMG (Traffic Management)',
-    type: 'law_enforcement',
-    description: 'Public safety and traffic management group.',
-  },
-  {
-    code: 'BARANGAY_OFFICIALS',
-    name: 'Barangay Officials & Tanods',
-    type: 'other',
-    description: 'Local barangay emergency personnel.',
-  },
-  {
-    code: 'WATER_DISTRICT',
-    name: 'Tuguegarao Water District',
-    type: 'other',
-    description: 'Municipal water utility and hydrant support.',
-  },
-  {
-    code: 'CAGELCO_1',
-    name: 'CAGELCO 1 (Electric Cooperative)',
-    type: 'other',
-    description: 'Power and electric utility safety response.',
-  },
-  {
-    code: 'COMMAND_CENTER',
-    name: 'Command Center Dispatch',
-    type: 'other',
-    description: 'Integrated emergency operations center.',
   },
 ];
 
@@ -132,7 +96,7 @@ export function buildFallbackAgencies(): AgencyRecord[] {
 }
 
 /**
- * Fetch all active agencies from Firestore 'agencies' collection with fallback to seed catalog.
+ * Fetch all agencies from Firestore 'agencies' collection with fallback to seed catalog only if empty.
  */
 export async function getAllAgencies(options?: { activeOnly?: boolean }): Promise<AgencyRecord[]> {
   try {
@@ -144,27 +108,12 @@ export async function getAllAgencies(options?: { activeOnly?: boolean }): Promis
       return buildFallbackAgencies();
     }
 
-    let items: AgencyRecord[] = snap.docs.map((docSnap) =>
-      mapAgencyDoc(docSnap.id, docSnap.data())
-    );
+    let items: AgencyRecord[] = snap.docs
+      .filter((docSnap) => docSnap.data()?.deleted !== true)
+      .map((docSnap) => mapAgencyDoc(docSnap.id, docSnap.data()));
 
     if (options?.activeOnly) {
       items = items.filter((item) => item.isActive);
-    }
-
-    // Merge in any core seed agencies that might not yet be in the database
-    const existingCodes = new Set(items.map((i) => i.code.toUpperCase()));
-    for (const seed of SEED_AGENCIES) {
-      if (!existingCodes.has(seed.code.toUpperCase())) {
-        items.push({
-          id: seed.code,
-          name: seed.name,
-          code: seed.code,
-          type: seed.type,
-          description: seed.description,
-          isActive: true,
-        });
-      }
     }
 
     return items.sort((a, b) => a.name.localeCompare(b.name));
@@ -176,6 +125,7 @@ export async function getAllAgencies(options?: { activeOnly?: boolean }): Promis
 
 /**
  * Real-time subscription to the 'agencies' collection.
+ * Strictly reflects documents created, edited, or deleted in Superadmin.
  */
 export function subscribeToAgencies(
   callback: (agencies: AgencyRecord[]) => void,
@@ -188,28 +138,13 @@ export function subscribeToAgencies(
     return onSnapshot(
       agenciesCol,
       (snap) => {
-        let items: AgencyRecord[] = snap.docs.map((docSnap) =>
-          mapAgencyDoc(docSnap.id, docSnap.data())
-        );
+        let items: AgencyRecord[] = snap.docs
+          .filter((docSnap) => docSnap.data()?.deleted !== true)
+          .map((docSnap) => mapAgencyDoc(docSnap.id, docSnap.data()));
 
         // If collection is empty, use seeds
-        if (items.length === 0) {
+        if (items.length === 0 && snap.empty) {
           items = buildFallbackAgencies();
-        } else {
-          // Merge seeds that are missing
-          const existingCodes = new Set(items.map((i) => i.code.toUpperCase()));
-          for (const seed of SEED_AGENCIES) {
-            if (!existingCodes.has(seed.code.toUpperCase())) {
-              items.push({
-                id: seed.code,
-                name: seed.name,
-                code: seed.code,
-                type: seed.type,
-                description: seed.description,
-                isActive: true,
-              });
-            }
-          }
         }
 
         if (options?.activeOnly) {

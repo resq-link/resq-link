@@ -80,6 +80,14 @@ export default function IncidentManagementPage() {
   const [pageError, setPageError] = useState<string | null>(null)
   const [pageSuccess, setPageSuccess] = useState<string | null>(null)
 
+  const activeAgencies = useMemo(() => {
+    return agencies.filter((a) => a.isActive !== false)
+  }, [agencies])
+
+  const activeAgencyCodes = useMemo(() => {
+    return new Set(activeAgencies.map((a) => a.code.toUpperCase()))
+  }, [activeAgencies])
+
   const agencyMap = useMemo(() => {
     const map = new Map<string, string>()
     agencies.forEach((a) => {
@@ -89,7 +97,7 @@ export default function IncidentManagementPage() {
   }, [agencies])
 
   const getAgencyDisplayName = (code: string) => {
-    return agencyMap.get(code.toUpperCase()) || getAgencyLabel(code as any) || code
+    return agencyMap.get(code.toUpperCase()) || code
   }
 
   useEffect(() => {
@@ -105,7 +113,8 @@ export default function IncidentManagementPage() {
   const filteredRules = useMemo(() => {
     const needle = search.trim().toLowerCase()
     return rules.filter((rule) => {
-      const agencyText = rule.recommendedAgencies.map((agency) => getAgencyDisplayName(agency)).join(' ').toLowerCase()
+      const validAgencies = rule.recommendedAgencies.filter((a) => activeAgencyCodes.has(a.toUpperCase()))
+      const agencyText = validAgencies.map((agency) => getAgencyDisplayName(agency)).join(' ').toLowerCase()
       const matchesCategory = selectedCategory === 'all' || getCategoryTab(rule.category) === selectedCategory
       if (!matchesCategory) {
         return false
@@ -119,7 +128,7 @@ export default function IncidentManagementPage() {
         agencyText.includes(needle)
       )
     })
-  }, [rules, search, selectedCategory, agencyMap])
+  }, [rules, search, selectedCategory, activeAgencyCodes, agencyMap])
 
   const selectedRule = useMemo(
     () => rules.find((rule) => rule.id === selectedRuleId) || null,
@@ -132,14 +141,19 @@ export default function IncidentManagementPage() {
       return
     }
 
+    // Only load agencies that exist in Superadmin
+    const validRecommended = selectedRule.recommendedAgencies.filter((agency) =>
+      activeAgencyCodes.has(agency.toUpperCase())
+    )
+
     setFormState({
       priority: selectedRule.priority,
-      recommendedAgencies: selectedRule.recommendedAgencies,
+      recommendedAgencies: validRecommended,
       suggestedResourceTypes: selectedRule.suggestedResourceTypes,
       requiresExternalAgency: selectedRule.requiresExternalAgency,
       requiresVehicularReason: Boolean(selectedRule.requiresVehicularReason),
     })
-  }, [selectedRule])
+  }, [selectedRule, activeAgencyCodes])
 
   const handleAgencyToggle = (agency: AgencyCode) => {
     setFormState((current) => ({
@@ -292,15 +306,17 @@ export default function IncidentManagementPage() {
                       <div className="mt-3">
                         <p className="text-[11px] uppercase tracking-wide text-slate-500">Agencies</p>
                         <div className="mt-1 flex flex-wrap gap-1.5">
-                          {rule.recommendedAgencies.length > 0 ? (
-                            rule.recommendedAgencies.map((agency) => (
-                              <span
-                                key={agency}
-                                className="rounded-full border border-slate-700 bg-slate-900 px-2 py-1 text-[11px] text-slate-300"
-                              >
-                                {getAgencyLabel(agency)}
-                              </span>
-                            ))
+                          {rule.recommendedAgencies.filter((agency) => activeAgencyCodes.has(agency.toUpperCase())).length > 0 ? (
+                            rule.recommendedAgencies
+                              .filter((agency) => activeAgencyCodes.has(agency.toUpperCase()))
+                              .map((agency) => (
+                                <span
+                                  key={agency}
+                                  className="rounded-full border border-slate-700 bg-slate-900 px-2 py-1 text-[11px] text-slate-300"
+                                >
+                                  {getAgencyDisplayName(agency)}
+                                </span>
+                              ))
                           ) : (
                             <span className="text-xs text-slate-500">No agencies assigned</span>
                           )}
