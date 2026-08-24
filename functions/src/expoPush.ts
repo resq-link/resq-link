@@ -36,29 +36,38 @@ export type PushTarget = {
   tokens: StoredToken[];
 };
 
-/** Collect Expo tokens for the given responder uids, skipping those with none. */
+/** Collect Expo tokens for the given responder uids, checking dispatchers and users collections. */
 export async function loadResponderTokens(
   responderIds: string[]
 ): Promise<PushTarget[]> {
   if (responderIds.length === 0) return [];
   const db = getFirestore();
 
-  const snaps = await Promise.all(
-    responderIds.map((id) => db.collection('dispatchers').doc(id).get())
-  );
+  const [dispatcherSnaps, userSnaps] = await Promise.all([
+    Promise.all(responderIds.map((id) => db.collection('dispatchers').doc(id).get())),
+    Promise.all(responderIds.map((id) => db.collection('users').doc(id).get())),
+  ]);
 
   const targets: PushTarget[] = [];
-  snaps.forEach((snap, index) => {
-    if (!snap.exists) return;
-    // Off-duty responders must not be woken — duty is mirrored on the
-    // dispatcher doc as onDutyResourceId when they claim a vehicle.
-    if (!snap.get('onDutyResourceId')) return;
-    const raw = snap.get('pushTokens');
-    const tokens: StoredToken[] = Array.isArray(raw)
-      ? raw.filter((entry) => entry?.token && typeof entry.token === 'string')
-      : [];
+  responderIds.forEach((id, index) => {
+    const dSnap = dispatcherSnaps[index];
+    const uSnap = userSnaps[index];
+    const rawTokens = [
+      ...(Array.isArray(dSnap?.get('pushTokens')) ? dSnap.get('pushTokens') : []),
+      ...(Array.isArray(uSnap?.get('pushTokens')) ? uSnap.get('pushTokens') : []),
+    ];
+
+    const seen = new Set<string>();
+    const tokens: StoredToken[] = [];
+    rawTokens.forEach((entry) => {
+      if (entry?.token && typeof entry.token === 'string' && !seen.has(entry.token)) {
+        seen.add(entry.token);
+        tokens.push(entry);
+      }
+    });
+
     if (tokens.length > 0) {
-      targets.push({ responderId: responderIds[index], tokens });
+      targets.push({ responderId: id, tokens });
     }
   });
 

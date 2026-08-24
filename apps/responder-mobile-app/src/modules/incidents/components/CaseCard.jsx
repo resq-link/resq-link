@@ -21,14 +21,21 @@ export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
   const [isAccepting, setIsAccepting] = useState(false);
   const { user } = useUserStore();
 
+  const userAssignment = user?.uid && caseData?.responderAssignments?.[user.uid];
   const isAssignedResponder =
-    user && caseData.assignedResourceIds && caseData.assignedResourceIds.includes(user.uid);
+    (user && caseData.assignedResourceIds && caseData.assignedResourceIds.includes(user.uid)) ||
+    Boolean(userAssignment);
+
   const showAcceptButton =
     isAssignedResponder &&
-    (caseData.status === "pending" ||
-      caseData.status === "dispatched" ||
-      caseData.status === "awaiting_resources" ||
-      caseData.status === "active");
+    (userAssignment
+      ? userAssignment.status === "assigned"
+      : caseData.status === "pending" ||
+        caseData.status === "dispatched" ||
+        caseData.status === "awaiting_resources" ||
+        caseData.status === "active");
+
+  const displayStatus = userAssignment ? userAssignment.status : caseData.status;
 
   const handleAcceptCase = async (e) => {
     e?.stopPropagation?.();
@@ -115,7 +122,7 @@ export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
 
             <View style={styles.badgesRow}>
               <PriorityBadge priority={priority} />
-              <CaseStatusBadge status={caseData.status} />
+              <CaseStatusBadge status={displayStatus} />
             </View>
           </View>
 

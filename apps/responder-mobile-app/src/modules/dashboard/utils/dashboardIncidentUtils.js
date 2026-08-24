@@ -69,33 +69,59 @@ export function formatLocationMeta(responderCoords, caseData) {
 
 /** Short next-action labels for compact dashboard CTAs. */
 export function getCompactNextAction(caseData, user) {
-  const status = String(caseData.status || "").toLowerCase();
-  const isAssigned =
-    user &&
-    caseData.assignedResourceIds &&
-    caseData.assignedResourceIds.includes(user.uid);
+  if (!caseData || !user?.uid) return "Open";
 
+  const userAssignment = caseData.responderAssignments?.[user.uid];
+  const isAssigned =
+    (caseData.assignedResourceIds && caseData.assignedResourceIds.includes(user.uid)) ||
+    Boolean(userAssignment);
+
+  if (!isAssigned) return "Open";
+
+  if (userAssignment) {
+    if (userAssignment.status === "assigned") {
+      return "Accept";
+    }
+    if (userAssignment.status === "enroute" && !userAssignment.touchdownAt) {
+      return "Touchdown";
+    }
+    if (userAssignment.status === "on_scene" || userAssignment.touchdownAt) {
+      if (!hasResponderSceneAssessment(caseData.responderAssessment || userAssignment.responderAssessment)) {
+        return "Assess";
+      }
+      if (
+        !userAssignment.postIncidentReport?.submittedAt &&
+        !caseData.postIncidentReports?.[user.uid]?.submittedAt
+      ) {
+        return "Report";
+      }
+      return "Open";
+    }
+    if (userAssignment.status === "resolved" || userAssignment.status === "declined") {
+      return "Open";
+    }
+  }
+
+  // Fallback to legacy single-status structure
+  const status = String(caseData.status || "").toLowerCase();
   if (
-    isAssigned &&
-    (status === "pending" ||
-      status === "dispatched" ||
-      status === "awaiting_resources" ||
-      status === "active")
+    status === "pending" ||
+    status === "dispatched" ||
+    status === "awaiting_resources" ||
+    status === "active"
   ) {
     return "Accept";
   }
-  if (isAssigned && status === "enroute" && !caseData.touchdownAt) {
+  if (status === "enroute" && !caseData.touchdownAt) {
     return "Touchdown";
   }
   if (
-    isAssigned &&
     caseData.touchdownAt &&
     !hasResponderSceneAssessment(caseData.responderAssessment)
   ) {
     return "Assess";
   }
   if (
-    isAssigned &&
     hasResponderSceneAssessment(caseData.responderAssessment) &&
     !caseData.postIncidentReport?.submittedAt
   ) {

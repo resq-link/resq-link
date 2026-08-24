@@ -441,44 +441,64 @@ export default function IntakeDetailView({
     return { assessment: null, incidentType };
   }, [report, incident, associatedReports, recentIncidents]);
 
+  const postIncidentReportsList = useMemo(() => {
+    type PostReport = NonNullable<IncidentRecord["postIncidentReport"]> & {
+      agency?: string;
+      responderName?: string;
+      id?: string;
+    };
+    const list: PostReport[] = [];
+
+    if (incident?.postIncidentReports && typeof incident.postIncidentReports === "object") {
+      Object.entries(incident.postIncidentReports).forEach(([uid, rep]) => {
+        if (rep?.submittedAt || rep?.reasonForIncident || rep?.notes) {
+          const assignment = incident.responderAssignments?.[uid];
+          list.push({
+            ...rep,
+            agency: assignment?.agency,
+            responderName: assignment?.responderName || rep.submittedByName || undefined,
+            id: uid,
+          });
+        }
+      });
+    }
+
+    if (list.length === 0) {
+      const singleReport = incident?.postIncidentReport || report?.postIncidentReport;
+      if (singleReport?.submittedAt || singleReport?.reasonForIncident || singleReport?.notes) {
+        list.push({
+          ...singleReport,
+          agency: incident?.assignedAgencies?.[0] || (report as any)?.assignedAgency,
+          responderName: singleReport.submittedByName || undefined,
+          id: "primary",
+        });
+      }
+    }
+
+    return list;
+  }, [
+    incident?.postIncidentReports,
+    incident?.postIncidentReport,
+    incident?.responderAssignments,
+    incident?.assignedAgencies,
+    report?.postIncidentReport,
+    (report as any)?.assignedAgency,
+  ]);
+
   const postIncidentReport = useMemo(() => {
-    type PostReport = NonNullable<IncidentRecord["postIncidentReport"]>;
-    const candidates: PostReport[] = [
-      incident?.postIncidentReport,
-      report?.postIncidentReport,
-      ...associatedReports.map((r) => r.postIncidentReport),
-    ].filter((entry): entry is PostReport => Boolean(entry));
-
-    if (candidates.length === 0) return null;
-
-    return candidates.reduce<PostReport>(
-      (merged, current) => ({
-        reasonForIncident: merged.reasonForIncident || current.reasonForIncident || null,
-        notes: merged.notes || current.notes || null,
-        peopleInvolved: merged.peopleInvolved ?? current.peopleInvolved ?? null,
-        peopleStatus: merged.peopleStatus || current.peopleStatus || null,
-        hospital: merged.hospital || current.hospital || null,
-        photoUrl: merged.photoUrl || current.photoUrl || null,
-        actionPhotoUrl: merged.actionPhotoUrl || current.actionPhotoUrl || null,
-        submittedAt: merged.submittedAt || current.submittedAt || null,
-        submittedByDispatcherId:
-          merged.submittedByDispatcherId || current.submittedByDispatcherId || null,
-        submittedByName: merged.submittedByName || current.submittedByName || null,
-      }),
-      { ...candidates[0] }
-    );
-  }, [report?.postIncidentReport, incident?.postIncidentReport, associatedReports]);
+    return postIncidentReportsList[0] || null;
+  }, [postIncidentReportsList]);
 
   const showPostReportSection = useMemo(() => {
     const status = report?.status || incident?.status;
     const resolutionStatus = incident?.resolutionStatus;
     return (
-      Boolean(postIncidentReport) ||
+      postIncidentReportsList.length > 0 ||
       status === "resolved" ||
       status === "done" ||
       resolutionStatus === "resolved"
     );
-  }, [postIncidentReport, report?.status, incident?.status, incident?.resolutionStatus]);
+  }, [postIncidentReportsList.length, report?.status, incident?.status, incident?.resolutionStatus]);
 
   useEffect(() => {
     if (!assignedResponderId) {
@@ -1259,6 +1279,36 @@ export default function IntakeDetailView({
                     )}
                   </div>
 
+                  {incident?.responderAssignments && Object.keys(incident.responderAssignments).length > 0 ? (
+                    <>
+                      <span className="font-medium text-slate-500">Units & Status</span>
+                      <div className="flex flex-col items-end gap-1.5 text-right">
+                        {Object.entries(incident.responderAssignments).map(([rid, assign]) => {
+                          const statusColor =
+                            assign.status === 'on_scene'
+                              ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+                              : assign.status === 'enroute'
+                              ? 'border-blue-500/40 bg-blue-500/10 text-blue-300'
+                              : assign.status === 'resolved'
+                              ? 'border-purple-500/40 bg-purple-500/10 text-purple-300'
+                              : assign.status === 'declined'
+                              ? 'border-red-500/40 bg-red-500/10 text-red-300'
+                              : 'border-amber-500/40 bg-amber-500/10 text-amber-300';
+                          return (
+                            <div key={rid} className="flex items-center gap-1.5">
+                              <span className="text-xs font-semibold text-slate-200">
+                                {assign.agency ? `[${assign.agency}] ` : ''}{assign.responderName || rid}:
+                              </span>
+                              <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider border ${statusColor}`}>
+                                {assign.status.replace('_', ' ')}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  ) : null}
+
                   <span className="self-start pt-0.5 font-medium text-slate-500">Team</span>
                   <div className="flex justify-end">
                     <TeamBadge label={assignedTeamLabel} size="sm" />
@@ -1391,73 +1441,87 @@ export default function IntakeDetailView({
               <div className="flex items-center gap-1.5">
                 <CheckCircle className="h-3.5 w-3.5 text-emerald-400" />
                 <h3 className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
-                  Post-Incident Report
+                  {postIncidentReportsList.length > 1 ? "Post-Incident Reports (Multi-Agency)" : "Post-Incident Report"}
                 </h3>
               </div>
-              {postIncidentReport ? (
+              {postIncidentReportsList.length > 0 ? (
                 <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-px text-[9px] font-black uppercase tracking-wider text-emerald-300">
-                  Submitted
+                  {postIncidentReportsList.length} Submitted
                 </span>
               ) : null}
             </div>
 
-            {postIncidentReport ? (
-              <div className="w-full space-y-2">
-                <div className="w-full">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-emerald-400/80">
-                    Responder summary
-                  </p>
-                  <p className="mt-0.5 w-full break-words text-sm font-medium leading-snug text-slate-100">
-                    {postIncidentReport.notes?.trim()
-                      ? `“${postIncidentReport.notes.trim()}”`
-                      : "No summary notes provided."}
-                  </p>
-                </div>
+            {postIncidentReportsList.length > 0 ? (
+              <div className="w-full space-y-3">
+                {postIncidentReportsList.map((pReport, idx) => (
+                  <div
+                    key={pReport.id || idx}
+                    className={`w-full space-y-2 ${
+                      idx > 0 ? "border-t border-slate-800/80 pt-3" : ""
+                    }`}
+                  >
+                    {pReport.agency ? (
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-black tracking-wider text-emerald-300">
+                          [{pReport.agency}] {pReport.responderName ? `· ${pReport.responderName}` : ""}
+                        </span>
+                        {pReport.submittedAt ? (
+                          <span className="text-[10px] text-slate-400">
+                            {getDateLabel(pReport.submittedAt)}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
 
-                <div className="grid w-full grid-cols-[minmax(5.5rem,auto)_1fr] items-center gap-x-3 gap-y-1 border-t border-slate-800/60 pt-2 text-xs leading-snug">
-                  <span className="text-slate-500">Reason</span>
-                  <span className="min-w-0 break-words text-right font-medium text-slate-100">
-                    {postIncidentReport.reasonForIncident || "—"}
-                  </span>
-                  <span className="text-slate-500">Status</span>
-                  <span className="min-w-0 break-words text-right font-medium text-slate-100">
-                    {postIncidentReport.peopleStatus || "—"}
-                  </span>
-                  <span className="text-slate-500">People</span>
-                  <span className="min-w-0 break-words text-right font-medium text-slate-100">
-                    {String(postIncidentReport.peopleInvolved ?? "—")}
-                  </span>
-                  <span className="text-slate-500">Transport</span>
-                  <span className="min-w-0 break-words text-right font-medium text-slate-100">
-                    {postIncidentReport.hospital || "—"}
-                  </span>
-                  {postIncidentReport.submittedAt ? (
-                    <>
-                      <span className="text-slate-500">Submitted</span>
+                    <div className="w-full">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-emerald-400/80">
+                        Summary
+                      </p>
+                      <p className="mt-0.5 w-full break-words text-sm font-medium leading-snug text-slate-100">
+                        {pReport.notes?.trim()
+                          ? `“${pReport.notes.trim()}”`
+                          : "No summary notes provided."}
+                      </p>
+                    </div>
+
+                    <div className="grid w-full grid-cols-[minmax(5.5rem,auto)_1fr] items-center gap-x-3 gap-y-1 border-t border-slate-800/60 pt-2 text-xs leading-snug">
+                      <span className="text-slate-500">Reason</span>
                       <span className="min-w-0 break-words text-right font-medium text-slate-100">
-                        {getDateLabel(postIncidentReport.submittedAt)}
+                        {pReport.reasonForIncident || "—"}
                       </span>
-                    </>
-                  ) : null}
-                  {postIncidentReport.submittedByName ? (
-                    <>
-                      <span className="text-slate-500">By</span>
-                      <span className="min-w-0 break-all text-right font-medium text-slate-100">
-                        {postIncidentReport.submittedByName}
+                      <span className="text-slate-500">Status</span>
+                      <span className="min-w-0 break-words text-right font-medium text-slate-100">
+                        {pReport.peopleStatus || "—"}
                       </span>
-                    </>
-                  ) : null}
-                </div>
+                      <span className="text-slate-500">People</span>
+                      <span className="min-w-0 break-words text-right font-medium text-slate-100">
+                        {String(pReport.peopleInvolved ?? "—")}
+                      </span>
+                      <span className="text-slate-500">Transport</span>
+                      <span className="min-w-0 break-words text-right font-medium text-slate-100">
+                        {pReport.hospital || "—"}
+                      </span>
+                      {pReport.submittedByName ? (
+                        <>
+                          <span className="text-slate-500">By</span>
+                          <span className="min-w-0 break-all text-right font-medium text-slate-100">
+                            {pReport.submittedByName}
+                          </span>
+                        </>
+                      ) : null}
+                    </div>
 
-                <PostIncidentReportPhotos
-                  actionPhotoUrl={postIncidentReport.actionPhotoUrl}
-                />
+                    <PostIncidentReportPhotos
+                      actionPhotoUrl={pReport.actionPhotoUrl}
+                    />
+                  </div>
+                ))}
               </div>
             ) : (
               <div className="rounded-md border border-dashed border-slate-700 bg-slate-950/40 px-3 py-3 text-center">
                 <p className="text-xs font-medium text-slate-400">No post-incident report yet</p>
                 <p className="mt-0.5 text-[10px] text-slate-500">
-                  Resolved incident — awaiting responder summary.
+                  Awaiting agency responder post-incident report.
                 </p>
               </div>
             )}

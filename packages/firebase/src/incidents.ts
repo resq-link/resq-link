@@ -89,6 +89,35 @@ export interface IncidentTypeRule {
   requiresVehicularReason?: boolean;
 }
 
+export interface IncidentResponderAssignment {
+  responderId: string;
+  responderName?: string;
+  agency?: AgencyCode | string;
+  resourceId?: string | null;
+  resourceName?: string | null;
+  status: 'assigned' | 'enroute' | 'on_scene' | 'resolved' | 'declined';
+  acceptedAt?: Date | Timestamp | null;
+  touchdownAt?: Date | Timestamp | null;
+  declinedAt?: Date | Timestamp | null;
+  declineReason?: string | null;
+  responseTimeSeconds?: number | null;
+  onScenePhotoUrl?: string | null;
+  onScenePhotoUploadedAt?: Date | Timestamp | null;
+  responderAssessment?: import('./responderAssessment').ResponderAssessmentRecord | null;
+  postIncidentReport?: {
+    reasonForIncident?: string | null;
+    notes?: string | null;
+    peopleInvolved?: number | null;
+    peopleStatus?: string | null;
+    hospital?: string | null;
+    photoUrl?: string | null;
+    actionPhotoUrl?: string | null;
+    submittedAt?: Date | Timestamp | null;
+    submittedByDispatcherId?: string | null;
+    submittedByName?: string | null;
+  } | null;
+}
+
 export interface IncidentRecord {
   id?: string;
   referenceNumber: string;
@@ -136,6 +165,10 @@ export interface IncidentRecord {
   recommendedAgencies: AgencyCode[];
   assignedAgencies: AgencyCode[];
   assignedResourceIds: string[];
+  /** Per-responder and per-agency lifecycle tracking */
+  responderAssignments?: Record<string, IncidentResponderAssignment>;
+  /** Multiple post-incident reports submitted by responding agencies */
+  postIncidentReports?: Record<string, NonNullable<IncidentRecord['postIncidentReport']>>;
   /** Permanent operational team assignment (source of truth). */
   assignedTeamId?: string | null;
   assignedTeamName?: string | null;
@@ -426,6 +459,80 @@ const toIncidentRecord = (snapshot: DocumentData): IncidentRecord => {
     recommendedAgencies: Array.isArray(data.recommendedAgencies) ? data.recommendedAgencies : [],
     assignedAgencies: Array.isArray(data.assignedAgencies) ? data.assignedAgencies : [],
     assignedResourceIds: Array.isArray(data.assignedResourceIds) ? data.assignedResourceIds : [],
+    responderAssignments:
+      data.responderAssignments && typeof data.responderAssignments === 'object'
+        ? Object.entries(data.responderAssignments).reduce<Record<string, IncidentResponderAssignment>>(
+            (acc, [key, val]) => {
+              if (val && typeof val === 'object') {
+                const item = val as any;
+                acc[key] = {
+                  responderId: item.responderId || key,
+                  responderName: item.responderName || undefined,
+                  agency: item.agency || undefined,
+                  resourceId: item.resourceId || null,
+                  resourceName: item.resourceName || null,
+                  status: item.status || 'assigned',
+                  acceptedAt: item.acceptedAt?.toDate ? item.acceptedAt.toDate() : item.acceptedAt ? new Date(item.acceptedAt) : null,
+                  touchdownAt: item.touchdownAt?.toDate ? item.touchdownAt.toDate() : item.touchdownAt ? new Date(item.touchdownAt) : null,
+                  declinedAt: item.declinedAt?.toDate ? item.declinedAt.toDate() : item.declinedAt ? new Date(item.declinedAt) : null,
+                  declineReason: item.declineReason || null,
+                  responseTimeSeconds: typeof item.responseTimeSeconds === 'number' ? item.responseTimeSeconds : null,
+                  onScenePhotoUrl: item.onScenePhotoUrl || null,
+                  onScenePhotoUploadedAt: item.onScenePhotoUploadedAt?.toDate ? item.onScenePhotoUploadedAt.toDate() : item.onScenePhotoUploadedAt ? new Date(item.onScenePhotoUploadedAt) : null,
+                  responderAssessment: parseResponderAssessment(item.responderAssessment),
+                  postIncidentReport:
+                    item.postIncidentReport && typeof item.postIncidentReport === 'object'
+                      ? {
+                          reasonForIncident: item.postIncidentReport.reasonForIncident || null,
+                          notes: item.postIncidentReport.notes || null,
+                          peopleInvolved:
+                            typeof item.postIncidentReport.peopleInvolved === 'number'
+                              ? item.postIncidentReport.peopleInvolved
+                              : null,
+                          peopleStatus: item.postIncidentReport.peopleStatus || null,
+                          hospital: item.postIncidentReport.hospital || null,
+                          photoUrl: item.postIncidentReport.photoUrl || null,
+                          actionPhotoUrl: item.postIncidentReport.actionPhotoUrl || null,
+                          submittedAt: item.postIncidentReport.submittedAt?.toDate
+                            ? item.postIncidentReport.submittedAt.toDate()
+                            : item.postIncidentReport.submittedAt
+                            ? new Date(item.postIncidentReport.submittedAt)
+                            : null,
+                          submittedByDispatcherId: item.postIncidentReport.submittedByDispatcherId || null,
+                          submittedByName: item.postIncidentReport.submittedByName || null,
+                        }
+                      : null,
+                };
+              }
+              return acc;
+            },
+            {}
+          )
+        : undefined,
+    postIncidentReports:
+      data.postIncidentReports && typeof data.postIncidentReports === 'object'
+        ? Object.entries(data.postIncidentReports).reduce<Record<string, NonNullable<IncidentRecord['postIncidentReport']>>>(
+            (acc, [key, val]) => {
+              if (val && typeof val === 'object') {
+                const item = val as any;
+                acc[key] = {
+                  reasonForIncident: item.reasonForIncident || null,
+                  notes: item.notes || null,
+                  peopleInvolved: typeof item.peopleInvolved === 'number' ? item.peopleInvolved : null,
+                  peopleStatus: item.peopleStatus || null,
+                  hospital: item.hospital || null,
+                  photoUrl: item.photoUrl || null,
+                  actionPhotoUrl: item.actionPhotoUrl || null,
+                  submittedAt: item.submittedAt?.toDate ? item.submittedAt.toDate() : item.submittedAt ? new Date(item.submittedAt) : null,
+                  submittedByDispatcherId: item.submittedByDispatcherId || null,
+                  submittedByName: item.submittedByName || null,
+                };
+              }
+              return acc;
+            },
+            {}
+          )
+        : undefined,
     assignedTeamId: data.assignedTeamId || data.teamId || null,
     assignedTeamName: data.assignedTeamName || data.teamOnDuty || data.teamName || null,
     assignedTeamCode: data.assignedTeamCode || null,
@@ -1376,6 +1483,20 @@ export async function elevateEmergencyToIncident(
     }
   }
 
+  const responderAssignments: Record<string, IncidentResponderAssignment> = {};
+  rawResponderIds.forEach((rid, index) => {
+    const agency = rawAgencies[index] || rawAgencies[0] || 'OTHER';
+    const name = rawResponderNames[index] || rawResponderNames[0] || rid;
+    const resId = (input.assignedResourceIds && input.assignedResourceIds[index]) || null;
+    responderAssignments[rid] = {
+      responderId: rid,
+      responderName: name,
+      agency,
+      resourceId: resId,
+      status: 'assigned',
+    };
+  });
+
   const incidentPayload: IncidentRecord = {
     id: incidentDocRef.id,
     referenceNumber,
@@ -1418,6 +1539,7 @@ export async function elevateEmergencyToIncident(
     recommendedAgencies: [],
     assignedAgencies: rawAgencies as any,
     assignedResourceIds,
+    responderAssignments,
     incidentDate: dutyDate,
     incidentTime: dutyTime,
     dateOfDuty: dutyDate,
@@ -1652,7 +1774,7 @@ async function propagateIncidentUpdatesToReports(incidentId: string, updates: an
 export async function updateResourcesForIncidentStatus(
   incidentId: string,
   status: ResourceStatus,
-  options?: { clearAssignment?: boolean }
+  options?: { clearAssignment?: boolean; responderId?: string; resourceId?: string }
 ) {
   try {
     const db = getFirebaseFirestore();
@@ -1671,6 +1793,44 @@ export async function updateResourcesForIncidentStatus(
     const updatedResourceDocIds = new Set<string>();
     const updatePromises: Promise<void>[] = [];
 
+    // If specific resourceId provided, update it directly
+    if (options?.resourceId) {
+      try {
+        const resSnap = await getDoc(doc(db, 'resources', options.resourceId));
+        if (resSnap.exists()) {
+          updatedResourceDocIds.add(resSnap.id);
+          updatePromises.push(updateDoc(resSnap.ref, updates));
+        }
+      } catch {
+        // Continue to check responderId
+      }
+    }
+
+    // If specific responderId provided, update only resources belonging to that responder
+    if (options?.responderId) {
+      try {
+        const queries = [
+          query(collection(db, 'resources'), where('primaryResponderId', '==', options.responderId)),
+          query(collection(db, 'resources'), where('assignedResponderId', '==', options.responderId)),
+          query(collection(db, 'resources'), where('assignedResponderIds', 'array-contains', options.responderId)),
+        ];
+        const querySnaps = await Promise.all(queries.map((qItem) => getDocs(qItem)));
+        querySnaps.forEach((resSnap) => {
+          resSnap.docs.forEach((rDoc) => {
+            if (!updatedResourceDocIds.has(rDoc.id)) {
+              updatedResourceDocIds.add(rDoc.id);
+              updatePromises.push(updateDoc(rDoc.ref, updates));
+            }
+          });
+        });
+      } catch {
+        // Ignore sub-query failure
+      }
+      await Promise.all(updatePromises);
+      return;
+    }
+
+    // Otherwise, update all resources tied to the incident
     // 1. Query resources by assignedIncidentId
     const q = query(collection(db, 'resources'), where('assignedIncidentId', '==', incidentId));
     const snap = await getDocs(q);
@@ -1744,10 +1904,32 @@ export async function acceptIncident(incidentId: string): Promise<IncidentRecord
   }
   
   const acceptedAt = Timestamp.now();
-  const updateData = { status: 'enroute' as IncidentStatus, acceptedAt, updatedAt: Timestamp.now() };
+  const existingAssignments = currentData.responderAssignments || {};
+  const currentAssignment = existingAssignments[currentUser.uid] || {
+    responderId: currentUser.uid,
+    responderName: currentUser.displayName || currentUser.email || currentUser.uid,
+    status: 'assigned' as const,
+  };
+
+  const updatedAssignments = {
+    ...existingAssignments,
+    [currentUser.uid]: {
+      ...currentAssignment,
+      status: 'enroute' as const,
+      acceptedAt,
+    },
+  };
+
+  const updateData: any = {
+    responderAssignments: updatedAssignments,
+    status: 'enroute' as IncidentStatus,
+    acceptedAt: currentData.acceptedAt || acceptedAt,
+    updatedAt: Timestamp.now(),
+  };
+
   await updateDoc(incidentRef, updateData);
   await propagateIncidentUpdatesToReports(incidentId, updateData);
-  await updateResourcesForIncidentStatus(incidentId, 'en_route');
+  await updateResourcesForIncidentStatus(incidentId, 'en_route', { responderId: currentUser.uid });
   
   const updatedSnap = await getDoc(incidentRef);
   return toIncidentRecord(updatedSnap);
@@ -1786,10 +1968,15 @@ export async function markIncidentTouchdown(
     throw new Error('Touchdown time is required');
   };
 
-  const touchdownAt = currentData.touchdownAt
-    ? currentData.touchdownAt instanceof Timestamp
-      ? currentData.touchdownAt
-      : Timestamp.fromDate(new Date(currentData.touchdownAt))
+  const existingAssignments = currentData.responderAssignments || {};
+  const currentAssignment = existingAssignments[currentUser.uid] || {
+    responderId: currentUser.uid,
+    responderName: currentUser.displayName || currentUser.email || currentUser.uid,
+    status: 'assigned' as const,
+  };
+
+  const touchdownAt = currentAssignment.touchdownAt
+    ? (currentAssignment.touchdownAt instanceof Timestamp ? currentAssignment.touchdownAt : Timestamp.fromDate(new Date(currentAssignment.touchdownAt)))
     : resolveTouchdownTimestamp(options.touchdownAt);
 
   const touchdownMs = touchdownAt.toDate().getTime();
@@ -1798,8 +1985,9 @@ export async function markIncidentTouchdown(
   }
 
   let responseTimeSeconds: number | null = null;
-  if (currentData.acceptedAt) {
-    const acceptedMs = currentData.acceptedAt instanceof Timestamp ? currentData.acceptedAt.toDate().getTime() : new Date(currentData.acceptedAt).getTime();
+  const userAcceptedAt = currentAssignment.acceptedAt || currentData.acceptedAt;
+  if (userAcceptedAt) {
+    const acceptedMs = userAcceptedAt instanceof Timestamp ? userAcceptedAt.toDate().getTime() : new Date(userAcceptedAt).getTime();
     if (touchdownMs < acceptedMs) {
       throw new Error('Touchdown time cannot be before case acceptance');
     }
@@ -1807,42 +1995,56 @@ export async function markIncidentTouchdown(
     if (diff >= 0) responseTimeSeconds = diff;
   }
 
-  const existingTouchdown = Boolean(currentData.touchdownAt);
+  const existingTouchdown = Boolean(currentAssignment.touchdownAt || currentData.touchdownAt);
   const onScenePhotoUrl =
     typeof options.onScenePhotoUrl === 'string' && options.onScenePhotoUrl.trim()
       ? options.onScenePhotoUrl.trim()
-      : typeof currentData.onScenePhotoUrl === 'string' && currentData.onScenePhotoUrl.trim()
-        ? currentData.onScenePhotoUrl.trim()
-        : null;
+      : typeof currentAssignment.onScenePhotoUrl === 'string' && currentAssignment.onScenePhotoUrl.trim()
+        ? currentAssignment.onScenePhotoUrl.trim()
+        : typeof currentData.onScenePhotoUrl === 'string' && currentData.onScenePhotoUrl.trim()
+          ? currentData.onScenePhotoUrl.trim()
+          : null;
 
   if (!existingTouchdown && !onScenePhotoUrl) {
     throw new Error('On-scene photo is required to confirm touchdown');
   }
   
-  const updateData: any = {
+  const updatedAssignment: IncidentResponderAssignment = {
+    ...currentAssignment,
+    status: 'on_scene',
     touchdownAt,
-    touchdownByDispatcherId: currentUser.uid,
-    touchdownByName: currentUser.displayName || currentUser.email || currentUser.uid,
-    touchdownSource: options.source,
-    touchdownDistanceMeters: typeof options.distanceMeters === 'number' ? options.distanceMeters : null,
     responseTimeSeconds,
+    onScenePhotoUrl: onScenePhotoUrl || null,
+    onScenePhotoUploadedAt: onScenePhotoUrl ? Timestamp.now() : null,
+  };
+
+  const updatedAssignments = {
+    ...existingAssignments,
+    [currentUser.uid]: updatedAssignment,
+  };
+
+  const updateData: any = {
+    responderAssignments: updatedAssignments,
+    status: 'on_scene' as IncidentStatus,
+    touchdownAt: currentData.touchdownAt || touchdownAt,
+    touchdownByDispatcherId: currentData.touchdownByDispatcherId || currentUser.uid,
+    touchdownByName: currentData.touchdownByName || (currentUser.displayName || currentUser.email || currentUser.uid),
+    touchdownSource: currentData.touchdownSource || options.source,
+    touchdownDistanceMeters: typeof options.distanceMeters === 'number' ? options.distanceMeters : currentData.touchdownDistanceMeters,
+    responseTimeSeconds: currentData.responseTimeSeconds ?? responseTimeSeconds,
     updatedAt: Timestamp.now(),
   };
 
-  if (onScenePhotoUrl && !existingTouchdown) {
+  if (onScenePhotoUrl && !currentData.onScenePhotoUrl) {
     updateData.onScenePhotoUrl = onScenePhotoUrl;
     updateData.onScenePhotoUploadedAt = Timestamp.now();
     updateData.onScenePhotoUploadedBy =
       currentUser.displayName || currentUser.email || currentUser.uid;
   }
   
-  if (currentData.status !== 'on_scene') {
-    updateData.status = 'on_scene' as IncidentStatus;
-  }
-  
   await updateDoc(incidentRef, updateData);
   await propagateIncidentUpdatesToReports(incidentId, updateData);
-  await updateResourcesForIncidentStatus(incidentId, 'on_scene');
+  await updateResourcesForIncidentStatus(incidentId, 'on_scene', { responderId: currentUser.uid });
   
   const updatedSnap = await getDoc(incidentRef);
   return toIncidentRecord(updatedSnap);
@@ -1877,32 +2079,159 @@ export async function submitPostIncidentReportForIncident(
   }
   
   const resolvedAt = Timestamp.now();
-  const updateData = {
-    postIncidentReport: {
-      reasonForIncident: postReport.reasonForIncident?.trim() || null,
-      notes: postReport.notes?.trim() || null,
-      peopleInvolved: typeof postReport.peopleInvolved === 'number' ? postReport.peopleInvolved : null,
-      peopleStatus: postReport.peopleStatus?.trim() || null,
-      hospital: postReport.hospital?.trim() || null,
-      photoUrl: postReport.photoUrl?.trim() || null,
-      actionPhotoUrl: postReport.actionPhotoUrl?.trim() || null,
-      submittedAt: resolvedAt,
-      submittedByDispatcherId: currentUser.uid,
-      submittedByName: currentUser.displayName || currentUser.email || currentUser.uid,
-    },
-    status: 'resolved' as IncidentStatus,
-    resolutionStatus: 'resolved' as ResolutionStatus,
-    resolvedAt,
-    movedToHistoryAt: resolvedAt,
+  const reportPayload = {
+    reasonForIncident: postReport.reasonForIncident?.trim() || null,
+    notes: postReport.notes?.trim() || null,
+    peopleInvolved: typeof postReport.peopleInvolved === 'number' ? postReport.peopleInvolved : null,
+    peopleStatus: postReport.peopleStatus?.trim() || null,
+    hospital: postReport.hospital?.trim() || null,
+    photoUrl: postReport.photoUrl?.trim() || null,
+    actionPhotoUrl: postReport.actionPhotoUrl?.trim() || null,
+    submittedAt: resolvedAt,
+    submittedByDispatcherId: currentUser.uid,
+    submittedByName: currentUser.displayName || currentUser.email || currentUser.uid,
+  };
+
+  const existingAssignments = currentData.responderAssignments || {};
+  const currentAssignment = existingAssignments[currentUser.uid] || {
+    responderId: currentUser.uid,
+    responderName: currentUser.displayName || currentUser.email || currentUser.uid,
+    status: 'on_scene' as const,
+  };
+
+  const updatedAssignment: IncidentResponderAssignment = {
+    ...currentAssignment,
+    status: 'resolved',
+    postIncidentReport: reportPayload,
+  };
+
+  const updatedAssignments = {
+    ...existingAssignments,
+    [currentUser.uid]: updatedAssignment,
+  };
+
+  const existingReports = (currentData as any).postIncidentReports || {};
+  const updatedReports = {
+    ...existingReports,
+    [currentUser.uid]: reportPayload,
+  };
+
+  // Check if all assigned responders have completed their reports
+  const assignedUids = Object.keys(existingAssignments);
+  const activeResponders = assignedUids.length > 0 ? assignedUids : [currentUser.uid];
+  const allResolved = activeResponders.every((uid) => {
+    const a = updatedAssignments[uid];
+    return a && (a.status === 'resolved' || a.status === 'declined');
+  });
+
+  const updateData: any = {
+    responderAssignments: updatedAssignments,
+    postIncidentReports: updatedReports,
+    postIncidentReport: reportPayload,
+    updatedAt: Timestamp.now(),
+  };
+
+  if (allResolved) {
+    updateData.status = 'resolved' as IncidentStatus;
+    updateData.resolutionStatus = 'resolved' as ResolutionStatus;
+    updateData.resolvedAt = resolvedAt;
+    updateData.movedToHistoryAt = resolvedAt;
+  }
+  
+  await updateDoc(incidentRef, updateData);
+  await propagateIncidentUpdatesToReports(incidentId, updateData);
+  // Free this responder's resource back to available
+  await updateResourcesForIncidentStatus(incidentId, 'available', {
+    clearAssignment: true,
+    responderId: currentUser.uid,
+  });
+  
+  const updatedSnap = await getDoc(incidentRef);
+  return toIncidentRecord(updatedSnap);
+}
+
+export async function declineIncident(
+  incidentId: string,
+  reason: string
+): Promise<IncidentRecord> {
+  const currentUser = ensureAuthenticated();
+  const db = getFirebaseFirestore();
+  const incidentRef = doc(db, 'incidents', incidentId);
+  const snap = await getDoc(incidentRef);
+  if (!snap.exists()) throw new Error('Incident not found');
+  
+  const currentData = snap.data() as IncidentRecord;
+  if (!currentData.assignedResourceIds.includes(currentUser.uid)) {
+    throw new Error('Only an assigned responder can decline this incident');
+  }
+  
+  const existingAssignments = currentData.responderAssignments || {};
+  const currentAssignment = existingAssignments[currentUser.uid] || {
+    responderId: currentUser.uid,
+    responderName: currentUser.displayName || currentUser.email || currentUser.uid,
+    status: 'assigned' as const,
+  };
+
+  const updatedAssignment: IncidentResponderAssignment = {
+    ...currentAssignment,
+    status: 'declined',
+    declinedAt: Timestamp.now(),
+    declineReason: reason.trim(),
+  };
+
+  const updatedAssignments = {
+    ...existingAssignments,
+    [currentUser.uid]: updatedAssignment,
+  };
+
+  const newAssigned = currentData.assignedResourceIds.filter((id) => id !== currentUser.uid);
+  const updateData: any = {
+    responderAssignments: updatedAssignments,
+    assignedResourceIds: newAssigned,
+    status: newAssigned.length > 0 ? currentData.status : 'awaiting_resources',
     updatedAt: Timestamp.now(),
   };
   
   await updateDoc(incidentRef, updateData);
-  await propagateIncidentUpdatesToReports(incidentId, updateData);
-  await updateResourcesForIncidentStatus(incidentId, 'available', { clearAssignment: true });
+  await propagateIncidentUpdatesToReports(incidentId, { status: updateData.status });
+  await updateResourcesForIncidentStatus(incidentId, 'available', {
+    clearAssignment: true,
+    responderId: currentUser.uid,
+  });
   
   const updatedSnap = await getDoc(incidentRef);
   return toIncidentRecord(updatedSnap);
+}
+
+export function getResponderAssignment(
+  incident: IncidentRecord | null | undefined,
+  responderId: string | null | undefined
+): IncidentResponderAssignment | null {
+  if (!incident || !responderId) return null;
+  if (incident.responderAssignments && incident.responderAssignments[responderId]) {
+    return incident.responderAssignments[responderId];
+  }
+
+  const isAssigned = (incident.assignedResourceIds || []).includes(responderId);
+  if (!isAssigned) return null;
+
+  return {
+    responderId,
+    responderName: incident.assignedTeamName || undefined,
+    agency: incident.assignedAgencies?.[0] || undefined,
+    status:
+      incident.status === 'resolved'
+        ? 'resolved'
+        : incident.status === 'on_scene'
+        ? 'on_scene'
+        : incident.status === 'enroute'
+        ? 'enroute'
+        : 'assigned',
+    acceptedAt: incident.acceptedAt,
+    touchdownAt: incident.touchdownAt,
+    onScenePhotoUrl: incident.onScenePhotoUrl,
+    postIncidentReport: incident.postIncidentReport,
+  };
 }
 
 export async function updateIncidentCaseStatus(
@@ -1938,38 +2267,8 @@ export async function updateIncidentCaseStatus(
   await updateResourcesForIncidentStatus(
     incidentId,
     finalStatus === 'enroute' ? 'en_route' : finalStatus === 'on_scene' ? 'on_scene' : 'available',
-    { clearAssignment: finalStatus === 'resolved' }
+    { clearAssignment: finalStatus === 'resolved', responderId: currentUser.uid }
   );
-  
-  const updatedSnap = await getDoc(incidentRef);
-  return toIncidentRecord(updatedSnap);
-}
-// Append this to incidents.ts
-export async function declineIncident(
-  incidentId: string,
-  reason: string
-): Promise<IncidentRecord> {
-  const currentUser = ensureAuthenticated();
-  const db = getFirebaseFirestore();
-  const incidentRef = doc(db, 'incidents', incidentId);
-  const snap = await getDoc(incidentRef);
-  if (!snap.exists()) throw new Error('Incident not found');
-  
-  const currentData = snap.data() as IncidentRecord;
-  if (!currentData.assignedResourceIds.includes(currentUser.uid)) {
-    throw new Error('Only an assigned responder can decline this incident');
-  }
-  
-  // Remove them from assignedResourceIds and change status to awaiting_resources
-  const newAssigned = currentData.assignedResourceIds.filter(id => id !== currentUser.uid);
-  const updateData: any = {
-    assignedResourceIds: newAssigned,
-    status: newAssigned.length > 0 ? currentData.status : 'awaiting_resources',
-    updatedAt: Timestamp.now(),
-  };
-  
-  await updateDoc(incidentRef, updateData);
-  await propagateIncidentUpdatesToReports(incidentId, { status: updateData.status });
   
   const updatedSnap = await getDoc(incidentRef);
   return toIncidentRecord(updatedSnap);
