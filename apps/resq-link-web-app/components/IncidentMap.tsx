@@ -58,12 +58,12 @@ export default function IncidentMap({
           <Popup>
             <div className="p-2 min-w-[150px]">
               {incidentType && (
-                <h3 className="font-bold text-slate-900 mb-1">{incidentType}</h3>
+                <h3 className="font-bold text-slate-100 mb-1">{incidentType}</h3>
               )}
               {locationText && (
-                <p className="text-sm text-slate-600 mb-1">{locationText}</p>
+                <p className="text-sm text-slate-300 mb-1">{locationText}</p>
               )}
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-slate-400">
                 {latitude.toFixed(6)}, {longitude.toFixed(6)}
               </p>
             </div>

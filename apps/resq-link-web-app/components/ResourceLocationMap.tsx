@@ -107,10 +107,10 @@ export default function ResourceLocationMap({ resource }: { resource: ResourceRe
       />
       <Marker position={[latitude, longitude]} icon={createResourceIcon(resource.type)}>
         <Popup>
-          <div className="p-1">
-            <p className="font-semibold text-slate-900">{resource.name}</p>
-            <p className="text-xs text-slate-600">{getTypeLabel(resource)}</p>
-            <p className="text-xs text-slate-600">
+          <div className="p-1 min-w-[140px]">
+            <p className="font-semibold text-slate-100 text-sm">{resource.name}</p>
+            <p className="text-xs text-slate-300">{getTypeLabel(resource)}</p>
+            <p className="text-xs text-slate-400 mt-1">
               {latitude.toFixed(6)}, {longitude.toFixed(6)}
             </p>
           </div>
