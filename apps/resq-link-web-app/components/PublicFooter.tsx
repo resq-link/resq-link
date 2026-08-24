@@ -21,7 +21,12 @@ export default function PublicFooter() {
         </div>
         <div>
           <h2 className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">Legal</h2>
-          <ul className="mt-4 space-y-3 text-sm text-slate-500"><li><Link href="/privacy-policy" className="transition hover:text-primary-300">Privacy policy</Link></li><li><Link href="/data-privacy" className="transition hover:text-primary-300">Data privacy notice</Link></li><li><Link href="/terms-of-use" className="transition hover:text-primary-300">Terms of use</Link></li></ul>
+          <ul className="mt-4 space-y-3 text-sm text-slate-500">
+            <li><Link href="/privacy-policy" className="transition hover:text-primary-300">Privacy policy</Link></li>
+            <li><Link href="/data-privacy" className="transition hover:text-primary-300">Data privacy notice</Link></li>
+            <li><Link href="/delete-account" className="transition hover:text-primary-300">Account deletion</Link></li>
+            <li><Link href="/terms-of-use" className="transition hover:text-primary-300">Terms of use</Link></li>
+          </ul>
         </div>
       </div>
       <div className="border-t border-slate-800/80 px-5 py-5 text-center text-xs text-slate-600">© {new Date().getFullYear()} RESQ-Link. All rights reserved.</div>
