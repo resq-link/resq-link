@@ -113,17 +113,18 @@ export async function POST(request: NextRequest) {
       gatewayPayload = null;
     }
 
-    if (!gatewayResponse.ok) {
+    if (!gatewayResponse || !gatewayResponse.ok) {
+      const responseStatus = gatewayResponse?.status ?? 502;
       console.error('[sms-send] Gateway rejected message:', {
-        status: gatewayResponse.status,
+        status: responseStatus,
         detail: gatewayResponseText.slice(0, 300),
       });
       await outgoingRef.update({
         status: 'failed',
-        error: `Gateway returned status ${gatewayResponse.status}`,
+        error: `Gateway returned status ${responseStatus}`,
       });
       return NextResponse.json(
-        { error: `Android SMS Gateway rejected the message (${gatewayResponse.status}).` },
+        { error: `Android SMS Gateway rejected the message (${responseStatus}).` },
         { status: 502 }
       );
     }

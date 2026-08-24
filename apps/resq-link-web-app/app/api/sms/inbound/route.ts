@@ -66,10 +66,10 @@ export async function POST(request: NextRequest) {
         direction: 'inbound',
         body,
         phoneNumber,
-        gatewayMessageId: event.payload!.messageId,
-        gatewayDeviceSim: event.payload!.simNumber ?? null,
+        gatewayMessageId: String(rawMessageId),
+        gatewayDeviceSim: typeof payload.simNumber === 'number' ? payload.simNumber : (typeof payload.simSlot === 'number' ? payload.simSlot : null),
         status: 'received',
-        gatewayReceivedAt: event.payload!.receivedAt ?? null,
+        gatewayReceivedAt: payload.receivedAt || new Date().toISOString(),
         createdAt: FieldValue.serverTimestamp(),
       });
 
