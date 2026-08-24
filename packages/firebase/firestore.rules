@@ -240,26 +240,9 @@ service cloud.firestore {
         return isAuthenticated() && request.resource.data.callerUserId == request.auth.uid;
       }
 
-      function isAssignedResponder() {
-        return isAuthenticated() && (
-          resource.data.responderUserId == request.auth.uid ||
-          resource.data.assignedResponderId == request.auth.uid
-        );
-      }
-
-      allow create: if isNewCallOwner()
-        && request.resource.data.status == 'ringing'
-        && request.resource.data.callerRole == 'civilian'
-        && request.resource.data.channelName == ('incident_' + request.resource.data.incidentId)
-        && request.resource.data.keys().hasAll([
-          'incidentId',
-          'channelName',
-          'callerUserId',
-          'callerRole',
-          'status',
-          'createdAt',
-          'updatedAt'
-        ]);
+      allow create: if isAuthenticated()
+        && request.resource.data.callerUserId == request.auth.uid
+        && request.resource.data.status in ['ringing', 'queued'];
 
       allow read: if isAuthenticated();
 
@@ -267,6 +250,19 @@ service cloud.firestore {
 
       allow delete: if isCommandCenter() || isSuperAdmin();
     }
+
+    // Incident Chats collection (civilian <-> dispatcher <-> responder direct incident messaging)
+    match /incidentChats/{incidentId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+
+      match /messages/{messageId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated() && request.resource.data.senderId == request.auth.uid;
+        allow update, delete: if false;
+      }
+    }
+
 
     // Teams collection - shared operational team definitions
     match /teams/{teamId} {

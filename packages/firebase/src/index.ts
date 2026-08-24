@@ -291,25 +291,36 @@ export {
   type ChatThreadType,
 } from './messaging';
 
-// Incident voice call sessions
+// Export call session functions
 export {
-  acceptIncidentCallSession,
   buildIncidentCallChannelName,
+  buildDirectEmergencyRoomName,
+  acceptIncidentCallSession,
   declineIncidentCallSession,
   endIncidentCallSession,
   failIncidentCallSession,
   markIncidentCallConnected,
   startIncidentCallSession,
-  getIncidentCallSession,
-  subscribeToActiveIncidentCallSessions,
+  startDirectEmergencyCall,
   subscribeToIncidentCallSession,
-  subscribeToIncidentCallSessions,
-  subscribeToResponderIncomingCallSessions,
+  subscribeToIncomingCallsForDispatcher,
+  subscribeToDispatcherCallQueue,
+  subscribeToUserIncomingCalls,
   type CallRole,
+  type CallType,
   type CallSessionStatus,
   type IncidentCallSession,
   type StartIncidentCallSessionInput,
+  type StartDirectEmergencyCallInput,
 } from './callSessions';
+
+// Export incident messaging functions
+export {
+  subscribeToIncidentChat,
+  sendIncidentChatMessage,
+  type IncidentChatMessageRecord,
+} from './messaging';
+
 
 // Export incident management functions
 export {

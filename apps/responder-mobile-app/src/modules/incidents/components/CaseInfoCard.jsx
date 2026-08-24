@@ -19,10 +19,20 @@ import {
   MessageSquare,
   Navigation,
   Navigation2,
+  Phone,
+  Radio,
 } from "lucide-react-native";
-import { uploadImageToStorage, hasResponderSceneAssessment } from "@packages/firebase";
+import {
+  uploadImageToStorage,
+  hasResponderSceneAssessment,
+  startIncidentCallSession,
+  subscribeToUserIncomingCalls,
+  acceptIncidentCallSession,
+  declineIncidentCallSession,
+} from "@packages/firebase";
 import { toast } from "@/utils/toast";
 import * as Haptics from "expo-haptics";
+import ResponderCallModal from "./ResponderCallModal";
 import {
   acceptIncidentCase as acceptCase,
   declineIncidentCase as declineCase,
@@ -182,6 +192,103 @@ export default function CaseInfoCard({
   });
   const [error, setError] = useState("");
   const { user } = useUserStore();
+
+  const [activeCallSession, setActiveCallSession] = useState(null);
+  const [isCallModalVisible, setIsCallModalVisible] = useState(false);
+  const [isIncomingCall, setIsIncomingCall] = useState(false);
+
+  const responderId = user?.uid || user?.id;
+
+  // Listen for incoming calls for this responder
+  useEffect(() => {
+    if (!responderId) return;
+    const unsub = subscribeToUserIncomingCalls(responderId, (sessions) => {
+      const ringing = sessions.find(
+        (s) => (s.status === "ringing" || s.status === "queued") && s.callerUserId !== responderId
+      );
+      if (ringing) {
+        setActiveCallSession(ringing);
+        setIsIncomingCall(true);
+        setIsCallModalVisible(true);
+      }
+    });
+    return () => unsub();
+  }, [responderId]);
+
+  const handleCallCivilian = async () => {
+    const targetUserId = caseData?.userId || reporterInfo?.id || null;
+    if (!caseData?.id) return;
+
+    try {
+      const session = await startIncidentCallSession({
+        incidentId: caseData.id,
+        callerUserId: responderId,
+        callerRole: "responder",
+        callerName: user?.displayName || user?.fullName || "Response Unit",
+        callerPhone: user?.phoneNumber || user?.phone || null,
+        targetUserId,
+        targetRole: "civilian",
+        targetName: reporterInfo?.fullName || reporterInfo?.name || "Citizen in Need",
+        responderUserId: responderId,
+        assignedResponderId: responderId,
+        incidentReferenceNumber: caseData.referenceNumber || caseData.id,
+        incidentType: caseData.incidentType,
+        incidentLocationText: displayLocationText,
+      });
+
+      setActiveCallSession(session);
+      setIsIncomingCall(false);
+      setIsCallModalVisible(true);
+    } catch (err) {
+      console.error("Failed to call civilian:", err);
+    }
+  };
+
+  const handleCallDispatcher = async () => {
+    if (!caseData?.id) return;
+
+    try {
+      const session = await startIncidentCallSession({
+        incidentId: caseData.id,
+        callerUserId: responderId,
+        callerRole: "responder",
+        callerName: user?.displayName || user?.fullName || "Response Unit",
+        callerPhone: user?.phoneNumber || user?.phone || null,
+        targetRole: "dispatcher",
+        targetName: "Command Center Dispatch",
+        responderUserId: responderId,
+        assignedResponderId: responderId,
+        incidentReferenceNumber: caseData.referenceNumber || caseData.id,
+        incidentType: caseData.incidentType,
+        incidentLocationText: displayLocationText,
+      });
+
+      setActiveCallSession(session);
+      setIsIncomingCall(false);
+      setIsCallModalVisible(true);
+    } catch (err) {
+      console.error("Failed to call dispatcher:", err);
+    }
+  };
+
+  const handleAnswerIncoming = async () => {
+    if (activeCallSession?.id) {
+      await acceptIncidentCallSession(activeCallSession.id, {
+        uid: responderId,
+        name: user?.displayName || user?.fullName || "Responder",
+      }).catch(() => undefined);
+    }
+    setIsIncomingCall(false);
+  };
+
+  const handleDeclineIncoming = async () => {
+    if (activeCallSession?.id) {
+      await declineIncidentCallSession(activeCallSession.id, "Declined by responder").catch(() => undefined);
+    }
+    setIsCallModalVisible(false);
+    setActiveCallSession(null);
+    setIsIncomingCall(false);
+  };
 
   const handleAcceptCase = async () => {
     if (!caseData.id) {
@@ -1061,6 +1168,24 @@ export default function CaseInfoCard({
               <ArrowLeft size={22} color={colors.text} />
             </TouchableOpacity>
             <View style={styles.mapOverlayActions}>
+              <TouchableOpacity
+                onPress={handleCallCivilian}
+                style={[styles.floatingIconButton, { backgroundColor: "#10B981" }]}
+                accessibilityRole="button"
+                accessibilityLabel="Call citizen"
+              >
+                <Phone size={19} color="#FFFFFF" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={handleCallDispatcher}
+                style={[styles.floatingIconButton, { backgroundColor: "#0284C7" }]}
+                accessibilityRole="button"
+                accessibilityLabel="Call dispatch"
+              >
+                <Radio size={19} color="#FFFFFF" />
+              </TouchableOpacity>
+
               {caseData.id ? (
                 <TouchableOpacity
                   onPress={() => router.push(`/incident/${caseData.id}/messages`)}
@@ -1522,6 +1647,18 @@ export default function CaseInfoCard({
         isResolved={caseData.status === "done" || caseData.status === "resolved"}
       />
 
+      <ResponderCallModal
+        visible={isCallModalVisible}
+        onClose={() => {
+          setIsCallModalVisible(false);
+          setActiveCallSession(null);
+          setIsIncomingCall(false);
+        }}
+        callSession={activeCallSession}
+        isIncoming={isIncomingCall}
+        onAnswer={handleAnswerIncoming}
+        onDecline={handleDeclineIncoming}
+      />
     </View>
   );
 }

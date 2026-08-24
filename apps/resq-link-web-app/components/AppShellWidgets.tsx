@@ -11,12 +11,20 @@ const CriticalAlertModal = dynamic(() => import('@/components/CriticalAlertModal
 const AudioUnlockBanner = dynamic(() => import('@/components/AudioUnlockBanner'), {
   ssr: false,
 })
+const IncomingCallAlertBanner = dynamic(() => import('@/components/calls/IncomingCallAlertBanner'), {
+  ssr: false,
+})
+const DispatcherCallQueueSidebar = dynamic(() => import('@/components/calls/DispatcherCallQueueSidebar'), {
+  ssr: false,
+})
 
 function AppShellWidgets() {
   return (
     <>
       <CriticalAlertModal />
       <AudioUnlockBanner />
+      <IncomingCallAlertBanner />
+      <DispatcherCallQueueSidebar />
       <DeferredOperationalChatWidget />
       <DeferredAgentAssistant />
     </>

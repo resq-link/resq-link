@@ -23,6 +23,8 @@ import {
   getCivilianEmergencyTypeLabel,
   hasResponderSceneAssessment,
   resolveSceneAssessmentIncidentType,
+  startIncidentCallSession,
+  type IncidentCallSession,
 } from "@packages/firebase";
 import IncidentStatusIndicator from "@/components/IncidentStatusIndicator";
 import { useDispatcherData } from "@/contexts/DispatcherDataContext";
@@ -33,6 +35,8 @@ import TouchdownArrivalPanel from "@/components/TouchdownArrivalPanel";
 import InitialNarrativeDisplay from "@/components/InitialNarrativeDisplay";
 import CitizenReportDetailDrawer from "@/components/CitizenReportDetailDrawer";
 import AssociatedCitizenReportList from "@/components/AssociatedCitizenReportList";
+import IncidentMessagingDrawer from "@/components/messaging/IncidentMessagingDrawer";
+import ActiveCallModal from "@/components/calls/ActiveCallModal";
 import { getQueueItemOperationalStatus } from "@/components/IntakeListItem";
 import { useOperationalTeams } from "@/contexts/OperationalTeamContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -50,7 +54,10 @@ import {
   XCircle,
   History,
   Activity,
-  Link2
+  Link2,
+  MessageSquare,
+  Phone,
+  Radio,
 } from "lucide-react";
 
 const PinnedLocationMap = dynamic(() => import("./PinnedLocationMap"), {
@@ -165,12 +172,16 @@ export default function IntakeDetailView({
   const [isLinking, setIsLinking] = useState(false);
   const { resources, dispatcherLocations, incidentsLoading } = useDispatcherData();
   const [selectedCitizenReport, setSelectedCitizenReport] = useState<EmergencyReport | null>(null);
+  const [isMessagingOpen, setIsMessagingOpen] = useState(false);
+  const [activeCallSession, setActiveCallSession] = useState<IncidentCallSession | null>(null);
+  const [isCallModalOpen, setIsCallModalOpen] = useState(false);
 
   useEffect(() => {
     setIsElevateModalOpen(false);
     setSelectedResponderId("");
     setResponderError(null);
     setSelectedCitizenReport(null);
+    setIsMessagingOpen(false);
   }, [item?.id]);
 
   const report = item?.rawEmergencyReport as EmergencyReport;
@@ -679,6 +690,86 @@ export default function IntakeDetailView({
     }
   };
 
+  const handleCallCivilian = async () => {
+    if (!item?.id && !report?.id) return;
+    try {
+      const callSession = await startIncidentCallSession({
+        incidentId: report?.id || item.id,
+        callerUserId: user?.uid,
+        callerRole: 'dispatcher',
+        callerName: user?.displayName || user?.email || 'Command Center Dispatch',
+        targetUserId: report?.userId || null,
+        targetRole: 'civilian',
+        targetName: (report as any)?.reporterName || (report as any)?.fullName || (report as any)?.userName || 'Citizen',
+        incidentReferenceNumber: item.referenceNumber,
+        incidentType: emergencyTypeLabel || item.incidentSubtypeLabel,
+        incidentLocationText: report?.locationText || item.locationText,
+      });
+
+      if (report?.userId && user) {
+        const idToken = await user.getIdToken();
+        fetch('/api/notifications/call-alert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+          body: JSON.stringify({
+            targetUserId: report.userId,
+            callerName: user.displayName || user.email || 'Emergency Dispatch',
+            roomName: callSession.roomName,
+            sessionId: callSession.id,
+            incidentId: report.id || item.id,
+          }),
+        }).catch(() => undefined);
+      }
+
+      setActiveCallSession(callSession);
+      setIsCallModalOpen(true);
+    } catch (err: any) {
+      console.error('[handleCallCivilian] error:', err);
+    }
+  };
+
+  const handleCallResponder = async () => {
+    const targetResponderId = assignedResponderId || report?.assignedResponderId || (incident?.assignedResourceIds?.[0]) || null;
+    if (!targetResponderId) return;
+
+    try {
+      const callSession = await startIncidentCallSession({
+        incidentId: report?.id || item.id,
+        callerUserId: user?.uid,
+        callerRole: 'dispatcher',
+        callerName: user?.displayName || user?.email || 'Command Center Dispatch',
+        targetUserId: targetResponderId,
+        targetRole: 'responder',
+        targetName: displayResponder || 'Responder',
+        assignedResponderId: targetResponderId,
+        incidentReferenceNumber: item.referenceNumber,
+        incidentType: emergencyTypeLabel || item.incidentSubtypeLabel,
+        incidentLocationText: report?.locationText || item.locationText,
+      });
+
+      if (user) {
+        const idToken = await user.getIdToken();
+        fetch('/api/notifications/call-alert', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+          body: JSON.stringify({
+            targetUserId: targetResponderId,
+            callerName: user.displayName || user.email || 'Emergency Dispatch',
+            roomName: callSession.roomName,
+            sessionId: callSession.id,
+            incidentId: report?.id || item.id,
+          }),
+        }).catch(() => undefined);
+      }
+
+      setActiveCallSession(callSession);
+      setIsCallModalOpen(true);
+    } catch (err: any) {
+      console.error('[handleCallResponder] error:', err);
+    }
+  };
+
+
   return (
     <>
     <div className="h-full flex flex-col bg-slate-900/40 rounded-xl border border-slate-800 overflow-hidden shadow-2xl backdrop-blur-md">
@@ -701,7 +792,39 @@ export default function IntakeDetailView({
           </p>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+           {/* Live Incident Chat */}
+           <button
+             onClick={() => setIsMessagingOpen(true)}
+             className="h-8 px-2.5 flex items-center gap-1.5 rounded-lg border border-sky-800/80 bg-sky-950/40 hover:bg-sky-900/60 text-[10px] font-bold text-sky-300 transition-all uppercase tracking-wider shadow-sm"
+             title="Open live chat with citizen"
+           >
+             <MessageSquare className="w-3.5 h-3.5" />
+             <span className="hidden md:inline">Message</span>
+           </button>
+
+           {/* Call Civilian */}
+           <button
+             onClick={handleCallCivilian}
+             className="h-8 px-2.5 flex items-center gap-1.5 rounded-lg border border-emerald-800/80 bg-emerald-950/40 hover:bg-emerald-900/60 text-[10px] font-bold text-emerald-300 transition-all uppercase tracking-wider shadow-sm"
+             title="Place voice call to citizen"
+           >
+             <Phone className="w-3.5 h-3.5" />
+             <span className="hidden md:inline">Call Citizen</span>
+           </button>
+
+           {/* Call Responder */}
+           {isResponderAssigned && (
+             <button
+               onClick={handleCallResponder}
+               className="h-8 px-2.5 flex items-center gap-1.5 rounded-lg border border-amber-800/80 bg-amber-950/40 hover:bg-amber-900/60 text-[10px] font-bold text-amber-300 transition-all uppercase tracking-wider shadow-sm"
+               title="Place voice call to assigned responder"
+             >
+               <Radio className="w-3.5 h-3.5" />
+               <span className="hidden md:inline">Call Responder</span>
+             </button>
+           )}
+
            {isEmergency && report && (
              <div className="hidden sm:flex items-center gap-2">
                 {!isResponderAssigned && !report?.incidentId && (
@@ -1447,6 +1570,24 @@ export default function IntakeDetailView({
       <CitizenReportDetailDrawer
         report={selectedCitizenReport}
         onClose={() => setSelectedCitizenReport(null)}
+      />
+
+      <IncidentMessagingDrawer
+        isOpen={isMessagingOpen}
+        onClose={() => setIsMessagingOpen(false)}
+        incidentId={report?.id || item?.id || ''}
+        referenceNumber={item?.referenceNumber}
+        civilianName={(report as any)?.reporterName || (report as any)?.fullName || (report as any)?.userName || 'Citizen'}
+        civilianPhone={(report as any)?.contactNumber || (report as any)?.phoneNumber || (report as any)?.phone}
+      />
+
+      <ActiveCallModal
+        session={activeCallSession}
+        isOpen={isCallModalOpen}
+        onClose={() => {
+          setIsCallModalOpen(false);
+          setActiveCallSession(null);
+        }}
       />
     </>
   );

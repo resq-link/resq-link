@@ -45,8 +45,16 @@ import {
   getUserEmergencyReports,
   getAllEmergencyReports,
   subscribeToActiveAdvisories,
+  startDirectEmergencyCall,
+  startIncidentCallSession,
+  subscribeToUserIncomingCalls,
+  acceptIncidentCallSession,
+  declineIncidentCallSession,
 } from "@packages/firebase";
 import AdvisoryBanner from "@/components/AdvisoryBanner";
+import OngoingIncidentFloatingCard from "../components/OngoingIncidentFloatingCard";
+import CivilianCallModal from "@/features/emergency/components/CivilianCallModal";
+import CivilianIncidentChatModal from "@/features/emergency/components/CivilianIncidentChatModal";
 import {
   getIncidentMeta,
   isActiveReport,
@@ -351,6 +359,7 @@ function QuickActionsPanel({
   theme,
   onSOS,
   onHotline,
+  onDirectCall,
   onMap,
   onContacts,
   onHistory,
@@ -370,12 +379,12 @@ function QuickActionsPanel({
           theme={theme}
         />
         <QuickPrimaryButton
-          label="Call 911"
-          subtitle="Emergency Call"
+          label="Call Dispatch"
+          subtitle="Direct Emergency Voice"
           icon={PhoneCall}
           color={theme.primaryGreen}
           bg={theme.primaryGreenSoft}
-          onPress={onHotline}
+          onPress={onDirectCall || onHotline}
           theme={theme}
         />
       </View>
@@ -658,6 +667,12 @@ export default function DashboardScreen() {
   const screenOpacity = useSharedValue(0);
   const screenTranslateY = useSharedValue(12);
 
+  const [activeCallSession, setActiveCallSession] = useState(null);
+  const [isCallModalVisible, setIsCallModalVisible] = useState(false);
+  const [isIncomingCall, setIsIncomingCall] = useState(false);
+  const [chatIncident, setChatIncident] = useState(null);
+  const [isSingleIncidentAlertVisible, setIsSingleIncidentAlertVisible] = useState(false);
+
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
     Inter_600SemiBold,
@@ -665,6 +680,117 @@ export default function DashboardScreen() {
   });
 
   const userId = user?.uid || user?.id;
+
+  const activeIncident = recentReports.find((r) => isActiveReport(r.status)) || null;
+
+  // Listen for incoming calls to this civilian user
+  useEffect(() => {
+    if (!userId) return;
+
+    const unsubscribe = subscribeToUserIncomingCalls(userId, (sessions) => {
+      const ringing = sessions.find(
+        (s) => (s.status === "ringing" || s.status === "queued") && s.callerUserId !== userId
+      );
+      if (ringing) {
+        setActiveCallSession(ringing);
+        setIsIncomingCall(true);
+        setIsCallModalVisible(true);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [userId]);
+
+  const handleAnswerIncomingCall = async () => {
+    if (activeCallSession?.id) {
+      await acceptIncidentCallSession(activeCallSession.id, {
+        uid: userId,
+        name: user?.name || user?.fullName || "Citizen",
+      }).catch(() => undefined);
+    }
+    setIsIncomingCall(false);
+  };
+
+  const handleDeclineIncomingCall = async () => {
+    if (activeCallSession?.id) {
+      await declineIncidentCallSession(activeCallSession.id, "Declined by citizen").catch(() => undefined);
+    }
+    setIsCallModalVisible(false);
+    setActiveCallSession(null);
+    setIsIncomingCall(false);
+  };
+
+  const handleDirectEmergencyCall = async () => {
+    try {
+      const session = await startDirectEmergencyCall({
+        callerUserId: userId,
+        callerName: user?.name || user?.fullName || "Citizen in Need",
+        callerPhone: user?.phoneNumber || user?.phone || null,
+        locationText: userLocation ? `${userLocation.latitude.toFixed(5)}, ${userLocation.longitude.toFixed(5)}` : null,
+      });
+      setActiveCallSession(session);
+      setIsIncomingCall(false);
+      setIsCallModalVisible(true);
+    } catch (err) {
+      console.error("Failed to start direct emergency call:", err);
+      openEmergencyHotline();
+    }
+  };
+
+  const handleCallDispatcher = async (incident) => {
+    try {
+      const session = await startIncidentCallSession({
+        incidentId: incident.id,
+        callerUserId: userId,
+        callerRole: "civilian",
+        callerName: user?.name || user?.fullName || "Citizen",
+        callerPhone: user?.phoneNumber || user?.phone || null,
+        targetRole: "dispatcher",
+        targetName: "Command Center Dispatch",
+        incidentReferenceNumber: incident.id ? `APP-${incident.id.slice(-5).toUpperCase()}` : null,
+        incidentType: incident.incidentType,
+        incidentLocationText: incident.locationText,
+      });
+      setActiveCallSession(session);
+      setIsIncomingCall(false);
+      setIsCallModalVisible(true);
+    } catch (err) {
+      console.error("Failed to call dispatcher:", err);
+    }
+  };
+
+  const handleCallResponder = async (incident) => {
+    try {
+      const targetId = incident.responder || incident.assignedResponderId;
+      const session = await startIncidentCallSession({
+        incidentId: incident.id,
+        callerUserId: userId,
+        callerRole: "civilian",
+        callerName: user?.name || user?.fullName || "Citizen",
+        callerPhone: user?.phoneNumber || user?.phone || null,
+        targetUserId: targetId,
+        targetRole: "responder",
+        targetName: incident.responderName || incident.responder || "Response Unit",
+        assignedResponderId: targetId,
+        incidentReferenceNumber: incident.id ? `APP-${incident.id.slice(-5).toUpperCase()}` : null,
+        incidentType: incident.incidentType,
+        incidentLocationText: incident.locationText,
+      });
+      setActiveCallSession(session);
+      setIsIncomingCall(false);
+      setIsCallModalVisible(true);
+    } catch (err) {
+      console.error("Failed to call responder:", err);
+    }
+  };
+
+  const handleReportPress = () => {
+    if (activeIncident) {
+      setIsSingleIncidentAlertVisible(true);
+      return;
+    }
+    router.push("/emergency-form");
+  };
 
   useEffect(() => {
     screenOpacity.value = withTiming(1, {
@@ -869,6 +995,10 @@ export default function DashboardScreen() {
     });
   };
 
+  const activeIncidentRef = activeIncident?.id
+    ? `APP-${activeIncident.id.slice(-5).toUpperCase()}`
+    : "INCIDENT";
+
   return (
     <View style={[styles.root, { backgroundColor: theme.background }]}>
       <StatusBar style={colors.statusBarStyle} backgroundColor={theme.background} />
@@ -903,9 +1033,25 @@ export default function DashboardScreen() {
             <AdvisoryBanner advisories={activeAdvisories} theme={theme} />
           )}
 
+          {/* Ongoing Incident Floating Card (Foodpanda / Grab style) */}
+          {activeIncident && (
+            <OngoingIncidentFloatingCard
+              incident={activeIncident}
+              theme={theme}
+              onOpenDetails={() => openDetails(activeIncident)}
+              onCallDispatcher={() => handleCallDispatcher(activeIncident)}
+              onMessageDispatcher={() => setChatIncident(activeIncident)}
+              onCallResponder={
+                activeIncident.responder || activeIncident.assignedResponderId
+                  ? () => handleCallResponder(activeIncident)
+                  : undefined
+              }
+            />
+          )}
+
           <ReportEmergencyCard
             theme={theme}
-            onReport={() => router.push("/emergency-form")}
+            onReport={handleReportPress}
           />
 
           <View style={styles.sectionCompact}>
@@ -914,6 +1060,7 @@ export default function DashboardScreen() {
               theme={theme}
               onSOS={handleSOS}
               onHotline={openEmergencyHotline}
+              onDirectCall={handleDirectEmergencyCall}
               onMap={() => router.push("/responder-map")}
               onContacts={() => router.push("/help-support")}
               onHistory={() => router.push("/(tabs)/history")}
@@ -936,6 +1083,73 @@ export default function DashboardScreen() {
           />
         </ScrollView>
       </Animated.View>
+
+      {/* Voice Call Modal */}
+      <CivilianCallModal
+        visible={isCallModalVisible}
+        onClose={() => {
+          setIsCallModalVisible(false);
+          setActiveCallSession(null);
+          setIsIncomingCall(false);
+        }}
+        callSession={activeCallSession}
+        isIncoming={isIncomingCall}
+        onAnswer={handleAnswerIncomingCall}
+        onDecline={handleDeclineIncomingCall}
+      />
+
+      {/* Live Incident Chat Modal */}
+      <CivilianIncidentChatModal
+        visible={Boolean(chatIncident)}
+        onClose={() => setChatIncident(null)}
+        incident={chatIncident}
+        user={user}
+      />
+
+      {/* Single Incident Restriction Dialog */}
+      {isSingleIncidentAlertVisible && activeIncident && (
+        <View style={styles.alertOverlay}>
+          <View style={styles.alertCard}>
+            <View style={styles.alertIconWrap}>
+              <AlertTriangle size={32} color="#F59E0B" />
+            </View>
+            <Text style={styles.alertTitle}>Ongoing Emergency in Progress</Text>
+            <Text style={styles.alertBody}>
+              You currently have an active emergency report ({activeIncidentRef}) undergoing dispatch response.
+              To ensure rapid response times, only 1 concurrent report is permitted per citizen.
+            </Text>
+
+            <View style={styles.alertActionCol}>
+              <Pressable
+                onPress={() => {
+                  setIsSingleIncidentAlertVisible(false);
+                  openDetails(activeIncident);
+                }}
+                style={[styles.alertBtn, { backgroundColor: "#0284C7" }]}
+              >
+                <Text style={styles.alertBtnText}>View Ongoing Emergency</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => {
+                  setIsSingleIncidentAlertVisible(false);
+                  handleCallDispatcher(activeIncident);
+                }}
+                style={[styles.alertBtn, { backgroundColor: "#10B981" }]}
+              >
+                <Text style={styles.alertBtnText}>Call Dispatcher</Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => setIsSingleIncidentAlertVisible(false)}
+                style={[styles.alertBtn, { backgroundColor: "rgba(255, 255, 255, 0.08)" }]}
+              >
+                <Text style={[styles.alertBtnText, { color: "#94A3B8" }]}>Close</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
@@ -1352,4 +1566,67 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     fontSize: 12,
   },
+  alertOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0, 0, 0, 0.75)",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+    zIndex: 999,
+  },
+  alertCard: {
+    width: "100%",
+    maxWidth: 380,
+    backgroundColor: "#1E293B",
+    borderRadius: 24,
+    padding: 24,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.12)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  alertIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "rgba(245, 158, 11, 0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  alertTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#F8FAFC",
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  alertBody: {
+    fontSize: 13,
+    color: "#94A3B8",
+    textAlign: "center",
+    lineHeight: 19,
+    marginBottom: 20,
+  },
+  alertActionCol: {
+    width: "100%",
+    gap: 8,
+  },
+  alertBtn: {
+    width: "100%",
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  alertBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
 });
+

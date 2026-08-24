@@ -508,3 +508,96 @@ export function countUnreadThreads(
     0
   );
 }
+
+export interface IncidentChatMessageRecord {
+  id?: string;
+  incidentId: string;
+  senderId: string;
+  senderName: string;
+  senderRole: 'civilian' | 'dispatcher' | 'responder' | 'command_center';
+  text: string;
+  createdAt?: Date | Timestamp;
+}
+
+export function subscribeToIncidentChat(
+  incidentId: string,
+  callback: (messages: IncidentChatMessageRecord[]) => void
+): () => void {
+  const normalizedId = normalizeNullableString(incidentId);
+  if (!normalizedId) {
+    callback([]);
+    return () => undefined;
+  }
+
+  return onSnapshot(
+    query(
+      collection(getFirebaseFirestore(), `incidentChats/${normalizedId}/messages`),
+      orderBy('createdAt', 'asc'),
+      limit(100)
+    ),
+    (snapshot: QuerySnapshot) => {
+      const messages = snapshot.docs.map((docSnap) => {
+        const data = docSnap.data();
+        return {
+          id: docSnap.id,
+          incidentId: normalizedId,
+          senderId: data.senderId || '',
+          senderName: data.senderName || 'Anonymous',
+          senderRole: data.senderRole || 'civilian',
+          text: data.text || '',
+          createdAt: toDateValue(data.createdAt) || new Date(),
+        } as IncidentChatMessageRecord;
+      });
+      callback(messages);
+    },
+    (error) => {
+      console.error('[subscribeToIncidentChat] error:', error);
+      callback([]);
+    }
+  );
+}
+
+export async function sendIncidentChatMessage(
+  incidentId: string,
+  input: {
+    senderId?: string;
+    senderName: string;
+    senderRole: 'civilian' | 'dispatcher' | 'responder' | 'command_center';
+    text: string;
+  }
+): Promise<IncidentChatMessageRecord> {
+  const currentUser = ensureAuthenticated();
+  const normalizedId = normalizeNullableString(incidentId);
+  if (!normalizedId) throw new Error('Incident ID is required.');
+  const text = input.text.trim();
+  if (!text) throw new Error('Message text cannot be empty.');
+
+  const senderId = input.senderId || currentUser.uid;
+  const db = getFirebaseFirestore();
+  const timestamp = Timestamp.now();
+
+  const payload = {
+    incidentId: normalizedId,
+    senderId,
+    senderName: input.senderName || currentUser.displayName || 'User',
+    senderRole: input.senderRole,
+    text,
+    createdAt: timestamp,
+  };
+
+  const ref = await addDoc(collection(db, `incidentChats/${normalizedId}/messages`), payload);
+
+  // Also update parent incident chat summary
+  await updateDoc(doc(db, 'emergencies', normalizedId), {
+    lastChatText: text,
+    lastChatAt: timestamp,
+    lastChatSenderRole: input.senderRole,
+    updatedAt: timestamp,
+  }).catch(() => undefined);
+
+  return {
+    ...payload,
+    id: ref.id,
+    createdAt: timestamp.toDate(),
+  };
+}

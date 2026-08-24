@@ -10,12 +10,22 @@ import {
   Inter_700Bold,
 } from "@expo-google-fonts/inter";
 import { useFonts } from "expo-font";
-import { normalizeOperationalStatus } from "@packages/firebase";
+import {
+  normalizeOperationalStatus,
+  subscribeToEmergencyReport,
+  startIncidentCallSession,
+  subscribeToUserIncomingCalls,
+  acceptIncidentCallSession,
+  declineIncidentCallSession,
+} from "@packages/firebase";
+import { Phone, MessageSquare, Radio } from "lucide-react-native";
 import CustomButton from "@/components/CustomButton";
 import { useAppTheme } from "@/hooks/useAppTheme";
+import useUserStore from "@/stores/userStore";
 import IncidentStatusSection from "@/features/emergency/components/confirmation/IncidentStatusSection";
 import IncidentDetailsCard from "@/features/emergency/components/confirmation/IncidentDetailsCard";
-import { subscribeToEmergencyReport } from "@packages/firebase";
+import CivilianCallModal from "@/features/emergency/components/CivilianCallModal";
+import CivilianIncidentChatModal from "@/features/emergency/components/CivilianIncidentChatModal";
 
 function SectionDivider({ color }) {
   return (
@@ -28,9 +38,14 @@ export default function EmergencyConfirmationScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { colors } = useAppTheme();
+  const { user } = useUserStore();
   const reportId = typeof params.reportId === "string" ? params.reportId : "";
 
   const [report, setReport] = useState(null);
+  const [activeCallSession, setActiveCallSession] = useState(null);
+  const [isCallModalVisible, setIsCallModalVisible] = useState(false);
+  const [isIncomingCall, setIsIncomingCall] = useState(false);
+  const [isChatVisible, setIsChatVisible] = useState(false);
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -59,6 +74,92 @@ export default function EmergencyConfirmationScreen() {
       router.replace("/dashboard");
     }
   }, [router]);
+
+  const userId = user?.uid || user?.id;
+
+  // Listen for incoming calls
+  useEffect(() => {
+    if (!userId) return;
+    const unsub = subscribeToUserIncomingCalls(userId, (sessions) => {
+      const ringing = sessions.find(
+        (s) => (s.status === "ringing" || s.status === "queued") && s.callerUserId !== userId
+      );
+      if (ringing) {
+        setActiveCallSession(ringing);
+        setIsIncomingCall(true);
+        setIsCallModalVisible(true);
+      }
+    });
+    return () => unsub();
+  }, [userId]);
+
+  const handleCallDispatcher = async () => {
+    if (!report?.id) return;
+    try {
+      const session = await startIncidentCallSession({
+        incidentId: report.id,
+        callerUserId: userId,
+        callerRole: "civilian",
+        callerName: user?.name || user?.fullName || "Citizen",
+        callerPhone: user?.phoneNumber || user?.phone || null,
+        targetRole: "dispatcher",
+        targetName: "Command Center Dispatch",
+        incidentReferenceNumber: report.id ? `APP-${report.id.slice(-5).toUpperCase()}` : null,
+        incidentType: report.incidentType,
+        incidentLocationText: report.locationText,
+      });
+      setActiveCallSession(session);
+      setIsIncomingCall(false);
+      setIsCallModalVisible(true);
+    } catch (err) {
+      console.error("Failed to call dispatcher:", err);
+    }
+  };
+
+  const handleCallResponder = async () => {
+    const targetId = report?.responder || report?.assignedResponderId;
+    if (!report?.id || !targetId) return;
+    try {
+      const session = await startIncidentCallSession({
+        incidentId: report.id,
+        callerUserId: userId,
+        callerRole: "civilian",
+        callerName: user?.name || user?.fullName || "Citizen",
+        callerPhone: user?.phoneNumber || user?.phone || null,
+        targetUserId: targetId,
+        targetRole: "responder",
+        targetName: report.responderName || report.responder || "Response Unit",
+        assignedResponderId: targetId,
+        incidentReferenceNumber: report.id ? `APP-${report.id.slice(-5).toUpperCase()}` : null,
+        incidentType: report.incidentType,
+        incidentLocationText: report.locationText,
+      });
+      setActiveCallSession(session);
+      setIsIncomingCall(false);
+      setIsCallModalVisible(true);
+    } catch (err) {
+      console.error("Failed to call responder:", err);
+    }
+  };
+
+  const handleAnswerIncoming = async () => {
+    if (activeCallSession?.id) {
+      await acceptIncidentCallSession(activeCallSession.id, {
+        uid: userId,
+        name: user?.name || user?.fullName || "Citizen",
+      }).catch(() => undefined);
+    }
+    setIsIncomingCall(false);
+  };
+
+  const handleDeclineIncoming = async () => {
+    if (activeCallSession?.id) {
+      await declineIncidentCallSession(activeCallSession.id, "Declined by citizen").catch(() => undefined);
+    }
+    setIsCallModalVisible(false);
+    setActiveCallSession(null);
+    setIsIncomingCall(false);
+  };
 
   if (!fontsLoaded) {
     return null;
@@ -138,6 +239,36 @@ export default function EmergencyConfirmationScreen() {
           {!isClosedIncident ? (
             <>
               <SectionDivider color={colors.border} />
+              
+              {/* Emergency Voice & Message Action Grid */}
+              <View style={styles.emergencyActionGrid}>
+                <Pressable
+                  onPress={handleCallDispatcher}
+                  style={[styles.emergencyActionBtn, { backgroundColor: "#10B981" }]}
+                >
+                  <Phone size={15} color="#FFFFFF" strokeWidth={2.4} />
+                  <Text style={styles.emergencyActionText}>Call Dispatcher</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => setIsChatVisible(true)}
+                  style={[styles.emergencyActionBtn, { backgroundColor: "#0284C7" }]}
+                >
+                  <MessageSquare size={15} color="#FFFFFF" strokeWidth={2.4} />
+                  <Text style={styles.emergencyActionText}>Live Chat</Text>
+                </Pressable>
+
+                {(report?.responder || report?.assignedResponderId) && (
+                  <Pressable
+                    onPress={handleCallResponder}
+                    style={[styles.emergencyActionBtn, { backgroundColor: "#D97706", width: "100%" }]}
+                  >
+                    <Radio size={15} color="#FFFFFF" strokeWidth={2.4} />
+                    <Text style={styles.emergencyActionText}>Call Response Unit</Text>
+                  </Pressable>
+                )}
+              </View>
+
               <Pressable
                 onPress={() => router.replace("/dashboard")}
                 style={({ pressed }) => [
@@ -155,6 +286,28 @@ export default function EmergencyConfirmationScreen() {
           ) : null}
         </View>
       </ScrollView>
+
+      {/* Voice Call Modal */}
+      <CivilianCallModal
+        visible={isCallModalVisible}
+        onClose={() => {
+          setIsCallModalVisible(false);
+          setActiveCallSession(null);
+          setIsIncomingCall(false);
+        }}
+        callSession={activeCallSession}
+        isIncoming={isIncomingCall}
+        onAnswer={handleAnswerIncoming}
+        onDecline={handleDeclineIncoming}
+      />
+
+      {/* Live Incident Chat Modal */}
+      <CivilianIncidentChatModal
+        visible={isChatVisible}
+        onClose={() => setIsChatVisible(false)}
+        incident={report}
+        user={user}
+      />
     </View>
   );
 }
@@ -212,5 +365,31 @@ const styles = StyleSheet.create({
   backToDashboardText: {
     fontFamily: "Inter_600SemiBold",
     fontSize: 13,
+  },
+  emergencyActionGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginVertical: 4,
+  },
+  emergencyActionBtn: {
+    flexGrow: 1,
+    flexBasis: "47%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  emergencyActionText: {
+    fontFamily: "Inter_700Bold",
+    fontSize: 12,
+    color: "#FFFFFF",
   },
 });

@@ -69,3 +69,6 @@ apps/civilian-mobile-app/caches/*
 /SPUP-SYSTEM.docx
 /apps/project-video/
 /apps/project-video.zip
+/apps/dispatcher-web-app/
+/*.docx
+/resq_responder_*.png
