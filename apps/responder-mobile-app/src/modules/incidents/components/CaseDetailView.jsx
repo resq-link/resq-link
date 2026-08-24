@@ -168,6 +168,46 @@ export default function CaseDetailView() {
                   }
                 : null,
             responderAssessment: parseResponderAssessment(data.responderAssessment),
+            // Per-agency assignment map — required for multi-agency isolation (touchdown,
+            // scene assessment, post-report, isResolved all key off this).
+            responderAssignments:
+              data.responderAssignments && typeof data.responderAssignments === "object"
+                ? Object.fromEntries(
+                    Object.entries(data.responderAssignments).map(([uid, assignment]) => [
+                      uid,
+                      {
+                        ...assignment,
+                        acceptedAt: toDateValue(assignment.acceptedAt),
+                        touchdownAt: toDateValue(assignment.touchdownAt),
+                        declinedAt: toDateValue(assignment.declinedAt),
+                        responderAssessment: parseResponderAssessment(
+                          assignment.responderAssessment,
+                        ),
+                        postIncidentReport:
+                          assignment.postIncidentReport &&
+                          typeof assignment.postIncidentReport === "object"
+                            ? {
+                                ...assignment.postIncidentReport,
+                                submittedAt: toDateValue(assignment.postIncidentReport.submittedAt),
+                              }
+                            : null,
+                      },
+                    ]),
+                  )
+                : null,
+            // Per-responder post-report map — needed so each agency's "hasUserPostReport" is UID-keyed.
+            postIncidentReports:
+              data.postIncidentReports && typeof data.postIncidentReports === "object"
+                ? Object.fromEntries(
+                    Object.entries(data.postIncidentReports).map(([uid, report]) => [
+                      uid,
+                      {
+                        ...report,
+                        submittedAt: toDateValue(report.submittedAt),
+                      },
+                    ]),
+                  )
+                : null,
           };
 
           setCaseData(caseInfo);
