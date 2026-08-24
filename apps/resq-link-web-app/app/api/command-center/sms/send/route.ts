@@ -12,6 +12,7 @@ function normalizePhone(value: unknown): string | null {
 
 function normalizeGatewayBaseUrl(url: string): string {
   let clean = (url || '').trim().replace(/\/+$/, '');
+  clean = clean.replace(/\/(messages|message)$/i, '').replace(/\/+$/, '');
   if (clean === 'https://api.sms-gate.app' || clean === 'http://api.sms-gate.app') {
     clean = 'https://api.sms-gate.app/3rdparty/v1';
   }
@@ -76,27 +77,35 @@ export async function POST(request: NextRequest) {
       smsPayload.simSlot = simSlot;
     }
 
-    let gatewayResponse = await fetch(`${baseUrl}/message`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(smsPayload),
-    });
+    const candidateEndpoints = [
+      `${baseUrl}/message?skipPhoneValidation=true`,
+      `${baseUrl}/message`,
+      `${baseUrl}/messages?skipPhoneValidation=true`,
+      `${baseUrl}/messages`,
+    ];
 
-    if (gatewayResponse.status === 404) {
-      gatewayResponse = await fetch(`${baseUrl}/messages`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(smsPayload),
-      });
+    let gatewayResponse: Response | null = null;
+    let gatewayResponseText = '';
+
+    for (const url of candidateEndpoints) {
+      try {
+        gatewayResponse = await fetch(url, {
+          method: 'POST',
+          headers: {
+            Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(smsPayload),
+        });
+
+        gatewayResponseText = await gatewayResponse.text();
+        if (gatewayResponse.ok || gatewayResponse.status === 200 || gatewayResponse.status === 201 || gatewayResponse.status === 204) {
+          break;
+        }
+      } catch (subErr) {
+        console.warn(`[sms-send] Attempt to ${url} failed:`, subErr);
+      }
     }
-
-    const gatewayResponseText = await gatewayResponse.text();
     let gatewayPayload: { id?: string } | null = null;
     try {
       gatewayPayload = gatewayResponseText ? (JSON.parse(gatewayResponseText) as { id?: string }) : null;

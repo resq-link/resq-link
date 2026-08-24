@@ -12,6 +12,7 @@ function normalizePhone(value: unknown): string | null {
 
 function normalizeGatewayBaseUrl(url: string): string {
   let clean = (url || '').trim().replace(/\/+$/, '');
+  clean = clean.replace(/\/(messages|message)$/i, '').replace(/\/+$/, '');
   if (clean === 'https://api.sms-gate.app' || clean === 'http://api.sms-gate.app') {
     clean = 'https://api.sms-gate.app/3rdparty/v1';
   }
@@ -75,7 +76,7 @@ export async function POST(request: NextRequest) {
     const startTime = Date.now();
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
 
     try {
       if (testPhoneNumber) {
@@ -92,35 +93,46 @@ export async function POST(request: NextRequest) {
           smsPayload.simSlot = simSlot;
         }
 
-        // Try /message first, then fallback to /messages
-        let res = await fetch(`${baseUrl}/message`, {
-          method: 'POST',
-          headers: {
-            Authorization: authHeader,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(smsPayload),
-          signal: controller.signal,
-        });
+        // Try /message?skipPhoneValidation=true first, then fallback to /message, then /messages
+        let res: Response | null = null;
+        const candidateEndpoints = [
+          `${baseUrl}/message?skipPhoneValidation=true`,
+          `${baseUrl}/message`,
+          `${baseUrl}/messages?skipPhoneValidation=true`,
+          `${baseUrl}/messages`,
+        ];
 
-        if (res.status === 404) {
-          res = await fetch(`${baseUrl}/messages`, {
-            method: 'POST',
-            headers: {
-              Authorization: authHeader,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(smsPayload),
-            signal: controller.signal,
-          });
+        let lastStatus = 0;
+        let lastResText = '';
+
+        for (const url of candidateEndpoints) {
+          try {
+            res = await fetch(url, {
+              method: 'POST',
+              headers: {
+                Authorization: authHeader,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(smsPayload),
+              signal: controller.signal,
+            });
+
+            lastStatus = res.status;
+            lastResText = await res.text();
+
+            if (res.ok || res.status === 200 || res.status === 201 || res.status === 204) {
+              break;
+            }
+          } catch (fetchSubErr) {
+            console.warn(`[sms-gateway-test] Attempt to ${url} failed:`, fetchSubErr);
+          }
         }
 
         clearTimeout(timeoutId);
         const latencyMs = Date.now() - startTime;
-        const resText = await res.text();
 
-        if (!res.ok) {
-          throw new Error(sanitizeGatewayErrorMessage(res.status, resText));
+        if (!res || !res.ok) {
+          throw new Error(sanitizeGatewayErrorMessage(lastStatus || 500, lastResText));
         }
 
         await docRef.set({
