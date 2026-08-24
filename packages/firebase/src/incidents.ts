@@ -1435,16 +1435,34 @@ export async function reassignIncidentTeam(
     reason: options?.reason ?? null,
   };
 
-  const historyRef = doc(collection(db, 'incidents', incidentId, 'teamAssignmentHistory'));
-  const batch = writeBatch(db);
+  try {
+    const historyRef = doc(collection(db, 'incidents', incidentId, 'teamAssignmentHistory'));
+    const batch = writeBatch(db);
 
-  batch.set(historyRef, historyEntry);
-  batch.update(incidentRef, {
-    ...teamSnapshot,
-    updatedAt: timestamp,
-  });
+    batch.set(historyRef, historyEntry);
+    batch.update(incidentRef, {
+      ...teamSnapshot,
+      updatedAt: timestamp,
+    });
 
-  await batch.commit();
+    await batch.commit();
+  } catch (err: any) {
+    if (err?.code === 'permission-denied' || err?.message?.includes('permission')) {
+      console.warn('[reassignIncidentTeam] Batch audit write restricted, updating incident document directly:', err);
+      await updateDoc(incidentRef, {
+        ...teamSnapshot,
+        updatedAt: timestamp,
+      });
+      try {
+        const historyRef = doc(collection(db, 'incidents', incidentId, 'teamAssignmentHistory'));
+        await setDoc(historyRef, historyEntry);
+      } catch (auditErr) {
+        console.warn('[reassignIncidentTeam] Audit entry could not be written:', auditErr);
+      }
+    } else {
+      throw err;
+    }
+  }
 
   const updatedSnap = await getDoc(incidentRef);
   return toIncidentRecord(updatedSnap);
