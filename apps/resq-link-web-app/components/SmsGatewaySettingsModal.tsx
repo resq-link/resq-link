@@ -170,11 +170,11 @@ export default function SmsGatewaySettingsModal({ isOpen, onClose }: SmsGatewayS
         throw new Error(`Server returned status ${res.status}: ${text.slice(0, 100) || res.statusText}`);
       }
 
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to save settings');
+      if (data.webhookRegistered) {
+        toast.success('Settings saved & Inbound Webhook automatically registered with phone!');
+      } else {
+        toast.success('SMS Gateway settings saved successfully.');
       }
-
-      toast.success('SMS Gateway settings saved successfully.');
       if (data.settings) {
         setWebhookUrl(data.settings.webhookUrl || webhookUrl);
         setHasPassword(data.settings.hasPassword);
@@ -516,11 +516,12 @@ export default function SmsGatewaySettingsModal({ isOpen, onClose }: SmsGatewayS
                       </div>
                       <div className="pt-1.5 border-t border-primary-900/40">
                         <p className="font-semibold text-primary-200">Inbound SMS Webhook Setup:</p>
-                        <ol className="list-decimal list-inside space-y-0.5 mt-0.5 text-slate-300">
-                          <li>In the Android app, go to <strong>Settings → Webhooks → Add Webhook</strong>.</li>
-                          <li>Paste the Webhook URL from above.</li>
-                          <li>Select event: <strong>SMS Received (sms:received)</strong>.</li>
-                        </ol>
+                        <p className="text-slate-300 mt-0.5">
+                          Webhooks in the Android SMS Gateway app are registered <strong>automatically via API</strong> when you click <strong>Save Settings</strong> below (no manual typing needed in the app!).
+                        </p>
+                        <p className="text-slate-300 mt-1">
+                          If using Cloud Mode, you can also paste this Webhook URL into your dashboard at <a href="https://sms-gate.app" target="_blank" rel="noreferrer" className="text-primary-400 underline">sms-gate.app</a> under your device&apos;s Webhooks tab.
+                        </p>
                       </div>
                     </div>
                   </div>
