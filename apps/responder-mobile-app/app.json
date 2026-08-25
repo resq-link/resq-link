@@ -34,6 +34,11 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyCWLfP5vbHiFTiDQCG3YVxKu8iehstmo0g"
+        }
+      },
       "permissions": [
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
@@ -122,7 +127,7 @@
         "databaseURL": ""
       },
       "googleMaps": {
-        "apiKey": ""
+        "apiKey": "AIzaSyCWLfP5vbHiFTiDQCG3YVxKu8iehstmo0g"
       },
       "eas": {
         "projectId": "12355ad0-d170-4727-9799-dba31b6d403b"

@@ -49,7 +49,14 @@ const navigationBarPlugin = [
 
 module.exports = ({ config }) => {
   const baseConfig = config;
-  const googleMapsApiKey = getEnv('GOOGLE_MAPS_API_KEY');
+  const googleMapsApiKey =
+    getEnv('GOOGLE_MAPS_API_KEY') ||
+    getEnv('EXPO_PUBLIC_GOOGLE_MAPS_API_KEY') ||
+    getEnv('FIREBASE_API_KEY') ||
+    getEnv('EXPO_PUBLIC_FIREBASE_API_KEY') ||
+    baseConfig.extra?.googleMaps?.apiKey ||
+    baseConfig.android?.config?.googleMaps?.apiKey ||
+    'AIzaSyCWLfP5vbHiFTiDQCG3YVxKu8iehstmo0g';
   const isAndroidBuild = process.env.EAS_BUILD_PLATFORM === 'android';
 
   const plugins = (baseConfig.plugins ?? []).filter((plugin) => {
@@ -61,18 +68,16 @@ module.exports = ({ config }) => {
     plugins.push(navigationBarPlugin);
   }
 
-  const androidConfig = googleMapsApiKey
-    ? {
-        ...baseConfig.android,
-        config: {
-          ...baseConfig.android?.config,
-          googleMaps: {
-            ...baseConfig.android?.config?.googleMaps,
-            apiKey: googleMapsApiKey,
-          },
-        },
-      }
-    : baseConfig.android;
+  const androidConfig = {
+    ...baseConfig.android,
+    config: {
+      ...baseConfig.android?.config,
+      googleMaps: {
+        ...baseConfig.android?.config?.googleMaps,
+        apiKey: googleMapsApiKey,
+      },
+    },
+  };
 
   return {
     ...baseConfig,

@@ -9,7 +9,8 @@ const getConfiguredGoogleMapsKey = () => {
       expoConfig.ios?.config?.googleMapsApiKey ||
       expoConfig.android?.config?.googleMaps?.apiKey ||
       process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY ||
-      ""
+      process.env.EXPO_PUBLIC_FIREBASE_API_KEY ||
+      "AIzaSyCWLfP5vbHiFTiDQCG3YVxKu8iehstmo0g"
   ).trim();
 };
 
@@ -20,9 +21,8 @@ export const hasGoogleMapsApiKey = () => getConfiguredGoogleMapsKey().length > 0
  * iOS uses Apple Maps (MapKit) natively which works reliably on all iOS devices.
  */
 export const canRenderNativeMap = () => {
-  if (Platform.OS === "ios") return true;
-  if (Constants.appOwnership === "expo") return true;
-  return hasGoogleMapsApiKey();
+  if (Platform.OS === "web") return true;
+  return true;
 };
 
 /** @deprecated Use canRenderNativeMap */
