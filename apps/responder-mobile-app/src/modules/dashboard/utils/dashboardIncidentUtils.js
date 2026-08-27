@@ -102,6 +102,16 @@ export function getCompactNextAction(caseData, user) {
     }
   }
 
+  // Resource-dispatch path: responder UID is in assignedResourceIds but has no
+  // responderAssignments slot yet. A peer accepting flips top-level status to
+  // enroute — still show Accept so this officer can accept independently.
+  if (
+    !userAssignment &&
+    caseData.assignedResourceIds?.includes(user.uid)
+  ) {
+    return "Accept";
+  }
+
   // Fallback to legacy single-status structure
   const status = String(caseData.status || "").toLowerCase();
   if (

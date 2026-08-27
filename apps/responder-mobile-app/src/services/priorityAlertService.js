@@ -162,15 +162,25 @@ export function shouldAlertForIncident(incident, responderId, options = {}) {
   if (!options.isOnDuty) return false;
   if (hasResponderAcknowledgedAlert(incident, responderId)) return false;
 
-  const status = String(incident.status || "").toLowerCase();
-  if (
-    status === "enroute" ||
-    status === "on_scene" ||
-    status === "resolved" ||
-    status === "done" ||
-    status === "unresolved"
-  ) {
-    return false;
+  // Multi-responder (same agency): only silence THIS responder's alarm when their
+  // own assignment has moved past "assigned". A peer accepting must not stop
+  // alarms for the other nine officers still waiting to accept.
+  const assignment = responderId
+    ? incident.responderAssignments?.[responderId]
+    : null;
+  if (assignment) {
+    if (assignment.status !== "assigned") return false;
+  } else {
+    const status = String(incident.status || "").toLowerCase();
+    if (
+      status === "enroute" ||
+      status === "on_scene" ||
+      status === "resolved" ||
+      status === "done" ||
+      status === "unresolved"
+    ) {
+      return false;
+    }
   }
 
   const priority = normalizePriority(incident.priority);

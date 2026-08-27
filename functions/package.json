@@ -11,7 +11,7 @@
     "build": "tsc",
     "watch": "tsc --watch",
     "serve": "npm run build && firebase emulators:start --only functions",
-    "deploy": "npm run build && firebase deploy --only functions",
+    "deploy": "npm run build && cross-env FUNCTIONS_DISCOVERY_TIMEOUT=120 firebase deploy --only functions",
     "logs": "firebase functions:log"
   },
   "dependencies": {
@@ -19,6 +19,7 @@
     "firebase-functions": "^6.1.0"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "typescript": "^5.9.3"
   }
 }

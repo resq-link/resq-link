@@ -1045,7 +1045,11 @@ function IntakeContent() {
       const assignedAgencies = extra?.agencies || [responder.agency];
       const responderNames = extra?.responders?.map((r) => r.label) || [responder.label];
 
-      // Elevate civilian report to master INC incident atomically
+      const alreadyElevated = Boolean(report.incidentId);
+
+      // Elevate once with the full responder list. If the report is already linked
+      // to an incident, elevateEmergencyToIncident merges onto that single event
+      // instead of creating duplicate incident documents.
       const incident = await elevateEmergencyToIncident(report.id, {
         priority: priority as any,
         assignedTeamId,
@@ -1080,7 +1084,9 @@ function IntakeContent() {
       );
 
       setPageSuccess(
-        `Report APP-${report.id.slice(-6).toUpperCase()} elevated to master incident ${incident.referenceNumber} and assigned to ${assignedAgencies.join(', ')} (${responder.label}).`,
+        alreadyElevated
+          ? `Responders added to existing incident ${incident.referenceNumber} (${assignedResponderIds.length} assigned · ${assignedAgencies.join(", ")}).`
+          : `Report APP-${report.id.slice(-6).toUpperCase()} elevated to master incident ${incident.referenceNumber} and assigned to ${assignedAgencies.join(", ")} (${assignedResponderIds.length} responder${assignedResponderIds.length === 1 ? "" : "s"}).`,
       );
     
       setTimeout(() => {

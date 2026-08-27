@@ -1025,6 +1025,34 @@ export async function dispatchIncidentResources(
   const existingIds = incident.assignedResourceIds || [];
   const mergedResourceIds = Array.from(new Set([...existingIds, ...normalizedIds, ...boundResponderIds]));
   const assignedAgencies = Array.from(new Set([...(incident.assignedAgencies || []), ...resourceAgencyCodes]));
+
+  // Ensure every newly bound responder gets a per-UID assignment slot so Accept /
+  // alarm / reminders stay independent when multiple officers share an agency.
+  const existingAssignments = incident.responderAssignments || {};
+  const mergedAssignments: Record<string, IncidentResponderAssignment> = { ...existingAssignments };
+  const agencyByResponder = new Map<string, AgencyCode>();
+  resources.forEach(({ resource }) => {
+    const agency = inferAgencyCodeForResource(resource);
+    const ids = normalizeResponderIds(resource);
+    ids.forEach((uid) => {
+      if (!agencyByResponder.has(uid)) agencyByResponder.set(uid, agency);
+    });
+  });
+  boundResponderIds.forEach((uid) => {
+    if (!mergedAssignments[uid]) {
+      const matchingResource = resources.find(({ resource }) =>
+        normalizeResponderIds(resource).includes(uid),
+      );
+      mergedAssignments[uid] = {
+        responderId: uid,
+        agency: agencyByResponder.get(uid) || resourceAgencyCodes[0] || 'OTHER',
+        resourceId: matchingResource?.resource.id || null,
+        resourceName: matchingResource?.resource.name || null,
+        status: 'assigned',
+      };
+    }
+  });
+
   const batch = writeBatch(getFirebaseFirestore());
   const dispatchesRef = collection(getFirebaseFirestore(), 'incidentDispatches');
   const timestamp = Timestamp.now();
@@ -1054,6 +1082,7 @@ export async function dispatchIncidentResources(
   batch.update(incidentRef, {
     assignedAgencies,
     assignedResourceIds: mergedResourceIds,
+    responderAssignments: mergedAssignments,
     status: 'dispatched',
     updatedAt: timestamp,
   });
@@ -1362,6 +1391,178 @@ export async function disassociateReportFromIncident(
 }
 
 /**
+ * Merge additional responders onto an already-elevated incident.
+ * Used when Command Center assigns more same-agency officers without creating
+ * a second incident document for the same civilian report.
+ */
+async function assignRespondersToExistingIncident(
+  incidentId: string,
+  input: {
+    assignedResponderId?: string | null;
+    assignedResponderIds?: string[] | null;
+    responderName?: string | null;
+    responderNames?: string[] | null;
+    assignedAgency?: DispatcherRole | string | null;
+    assignedAgencies?: (AgencyCode | string)[] | null;
+    assignedResourceIds?: string[] | null;
+  },
+  reportId?: string,
+): Promise<IncidentRecord> {
+  const db = getFirebaseFirestore();
+  const incidentRef = doc(db, 'incidents', incidentId);
+  const incidentSnap = await getDoc(incidentRef);
+  if (!incidentSnap.exists()) {
+    throw new Error(
+      `Report is linked to incident ${incidentId}, but that incident was not found.`,
+    );
+  }
+
+  const current = toIncidentRecord(incidentSnap);
+  if (current.resolutionStatus === 'resolved' || current.status === 'resolved') {
+    throw new Error('Cannot assign responders to a resolved incident.');
+  }
+
+  const rawResponderIds = Array.from(
+    new Set(
+      [
+        input.assignedResponderId,
+        ...(Array.isArray(input.assignedResponderIds) ? input.assignedResponderIds : []),
+      ].filter((id): id is string => Boolean(id?.trim())),
+    ),
+  );
+
+  const rawAgencies = Array.from(
+    new Set(
+      [
+        input.assignedAgency,
+        ...(Array.isArray(input.assignedAgencies) ? input.assignedAgencies : []),
+        ...(current.assignedAgencies || []),
+      ].filter((a): a is string => Boolean(a?.trim())),
+    ),
+  );
+
+  const nameByIndex = [
+    ...(Array.isArray(input.responderNames) ? input.responderNames : []),
+  ];
+  if (input.responderName && !nameByIndex.includes(input.responderName)) {
+    nameByIndex.unshift(input.responderName);
+  }
+
+  const agencyByIndex = [
+    ...(Array.isArray(input.assignedAgencies) ? input.assignedAgencies : []),
+  ];
+  if (input.assignedAgency && !agencyByIndex.includes(input.assignedAgency)) {
+    agencyByIndex.unshift(input.assignedAgency);
+  }
+
+  const existingAssignments = current.responderAssignments || {};
+  const mergedAssignments: Record<string, IncidentResponderAssignment> = {
+    ...existingAssignments,
+  };
+
+  rawResponderIds.forEach((rid, index) => {
+    if (mergedAssignments[rid]) return;
+    const agency =
+      (agencyByIndex[index] as AgencyCode | string | undefined) ||
+      (agencyByIndex[0] as AgencyCode | string | undefined) ||
+      'OTHER';
+    const name = nameByIndex[index] || nameByIndex[0] || rid;
+    const resId =
+      (input.assignedResourceIds && input.assignedResourceIds[index]) || null;
+    mergedAssignments[rid] = {
+      responderId: rid,
+      responderName: name,
+      agency,
+      resourceId: resId,
+      status: 'assigned',
+    };
+  });
+
+  let assignedResourceIds = Array.from(
+    new Set([
+      ...(current.assignedResourceIds || []),
+      ...rawResponderIds,
+      ...(Array.isArray(input.assignedResourceIds) ? input.assignedResourceIds : []),
+    ].filter((id): id is string => Boolean(id?.trim()))),
+  );
+
+  for (const responderId of rawResponderIds) {
+    try {
+      const qRes = query(
+        collection(db, 'resources'),
+        where('primaryResponderId', '==', responderId),
+      );
+      const resSnap = await getDocs(qRes);
+      resSnap.docs.forEach((docSnap) => {
+        if (!assignedResourceIds.includes(docSnap.id)) {
+          assignedResourceIds.push(docSnap.id);
+        }
+        const data = docSnap.data();
+        if (mergedAssignments[responderId] && !mergedAssignments[responderId].resourceId) {
+          mergedAssignments[responderId] = {
+            ...mergedAssignments[responderId],
+            resourceId: docSnap.id,
+            resourceName: data.name || null,
+          };
+        }
+      });
+
+      const qRes2 = query(
+        collection(db, 'resources'),
+        where('assignedResponderId', '==', responderId),
+      );
+      const resSnap2 = await getDocs(qRes2);
+      resSnap2.docs.forEach((docSnap) => {
+        if (!assignedResourceIds.includes(docSnap.id)) {
+          assignedResourceIds.push(docSnap.id);
+        }
+      });
+    } catch {
+      // Non-critical resource lookup
+    }
+  }
+
+  const timestamp = Timestamp.now();
+  const hasAnyAssigned = Object.keys(mergedAssignments).length > 0;
+  const updatePayload: Record<string, unknown> = {
+    assignedAgencies: rawAgencies,
+    assignedResourceIds,
+    responderAssignments: mergedAssignments,
+    updatedAt: timestamp,
+  };
+
+  // Do not regress a live multi-responder incident back from enroute/on_scene
+  // just because more officers were added.
+  const liveStatuses = new Set(['enroute', 'on_scene', 'resolved', 'done']);
+  if (!liveStatuses.has(String(current.status || '').toLowerCase())) {
+    updatePayload.status = hasAnyAssigned ? 'dispatched' : 'awaiting_resources';
+  }
+
+  await updateDoc(incidentRef, updatePayload);
+
+  if (reportId) {
+    try {
+      const reportRef = doc(db, 'emergencies', reportId);
+      await updateDoc(reportRef, {
+        assignedResponderIds: Object.keys(mergedAssignments),
+        assignedAgencies: rawAgencies,
+        status: 'active',
+        updatedAt: timestamp,
+      });
+    } catch {
+      // Best-effort report sync
+    }
+  }
+
+  if (hasAnyAssigned) {
+    await updateResourcesForIncidentStatus(incidentId, 'assigned');
+  }
+
+  const updatedSnap = await getDoc(incidentRef);
+  return toIncidentRecord(updatedSnap);
+}
+
+/**
  * Elevate a civilian emergency report to a master incident record atomically.
  */
 export async function elevateEmergencyToIncident(
@@ -1398,6 +1599,16 @@ export async function elevateEmergencyToIncident(
     throw new Error('Civilian report not found.');
   }
   const report = reportSnap.data();
+
+  // Idempotent: if this report was already elevated, merge new responders onto
+  // the existing incident instead of creating a duplicate event document.
+  const existingIncidentId =
+    typeof report.incidentId === 'string' && report.incidentId.trim()
+      ? report.incidentId.trim()
+      : null;
+  if (existingIncidentId) {
+    return assignRespondersToExistingIncident(existingIncidentId, input, reportId);
+  }
 
   // 2. Set up the master incident fields
   const incidentsRef = collection(db, 'incidents');

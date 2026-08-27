@@ -347,10 +347,9 @@ export default function CaseInfoCard({
     isAssignedResponder &&
     (userAssignment
       ? userAssignment.status === "assigned"
-      : caseData.status === "pending" ||
-        caseData.status === "dispatched" ||
-        caseData.status === "awaiting_resources" ||
-        caseData.status === "active");
+      : // Resource-dispatch path with no per-user slot yet: keep Accept visible
+        // even if a peer already flipped top-level status to enroute.
+        true);
 
   const formatDate = (dateString) => {
     if (!dateString) return "Unknown";

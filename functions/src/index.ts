@@ -45,8 +45,18 @@ const isOpen = (incident: IncidentData): boolean =>
   incident?.resolutionStatus !== 'resolved' &&
   incident?.resolutionStatus !== 'cancelled';
 
-/** Skip cases the responder is already working — no need to keep alarming. */
+/**
+ * Skip cases only when every assigned responder has moved past "assigned".
+ * One peer accepting (top-level status → enroute) must not stop reminders for
+ * other officers in the same agency who have not accepted yet.
+ */
 const isStillAssignable = (incident: IncidentData): boolean => {
+  const assignments = incident?.responderAssignments;
+  if (assignments && typeof assignments === 'object' && Object.keys(assignments).length > 0) {
+    return Object.values(assignments as Record<string, { status?: string }>).some(
+      (a) => String(a?.status ?? '').toLowerCase() === 'assigned',
+    );
+  }
   const status = String(incident?.status ?? '').toLowerCase();
   return !['enroute', 'on_scene', 'resolved', 'done', 'unresolved'].includes(status);
 };
@@ -216,7 +226,22 @@ export const resendUnacknowledgedAlerts = onSchedule(
           : []
       );
 
-      const pending = assigned.filter((id) => id && !acknowledged.has(id));
+      const assignments =
+        incident.responderAssignments && typeof incident.responderAssignments === 'object'
+          ? incident.responderAssignments
+          : null;
+
+      // Prefer per-responder assignment status so officers who already accepted
+      // (enroute/on_scene) are not re-alarmed when peers are still pending.
+      const pending = assigned.filter((id) => {
+        if (!id || acknowledged.has(id)) return false;
+        if (assignments && assignments[id]) {
+          return String(assignments[id].status ?? '').toLowerCase() === 'assigned';
+        }
+        // No assignment slot (legacy / resource id in the mixed array): keep
+        // reminding until acknowledged — loadResponderTokens drops non-uids.
+        return true;
+      });
       if (pending.length === 0) continue;
 
       reminders += await alertResponders(doc.id, incident, pending, true);
