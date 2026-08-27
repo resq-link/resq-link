@@ -32,6 +32,11 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyCWLfP5vbHiFTiDQCG3YVxKu8iehstmo0g"
+        }
+      },
       "permissions": [
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.ACCESS_COARSE_LOCATION",
@@ -101,6 +106,9 @@
       "apiUrl": "https://www.resq-link.com",
       "otpApiUrl": "https://www.resq-link.com",
       "uiMode": false,
+      "googleMaps": {
+        "apiKey": "AIzaSyCWLfP5vbHiFTiDQCG3YVxKu8iehstmo0g"
+      },
       "eas": {
         "projectId": "6f35acd3-b528-4968-ad8d-c21f0162886d"
       }
