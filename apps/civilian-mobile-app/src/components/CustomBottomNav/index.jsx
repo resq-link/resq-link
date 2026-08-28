@@ -74,14 +74,9 @@ function NavTab({ item, active, onPress, theme }) {
     });
   }, [active, activeProgress]);
 
-  const pillStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(activeProgress.value, [0, 1], [0, 1]),
-    transform: [{ scale: interpolate(activeProgress.value, [0, 1], [0.88, 1]) }],
-  }));
-
   const iconStyle = useAnimatedStyle(() => ({
     transform: [
-      { scale: interpolate(activeProgress.value, [0, 1], [1, 1.06]) },
+      { scale: interpolate(activeProgress.value, [0, 1], [1, 1.08]) },
     ],
   }));
 
@@ -116,13 +111,6 @@ function NavTab({ item, active, onPress, theme }) {
       hitSlop={{ top: 4, bottom: 4, left: 2, right: 2 }}
     >
       <View style={styles.tabInner}>
-        <Animated.View
-          style={[
-            styles.activePill,
-            { backgroundColor: theme.activePill },
-            pillStyle,
-          ]}
-        />
         <Animated.View style={iconStyle}>
           <Icon size={ICON_SIZE} color={iconColor} strokeWidth={ICON_STROKE} />
         </Animated.View>
@@ -130,7 +118,7 @@ function NavTab({ item, active, onPress, theme }) {
           style={[
             styles.tabLabel,
             {
-              color: active ? theme.activeLabel : theme.inactiveLabel,
+              color: active ? theme.activeIcon : theme.inactiveLabel,
               fontFamily: active ? "Inter_600SemiBold" : "Inter_400Regular",
             },
             labelStyle,
@@ -263,12 +251,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     minWidth: 40,
     minHeight: TAB_MIN_TOUCH,
-  },
-  activePill: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 14,
-    marginHorizontal: 2,
-    marginVertical: 1,
   },
   tabLabel: {
     marginTop: 3,

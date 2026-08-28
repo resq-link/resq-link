@@ -8,7 +8,7 @@ import {
   Linking,
   Platform,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Phone,
   PhoneOff,
@@ -16,15 +16,14 @@ import {
   MicOff,
   Volume2,
   VolumeX,
-  Radio,
-  Clock,
-  ShieldAlert,
+  User,
   AlertCircle,
+  Radio,
 } from "lucide-react-native";
 import {
   endIncidentCallSession,
-  markIncidentCallConnected,
 } from "@packages/firebase";
+import { useLiveKitCall } from "../hooks/useLiveKitCall";
 
 export default function CivilianCallModal({
   visible,
@@ -34,11 +33,27 @@ export default function CivilianCallModal({
   onAnswer,
   onDecline,
 }) {
-  const [isConnected, setIsConnected] = useState(!isIncoming);
-  const [isMuted, setIsMuted] = useState(false);
-  const [isSpeakerOn, setIsSpeakerOn] = useState(true);
+  const insets = useSafeAreaInsets();
+  const [isAnswered, setIsAnswered] = useState(!isIncoming);
   const [duration, setDuration] = useState(0);
   const timerRef = useRef(null);
+
+  const shouldConnectLiveKit = visible && (!isIncoming || isAnswered);
+
+  const {
+    isConnecting,
+    isConnected,
+    isMuted,
+    isSpeakerOn,
+    connectionError,
+    roomState,
+    toggleMute,
+    toggleSpeaker,
+    disconnect,
+  } = useLiveKitCall({
+    session: callSession,
+    isActive: shouldConnectLiveKit,
+  });
 
   useEffect(() => {
     if (visible && isConnected) {
@@ -60,10 +75,21 @@ export default function CivilianCallModal({
   }, [visible, isConnected]);
 
   const handleEndCall = async () => {
+    await disconnect();
     if (callSession?.id) {
       await endIncidentCallSession(callSession.id).catch(() => undefined);
     }
     onClose?.();
+  };
+
+  const handleAnswerCall = () => {
+    setIsAnswered(true);
+    onAnswer?.();
+  };
+
+  const handleDeclineCall = async () => {
+    await disconnect();
+    onDecline?.();
   };
 
   const handleCallHotline = () => {
@@ -80,119 +106,166 @@ export default function CivilianCallModal({
 
   const targetName =
     callSession?.targetName ||
-    (callSession?.targetRole === "responder" ? "Assigned Response Unit" : "Command Center Dispatch");
-
-  const title = isIncoming
-    ? "Incoming Emergency Call"
-    : callSession?.callType === "direct_emergency"
-    ? "Direct SOS Emergency Call"
-    : `Emergency Call • ${callSession?.incidentReferenceNumber || "Active Incident"}`;
+    (callSession?.targetRole === "responder"
+      ? "Assigned Response Unit"
+      : "Command Center Dispatch");
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={handleEndCall}>
-      <LinearGradient colors={["#0F172A", "#020617"]} style={styles.container}>
-        {/* Top Header */}
-        <View style={styles.topBadgeRow}>
-          <View style={styles.badge}>
-            <Radio size={14} color="#34D399" />
-            <Text style={styles.badgeText}>{title}</Text>
+    <Modal
+      visible={visible}
+      animationType="fade"
+      transparent={false}
+      onRequestClose={handleEndCall}
+      statusBarTranslucent
+    >
+      <View
+        style={[
+          styles.container,
+          {
+            paddingTop: Math.max(insets.top, Platform.OS === "ios" ? 44 : 24) + 24,
+            paddingBottom: Math.max(insets.bottom, 20) + 16,
+          },
+        ]}
+      >
+        {/* Top Caller Info (Avatar + Name + Timer) */}
+        <View style={styles.topCallerRow}>
+          <View style={[styles.avatarCircle, isConnected && styles.avatarCircleConnected]}>
+            <User size={34} color="#FFFFFF" />
+          </View>
+          <View style={styles.callerDetails}>
+            <Text style={styles.callerName} numberOfLines={1}>
+              {targetName}
+            </Text>
+            <Text style={[styles.timerText, isConnected && styles.timerTextConnected]}>
+              {isIncoming && !isAnswered
+                ? "Incoming Call..."
+                : isConnecting
+                ? "Connecting audio..."
+                : roomState === "reconnecting"
+                ? "Reconnecting voice link..."
+                : isConnected
+                ? formatTime(duration)
+                : "Call Ended"}
+            </Text>
           </View>
         </View>
 
-        {/* Center Avatar & Status */}
-        <View style={styles.centerSection}>
-          <View style={[styles.avatarCircle, isConnected && styles.avatarConnected]}>
-            <ShieldAlert size={48} color={isConnected ? "#34D399" : "#38BDF8"} />
+        {connectionError ? (
+          <View style={styles.errorContainer}>
+            <AlertCircle size={16} color="#F87171" />
+            <Text style={styles.errorText} numberOfLines={2}>
+              {connectionError}
+            </Text>
           </View>
+        ) : null}
 
-          <Text style={styles.calleeName}>{targetName}</Text>
-          <Text style={styles.calleeSub}>
-            {isIncoming ? "Emergency Response Team is calling you" : "High-Priority Emergency Voice Link"}
-          </Text>
-
-          <View style={styles.timerRow}>
-            {isIncoming && !isConnected ? (
-              <Text style={styles.ringingText}>Incoming Call...</Text>
-            ) : isConnected ? (
-              <View style={styles.connectedTimer}>
-                <Clock size={16} color="#34D399" />
-                <Text style={styles.timerText}>{formatTime(duration)}</Text>
-              </View>
-            ) : (
-              <Text style={styles.connectingText}>Connecting to emergency dispatch...</Text>
-            )}
-          </View>
-        </View>
-
-        {/* Bottom Control Bar */}
+        {/* Bottom Section with Controls (Mute - End Call - Speaker) */}
         <View style={styles.bottomSection}>
-          {isIncoming && !isConnected ? (
-            /* Incoming Call Actions */
+          {isIncoming && !isAnswered ? (
             <View style={styles.incomingActions}>
-              <Pressable
-                onPress={onDecline}
-                style={[styles.callBtn, styles.declineBtn]}
-                accessibilityRole="button"
-                accessibilityLabel="Decline incoming call"
-              >
-                <PhoneOff size={28} color="#FFFFFF" />
-                <Text style={styles.btnLabel}>Decline</Text>
-              </Pressable>
+              <View style={styles.actionItem}>
+                <Pressable
+                  onPress={handleDeclineCall}
+                  style={({ pressed }) => [
+                    styles.endCallButton,
+                    styles.declineButton,
+                    pressed && { opacity: 0.85 },
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Decline call"
+                >
+                  <PhoneOff size={32} color="#FFFFFF" />
+                </Pressable>
+                <Text style={styles.actionLabel}>Decline</Text>
+              </View>
 
-              <Pressable
-                onPress={onAnswer}
-                style={[styles.callBtn, styles.answerBtn]}
-                accessibilityRole="button"
-                accessibilityLabel="Answer incoming call"
-              >
-                <Phone size={28} color="#FFFFFF" />
-                <Text style={styles.btnLabel}>Answer</Text>
-              </Pressable>
+              <View style={styles.actionItem}>
+                <Pressable
+                  onPress={handleAnswerCall}
+                  style={({ pressed }) => [
+                    styles.endCallButton,
+                    styles.answerButton,
+                    pressed && { opacity: 0.85 },
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Answer call"
+                >
+                  <Phone size={32} color="#FFFFFF" />
+                </Pressable>
+                <Text style={styles.actionLabel}>Answer</Text>
+              </View>
             </View>
           ) : (
-            /* Active Call Controls */
-            <View style={styles.activeActions}>
+            <View style={styles.activeActionsRow}>
               {/* Mute Button */}
-              <Pressable
-                onPress={() => setIsMuted((p) => !p)}
-                style={[styles.controlBtn, isMuted && styles.controlBtnActive]}
-                accessibilityRole="button"
-                accessibilityLabel={isMuted ? "Unmute microphone" : "Mute microphone"}
-              >
-                {isMuted ? <MicOff size={24} color="#EF4444" /> : <Mic size={24} color="#F8FAFC" />}
-                <Text style={styles.controlBtnText}>{isMuted ? "Muted" : "Mute"}</Text>
-              </Pressable>
+              <View style={styles.controlItem}>
+                <Pressable
+                  onPress={toggleMute}
+                  disabled={!isConnected}
+                  style={({ pressed }) => [
+                    styles.controlButton,
+                    isMuted && styles.controlButtonActive,
+                    pressed && styles.controlButtonPressed,
+                    !isConnected && { opacity: 0.5 },
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={isMuted ? "Unmute microphone" : "Mute microphone"}
+                >
+                  {isMuted ? (
+                    <MicOff size={28} color="#EF4444" />
+                  ) : (
+                    <Mic size={28} color="#FFFFFF" />
+                  )}
+                </Pressable>
+                <Text style={styles.controlLabel}>mute</Text>
+              </View>
 
-              {/* End Call Button */}
-              <Pressable
-                onPress={handleEndCall}
-                style={[styles.callBtn, styles.hangUpBtn]}
-                accessibilityRole="button"
-                accessibilityLabel="End emergency call"
-              >
-                <PhoneOff size={28} color="#FFFFFF" />
-              </Pressable>
+              {/* End Call Button (Center) */}
+              <View style={styles.controlItem}>
+                <Pressable
+                  onPress={handleEndCall}
+                  style={({ pressed }) => [
+                    styles.endCallButton,
+                    pressed && { opacity: 0.85, transform: [{ scale: 0.96 }] },
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel="End call"
+                >
+                  <PhoneOff size={32} color="#FFFFFF" />
+                </Pressable>
+                <Text style={[styles.controlLabel, { opacity: 0 }]}>end</Text>
+              </View>
 
-              {/* Speakerphone Toggle */}
-              <Pressable
-                onPress={() => setIsSpeakerOn((p) => !p)}
-                style={[styles.controlBtn, isSpeakerOn && styles.controlBtnActive]}
-                accessibilityRole="button"
-                accessibilityLabel={isSpeakerOn ? "Speaker on" : "Speaker off"}
-              >
-                {isSpeakerOn ? <Volume2 size={24} color="#34D399" /> : <VolumeX size={24} color="#F8FAFC" />}
-                <Text style={styles.controlBtnText}>{isSpeakerOn ? "Speaker" : "Ear"}</Text>
-              </Pressable>
+              {/* Speaker Button */}
+              <View style={styles.controlItem}>
+                <Pressable
+                  onPress={toggleSpeaker}
+                  style={({ pressed }) => [
+                    styles.controlButton,
+                    isSpeakerOn && styles.controlButtonActive,
+                    pressed && styles.controlButtonPressed,
+                  ]}
+                  accessibilityRole="button"
+                  accessibilityLabel={isSpeakerOn ? "Speaker on" : "Speaker off"}
+                >
+                  {isSpeakerOn ? (
+                    <Volume2 size={28} color="#34D399" />
+                  ) : (
+                    <VolumeX size={28} color="#FFFFFF" />
+                  )}
+                </Pressable>
+                <Text style={styles.controlLabel}>speaker</Text>
+              </View>
             </View>
           )}
 
-          {/* Cellular Fallback Link */}
+          {/* Hotline Fallback */}
           <Pressable onPress={handleCallHotline} style={styles.hotlineFallback}>
-            <AlertCircle size={13} color="#94A3B8" />
-            <Text style={styles.hotlineText}>Having connection issues? Tap to dial 911 directly</Text>
+            <AlertCircle size={13} color="#6B7280" />
+            <Text style={styles.hotlineText}>Tap to dial 911 hotline directly</Text>
           </Pressable>
         </View>
-      </LinearGradient>
+      </View>
     </Modal>
   );
 }
@@ -200,167 +273,149 @@ export default function CivilianCallModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === "ios" ? 60 : 40,
-    paddingBottom: 40,
+    backgroundColor: "#22252A",
     paddingHorizontal: 24,
     justifyContent: "space-between",
   },
-  topBadgeRow: {
-    alignItems: "center",
-  },
-  badge: {
+  topCallerRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.15)",
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#E2E8F0",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  centerSection: {
-    alignItems: "center",
-    marginVertical: 40,
+    marginTop: 12,
   },
   avatarCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: "rgba(56, 189, 248, 0.1)",
-    borderWidth: 2,
-    borderColor: "rgba(56, 189, 248, 0.3)",
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#363A43",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 24,
+    marginRight: 16,
   },
-  avatarConnected: {
-    backgroundColor: "rgba(52, 211, 153, 0.12)",
-    borderColor: "rgba(52, 211, 153, 0.5)",
+  avatarCircleConnected: {
+    borderWidth: 2,
+    borderColor: "#10B981",
+    backgroundColor: "#064E3B",
   },
-  calleeName: {
+  callerDetails: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  callerName: {
     fontSize: 22,
-    fontWeight: "800",
-    color: "#F8FAFC",
-    textAlign: "center",
-    letterSpacing: -0.3,
-  },
-  calleeSub: {
-    fontSize: 13,
-    color: "#94A3B8",
-    textAlign: "center",
-    marginTop: 6,
-  },
-  timerRow: {
-    marginTop: 20,
-  },
-  connectedTimer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 14,
-    backgroundColor: "rgba(52, 211, 153, 0.15)",
-    borderWidth: 1,
-    borderColor: "rgba(52, 211, 153, 0.3)",
+    fontWeight: "700",
+    color: "#FFFFFF",
+    letterSpacing: -0.2,
+    marginBottom: 4,
   },
   timerText: {
-    fontSize: 16,
-    fontWeight: "800",
-    color: "#34D399",
-    fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
-  },
-  ringingText: {
     fontSize: 14,
-    fontWeight: "700",
-    color: "#38BDF8",
+    color: "#9EA3AE",
+    fontWeight: "500",
   },
-  connectingText: {
-    fontSize: 13,
-    color: "#FBBF24",
-    fontStyle: "italic",
+  timerTextConnected: {
+    color: "#34D399",
+    fontWeight: "600",
+  },
+  errorContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(239, 68, 68, 0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(239, 68, 68, 0.4)",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginVertical: 12,
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 12,
+    color: "#F87171",
   },
   bottomSection: {
     alignItems: "center",
+    marginBottom: 20,
+  },
+  activeActionsRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-around",
+    width: "100%",
+    paddingHorizontal: 12,
+    marginBottom: 20,
+  },
+  controlItem: {
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 76,
+  },
+  controlButton: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: "#363A43",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  controlButtonActive: {
+    backgroundColor: "#424854",
+  },
+  controlButtonPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.96 }],
+  },
+  controlLabel: {
+    fontSize: 13,
+    color: "#9EA3AE",
+    fontWeight: "500",
+    marginTop: 8,
+    textAlign: "center",
+    textTransform: "lowercase",
   },
   incomingActions: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-around",
     width: "100%",
-    marginBottom: 24,
+    marginBottom: 20,
   },
-  activeActions: {
-    flexDirection: "row",
+  actionItem: {
     alignItems: "center",
-    justifyContent: "space-between",
-    width: "100%",
-    paddingHorizontal: 16,
-    marginBottom: 24,
   },
-  controlBtn: {
-    alignItems: "center",
-    justifyContent: "center",
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: "rgba(255, 255, 255, 0.08)",
-  },
-  controlBtnActive: {
-    backgroundColor: "rgba(255, 255, 255, 0.16)",
-  },
-  controlBtnText: {
-    fontSize: 11,
+  actionLabel: {
+    color: "#FFFFFF",
+    fontSize: 12,
     fontWeight: "600",
-    color: "#CBD5E1",
-    marginTop: 4,
+    marginTop: 8,
   },
-  callBtn: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+  answerButton: {
+    backgroundColor: "#10B981",
+  },
+  declineButton: {
+    backgroundColor: "#EF4444",
+  },
+  endCallButton: {
+    width: 74,
+    height: 74,
+    borderRadius: 37,
+    backgroundColor: "#EF4444",
     alignItems: "center",
     justifyContent: "center",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
+    shadowColor: "#EF4444",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
     shadowRadius: 10,
     elevation: 8,
-  },
-  hangUpBtn: {
-    backgroundColor: "#EF4444",
-    shadowColor: "#EF4444",
-  },
-  answerBtn: {
-    backgroundColor: "#10B981",
-    shadowColor: "#10B981",
-  },
-  declineBtn: {
-    backgroundColor: "#EF4444",
-    shadowColor: "#EF4444",
-  },
-  btnLabel: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#FFFFFF",
-    marginTop: 2,
   },
   hotlineFallback: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    marginTop: 8,
+    marginTop: 12,
   },
   hotlineText: {
-    fontSize: 11,
-    color: "#94A3B8",
-    textDecorationLine: "underline",
+    fontSize: 12,
+    color: "#6B7280",
   },
 });

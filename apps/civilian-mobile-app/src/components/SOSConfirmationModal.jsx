@@ -12,8 +12,7 @@ import useSOSStore from "@/stores/sosStore";
 import { useAppTheme } from "@/hooks/useAppTheme";
 
 export default function SOSConfirmationModal() {
-  const { confirmVisible, secondsLeft, closeConfirmation, confirm } =
-    useSOSStore();
+  const { confirmVisible, closeConfirmation, confirm } = useSOSStore();
   const { isLight } = useAppTheme();
 
   const backdrop = isLight ? "rgba(13, 15, 18, 0.55)" : "rgba(0, 0, 0, 0.72)";
@@ -48,13 +47,6 @@ export default function SOSConfirmationModal() {
             confirm.
           </Text>
 
-          <View style={styles.timerWrap}>
-            <Text style={styles.timerNumber}>{secondsLeft}</Text>
-            <Text style={[styles.timerLabel, { color: bodyColor }]}>
-              seconds to confirm
-            </Text>
-          </View>
-
           <Pressable
             onPress={confirm}
             style={({ pressed }) => [
@@ -88,12 +80,6 @@ export default function SOSConfirmationModal() {
               Cancel
             </Text>
           </Pressable>
-
-          {secondsLeft <= 3 ? (
-            <Text style={styles.urgencyHint}>
-              Cancelling in {secondsLeft}s…
-            </Text>
-          ) : null}
         </View>
       </View>
     </Modal>
@@ -113,7 +99,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     paddingHorizontal: 24,
     paddingTop: 28,
-    paddingBottom: 20,
+    paddingBottom: 24,
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 12 },
@@ -140,22 +126,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     textAlign: "center",
-    marginBottom: 20,
-  },
-  timerWrap: {
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  timerNumber: {
-    fontFamily: "Inter_700Bold",
-    fontSize: 48,
-    color: "#FF3B30",
-    lineHeight: 52,
-  },
-  timerLabel: {
-    fontFamily: "Inter_400Regular",
-    fontSize: 13,
-    marginTop: 2,
+    marginBottom: 24,
   },
   sendButton: {
     width: "100%",
@@ -190,10 +161,5 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_600SemiBold",
     fontSize: 15,
   },
-  urgencyHint: {
-    marginTop: 12,
-    fontFamily: "Inter_400Regular",
-    fontSize: 12,
-    color: "#FF3B30",
-  },
 });
+

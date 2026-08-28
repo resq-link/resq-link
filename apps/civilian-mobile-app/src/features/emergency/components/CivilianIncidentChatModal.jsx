@@ -9,11 +9,11 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   Image as RNImage,
   Alert,
   ActivityIndicator,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Phone,
   Image as ImageIcon,
@@ -41,6 +41,7 @@ export default function CivilianIncidentChatModal({
   incident,
   user,
 }) {
+  const insets = useSafeAreaInsets();
   const { colors } = useAppTheme();
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState("");
@@ -276,79 +277,86 @@ export default function CivilianIncidentChatModal({
   const canSend = Boolean(inputText.trim()) && !isSending && !isUploadingImage;
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
-      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background || "#F8F9FA" }]}>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      transparent={false}
+      onRequestClose={onClose}
+      statusBarTranslucent
+    >
+      <View style={[styles.modalRoot, { backgroundColor: colors.background || "#F8F9FA" }]}>
+        {/* Header */}
+        <View
+          style={[
+            styles.header,
+            {
+              backgroundColor: colors.background || "#F8F9FA",
+              borderBottomColor: colors.border || "rgba(0, 0, 0, 0.05)",
+              paddingTop: Math.max(insets.top, Platform.OS === "ios" ? 12 : 8) + 4,
+            },
+          ]}
+        >
+          {/* Left: Back / Close & Profile with Online Dot */}
+          <View style={styles.headerLeftGroup}>
+            <Pressable
+              onPress={onClose}
+              style={styles.backBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Close chat"
+              hitSlop={8}
+            >
+              <ChevronLeft size={24} color={colors.text || "#1E293B"} strokeWidth={2.4} />
+            </Pressable>
+
+            <View style={styles.avatarWrap}>
+              <RNImage
+                source={{ uri: DEFAULT_AVATAR }}
+                style={styles.avatarImage}
+                defaultSource={{ uri: DEFAULT_AVATAR }}
+              />
+              {/* Online Indicator Green Badge */}
+              <View style={styles.onlineBadge} />
+            </View>
+
+            <View style={styles.nameColumn}>
+              <Text
+                style={[styles.nameText, { color: colors.text || "#1E293B" }]}
+                numberOfLines={1}
+              >
+                {headerDisplayName}
+              </Text>
+              <Text style={[styles.onlineText, { color: colors.textSecondary || "#64748B" }]}>
+                Online
+              </Text>
+            </View>
+          </View>
+
+          {/* Right: Call Button Only */}
+          <View style={styles.headerRightGroup}>
+            <Pressable
+              onPress={handleStartCall}
+              style={({ pressed }) => [
+                styles.headerActionBtn,
+                {
+                  backgroundColor: colors.card || "#FFFFFF",
+                  borderColor: colors.border || "#E5E7EB",
+                },
+                pressed && styles.headerActionBtnPressed,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="Call dispatcher"
+              hitSlop={6}
+            >
+              <Phone size={19} color={colors.text || "#1E293B"} strokeWidth={2.2} />
+            </Pressable>
+          </View>
+        </View>
+
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
           style={[styles.container, { backgroundColor: colors.background || "#F8F9FA" }]}
         >
-          {/* Header */}
-          <View
-            style={[
-              styles.header,
-              {
-                backgroundColor: colors.background || "#F8F9FA",
-                borderBottomColor: colors.border || "rgba(0, 0, 0, 0.05)",
-              },
-            ]}
-          >
-            {/* Left: Back / Close & Profile with Online Dot */}
-            <View style={styles.headerLeftGroup}>
-              <Pressable
-                onPress={onClose}
-                style={styles.backBtn}
-                accessibilityRole="button"
-                accessibilityLabel="Close chat"
-                hitSlop={8}
-              >
-                <ChevronLeft size={24} color={colors.text || "#1E293B"} strokeWidth={2.4} />
-              </Pressable>
-
-              <View style={styles.avatarWrap}>
-                <RNImage
-                  source={{ uri: DEFAULT_AVATAR }}
-                  style={styles.avatarImage}
-                  defaultSource={{ uri: DEFAULT_AVATAR }}
-                />
-                {/* Online Indicator Green Badge */}
-                <View style={styles.onlineBadge} />
-              </View>
-
-              <View style={styles.nameColumn}>
-                <Text
-                  style={[styles.nameText, { color: colors.text || "#1E293B" }]}
-                  numberOfLines={1}
-                >
-                  {headerDisplayName}
-                </Text>
-                <Text style={[styles.onlineText, { color: colors.textSecondary || "#64748B" }]}>
-                  Online
-                </Text>
-              </View>
-            </View>
-
-            {/* Right: Call Button Only */}
-            <View style={styles.headerRightGroup}>
-              <Pressable
-                onPress={handleStartCall}
-                style={({ pressed }) => [
-                  styles.headerActionBtn,
-                  {
-                    backgroundColor: colors.card || "#FFFFFF",
-                    borderColor: colors.border || "#E5E7EB",
-                  },
-                  pressed && styles.headerActionBtnPressed,
-                ]}
-                accessibilityRole="button"
-                accessibilityLabel="Call dispatcher"
-                hitSlop={6}
-              >
-                <Phone size={19} color={colors.text || "#1E293B"} strokeWidth={2.2} />
-              </Pressable>
-            </View>
-          </View>
-
           {/* Messages Stream */}
           <FlatList
             ref={flatListRef}
@@ -384,6 +392,7 @@ export default function CivilianIncidentChatModal({
               {
                 backgroundColor: colors.background || "#F8F9FA",
                 borderTopColor: colors.border || "rgba(0, 0, 0, 0.05)",
+                paddingBottom: Math.max(insets.bottom, 10),
               },
             ]}
           >
@@ -445,7 +454,7 @@ export default function CivilianIncidentChatModal({
             </Pressable>
           </View>
         </KeyboardAvoidingView>
-      </SafeAreaView>
+      </View>
 
       {/* Voice Call Modal */}
       <CivilianCallModal
@@ -476,7 +485,7 @@ export default function CivilianIncidentChatModal({
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  modalRoot: {
     flex: 1,
   },
   container: {

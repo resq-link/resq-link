@@ -165,6 +165,9 @@ export const apiConfig = {
     responders: {
       locations: '/api/responders/locations',
     },
+    calls: {
+      token: '/api/calls/token',
+    },
   },
 };
 
