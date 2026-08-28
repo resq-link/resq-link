@@ -805,6 +805,49 @@ export function subscribeToEmergencyReport(
   }
 }
 
+/**
+ * Subscribe to real-time emergency reports for a specific user.
+ */
+export function subscribeToUserEmergencies(
+  userId: string,
+  callback: (reports: EmergencyReport[]) => void,
+  options?: { limitCount?: number; onError?: (error: Error) => void }
+): () => void {
+  try {
+    if (!userId) {
+      callback([]);
+      return () => {};
+    }
+
+    const reportsRef = collection(getFirebaseFirestore(), 'emergencies');
+    const q = query(
+      reportsRef,
+      where('userId', '==', userId),
+      limit(options?.limitCount ? options.limitCount * 2 : 50)
+    );
+
+    return onSnapshot(
+      q,
+      (snapshot) => {
+        const reports = sortByCreatedAtDesc(snapshot.docs.map(convertFirestoreDoc));
+        if (options?.limitCount) {
+          callback(reports.slice(0, options.limitCount));
+        } else {
+          callback(reports);
+        }
+      },
+      (error) => {
+        options?.onError?.(error instanceof Error ? error : new Error(String(error)));
+        callback([]);
+      }
+    );
+  } catch (error) {
+    options?.onError?.(error instanceof Error ? error : new Error(String(error)));
+    callback([]);
+    return () => {};
+  }
+}
+
 export async function assignResponderToEmergency(
   reportId: string,
   assignment: {

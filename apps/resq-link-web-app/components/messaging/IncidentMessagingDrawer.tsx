@@ -187,17 +187,55 @@ export default function IncidentMessagingDrawer({
                       </span>
                     </div>
 
-                    <div
-                      className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-md leading-relaxed ${
-                        isDispatcher
-                          ? 'bg-sky-600 text-white rounded-br-none'
-                          : isResponder
-                          ? 'bg-amber-950/80 border border-amber-800 text-amber-100 rounded-bl-none'
-                          : 'bg-slate-800 text-slate-100 rounded-bl-none border border-slate-700/80'
-                      }`}
-                    >
-                      {msg.text}
-                    </div>
+                    {(() => {
+                      const displayImageUrl =
+                        msg.imageUrl ||
+                        (msg as any).imageUri ||
+                        (msg as any).photoUrl ||
+                        (msg as any).image ||
+                        (typeof msg.text === 'string' &&
+                        msg.text.match(/https:\/\/[^\s]+(?:\.jpg|\.jpeg|\.png|\.webp|\?alt=media)[^\s]*/i)
+                          ? msg.text.match(/https:\/\/[^\s]+(?:\.jpg|\.jpeg|\.png|\.webp|\?alt=media)[^\s]*/i)?.[0]
+                          : null);
+
+                      return (
+                        <div
+                          className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm shadow-md leading-relaxed ${
+                            isDispatcher
+                              ? 'bg-sky-600 text-white rounded-br-none'
+                              : isResponder
+                              ? 'bg-amber-950/80 border border-amber-800 text-amber-100 rounded-bl-none'
+                              : 'bg-slate-800 text-slate-100 rounded-bl-none border border-slate-700/80'
+                          }`}
+                        >
+                          {displayImageUrl && (
+                            <div className="mb-2 overflow-hidden rounded-xl bg-slate-950/50 border border-white/10">
+                              <a
+                                href={displayImageUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block group relative"
+                                title="Click to view full image"
+                              >
+                                <img
+                                  src={displayImageUrl}
+                                  alt="Incident scene update"
+                                  className="max-h-60 w-full object-cover group-hover:opacity-90 transition-opacity"
+                                />
+                                <span className="absolute bottom-1.5 right-1.5 px-2 py-0.5 rounded bg-black/60 backdrop-blur-xs text-[10px] font-bold text-white tracking-wider uppercase">
+                                  View Full
+                                </span>
+                              </a>
+                            </div>
+                          )}
+                          {msg.text && msg.text !== 'Sent an image' && !msg.text.startsWith('http') ? (
+                            <span>{msg.text}</span>
+                          ) : !displayImageUrl ? (
+                            <span>{msg.text}</span>
+                          ) : null}
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })

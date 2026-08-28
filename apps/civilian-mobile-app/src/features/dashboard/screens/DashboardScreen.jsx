@@ -52,9 +52,9 @@ import {
   declineIncidentCallSession,
 } from "@packages/firebase";
 import AdvisoryBanner from "@/components/AdvisoryBanner";
-import OngoingIncidentFloatingCard from "../components/OngoingIncidentFloatingCard";
 import CivilianCallModal from "@/features/emergency/components/CivilianCallModal";
 import CivilianIncidentChatModal from "@/features/emergency/components/CivilianIncidentChatModal";
+import { useActiveIncident } from "@/hooks/useActiveIncident";
 import {
   getIncidentMeta,
   isActiveReport,
@@ -680,8 +680,7 @@ export default function DashboardScreen() {
   });
 
   const userId = user?.uid || user?.id;
-
-  const activeIncident = recentReports.find((r) => isActiveReport(r.status)) || null;
+  const { activeIncident } = useActiveIncident();
 
   // Listen for incoming calls to this civilian user
   useEffect(() => {
@@ -1031,22 +1030,6 @@ export default function DashboardScreen() {
 
           {activeAdvisories.length > 0 && (
             <AdvisoryBanner advisories={activeAdvisories} theme={theme} />
-          )}
-
-          {/* Ongoing Incident Floating Card (Foodpanda / Grab style) */}
-          {activeIncident && (
-            <OngoingIncidentFloatingCard
-              incident={activeIncident}
-              theme={theme}
-              onOpenDetails={() => openDetails(activeIncident)}
-              onCallDispatcher={() => handleCallDispatcher(activeIncident)}
-              onMessageDispatcher={() => setChatIncident(activeIncident)}
-              onCallResponder={
-                activeIncident.responder || activeIncident.assignedResponderId
-                  ? () => handleCallResponder(activeIncident)
-                  : undefined
-              }
-            />
           )}
 
           <ReportEmergencyCard

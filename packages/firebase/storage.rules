@@ -27,15 +27,30 @@ service firebase.storage {
       allow read: if isOwner(uid) || isSuperAdmin();
     }
 
-    // Emergency report photos - stored in emergencies/photos/
+    // Emergency report photos & chat photos - stored in emergencies/photos/
     match /emergencies/photos/{photoId} {
-      // Allow authenticated users to upload photos for emergency reports
+      // Allow authenticated users to upload photos for emergency reports & chat
       allow write: if isAuthenticated() 
                    && request.resource.size < 10 * 1024 * 1024  // 10MB max file size
                    && request.resource.contentType.matches('image/.*');
       
-      // Allow authenticated users to read photos (for viewing in app)
-      allow read: if isAuthenticated();
+      // Allow read so apps and web dispatchers can view photos
+      allow read: if true;
+    }
+
+    // Incident chat photos - incident_chats/{incidentId}/{photoId} & incident-chats/{incidentId}/{photoId}
+    match /incident_chats/{incidentId}/{photoId} {
+      allow write: if isAuthenticated()
+                   && request.resource.size < 10 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+      allow read: if true;
+    }
+
+    match /incident-chats/{incidentId}/{photoId} {
+      allow write: if isAuthenticated()
+                   && request.resource.size < 10 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+      allow read: if true;
     }
 
     // Responder post-incident report photos - post-reports/{incidentId}/{photoId}

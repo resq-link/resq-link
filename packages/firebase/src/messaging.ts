@@ -516,6 +516,7 @@ export interface IncidentChatMessageRecord {
   senderName: string;
   senderRole: 'civilian' | 'dispatcher' | 'responder' | 'command_center';
   text: string;
+  imageUrl?: string | null;
   createdAt?: Date | Timestamp;
 }
 
@@ -545,6 +546,7 @@ export function subscribeToIncidentChat(
           senderName: data.senderName || 'Anonymous',
           senderRole: data.senderRole || 'civilian',
           text: data.text || '',
+          imageUrl: data.imageUrl || null,
           createdAt: toDateValue(data.createdAt) || new Date(),
         } as IncidentChatMessageRecord;
       });
@@ -564,24 +566,27 @@ export async function sendIncidentChatMessage(
     senderName: string;
     senderRole: 'civilian' | 'dispatcher' | 'responder' | 'command_center';
     text: string;
+    imageUrl?: string | null;
   }
 ): Promise<IncidentChatMessageRecord> {
   const currentUser = ensureAuthenticated();
   const normalizedId = normalizeNullableString(incidentId);
   if (!normalizedId) throw new Error('Incident ID is required.');
-  const text = input.text.trim();
-  if (!text) throw new Error('Message text cannot be empty.');
+  const text = (input.text || '').trim();
+  const imageUrl = input.imageUrl || null;
+  if (!text && !imageUrl) throw new Error('Message text or image is required.');
 
   const senderId = input.senderId || currentUser.uid;
   const db = getFirebaseFirestore();
   const timestamp = Timestamp.now();
 
-  const payload = {
+  const payload: Record<string, any> = {
     incidentId: normalizedId,
     senderId,
     senderName: input.senderName || currentUser.displayName || 'User',
     senderRole: input.senderRole,
-    text,
+    text: text || (imageUrl ? 'Sent an image' : ''),
+    imageUrl,
     createdAt: timestamp,
   };
 
@@ -589,7 +594,7 @@ export async function sendIncidentChatMessage(
 
   // Also update parent incident chat summary
   await updateDoc(doc(db, 'emergencies', normalizedId), {
-    lastChatText: text,
+    lastChatText: text || 'Sent an image',
     lastChatAt: timestamp,
     lastChatSenderRole: input.senderRole,
     updatedAt: timestamp,
@@ -599,5 +604,5 @@ export async function sendIncidentChatMessage(
     ...payload,
     id: ref.id,
     createdAt: timestamp.toDate(),
-  };
+  } as IncidentChatMessageRecord;
 }

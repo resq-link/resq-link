@@ -19,6 +19,7 @@ import Animated, {
 import { House, Map, Clock3, Settings } from "lucide-react-native";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { HIDE_NAV_SCREENS } from "@/constants/routes";
+import ActiveIncidentBottomBar from "@/components/ActiveIncidentBottomBar";
 import {
   getBottomNavInset,
   NAV_BAR_CONTENT_HEIGHT,
@@ -185,10 +186,10 @@ export default function CustomBottomNav() {
       style={[
         styles.container,
         containerAnimatedStyle,
-        { backgroundColor: theme.barBg },
       ]}
       pointerEvents="box-none"
     >
+      <ActiveIncidentBottomBar />
       <View
         style={[
           styles.navBar,

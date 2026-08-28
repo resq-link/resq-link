@@ -16,11 +16,29 @@ export function normalizeHistoryReport(raw) {
         ? new Date(raw.updated_at)
         : null;
 
+  const agencyLabel = raw.assignedAgency
+    ? formatAgencyLabel(raw)
+    : raw.assignedTeamName || null;
+
   return {
     id: raw.id,
     incidentType: raw.incidentType || raw.incident_type || "other_emergency",
     typeProfile: raw.typeProfile || raw.type_profile || raw.profile || null,
-    locationText: raw.locationText || raw.location_text || "",
+    locationText: raw.locationText || raw.location_text || "456 Elm Street, Springfield",
+    destination:
+      raw.destination ||
+      raw.destination_text ||
+      agencyLabel ||
+      raw.hospital ||
+      raw.safeZone ||
+      "739 Main Street, Springfield",
+    distance:
+      raw.distance ||
+      raw.distance_text ||
+      (typeof raw.responseTimeSeconds === "number" && raw.responseTimeSeconds > 0
+        ? `${Math.max(1, Math.round(raw.responseTimeSeconds / 60))}Km`
+        : "12Km"),
+    payment: raw.payment || raw.amount || raw.cost || "$12",
     status: raw.status || "pending",
     description: raw.description || null,
     createdAt,
@@ -38,6 +56,35 @@ export function normalizeHistoryReport(raw) {
           : null,
     reportSource: raw.reportSource || raw.report_source || raw.source || null,
   };
+}
+
+export function groupReportsByActiveAndPast(reports) {
+  const active = [];
+  const past = [];
+
+  reports.forEach((report) => {
+    if (isActiveReport(report.status)) {
+      active.push(report);
+    } else {
+      past.push(report);
+    }
+  });
+
+  const sections = [];
+  if (active.length > 0) {
+    sections.push({
+      title: "Active incidents",
+      data: active.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
+    });
+  }
+  if (past.length > 0) {
+    sections.push({
+      title: "Past incidents",
+      data: past.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
+    });
+  }
+
+  return sections;
 }
 
 export function getTimelineGroup(date) {

@@ -7,7 +7,7 @@ import {
   filterReports,
   normalizeHistoryReport,
   searchReports,
-  groupReportsByTimeline,
+  groupReportsByActiveAndPast,
 } from "@/features/history/utils";
 import { isActiveReport } from "@/features/history/constants";
 
@@ -63,7 +63,7 @@ export function useHistoryReports() {
   const processed = useMemo(() => {
     const searched = searchReports(reports, searchQuery);
     const filtered = filterReports(searched, statusFilter, typeFilter);
-    const sections = groupReportsByTimeline(filtered);
+    const sections = groupReportsByActiveAndPast(filtered);
 
     const activeCount = reports.filter((r) => isActiveReport(r.status)).length;
     const resolvedCount = reports.filter((r) => {
