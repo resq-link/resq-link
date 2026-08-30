@@ -131,8 +131,12 @@ const isSuggestedResourceForAgencies = (resource: ResourceRecord | null, agencie
 
 const RESPONDER_ACCEPTED_STATUSES = new Set(["enroute", "en_route", "on_scene", "done", "resolved"]);
 
-function statusMeansResponderAccepted(status: string | null | undefined) {
-  return RESPONDER_ACCEPTED_STATUSES.has(String(status || "").toLowerCase().trim());
+function normalizeStatus(status: unknown) {
+  return String(status || "").toLowerCase().trim();
+}
+
+function statusMeansResponderAccepted(status: unknown) {
+  return RESPONDER_ACCEPTED_STATUSES.has(normalizeStatus(status));
 }
 
 function getResponderAcceptanceLabel(
@@ -157,15 +161,16 @@ function getResponderAcceptanceLabel(
     report?.status,
     ...assignments.map((assignment) => assignment.status),
     ...associated.map((entry) => entry.status),
-  ].filter((status): status is string => statusMeansResponderAccepted(status));
+  ]
+    .map((status) => normalizeStatus(status))
+    .filter((status) => RESPONDER_ACCEPTED_STATUSES.has(status));
 
-  const furthest = candidates.reduce<string | null>((best, current) => {
-    if (!best) return current;
+  const furthest = candidates.reduce((best, current) => {
     return (rank[current] ?? 0) > (rank[best] ?? 0) ? current : best;
-  }, null);
+  }, candidates[0] || "accepted");
 
   if (furthest === "enroute" || furthest === "en_route") return "En route";
-  return (furthest || "accepted").replace(/_/g, " ");
+  return furthest.replace(/_/g, " ");
 }
 
 interface IntakeDetailViewProps {
