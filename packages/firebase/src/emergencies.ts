@@ -90,6 +90,10 @@ export interface EmergencyReport {
   acknowledgedByDispatcherId?: string | null;
   escalationLevel?: number;
   lastAlertAt?: Date | Timestamp | null;
+  /** Denormalized from latest `incidentChats/{id}/messages` write. */
+  lastChatText?: string | null;
+  lastChatAt?: Date | Timestamp | null;
+  lastChatSenderRole?: 'civilian' | 'dispatcher' | 'responder' | 'command_center' | null;
   supervisorNotifiedAt?: Date | Timestamp | null;
   autoEscalatedAt?: Date | Timestamp | null;
   createdAt?: Date | Timestamp;
@@ -223,6 +227,29 @@ export const convertFirestoreDoc = (doc: DocumentData): EmergencyReport => {
       : data.last_alert_at?.toDate
       ? data.last_alert_at.toDate()
       : null,
+    lastChatText:
+      typeof data.lastChatText === 'string' && data.lastChatText.trim()
+        ? data.lastChatText.trim()
+        : typeof data.last_chat_text === 'string' && data.last_chat_text.trim()
+        ? data.last_chat_text.trim()
+        : null,
+    lastChatAt: data.lastChatAt?.toDate
+      ? data.lastChatAt.toDate()
+      : data.last_chat_at?.toDate
+      ? data.last_chat_at.toDate()
+      : null,
+    lastChatSenderRole:
+      data.lastChatSenderRole === 'civilian' ||
+      data.lastChatSenderRole === 'dispatcher' ||
+      data.lastChatSenderRole === 'responder' ||
+      data.lastChatSenderRole === 'command_center'
+        ? data.lastChatSenderRole
+        : data.last_chat_sender_role === 'civilian' ||
+            data.last_chat_sender_role === 'dispatcher' ||
+            data.last_chat_sender_role === 'responder' ||
+            data.last_chat_sender_role === 'command_center'
+          ? data.last_chat_sender_role
+          : null,
     supervisorNotifiedAt: data.supervisorNotifiedAt?.toDate
       ? data.supervisorNotifiedAt.toDate()
       : null,

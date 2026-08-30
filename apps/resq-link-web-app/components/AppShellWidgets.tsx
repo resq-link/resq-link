@@ -16,6 +16,9 @@ const IncomingCallAlertBanner = dynamic(() => import('@/components/calls/Incomin
 const DispatcherCallQueueSidebar = dynamic(() => import('@/components/calls/DispatcherCallQueueSidebar'), {
   ssr: false,
 })
+const IncidentChatToast = dynamic(() => import('@/components/messaging/IncidentChatToast'), {
+  ssr: false,
+})
 
 function AppShellWidgets() {
   return (
@@ -24,6 +27,7 @@ function AppShellWidgets() {
       <AudioUnlockBanner />
       <IncomingCallAlertBanner />
       <DispatcherCallQueueSidebar />
+      <IncidentChatToast />
       <DeferredOperationalChatWidget />
     </>
   )
