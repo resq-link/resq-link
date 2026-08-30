@@ -152,6 +152,20 @@ service cloud.firestore {
           ]);
       }
 
+      // Civilians may denormalize chat preview fields so command center can toast
+      // on new messages without opening the chat drawer.
+      function isCivilianIncidentChatSummaryUpdate() {
+        return isEmergencyOwner() &&
+          request.resource.data.userId == resource.data.userId &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'lastChatText',
+            'lastChatAt',
+            'lastChatSenderRole',
+            'updatedAt'
+          ]) &&
+          request.resource.data.lastChatSenderRole == 'civilian';
+      }
+
       // Anyone authenticated can create an emergency report
       allow create: if isAuthenticated() && 
                        request.resource.data.userId == request.auth.uid &&
@@ -163,9 +177,9 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       
       // Command center and dispatchers can update reports freely.
-      // Civilians can only submit additional detail payloads for their own report.
+      // Civilians can only submit additional details or chat summary for their own report.
       allow update: if isAuthenticated() && 
-                      (isCommandCenter() || isDispatcher() || isCivilianAdditionalDetailsUpdate());
+                      (isCommandCenter() || isDispatcher() || isCivilianAdditionalDetailsUpdate() || isCivilianIncidentChatSummaryUpdate());
       
       // Only command center can delete reports
       allow delete: if isCommandCenter();
