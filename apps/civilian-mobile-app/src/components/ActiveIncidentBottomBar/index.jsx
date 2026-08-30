@@ -333,6 +333,7 @@ export default function ActiveIncidentBottomBar() {
           setActiveCallSession(null);
           setIsIncomingCall(false);
         }}
+        onCallEnded={() => router.replace("/dashboard")}
         callSession={activeCallSession}
         isIncoming={isIncomingCall}
         onAnswer={handleAnswerIncomingCall}
@@ -343,6 +344,7 @@ export default function ActiveIncidentBottomBar() {
       <CivilianIncidentChatModal
         visible={Boolean(chatIncident)}
         onClose={() => setChatIncident(null)}
+        onCallEnded={() => router.replace("/dashboard")}
         incident={chatIncident}
         user={user}
       />

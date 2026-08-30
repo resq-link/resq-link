@@ -38,6 +38,7 @@ const DEFAULT_AVATAR =
 export default function CivilianIncidentChatModal({
   visible,
   onClose,
+  onCallEnded,
   incident,
   user,
 }) {
@@ -463,6 +464,7 @@ export default function CivilianIncidentChatModal({
           setIsCallModalVisible(false);
           setActiveCallSession(null);
         }}
+        onCallEnded={onCallEnded}
         callSession={activeCallSession}
         onAnswer={async () => {
           if (activeCallSession?.id) {

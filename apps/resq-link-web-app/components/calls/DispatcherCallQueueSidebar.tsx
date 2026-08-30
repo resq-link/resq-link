@@ -21,7 +21,13 @@ export default function DispatcherCallQueueSidebar() {
     if (!user) return;
 
     const unsubscribe = subscribeToDispatcherCallQueue((calls) => {
-      setQueue(calls);
+      const uniqueByCaller = new Map<string, IncidentCallSession>();
+      for (const call of calls) {
+        const key = call.callerUserId || call.id || '';
+        if (!key || uniqueByCaller.has(key)) continue;
+        uniqueByCaller.set(key, call);
+      }
+      setQueue(Array.from(uniqueByCaller.values()));
     });
 
     return () => unsubscribe();

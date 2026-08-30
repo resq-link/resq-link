@@ -295,6 +295,7 @@ export default function EmergencyConfirmationScreen() {
           setActiveCallSession(null);
           setIsIncomingCall(false);
         }}
+        onCallEnded={() => router.replace("/dashboard")}
         callSession={activeCallSession}
         isIncoming={isIncomingCall}
         onAnswer={handleAnswerIncoming}
@@ -305,6 +306,7 @@ export default function EmergencyConfirmationScreen() {
       <CivilianIncidentChatModal
         visible={isChatVisible}
         onClose={() => setIsChatVisible(false)}
+        onCallEnded={() => router.replace("/dashboard")}
         incident={report}
         user={user}
       />

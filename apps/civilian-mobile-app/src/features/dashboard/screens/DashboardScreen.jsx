@@ -1075,6 +1075,11 @@ export default function DashboardScreen() {
           setActiveCallSession(null);
           setIsIncomingCall(false);
         }}
+        onCallEnded={() => {
+          setIsCallModalVisible(false);
+          setActiveCallSession(null);
+          setIsIncomingCall(false);
+        }}
         callSession={activeCallSession}
         isIncoming={isIncomingCall}
         onAnswer={handleAnswerIncomingCall}

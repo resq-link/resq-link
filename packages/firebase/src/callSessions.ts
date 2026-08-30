@@ -83,6 +83,30 @@ export interface StartDirectEmergencyCallInput {
 
 const ACTIVE_CALL_STATUSES: CallSessionStatus[] = ['queued', 'ringing', 'accepted', 'connected'];
 
+async function endActiveSessionsForCaller(callerUserId: string): Promise<void> {
+  const uid = normalizeRequiredId(callerUserId, 'Caller user ID');
+  const db = getFirebaseFirestore();
+  const snapshot = await getDocs(
+    query(collection(db, 'callSessions'), where('callerUserId', '==', uid), limit(20))
+  );
+  const timestamp = Timestamp.now();
+  const updates = snapshot.docs
+    .filter((docSnap) => ACTIVE_CALL_STATUSES.includes(docSnap.data().status as CallSessionStatus))
+    .map((docSnap) =>
+      updateDoc(docSnap.ref, {
+        status: 'ended' as CallSessionStatus,
+        endedAt: timestamp,
+        endedBy: uid,
+        failReason: 'Superseded by a new call from the same caller',
+        updatedAt: timestamp,
+      })
+    );
+
+  if (updates.length > 0) {
+    await Promise.all(updates);
+  }
+}
+
 const ensureAuthenticated = () => {
   const currentUser = getFirebaseAuth().currentUser;
   if (!currentUser) {
@@ -170,6 +194,7 @@ export async function startDirectEmergencyCall(
 ): Promise<IncidentCallSession> {
   const currentUser = ensureAuthenticated();
   const callerUserId = input.callerUserId || currentUser.uid;
+  await endActiveSessionsForCaller(callerUserId);
   const db = getFirebaseFirestore();
   const timestamp = Timestamp.now();
 
@@ -228,6 +253,7 @@ export async function startIncidentCallSession(
   const timestamp = Timestamp.now();
 
   const callerUserId = input.callerUserId || currentUser.uid;
+  await endActiveSessionsForCaller(callerUserId);
   const callerRole = input.callerRole || 'civilian';
 
   const payload = {

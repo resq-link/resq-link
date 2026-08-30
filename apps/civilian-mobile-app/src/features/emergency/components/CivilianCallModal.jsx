@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -18,16 +18,21 @@ import {
   VolumeX,
   User,
   AlertCircle,
-  Radio,
 } from "lucide-react-native";
 import {
   endIncidentCallSession,
+  subscribeToIncidentCallSession,
 } from "@packages/firebase";
 import { useLiveKitCall } from "../hooks/useLiveKitCall";
+
+const TERMINAL_STATUSES = ["ended", "missed", "declined", "failed"];
+const RINGING_STATUSES = ["ringing", "queued"];
+const LIVEKIT_READY_STATUSES = ["accepted", "connected"];
 
 export default function CivilianCallModal({
   visible,
   onClose,
+  onCallEnded,
   callSession,
   isIncoming = false,
   onAnswer,
@@ -36,9 +41,33 @@ export default function CivilianCallModal({
   const insets = useSafeAreaInsets();
   const [isAnswered, setIsAnswered] = useState(!isIncoming);
   const [duration, setDuration] = useState(0);
+  const [sessionStatus, setSessionStatus] = useState(callSession?.status || null);
+  const [ringDots, setRingDots] = useState(".");
   const timerRef = useRef(null);
+  const didAutoDismissRef = useRef(false);
 
-  const shouldConnectLiveKit = visible && (!isIncoming || isAnswered);
+  useEffect(() => {
+    setIsAnswered(!isIncoming);
+    setDuration(0);
+    setSessionStatus(callSession?.status || null);
+    didAutoDismissRef.current = false;
+  }, [visible, isIncoming, callSession?.id]);
+
+  useEffect(() => {
+    if (!visible || !callSession?.id) return undefined;
+
+    const unsubscribe = subscribeToIncidentCallSession(callSession.id, (session) => {
+      if (session?.status) {
+        setSessionStatus(session.status);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [visible, callSession?.id]);
+
+  const isLiveKitReady = LIVEKIT_READY_STATUSES.includes(sessionStatus);
+  const shouldConnectLiveKit =
+    visible && (!isIncoming || isAnswered) && isLiveKitReady;
 
   const {
     isConnecting,
@@ -74,13 +103,41 @@ export default function CivilianCallModal({
     };
   }, [visible, isConnected]);
 
-  const handleEndCall = async () => {
+  useEffect(() => {
+    const showRingingDots =
+      visible &&
+      RINGING_STATUSES.includes(sessionStatus) &&
+      !(isIncoming && !isAnswered) &&
+      !isConnecting &&
+      !isConnected;
+
+    if (!showRingingDots) {
+      setRingDots(".");
+      return undefined;
+    }
+
+    const frames = [".", "..", "..."];
+    let index = 0;
+    const interval = setInterval(() => {
+      index = (index + 1) % frames.length;
+      setRingDots(frames[index]);
+    }, 450);
+
+    return () => clearInterval(interval);
+  }, [visible, sessionStatus, isIncoming, isAnswered, isConnecting, isConnected]);
+
+  const handleEndCall = useCallback(async () => {
+    didAutoDismissRef.current = true;
     await disconnect();
     if (callSession?.id) {
       await endIncidentCallSession(callSession.id).catch(() => undefined);
     }
     onClose?.();
-  };
+    onCallEnded?.();
+  }, [disconnect, callSession?.id, onClose, onCallEnded]);
+
+  const handleEndCallRef = useRef(handleEndCall);
+  handleEndCallRef.current = handleEndCall;
 
   const handleAnswerCall = () => {
     setIsAnswered(true);
@@ -90,11 +147,24 @@ export default function CivilianCallModal({
   const handleDeclineCall = async () => {
     await disconnect();
     onDecline?.();
+    onCallEnded?.();
   };
 
   const handleCallHotline = () => {
     Linking.openURL("tel:911").catch(() => undefined);
   };
+
+  useEffect(() => {
+    if (!visible || !TERMINAL_STATUSES.includes(sessionStatus)) return undefined;
+    if (didAutoDismissRef.current) return undefined;
+
+    const timeout = setTimeout(() => {
+      didAutoDismissRef.current = true;
+      handleEndCallRef.current();
+    }, 1500);
+
+    return () => clearTimeout(timeout);
+  }, [visible, sessionStatus]);
 
   if (!visible) return null;
 
@@ -104,11 +174,26 @@ export default function CivilianCallModal({
     return `${mins.toString().padStart(2, "0")}:${remainder.toString().padStart(2, "0")}`;
   };
 
+  const getStatusLabel = () => {
+    if (isIncoming && !isAnswered) return "Incoming Call...";
+    if (sessionStatus === "declined") return "Call Declined";
+    if (sessionStatus === "missed") return "No Answer";
+    if (isConnecting) return "Connecting audio...";
+    if (roomState === "reconnecting") return "Reconnecting voice link...";
+    if (isConnected) return formatTime(duration);
+    if (sessionStatus === "ended" || sessionStatus === "failed") return "Call Ended";
+    if (RINGING_STATUSES.includes(sessionStatus)) return `Ringing${ringDots}`;
+    return "Connecting...";
+  };
+
   const targetName =
     callSession?.targetName ||
     (callSession?.targetRole === "responder"
       ? "Assigned Response Unit"
       : "Command Center Dispatch");
+
+  const statusLabel = getStatusLabel();
+  const showIncomingActions = isIncoming && !isAnswered;
 
   return (
     <Modal
@@ -127,7 +212,6 @@ export default function CivilianCallModal({
           },
         ]}
       >
-        {/* Top Caller Info (Avatar + Name + Timer) */}
         <View style={styles.topCallerRow}>
           <View style={[styles.avatarCircle, isConnected && styles.avatarCircleConnected]}>
             <User size={34} color="#FFFFFF" />
@@ -137,15 +221,7 @@ export default function CivilianCallModal({
               {targetName}
             </Text>
             <Text style={[styles.timerText, isConnected && styles.timerTextConnected]}>
-              {isIncoming && !isAnswered
-                ? "Incoming Call..."
-                : isConnecting
-                ? "Connecting audio..."
-                : roomState === "reconnecting"
-                ? "Reconnecting voice link..."
-                : isConnected
-                ? formatTime(duration)
-                : "Call Ended"}
+              {statusLabel}
             </Text>
           </View>
         </View>
@@ -159,9 +235,8 @@ export default function CivilianCallModal({
           </View>
         ) : null}
 
-        {/* Bottom Section with Controls (Mute - End Call - Speaker) */}
         <View style={styles.bottomSection}>
-          {isIncoming && !isAnswered ? (
+          {showIncomingActions ? (
             <View style={styles.incomingActions}>
               <View style={styles.actionItem}>
                 <Pressable
@@ -197,7 +272,6 @@ export default function CivilianCallModal({
             </View>
           ) : (
             <View style={styles.activeActionsRow}>
-              {/* Mute Button */}
               <View style={styles.controlItem}>
                 <Pressable
                   onPress={toggleMute}
@@ -220,7 +294,6 @@ export default function CivilianCallModal({
                 <Text style={styles.controlLabel}>mute</Text>
               </View>
 
-              {/* End Call Button (Center) */}
               <View style={styles.controlItem}>
                 <Pressable
                   onPress={handleEndCall}
@@ -236,7 +309,6 @@ export default function CivilianCallModal({
                 <Text style={[styles.controlLabel, { opacity: 0 }]}>end</Text>
               </View>
 
-              {/* Speaker Button */}
               <View style={styles.controlItem}>
                 <Pressable
                   onPress={toggleSpeaker}
@@ -259,7 +331,6 @@ export default function CivilianCallModal({
             </View>
           )}
 
-          {/* Hotline Fallback */}
           <Pressable onPress={handleCallHotline} style={styles.hotlineFallback}>
             <AlertCircle size={13} color="#6B7280" />
             <Text style={styles.hotlineText}>Tap to dial 911 hotline directly</Text>
