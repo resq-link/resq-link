@@ -27,6 +27,7 @@ import {
   type IncidentCallSession,
   normalizeResponderReport,
   getAdditionalResourceLabel,
+  isResolvedIncidentRecord,
 } from "@packages/firebase";
 import IncidentStatusIndicator from "@/components/IncidentStatusIndicator";
 import { useDispatcherData } from "@/contexts/DispatcherDataContext";
@@ -127,6 +128,45 @@ const isSuggestedResourceForAgencies = (resource: ResourceRecord | null, agencie
   const haystack = `${resource.name || ""} ${resource.type || ""} ${resource.agency || ""} ${resource.department || ""}`.toUpperCase();
   return agencies.some((agency) => haystack.includes(agency.toUpperCase()));
 };
+
+const RESPONDER_ACCEPTED_STATUSES = new Set(["enroute", "en_route", "on_scene", "done", "resolved"]);
+
+function statusMeansResponderAccepted(status: string | null | undefined) {
+  return RESPONDER_ACCEPTED_STATUSES.has(String(status || "").toLowerCase().trim());
+}
+
+function getResponderAcceptanceLabel(
+  incident: IncidentRecord | null | undefined,
+  report: EmergencyReport | null | undefined,
+  associated: EmergencyReport[],
+) {
+  const assignments = Object.values(incident?.responderAssignments || {});
+  const hasAccepted =
+    Boolean(incident?.acceptedAt) ||
+    Boolean(report?.acceptedAt) ||
+    statusMeansResponderAccepted(incident?.status) ||
+    statusMeansResponderAccepted(report?.status) ||
+    assignments.some((assignment) => Boolean(assignment.acceptedAt) || statusMeansResponderAccepted(assignment.status)) ||
+    associated.some((entry) => Boolean(entry.acceptedAt) || statusMeansResponderAccepted(entry.status));
+
+  if (!hasAccepted) return "Awaiting acceptance";
+
+  const rank: Record<string, number> = { enroute: 1, en_route: 1, on_scene: 2, resolved: 3, done: 3 };
+  const candidates = [
+    incident?.status,
+    report?.status,
+    ...assignments.map((assignment) => assignment.status),
+    ...associated.map((entry) => entry.status),
+  ].filter((status): status is string => statusMeansResponderAccepted(status));
+
+  const furthest = candidates.reduce<string | null>((best, current) => {
+    if (!best) return current;
+    return (rank[current] ?? 0) > (rank[best] ?? 0) ? current : best;
+  }, null);
+
+  if (furthest === "enroute" || furthest === "en_route") return "En route";
+  return (furthest || "accepted").replace(/_/g, " ");
+}
 
 interface IntakeDetailViewProps {
   item: any | null // IntakeQueueItem
@@ -689,12 +729,10 @@ export default function IntakeDetailView({
       report?.responder ||
       associatedReports.some((entry) => entry.responder || entry.assignedResponderId),
   );
-  const responderHasAccepted = ["enroute", "on_scene", "done", "resolved"].includes(report?.status || "");
-  const responderStatusLabel = !isResponderAssigned 
-    ? "Unassigned" 
-    : responderHasAccepted 
-      ? (report?.status === "enroute" ? "En route" : report?.status?.replace("_", " ")) 
-      : "Awaiting acceptance";
+  const incidentIsClosed = incident ? isResolvedIncidentRecord(incident) : false;
+  const responderStatusLabel = getResponderAcceptanceLabel(incident, report, associatedReports);
+  const responderHasAccepted = responderStatusLabel !== "Awaiting acceptance";
+  const showResponderAcceptancePill = isResponderAssigned && !incidentIsClosed;
 
   const suggestedAgencies = isEmergency ? getSuggestedAgenciesForEmergencyType(report?.incidentType) : [];
   const primarySuggestedAgency = suggestedAgencies[0] || null;
@@ -983,7 +1021,7 @@ export default function IntakeDetailView({
               {item.referenceNumber}
             </h2>
             <IncidentStatusIndicator status={getQueueItemOperationalStatus(item)} size="md" />
-            {isResponderAssigned && (
+            {showResponderAcceptancePill && (
               <span className={`px-2 py-0.5 rounded-full border text-[10px] font-bold uppercase tracking-widest ${responderHasAccepted ? 'border-sky-800 text-sky-400 bg-sky-950/40' : 'border-amber-800 text-amber-400 bg-amber-950/40'}`}>
                 {responderStatusLabel}
               </span>
