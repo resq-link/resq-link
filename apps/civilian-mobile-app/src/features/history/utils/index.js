@@ -1,7 +1,23 @@
-import { normalizeOperationalStatus } from "@packages/firebase";
+import { normalizeOperationalStatus, isCivilianIncidentResolved } from "@packages/firebase";
 import { getIncidentMeta, isActiveReport } from "@/features/history/constants";
 
+function toOptionalDate(value, fallback) {
+  if (value instanceof Date) return value;
+  if (value) return new Date(value);
+  if (fallback instanceof Date) return fallback;
+  if (fallback) return new Date(fallback);
+  return null;
+}
+
 export function normalizeHistoryReport(raw) {
+  const baseReport = buildBaseHistoryReport(raw);
+  return {
+    ...baseReport,
+    status: isCivilianIncidentResolved(baseReport) ? "resolved" : baseReport.status,
+  };
+}
+
+function buildBaseHistoryReport(raw) {
   const createdAt =
     raw.createdAt instanceof Date
       ? raw.createdAt
@@ -48,6 +64,37 @@ export function normalizeHistoryReport(raw) {
     assignedAgency: raw.assignedAgency || raw.assigned_agency || null,
     suggestedAgency: raw.suggestedAgency || raw.suggested_agency || null,
     assignedTeamName: raw.assignedTeamName || raw.assigned_team_name || null,
+    assignedResponderIds: Array.isArray(raw.assignedResponderIds)
+      ? raw.assignedResponderIds
+      : Array.isArray(raw.assigned_responder_ids)
+        ? raw.assigned_responder_ids
+        : null,
+    responder: raw.responder || raw.responderName || raw.responder_name || null,
+    responderName: raw.responderName || raw.responder_name || raw.responder || null,
+    acceptedAt:
+      raw.acceptedAt instanceof Date
+        ? raw.acceptedAt
+        : raw.accepted_at
+          ? new Date(raw.accepted_at)
+          : null,
+    viewedAt:
+      raw.viewedAt instanceof Date
+        ? raw.viewedAt
+        : raw.viewed_at
+          ? new Date(raw.viewed_at)
+          : null,
+    acknowledgedAt:
+      raw.acknowledgedAt instanceof Date
+        ? raw.acknowledgedAt
+        : raw.acknowledged_at
+          ? new Date(raw.acknowledged_at)
+          : null,
+    touchdownAt:
+      raw.touchdownAt instanceof Date
+        ? raw.touchdownAt
+        : raw.touchdown_at
+          ? new Date(raw.touchdown_at)
+          : null,
     responseTimeSeconds:
       typeof raw.responseTimeSeconds === "number"
         ? raw.responseTimeSeconds
@@ -55,6 +102,18 @@ export function normalizeHistoryReport(raw) {
           ? raw.response_time_seconds
           : null,
     reportSource: raw.reportSource || raw.report_source || raw.source || null,
+    movedToHistoryAt: toOptionalDate(raw.movedToHistoryAt, raw.moved_to_history_at),
+    resolvedAt: toOptionalDate(raw.resolvedAt, raw.resolved_at),
+    postIncidentReport: raw.postIncidentReport || raw.post_incident_report || null,
+    viewedByName: raw.viewedByName || raw.viewed_by_name || null,
+    linkedIncidentStatus: raw.linkedIncidentStatus ?? null,
+    linkedIncidentResolutionStatus: raw.linkedIncidentResolutionStatus ?? null,
+    linkedIncidentResolvedAt:
+      raw.linkedIncidentResolvedAt instanceof Date
+        ? raw.linkedIncidentResolvedAt
+        : raw.linked_incident_resolved_at
+          ? new Date(raw.linked_incident_resolved_at)
+          : null,
   };
 }
 

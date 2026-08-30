@@ -35,7 +35,7 @@ export function DataTable<T extends { id: string }>({
   const showInitialLoader = Boolean(loading) && rows.length === 0 && !error;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-admin-border/90 bg-admin-surface shadow-admin-card">
+    <div className="rounded-xl border border-admin-border/90 bg-admin-surface shadow-admin-card">
       {refreshing && rows.length > 0 ? (
         <div className="flex items-center justify-end gap-2 border-b border-admin-border bg-admin-muted/70 px-4 py-1.5 text-[11px] text-admin-fg-subtle">
           <Loader2 size={12} className="animate-spin text-primary-500" />
@@ -65,8 +65,8 @@ export function DataTable<T extends { id: string }>({
         <EmptyState title={emptyTitle} description={emptyDescription} />
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="sticky top-0 z-[1] border-b border-admin-border/80 bg-admin-muted/95 backdrop-blur-sm">
+          <table className="min-w-full border-collapse text-left text-sm">
+            <thead className="border-b border-admin-border/80 bg-admin-muted/95">
               <tr>
                 {columns.map((column) => (
                   <th
@@ -80,10 +80,10 @@ export function DataTable<T extends { id: string }>({
               </tr>
             </thead>
             <tbody className="divide-y divide-admin-border">
-              {rows.map((row) => (
+              {rows.map((row, index) => (
                 <tr
-                  key={row.id}
-                  className={`transition-colors duration-admin ${
+                  key={row.id || `row-${index}`}
+                  className={`align-top transition-colors duration-admin ${
                     onRowClick ? 'cursor-pointer hover:bg-admin-hover' : 'hover:bg-admin-muted/80'
                   }`}
                   onClick={() => onRowClick?.(row)}
@@ -91,7 +91,7 @@ export function DataTable<T extends { id: string }>({
                   {columns.map((column) => (
                     <td
                       key={column.key}
-                      className={`px-4 py-3 text-admin-fg-muted ${column.className || ''}`}
+                      className={`px-4 py-3 align-top text-admin-fg-muted ${column.className || ''}`}
                       onClick={
                         column.key === 'actions'
                           ? (event) => event.stopPropagation()

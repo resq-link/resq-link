@@ -25,12 +25,15 @@ import {
   resolveSceneAssessmentIncidentType,
   startIncidentCallSession,
   type IncidentCallSession,
+  normalizeResponderReport,
+  getAdditionalResourceLabel,
 } from "@packages/firebase";
 import IncidentStatusIndicator from "@/components/IncidentStatusIndicator";
 import { useDispatcherData } from "@/contexts/DispatcherDataContext";
 import PostIncidentReportPhotos from "@/components/PostIncidentReportPhotos";
 import IncidentScenePhotos from "@/components/incident-media/IncidentScenePhotos";
 import SceneAssessmentPanel from "@/components/SceneAssessmentPanel";
+import SceneReportPanel from "@/components/SceneReportPanel";
 import TouchdownArrivalPanel from "@/components/TouchdownArrivalPanel";
 import InitialNarrativeDisplay from "@/components/InitialNarrativeDisplay";
 import CitizenReportDetailDrawer from "@/components/CitizenReportDetailDrawer";
@@ -39,6 +42,7 @@ import IncidentMessagingDrawer from "@/components/messaging/IncidentMessagingDra
 import ActiveCallModal from "@/components/calls/ActiveCallModal";
 import { getQueueItemOperationalStatus } from "@/components/IntakeListItem";
 import { useOperationalTeams } from "@/contexts/OperationalTeamContext";
+import { teamReactKey } from "@/lib/operational/teamUtils";
 import { useAuth } from "@/contexts/AuthContext";
 import TeamBadge from "@/components/operational/TeamBadge";
 import {
@@ -489,16 +493,114 @@ export default function IntakeDetailView({
     return postIncidentReportsList[0] || null;
   }, [postIncidentReportsList]);
 
+  const sceneReportsList = useMemo(() => {
+    type SceneReportEntry = import('@packages/firebase').SceneReportRecord & {
+      agency?: string;
+      responderName?: string;
+      resourceName?: string;
+      arrivalTime?: unknown;
+      id?: string;
+    };
+    const list: SceneReportEntry[] = [];
+
+    if (incident?.sceneReports && typeof incident.sceneReports === 'object') {
+      Object.entries(incident.sceneReports).forEach(([uid, rep]) => {
+        if (rep?.submittedAt || rep?.situationStatus) {
+          const assignment = incident.responderAssignments?.[uid];
+          list.push({
+            ...rep,
+            agency: assignment?.agency,
+            responderName: assignment?.responderName || rep.submittedByName || undefined,
+            resourceName: assignment?.resourceName || undefined,
+            arrivalTime: assignment?.touchdownAt || incident.touchdownAt,
+            id: uid,
+          });
+        }
+      });
+    }
+
+    if (list.length === 0 && incident?.responderAssignments) {
+      Object.entries(incident.responderAssignments).forEach(([uid, assignment]) => {
+        if (assignment.sceneReport?.submittedAt || assignment.sceneReport?.situationStatus) {
+          list.push({
+            ...assignment.sceneReport,
+            agency: assignment.agency,
+            responderName:
+              assignment.responderName ||
+              assignment.sceneReport.submittedByName ||
+              undefined,
+            resourceName: assignment.resourceName || undefined,
+            arrivalTime: assignment.touchdownAt || incident?.touchdownAt,
+            id: uid,
+          });
+        }
+      });
+    }
+
+    if (list.length === 0 && incident) {
+      const assignmentUids = Object.keys(incident.responderAssignments || {});
+      const reportUids = Object.keys(incident.postIncidentReports || {});
+      const uids = [...new Set([...assignmentUids, ...reportUids])];
+      uids.forEach((uid) => {
+        const normalized = normalizeResponderReport(incident, uid);
+        if (normalized?.source === 'scene_report' && normalized.sceneReport) {
+          const assignment = incident.responderAssignments?.[uid];
+          list.push({
+            ...normalized.sceneReport,
+            agency: assignment?.agency,
+            responderName:
+              assignment?.responderName ||
+              normalized.sceneReport.submittedByName ||
+              undefined,
+            resourceName: assignment?.resourceName || undefined,
+            arrivalTime: assignment?.touchdownAt || incident.touchdownAt,
+            id: uid,
+          });
+        }
+      });
+    }
+
+    return list;
+  }, [incident?.sceneReports, incident?.responderAssignments, incident?.touchdownAt, incident?.postIncidentReports]);
+
+  const pendingResourceRequestsList = useMemo(() => {
+    if (!incident?.pendingResourceRequests) return [];
+    return Object.entries(incident.pendingResourceRequests).map(([uid, request]) => {
+      const assignment = incident.responderAssignments?.[uid];
+      return {
+        id: uid,
+        ...request,
+        agency: assignment?.agency,
+        responderName: assignment?.responderName || request.requestedByName || undefined,
+        resourceName: assignment?.resourceName || undefined,
+      };
+    });
+  }, [incident?.pendingResourceRequests, incident?.responderAssignments]);
+
+  const primaryResponderAssignment = useMemo(() => {
+    const assignments = incident?.responderAssignments;
+    if (!assignments) return null;
+    const values = Object.values(assignments);
+    return values.find((entry) => entry.touchdownAt) || values[0] || null;
+  }, [incident?.responderAssignments]);
+
   const showPostReportSection = useMemo(() => {
     const status = report?.status || incident?.status;
     const resolutionStatus = incident?.resolutionStatus;
     return (
+      sceneReportsList.length > 0 ||
       postIncidentReportsList.length > 0 ||
       status === "resolved" ||
       status === "done" ||
       resolutionStatus === "resolved"
     );
-  }, [postIncidentReportsList.length, report?.status, incident?.status, incident?.resolutionStatus]);
+  }, [
+    sceneReportsList.length,
+    postIncidentReportsList.length,
+    report?.status,
+    incident?.status,
+    incident?.resolutionStatus,
+  ]);
 
   useEffect(() => {
     if (!assignedResponderId) {
@@ -1227,9 +1329,37 @@ export default function IntakeDetailView({
                    <CompactRow
                      size="md"
                      label="On Scene"
-                     value={(incident?.touchdownAt || report?.touchdownAt) ? getDateLabel(incident?.touchdownAt || report?.touchdownAt) : "—"}
+                     value={
+                       primaryResponderAssignment?.touchdownAt || incident?.touchdownAt || report?.touchdownAt
+                         ? getDateLabel(
+                             primaryResponderAssignment?.touchdownAt ||
+                               incident?.touchdownAt ||
+                               report?.touchdownAt,
+                           )
+                         : "—"
+                     }
                      highlight
                    />
+                   {primaryResponderAssignment?.touchdownRecordedAt ? (
+                     <CompactRow
+                       size="md"
+                       label="On Scene Recorded"
+                       value={getDateLabel(primaryResponderAssignment.touchdownRecordedAt)}
+                     />
+                   ) : incident?.touchdownRecordedAt ? (
+                     <CompactRow
+                       size="md"
+                       label="On Scene Recorded"
+                       value={getDateLabel(incident.touchdownRecordedAt)}
+                     />
+                   ) : null}
+                   {sceneReportsList[0]?.submittedAt ? (
+                     <CompactRow
+                       size="md"
+                       label="Scene Report"
+                       value={getDateLabel(sceneReportsList[0].submittedAt)}
+                     />
+                   ) : null}
                    <CompactRow
                      size="md"
                      label="Resolved"
@@ -1337,8 +1467,8 @@ export default function IntakeDetailView({
                       className="h-9 rounded-lg border border-slate-800 bg-slate-950 px-2.5 text-xs text-slate-100"
                     >
                       <option value="">Reassign team…</option>
-                      {teams.map((team) => (
-                        <option key={team.id || team.code} value={team.id || team.code}>
+                      {teams.map((team, index) => (
+                        <option key={teamReactKey(team, index)} value={team.id || team.code}>
                           {team.label}
                         </option>
                       ))}
@@ -1435,23 +1565,92 @@ export default function IntakeDetailView({
           )}
         </DetailSection>
 
+        {pendingResourceRequestsList.length > 0 ? (
+          <section className="w-full rounded-lg border border-amber-500/30 bg-amber-950/20 p-3">
+            <div className="mb-2 flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-400" />
+              <h3 className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-300">
+                Additional Resources Requested
+              </h3>
+            </div>
+            <div className="space-y-2">
+              {pendingResourceRequestsList.map((request) => (
+                <div
+                  key={request.id}
+                  className="rounded-md border border-amber-900/40 bg-slate-950/40 px-3 py-2 text-xs text-slate-200"
+                >
+                  <div className="font-semibold text-amber-200">
+                    {getAdditionalResourceLabel(request.additionalResourceType)}
+                    {request.additionalResourceTypeOther
+                      ? ` — ${request.additionalResourceTypeOther}`
+                      : ""}
+                  </div>
+                  <div className="mt-1 text-[11px] text-slate-400">
+                    Requested by {request.responderName || "responder"}
+                    {request.agency ? ` · ${request.agency}` : ""}
+                    {request.requestedAt ? ` · ${getDateLabel(request.requestedAt)}` : ""}
+                  </div>
+                  <div className="mt-1 text-[10px] text-slate-500">
+                    Command Center assigns the actual resource — responder requested assistance type only.
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
         {showPostReportSection ? (
           <section className="w-full rounded-lg border border-slate-800/80 bg-slate-950/30 p-3">
             <div className="mb-2 flex items-center justify-between gap-2">
               <div className="flex items-center gap-1.5">
                 <CheckCircle className="h-3.5 w-3.5 text-emerald-400" />
                 <h3 className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
-                  {postIncidentReportsList.length > 1 ? "Post-Incident Reports (Multi-Agency)" : "Post-Incident Report"}
+                  {sceneReportsList.length > 1
+                    ? "Scene Reports (Multi-Agency)"
+                    : sceneReportsList.length > 0
+                      ? "Scene Report"
+                      : postIncidentReportsList.length > 1
+                        ? "Post-Incident Reports (Multi-Agency)"
+                        : "Post-Incident Report"}
                 </h3>
               </div>
-              {postIncidentReportsList.length > 0 ? (
+              {(sceneReportsList.length > 0 || postIncidentReportsList.length > 0) ? (
                 <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-px text-[9px] font-black uppercase tracking-wider text-emerald-300">
-                  {postIncidentReportsList.length} Submitted
+                  {sceneReportsList.length || postIncidentReportsList.length} Submitted
                 </span>
               ) : null}
             </div>
 
-            {postIncidentReportsList.length > 0 ? (
+            {sceneReportsList.length > 0 ? (
+              <div className="w-full space-y-3">
+                {sceneReportsList.map((sceneReport, idx) => (
+                  <div
+                    key={sceneReport.id || idx}
+                    className={`w-full ${idx > 0 ? "border-t border-slate-800/80 pt-3" : ""}`}
+                  >
+                    {sceneReport.agency ? (
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="text-[11px] font-black tracking-wider text-emerald-300">
+                          [{sceneReport.agency}] {sceneReport.responderName ? `· ${sceneReport.responderName}` : ""}
+                        </span>
+                        {sceneReport.submittedAt ? (
+                          <span className="text-[10px] text-slate-400">
+                            {getDateLabel(sceneReport.submittedAt)}
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    <SceneReportPanel
+                      sceneReport={sceneReport}
+                      responderName={sceneReport.responderName}
+                      resourceName={sceneReport.resourceName}
+                      arrivalTimeLabel={getDateLabel(sceneReport.arrivalTime)}
+                      resolvedAtLabel={getDateLabel(sceneReport.submittedAt)}
+                    />
+                  </div>
+                ))}
+              </div>
+            ) : postIncidentReportsList.length > 0 ? (
               <div className="w-full space-y-3">
                 {postIncidentReportsList.map((pReport, idx) => (
                   <div
@@ -1519,9 +1718,9 @@ export default function IntakeDetailView({
               </div>
             ) : (
               <div className="rounded-md border border-dashed border-slate-700 bg-slate-950/40 px-3 py-3 text-center">
-                <p className="text-xs font-medium text-slate-400">No post-incident report yet</p>
+                <p className="text-xs font-medium text-slate-400">No scene report yet</p>
                 <p className="mt-0.5 text-[10px] text-slate-500">
-                  Awaiting agency responder post-incident report.
+                  Awaiting responder scene report submission.
                 </p>
               </div>
             )}
@@ -1535,28 +1734,51 @@ export default function IntakeDetailView({
             className="flex h-full flex-col"
             contentClassName="flex min-h-0 flex-1 flex-col"
             icon={<MapPin className="w-4 h-4" />}
-            title="Touchdown / Arrival"
+            title="On Scene / Arrival"
           >
-            <TouchdownArrivalPanel incident={incident} report={report} />
-          </DetailSection>
-
-          <DetailSection
-            compact
-            emphasis
-            className="flex h-full flex-col"
-            contentClassName="flex min-h-0 flex-1 flex-col"
-            icon={<AlertTriangle className="w-4 h-4" />}
-            title="Scene Assessment"
-          >
-            <SceneAssessmentPanel
-              assessment={sceneAssessmentContext.assessment}
-              incidentType={sceneAssessmentContext.incidentType}
-              isLoading={
-                !sceneAssessmentContext.assessment &&
-                (item?.channel === "incident" ? incidentsLoading : false)
-              }
+            <TouchdownArrivalPanel
+              incident={incident}
+              report={report}
+              assignment={primaryResponderAssignment}
             />
           </DetailSection>
+
+          {sceneReportsList.length === 0 ? (
+            <DetailSection
+              compact
+              emphasis
+              className="flex h-full flex-col"
+              contentClassName="flex min-h-0 flex-1 flex-col"
+              icon={<AlertTriangle className="w-4 h-4" />}
+              title="Scene Assessment (Legacy)"
+            >
+              <SceneAssessmentPanel
+                assessment={sceneAssessmentContext.assessment}
+                incidentType={sceneAssessmentContext.incidentType}
+                isLoading={
+                  !sceneAssessmentContext.assessment &&
+                  (item?.channel === "incident" ? incidentsLoading : false)
+                }
+              />
+            </DetailSection>
+          ) : (
+            <DetailSection
+              compact
+              emphasis
+              className="flex h-full flex-col"
+              contentClassName="flex min-h-0 flex-1 flex-col"
+              icon={<AlertTriangle className="w-4 h-4" />}
+              title="Scene Report"
+            >
+              <SceneReportPanel
+                sceneReport={sceneReportsList[0]}
+                responderName={sceneReportsList[0]?.responderName}
+                resourceName={sceneReportsList[0]?.resourceName}
+                arrivalTimeLabel={getDateLabel(sceneReportsList[0]?.arrivalTime)}
+                resolvedAtLabel={getDateLabel(sceneReportsList[0]?.submittedAt)}
+              />
+            </DetailSection>
+          )}
         </div>
 
       </div>

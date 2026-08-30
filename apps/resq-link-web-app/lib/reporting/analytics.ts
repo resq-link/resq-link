@@ -9,6 +9,7 @@ import type {
 } from './types'
 import type { ReportFilters } from './types'
 import { filterIncidents } from './incidents'
+import { dedupeTeamOptions } from '@/lib/operational/teamUtils'
 import { formatDateInput, formatDurationSeconds, getTimestamp, parseDateInput, startOfDay, addDays } from './dates'
 import {
   getIncidentAgencyLabel,
@@ -120,7 +121,7 @@ export function computeReportAnalytics(
     return op.charAt(0).toUpperCase() + op.slice(1).replace('_', ' ')
   })
   const byTeam = teams.length
-    ? teams.map((team) => ({
+    ? dedupeTeamOptions(teams).map((team) => ({
         label: team.label,
         value: filteredIncidents.filter((incident) =>
           incidentMatchesTeamFilter(incident, team.code)
@@ -205,7 +206,7 @@ export function computeTeamSummaryCards(
     { reportEligibleOnly: true }
   )
 
-  return teams.map((team) => {
+  return dedupeTeamOptions(teams).map((team) => {
     const teamIncidents = summaryScoped.filter((incident) =>
       incidentMatchesTeamFilter(incident, team.code)
     )
@@ -217,7 +218,7 @@ export function computeTeamComparison(
   filteredIncidents: IncidentRecord[],
   teams: OperationalTeamOption[]
 ): TeamComparisonStats[] {
-  return teams.map((team) => {
+  return dedupeTeamOptions(teams).map((team) => {
     const teamIncidents = filteredIncidents.filter((incident) =>
       incidentMatchesTeamFilter(incident, team.code)
     )

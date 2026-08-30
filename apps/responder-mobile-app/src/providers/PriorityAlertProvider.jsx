@@ -1,14 +1,17 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
 import useUserStore from "@/store/userStore";
+import { queryKeys } from "@/query/queryKeys";
 import { useAssignedEmergencies } from "@/modules/incidents/hooks/useAssignedEmergencies";
 import {
   PRIORITY_RANK,
-  acknowledgeIncidentAlert,
   normalizePriority,
   requiresForcedAlert,
-  subscribeToResponderDuty,
+  subscribeToAssignedResource,
+  isResponderAssignmentPendingAccept,
 } from "@packages/firebase";
+import { acknowledgeIncidentCase } from "@/services/incidentService";
 import {
   playPriorityAlert,
   releaseAlertResources,
@@ -25,6 +28,7 @@ import {
   subscribeToIncidentNotificationActions,
   unregisterIncidentPush,
 } from "@/services/pushNotificationService";
+import { toast } from "@/utils/toast";
 import IncidentAlertModal from "@/modules/incidents/components/IncidentAlertModal";
 
 const IncidentAlertContext = createContext({
@@ -41,7 +45,9 @@ export const useIncidentAlert = () => useContext(IncidentAlertContext);
  * Drives the assignment alarm: push registration, haptics, looping sound, and
  * the blocking acknowledge sheet.
  *
- * Alerts only fire while the responder is on duty (has claimed a resource).
+ * Alerts fire when the responder has an incident assignment pending acknowledgement,
+ * or a Command Center assigned resource. Assignment in Firestore is authoritative;
+ * resource binding supplements on-duty detection for crew members.
  * State-driven rather than event-driven so an unacknowledged assignment still
  * resumes after an app restart or reconnect.
  */
@@ -49,9 +55,10 @@ export default function PriorityAlertProvider({ children }) {
   const { user } = useUserStore();
   const pathname = usePathname();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { cases } = useAssignedEmergencies(user?.uid);
   const [isAcknowledging, setIsAcknowledging] = useState(false);
-  const [isOnDuty, setIsOnDuty] = useState(false);
+  const [hasAssignedResource, setHasAssignedResource] = useState(false);
   const [settingsTick, setSettingsTick] = useState(0);
   const alarmingIdRef = useRef(null);
 
@@ -60,14 +67,14 @@ export default function PriorityAlertProvider({ children }) {
     return subscribeNotificationSettings(() => setSettingsTick((n) => n + 1));
   }, []);
 
-  // Live duty gate — off-duty phones must stay quiet even if still assigned.
+  // Require a Command Center resource assignment before alarming.
   useEffect(() => {
     if (!user?.uid) {
-      setIsOnDuty(false);
+      setHasAssignedResource(false);
       return undefined;
     }
-    return subscribeToResponderDuty((duty) => {
-      setIsOnDuty(Boolean(duty?.resourceId));
+    return subscribeToAssignedResource((resource) => {
+      setHasAssignedResource(Boolean(resource?.id));
     });
   }, [user?.uid]);
 
@@ -97,27 +104,46 @@ export default function PriorityAlertProvider({ children }) {
     return id;
   }, [pathname]);
 
-  /** Unacknowledged, still-open incidents assigned to this on-duty responder. */
-  const alertingCases = useMemo(() => {
-    if (!user?.uid || !isOnDuty) return [];
+  /** Assigned on incident docs — works even without a primary resource binding. */
+  const hasIncidentAssignment = useMemo(() => {
+    if (!user?.uid) return false;
+    return cases.some(
+      (c) =>
+        c.resolutionStatus === "open" &&
+        c.status !== "resolved" &&
+        (c.assignedResourceIds?.includes(user.uid) ||
+          Boolean(c.responderAssignments?.[user.uid]) ||
+          isResponderAssignmentPendingAccept(c, user.uid))
+    );
+  }, [cases, user?.uid]);
+
+  const canReceiveAlerts = hasAssignedResource || hasIncidentAssignment;
+
+  /** Incidents that should alarm (includes case on screen until Acknowledge). */
+  const alarmingCases = useMemo(() => {
+    if (!user?.uid || !canReceiveAlerts) return [];
     return cases
       .filter((c) => c.resolutionStatus === "open" && c.status !== "resolved")
       .filter((c) => c.id && shouldAlertForIncident(c, user.uid, { isOnDuty: true }))
-      // Don't cover the case detail screen with the same incident's alarm sheet.
-      .filter((c) => c.id !== viewingIncidentId)
       .sort(
         (a, b) =>
           (PRIORITY_RANK[normalizePriority(b.priority)] ?? 0) -
           (PRIORITY_RANK[normalizePriority(a.priority)] ?? 0)
       );
-  }, [cases, user?.uid, viewingIncidentId, isOnDuty, settingsTick]);
+  }, [cases, user?.uid, canReceiveAlerts, settingsTick]);
 
-  const activeAlert = alertingCases[0] ?? null;
-  const alertingCount = alertingCases.length;
+  const modalCases = useMemo(
+    () => alarmingCases.filter((c) => c.id !== viewingIncidentId),
+    [alarmingCases, viewingIncidentId]
+  );
+
+  const alarmTarget = alarmingCases[0] ?? null;
+  const activeAlert = modalCases[0] ?? null;
+  const alertingCount = alarmingCases.length;
 
   // Start, switch, or stop the alarm as the top unacknowledged incident changes.
   useEffect(() => {
-    if (!user?.uid || !isOnDuty || !activeAlert) {
+    if (!user?.uid || !canReceiveAlerts || !alarmTarget) {
       if (alarmingIdRef.current) {
         alarmingIdRef.current = null;
         void stopPriorityAlerts();
@@ -125,22 +151,22 @@ export default function PriorityAlertProvider({ children }) {
       return;
     }
 
-    if (alarmingIdRef.current === activeAlert.id) return;
+    if (alarmingIdRef.current === alarmTarget.id) return;
 
-    alarmingIdRef.current = activeAlert.id;
-    const priority = normalizePriority(activeAlert.priority);
+    alarmingIdRef.current = alarmTarget.id;
+    const priority = normalizePriority(alarmTarget.priority);
     void playPriorityAlert(priority, {
       intensified: requiresForcedAlert(priority),
     });
-  }, [activeAlert, user?.uid, isOnDuty]);
+  }, [alarmTarget, user?.uid, canReceiveAlerts]);
 
-  // Going off duty must silence immediately.
+  // No assigned resource and no incident work — silence immediately.
   useEffect(() => {
-    if (isOnDuty) return;
+    if (canReceiveAlerts) return;
     alarmingIdRef.current = null;
     void stopPriorityAlerts();
     void dismissIncidentNotifications();
-  }, [isOnDuty]);
+  }, [canReceiveAlerts]);
 
   // Signing out must silence the device and detach its push token.
   useEffect(() => {
@@ -153,38 +179,53 @@ export default function PriorityAlertProvider({ children }) {
   useEffect(() => () => releaseAlertResources(), []);
 
   const acknowledge = useCallback(async () => {
-    const incidentId = activeAlert?.id;
+    const incidentId = alarmTarget?.id ?? activeAlert?.id;
     if (!incidentId) return;
 
     setIsAcknowledging(true);
-    // Silence immediately — the responder has demonstrably seen it, and waiting
-    // on the network round-trip would keep the alarm going for no reason.
-    alarmingIdRef.current = null;
-    await stopPriorityAlerts();
 
     try {
-      await acknowledgeIncidentAlert(incidentId);
-      void dismissIncidentNotifications(incidentId);
-    } catch (error) {
-      // The write failed, so the snapshot will still list this incident as
-      // unacknowledged and the alarm will resume on the next tick. That is the
-      // right outcome: an unrecorded acknowledgement should not stay silent.
+      const updated = await acknowledgeIncidentCase(incidentId);
       alarmingIdRef.current = null;
-      console.warn("[alert] Failed to acknowledge:", error?.message ?? error);
+      await stopPriorityAlerts();
+
+      if (user?.uid) {
+        queryClient.setQueryData(queryKeys.incidents.assigned(user.uid), (prev) => {
+          if (!Array.isArray(prev)) return prev;
+          const hasMatch = prev.some((item) => item.id === incidentId);
+          if (!hasMatch) return prev;
+          return prev.map((item) =>
+            item.id === incidentId ? { ...item, ...updated, id: incidentId } : item
+          );
+        });
+      }
+
+      void dismissIncidentNotifications(incidentId);
+      toast.success("Incident accepted — en route");
+    } catch (error) {
+      console.warn("[alert] Failed to acknowledge and accept:", error?.message ?? error);
+      toast.error(error?.message || "Could not accept incident. Try again.");
+      throw error;
     } finally {
       setIsAcknowledging(false);
     }
-  }, [activeAlert?.id]);
+  }, [alarmTarget?.id, activeAlert?.id, queryClient, user?.uid]);
 
   const value = useMemo(
-    () => ({ activeAlert, alertingCount, acknowledge, isAcknowledging, isOnDuty }),
-    [activeAlert, alertingCount, acknowledge, isAcknowledging, isOnDuty]
+    () => ({
+      activeAlert,
+      alertingCount,
+      acknowledge,
+      isAcknowledging,
+      isOnDuty: canReceiveAlerts,
+    }),
+    [activeAlert, alertingCount, acknowledge, isAcknowledging, canReceiveAlerts]
   );
 
   return (
     <IncidentAlertContext.Provider value={value}>
       {children}
-      {isOnDuty ? (
+      {activeAlert ? (
         <IncidentAlertModal
           incident={activeAlert}
           onAcknowledge={acknowledge}

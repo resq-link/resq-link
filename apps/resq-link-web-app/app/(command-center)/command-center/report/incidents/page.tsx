@@ -19,6 +19,7 @@ import { buildExportBundle } from '@/lib/reporting/export'
 import { printIncidentReport } from '@/lib/reporting/printReport'
 import { useOperationalTeams } from '@/contexts/OperationalTeamContext'
 import InlineLoader from '@/components/InlineLoader'
+import { buildTeamOptions, teamReactKey } from '@/lib/operational/teamUtils'
 
 const inputClass =
   'h-9 w-full rounded-lg border border-slate-700 bg-slate-950 px-2.5 text-sm font-medium text-slate-100 outline-none transition-colors focus:border-primary-400'
@@ -33,10 +34,7 @@ export default function IncidentReportsExportPage() {
   const { incidents, isLoading } = useReportIncidents()
   const { teams } = useOperationalTeams()
 
-  const teamOptions = useMemo(
-    () => teams.map((team) => ({ code: team.code, label: team.label })),
-    [teams]
-  )
+  const teamOptions = useMemo(() => buildTeamOptions(teams), [teams])
 
   const [draftFilters, setDraftFilters] = useState<ReportFilters>(getDefaultReportFilters)
   const [appliedFilters, setAppliedFilters] = useState<ReportFilters | null>(null)
@@ -164,8 +162,8 @@ export default function IncidentReportsExportPage() {
                     className={selectClass}
                   >
                     <option value="all">All Teams</option>
-                    {teams.map((team) => (
-                      <option key={team.id || team.code} value={team.code}>
+                    {teams.map((team, index) => (
+                      <option key={teamReactKey(team, index)} value={team.code}>
                         {team.label}
                       </option>
                     ))}

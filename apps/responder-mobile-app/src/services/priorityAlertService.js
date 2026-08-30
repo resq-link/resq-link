@@ -5,6 +5,7 @@ import {
   hasResponderAcknowledgedAlert,
   normalizePriority,
   requiresRepeatingAlert,
+  getResponderAssignment,
 } from "@packages/firebase";
 import { shouldPlayCaseAlert } from "@/services/notificationSettingsService";
 
@@ -165,9 +166,7 @@ export function shouldAlertForIncident(incident, responderId, options = {}) {
   // Multi-responder (same agency): only silence THIS responder's alarm when their
   // own assignment has moved past "assigned". A peer accepting must not stop
   // alarms for the other nine officers still waiting to accept.
-  const assignment = responderId
-    ? incident.responderAssignments?.[responderId]
-    : null;
+  const assignment = responderId ? getResponderAssignment(incident, responderId) : null;
   if (assignment) {
     if (assignment.status !== "assigned") return false;
   } else {

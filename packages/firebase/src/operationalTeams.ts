@@ -179,12 +179,53 @@ export async function resolveTeamFromInput(input: {
 }
 
 export function sortTeamsByOrder(teams: TeamRecord[]): TeamRecord[] {
-  return [...teams]
-    .filter((team) => team.isActive !== false)
-    .sort((left, right) => {
-      const leftOrder = left.sortOrder ?? Number.MAX_SAFE_INTEGER;
-      const rightOrder = right.sortOrder ?? Number.MAX_SAFE_INTEGER;
-      if (leftOrder !== rightOrder) return leftOrder - rightOrder;
-      return left.label.localeCompare(right.label);
-    });
+  const active = teams.filter((team) => team.isActive !== false);
+  const deduped = deduplicateTeamsByCode(active);
+  return deduped.sort((left, right) => {
+    const leftOrder = left.sortOrder ?? Number.MAX_SAFE_INTEGER;
+    const rightOrder = right.sortOrder ?? Number.MAX_SAFE_INTEGER;
+    if (leftOrder !== rightOrder) return leftOrder - rightOrder;
+    return left.label.localeCompare(right.label);
+  });
+}
+
+function choosePreferredTeam(
+  left: TeamRecord,
+  right: TeamRecord,
+  normalizedCode: string
+): TeamRecord {
+  if (left.id === normalizedCode && right.id !== normalizedCode) return left;
+  if (right.id === normalizedCode && left.id !== normalizedCode) return right;
+
+  const leftOrder = left.sortOrder ?? Number.MAX_SAFE_INTEGER;
+  const rightOrder = right.sortOrder ?? Number.MAX_SAFE_INTEGER;
+  if (leftOrder !== rightOrder) return leftOrder < rightOrder ? left : right;
+
+  if (left.id && right.id) {
+    return left.id.localeCompare(right.id) < 0 ? left : right;
+  }
+  return left.id ? left : right;
+}
+
+/**
+ * Collapse duplicate operational teams that share the same normalized code.
+ * Firestore can contain legacy duplicates (e.g. seeded `whiskey` doc + manual copy).
+ */
+export function deduplicateTeamsByCode(teams: TeamRecord[]): TeamRecord[] {
+  const byCode = new Map<string, TeamRecord>();
+
+  for (const team of teams) {
+    const code = normalizeCode(team.code || team.label);
+    if (!code) continue;
+
+    const existing = byCode.get(code);
+    if (!existing) {
+      byCode.set(code, team);
+      continue;
+    }
+
+    byCode.set(code, choosePreferredTeam(existing, team, code));
+  }
+
+  return Array.from(byCode.values());
 }

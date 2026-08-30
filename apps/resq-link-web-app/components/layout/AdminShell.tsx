@@ -56,7 +56,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
             </div>
             <main className="relative min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
               <SuperAdminGuard>
-                <RouteEnter>{children}</RouteEnter>
+                <RouteEnter layout="flow">{children}</RouteEnter>
               </SuperAdminGuard>
             </main>
           </div>

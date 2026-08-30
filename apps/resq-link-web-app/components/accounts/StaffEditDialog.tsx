@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react';
 import { Dialog } from '@/components/ui/Dialog';
 import type { AgencyOption } from '@/lib/agencyTypes';
 import type { StaffAccountRecord } from '@/lib/accountTypes';
+import { teamOptionKey } from '@/lib/operational/teamUtils';
 
 export function StaffEditDialog({
   open,
@@ -122,8 +123,8 @@ export function StaffEditDialog({
                   className="h-10 w-full rounded-lg border border-admin-border px-3 text-sm"
                 >
                   <option value="">Unassigned</option>
-                  {teams.map((team) => (
-                    <option key={team.code} value={team.code}>
+                  {teams.map((team, index) => (
+                    <option key={teamOptionKey(team, index)} value={team.code}>
                       {team.label}
                     </option>
                   ))}

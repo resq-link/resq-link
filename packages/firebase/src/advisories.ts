@@ -348,23 +348,22 @@ export function subscribeToAdvisories(
 
 /**
  * Real-time subscription to active advisories (for Civilian Mobile App banner and list).
+ * Filters client-side so no composite index (status + createdAt) is required at query time.
  */
 export function subscribeToActiveAdvisories(
   callback: (advisories: AdvisoryRecord[]) => void,
   onError?: (error: Error) => void
 ): Unsubscribe {
   const db = getFirebaseFirestore();
-  const q = query(
-    collection(db, 'advisories'),
-    where('status', '==', 'active'),
-    orderBy('createdAt', 'desc'),
-    limit(25)
-  );
+  const q = query(collection(db, 'advisories'), orderBy('createdAt', 'desc'), limit(100));
 
   return onSnapshot(
     q,
     (snapshot: QuerySnapshot) => {
-      const records = snapshot.docs.map(mapAdvisoryDoc);
+      const records = snapshot.docs
+        .map(mapAdvisoryDoc)
+        .filter((record) => record.status === 'active')
+        .slice(0, 25);
       callback(records);
     },
     (err) => {

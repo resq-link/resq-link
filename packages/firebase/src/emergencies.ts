@@ -115,6 +115,7 @@ export interface EmergencyReport {
   acceptedAt?: Date | Timestamp | null;
   responseTimeSeconds?: number | null;
   touchdownAt?: Date | Timestamp | null;
+  touchdownRecordedAt?: Date | Timestamp | null;
   touchdownByDispatcherId?: string | null;
   touchdownByName?: string | null;
   touchdownSource?: 'gps' | 'manual' | null;
@@ -122,8 +123,17 @@ export interface EmergencyReport {
   onScenePhotoUrl?: string | null;
   onScenePhotoUploadedAt?: Date | Timestamp | null;
   onScenePhotoUploadedBy?: string | null;
+  onSceneLatitude?: number | null;
+  onSceneLongitude?: number | null;
+  onSceneGpsCapturedAt?: Date | Timestamp | null;
+  sceneReports?: Record<string, import('./sceneReport').SceneReportRecord>;
   movedToHistoryAt?: Date | Timestamp | null;
   movedToHistoryBy?: string | null;
+  resolvedAt?: Date | Timestamp | null;
+  /** Merged from linked operational incident (client-side, not persisted). */
+  linkedIncidentStatus?: string | null;
+  linkedIncidentResolutionStatus?: string | null;
+  linkedIncidentResolvedAt?: Date | null;
   postIncidentReport?: {
     reasonForIncident?: string | null;
     notes?: string | null;
@@ -270,6 +280,7 @@ export const convertFirestoreDoc = (doc: DocumentData): EmergencyReport => {
       typeof data.onScenePhotoUploadedBy === 'string' ? data.onScenePhotoUploadedBy : null,
     movedToHistoryAt: data.movedToHistoryAt?.toDate ? data.movedToHistoryAt.toDate() : null,
     movedToHistoryBy: data.movedToHistoryBy || null,
+    resolvedAt: data.resolvedAt?.toDate ? data.resolvedAt.toDate() : null,
     postIncidentReport:
       data.postIncidentReport && typeof data.postIncidentReport === 'object'
         ? {
@@ -439,7 +450,7 @@ export async function getUserEmergencyReports(userId: string, limitCount: number
     };
 
     if (userEmergenciesCompositeIndexAvailable === false) {
-      return fetchEqualityOnly();
+      return enrichReportsWithLinkedIncidents(await fetchEqualityOnly());
     }
 
     try {
@@ -451,7 +462,7 @@ export async function getUserEmergencyReports(userId: string, limitCount: number
       );
       const querySnapshot = await getDocs(q);
       userEmergenciesCompositeIndexAvailable = true;
-      return querySnapshot.docs.map(convertFirestoreDoc);
+      return enrichReportsWithLinkedIncidents(querySnapshot.docs.map(convertFirestoreDoc));
     } catch (indexError: unknown) {
       if (isFirestoreMissingIndexError(indexError)) {
         userEmergenciesCompositeIndexAvailable = false;
@@ -459,7 +470,7 @@ export async function getUserEmergencyReports(userId: string, limitCount: number
           'emergencies-userId-createdAt-index',
           'Composite index missing for emergencies (userId + createdAt). Using in-memory sort. Deploy packages/firebase/firestore.indexes.json.'
         );
-        return fetchEqualityOnly();
+        return enrichReportsWithLinkedIncidents(await fetchEqualityOnly());
       }
       throw indexError;
     }
@@ -772,6 +783,95 @@ export async function assignDispatcherToEmergency(
   }
 }
 
+type LinkedIncidentSnapshot = {
+  status?: string | null;
+  resolutionStatus?: string | null;
+  resolvedAt?: Date | null;
+};
+
+function parseLinkedIncidentSnapshot(data: DocumentData): LinkedIncidentSnapshot {
+  return {
+    status: typeof data.status === 'string' ? data.status : null,
+    resolutionStatus: typeof data.resolutionStatus === 'string' ? data.resolutionStatus : null,
+    resolvedAt: data.resolvedAt?.toDate ? data.resolvedAt.toDate() : null,
+  };
+}
+
+function mergeLinkedIncidentIntoReport(
+  report: EmergencyReport,
+  linked: LinkedIncidentSnapshot | null | undefined,
+): EmergencyReport {
+  if (!linked) return report;
+  return {
+    ...report,
+    linkedIncidentStatus: linked.status ?? null,
+    linkedIncidentResolutionStatus: linked.resolutionStatus ?? null,
+    linkedIncidentResolvedAt: linked.resolvedAt ?? null,
+  };
+}
+
+async function enrichReportsWithLinkedIncidents(
+  reports: EmergencyReport[],
+): Promise<EmergencyReport[]> {
+  const incidentIds = [
+    ...new Set(
+      reports.map((r) => r.incidentId).filter((id): id is string => Boolean(id)),
+    ),
+  ];
+  if (incidentIds.length === 0) return reports;
+
+  const db = getFirebaseFirestore();
+  const snapshots = await Promise.all(
+    incidentIds.map((id) => getDoc(doc(db, 'incidents', id))),
+  );
+
+  const byId = new Map<string, LinkedIncidentSnapshot>();
+  incidentIds.forEach((id, index) => {
+    const snap = snapshots[index];
+    if (snap.exists()) {
+      byId.set(id, parseLinkedIncidentSnapshot(snap.data()));
+    }
+  });
+
+  return reports.map((report) => {
+    if (!report.incidentId) return report;
+    return mergeLinkedIncidentIntoReport(report, byId.get(report.incidentId));
+  });
+}
+
+function subscribeToLinkedIncidentsForReports(
+  reports: EmergencyReport[],
+  onIncidentUpdate: (incidentId: string, snapshot: LinkedIncidentSnapshot | null) => void,
+  options?: { onError?: (error: Error) => void },
+): () => void {
+  const db = getFirebaseFirestore();
+  const incidentIds = new Set(
+    reports.map((r) => r.incidentId).filter((id): id is string => Boolean(id)),
+  );
+  const unsubscribers: Record<string, () => void> = {};
+
+  for (const incidentId of incidentIds) {
+    const incidentRef = doc(db, 'incidents', incidentId);
+    unsubscribers[incidentId] = onDocumentSnapshot(
+      incidentRef,
+      (incSnap) => {
+        if (!incSnap.exists()) {
+          onIncidentUpdate(incidentId, null);
+          return;
+        }
+        onIncidentUpdate(incidentId, parseLinkedIncidentSnapshot(incSnap.data()));
+      },
+      (error) => {
+        options?.onError?.(error instanceof Error ? error : new Error(String(error)));
+      },
+    );
+  }
+
+  return () => {
+    Object.values(unsubscribers).forEach((unsub) => unsub());
+  };
+}
+
 export function subscribeToEmergencyReport(
   reportId: string,
   callback: (report: EmergencyReport | null) => void,
@@ -783,21 +883,75 @@ export function subscribeToEmergencyReport(
       return () => {};
     }
 
-    const reportRef = doc(getFirebaseFirestore(), 'emergencies', reportId);
-    return onDocumentSnapshot(
+    const db = getFirebaseFirestore();
+    const reportRef = doc(db, 'emergencies', reportId);
+    let latestReport: EmergencyReport | null = null;
+    let latestIncident: LinkedIncidentSnapshot | null = null;
+    let incidentUnsub: (() => void) | null = null;
+
+    const emit = () => {
+      if (!latestReport) {
+        callback(null);
+        return;
+      }
+      callback(mergeLinkedIncidentIntoReport(latestReport, latestIncident));
+    };
+
+    const reportUnsub = onDocumentSnapshot(
       reportRef,
       (snapshot) => {
         if (!snapshot.exists()) {
+          latestReport = null;
+          if (incidentUnsub) {
+            incidentUnsub();
+            incidentUnsub = null;
+          }
+          latestIncident = null;
           callback(null);
           return;
         }
-        callback(convertFirestoreDoc(snapshot));
+
+        latestReport = convertFirestoreDoc(snapshot);
+        const incidentId = latestReport.incidentId;
+
+        if (incidentUnsub) {
+          incidentUnsub();
+          incidentUnsub = null;
+        }
+        latestIncident = null;
+
+        if (incidentId) {
+          const incidentRef = doc(db, 'incidents', incidentId);
+          incidentUnsub = onDocumentSnapshot(
+            incidentRef,
+            (incSnap) => {
+              if (!incSnap.exists()) {
+                latestIncident = null;
+                emit();
+                return;
+              }
+              const data = incSnap.data();
+              latestIncident = parseLinkedIncidentSnapshot(data);
+              emit();
+            },
+            (error) => {
+              options?.onError?.(error instanceof Error ? error : new Error(String(error)));
+            },
+          );
+        }
+
+        emit();
       },
       (error) => {
         options?.onError?.(error instanceof Error ? error : new Error(String(error)));
         callback(null);
       }
     );
+
+    return () => {
+      reportUnsub();
+      if (incidentUnsub) incidentUnsub();
+    };
   } catch (error) {
     options?.onError?.(error instanceof Error ? error : new Error(String(error)));
     callback(null);
@@ -826,21 +980,61 @@ export function subscribeToUserEmergencies(
       limit(options?.limitCount ? options.limitCount * 2 : 50)
     );
 
-    return onSnapshot(
+    let latestReports: EmergencyReport[] = [];
+    const linkedIncidents = new Map<string, LinkedIncidentSnapshot>();
+    let incidentListenersUnsub: (() => void) | null = null;
+
+    const emit = () => {
+      const merged = latestReports.map((report) => {
+        const incidentId = report.incidentId;
+        if (!incidentId) return report;
+        return mergeLinkedIncidentIntoReport(report, linkedIncidents.get(incidentId));
+      });
+      if (options?.limitCount) {
+        callback(merged.slice(0, options.limitCount));
+      } else {
+        callback(merged);
+      }
+    };
+
+    const syncIncidentListeners = () => {
+      if (incidentListenersUnsub) {
+        incidentListenersUnsub();
+        incidentListenersUnsub = null;
+      }
+      linkedIncidents.clear();
+
+      incidentListenersUnsub = subscribeToLinkedIncidentsForReports(
+        latestReports,
+        (incidentId, snapshot) => {
+          if (snapshot) {
+            linkedIncidents.set(incidentId, snapshot);
+          } else {
+            linkedIncidents.delete(incidentId);
+          }
+          emit();
+        },
+        { onError: options?.onError },
+      );
+    };
+
+    const reportsUnsub = onSnapshot(
       q,
       (snapshot) => {
-        const reports = sortByCreatedAtDesc(snapshot.docs.map(convertFirestoreDoc));
-        if (options?.limitCount) {
-          callback(reports.slice(0, options.limitCount));
-        } else {
-          callback(reports);
-        }
+        latestReports = sortByCreatedAtDesc(snapshot.docs.map(convertFirestoreDoc));
+        syncIncidentListeners();
+        emit();
       },
       (error) => {
         options?.onError?.(error instanceof Error ? error : new Error(String(error)));
         callback([]);
       }
     );
+
+    return () => {
+      reportsUnsub();
+      if (incidentListenersUnsub) incidentListenersUnsub();
+    };
   } catch (error) {
     options?.onError?.(error instanceof Error ? error : new Error(String(error)));
     callback([]);

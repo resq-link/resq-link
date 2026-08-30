@@ -25,6 +25,10 @@ import {
   ExternalLink,
 } from "lucide-react-native";
 import { getIncidentMeta } from "@/features/history/constants";
+import {
+  getCivilianStatusColor,
+  getCivilianStatusShortLabel,
+} from "@/features/emergency/utils/incidentStatus";
 
 export default function OngoingIncidentFloatingCard({
   incident,
@@ -42,21 +46,8 @@ export default function OngoingIncidentFloatingCard({
   const meta = getIncidentMeta(incident.incidentType, incident.typeProfile) || {};
   const Icon = meta.Icon || meta.icon || AlertTriangle;
 
-  const statusLabel =
-    incident.status === "pending"
-      ? "Awaiting Dispatch"
-      : incident.status === "enroute"
-      ? "Responder En Route"
-      : incident.status === "on_scene"
-      ? "Responders On Scene"
-      : "Active Incident";
-
-  const statusColor =
-    incident.status === "on_scene"
-      ? "#34D399"
-      : incident.status === "enroute"
-      ? "#38BDF8"
-      : "#FBBF24";
+  const statusLabel = getCivilianStatusShortLabel(incident);
+  const statusColor = getCivilianStatusColor(incident);
 
   const isResponderAssigned = Boolean(incident.responder || incident.assignedResponderId);
   const responderName = incident.responderName || incident.responder || "Assigned Unit";

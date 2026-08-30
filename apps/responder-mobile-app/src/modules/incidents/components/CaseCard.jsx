@@ -5,7 +5,7 @@ import * as Haptics from "expo-haptics";
 import { toast } from "@/utils/toast";
 import useUserStore from "@/store/userStore";
 import { acceptIncidentCase } from "@/services/incidentService";
-import { normalizePriority, resolveIncidentDisplayFields } from "@packages/firebase";
+import { normalizePriority, resolveIncidentDisplayFields, isResponderAssignmentPendingAccept } from "@packages/firebase";
 import { toOperationalError } from "@/utils/operationalError";
 import { getPriorityColor } from "@/utils/priorityColors";
 import CaseStatusBadge from "./CaseStatusBadge";
@@ -22,18 +22,7 @@ export default function CaseCard({ case: caseData, onPress, onStatusUpdate }) {
   const { user } = useUserStore();
 
   const userAssignment = user?.uid && caseData?.responderAssignments?.[user.uid];
-  const isAssignedResponder =
-    (user && caseData.assignedResourceIds && caseData.assignedResourceIds.includes(user.uid)) ||
-    Boolean(userAssignment);
-
-  const showAcceptButton =
-    isAssignedResponder &&
-    (userAssignment
-      ? userAssignment.status === "assigned"
-      : caseData.status === "pending" ||
-        caseData.status === "dispatched" ||
-        caseData.status === "awaiting_resources" ||
-        caseData.status === "active");
+  const showAcceptButton = isResponderAssignmentPendingAccept(caseData, user?.uid);
 
   const displayStatus = userAssignment ? userAssignment.status : caseData.status;
 

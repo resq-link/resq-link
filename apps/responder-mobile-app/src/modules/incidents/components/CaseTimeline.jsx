@@ -8,20 +8,23 @@ export default function CaseTimeline({ caseData, colors, formatDate, formatRespo
     const status = String(caseData.status || "").toLowerCase();
     const hasAccepted = !!caseData.acceptedAt;
     const hasTouchdown = !!caseData.touchdownAt;
-    const hasPostReport = !!caseData.postIncidentReport?.submittedAt;
+    const hasSceneReport = !!(
+      caseData.postIncidentReport?.submittedAt ||
+      (caseData.sceneReports && Object.values(caseData.sceneReports).some((report) => report?.submittedAt))
+    );
     const isEnRouteOrBeyond =
       status === "enroute" ||
       status === "on_scene" ||
       status === "done" ||
       status === "resolved" ||
       hasTouchdown ||
-      hasPostReport;
+      hasSceneReport;
 
     switch (stepKey) {
       case "reported":
         return { state: "completed", time: caseData.createdAt };
 
-      case "accepted":
+      case "assigned":
         if (hasAccepted) return { state: "completed", time: caseData.acceptedAt };
         if (isEnRouteOrBeyond) return { state: "completed" };
         if (status === "pending" || status === "dispatched" || status === "awaiting_resources") {
@@ -30,21 +33,27 @@ export default function CaseTimeline({ caseData, colors, formatDate, formatRespo
         return { state: "future" };
 
       case "enroute":
-        if (status === "on_scene" || status === "done" || status === "resolved" || hasTouchdown || hasPostReport) {
-          return { state: "completed" };
+        if (status === "on_scene" || status === "done" || status === "resolved" || hasTouchdown || hasSceneReport) {
+          return { state: "completed", time: caseData.acceptedAt };
         }
-        if (status === "enroute") return { state: "active" };
+        if (status === "enroute") return { state: "active", time: caseData.acceptedAt };
         return { state: "future" };
 
-      case "touchdown":
+      case "on_scene":
         if (hasTouchdown) return { state: "completed", time: caseData.touchdownAt };
-        if (hasPostReport || status === "done" || status === "resolved") return { state: "completed" };
+        if (hasSceneReport || status === "done" || status === "resolved") return { state: "completed" };
         if (status === "on_scene") return { state: "active" };
         return { state: "future" };
 
-      case "post_report":
-        if (hasPostReport) {
-          return { state: "completed", time: caseData.postIncidentReport.submittedAt };
+      case "resolved":
+        if (hasSceneReport) {
+          return {
+            state: "completed",
+            time:
+              caseData.resolvedAt ||
+              caseData.postIncidentReport?.submittedAt ||
+              Object.values(caseData.sceneReports || {}).find((report) => report?.submittedAt)?.submittedAt,
+          };
         }
         if (status === "done" || status === "resolved") return { state: "active" };
         return { state: "future" };
@@ -56,10 +65,10 @@ export default function CaseTimeline({ caseData, colors, formatDate, formatRespo
 
   const rawSteps = [
     { key: "reported", label: "Incident Reported" },
-    { key: "accepted", label: "Case Accepted" },
+    { key: "assigned", label: "Assigned / Accepted" },
     { key: "enroute", label: "En Route to Scene" },
-    { key: "touchdown", label: "Touchdown on Scene" },
-    { key: "post_report", label: "Post-Incident Report" },
+    { key: "on_scene", label: "On Scene" },
+    { key: "resolved", label: "Scene Report & Resolved" },
   ].map((step) => ({
     ...step,
     ...getStepState(step.key),
@@ -190,7 +199,7 @@ export default function CaseTimeline({ caseData, colors, formatDate, formatRespo
                 <Text style={[styles.pendingText, { color: colors.textMuted }]}>Pending</Text>
               )}
 
-              {step.key === "accepted" &&
+              {step.key === "enroute" &&
               step.state === "completed" &&
               caseData.responseTimeSeconds != null ? (
                 <View

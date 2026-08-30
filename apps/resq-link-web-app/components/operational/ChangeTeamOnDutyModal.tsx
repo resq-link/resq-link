@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { TeamRecord } from '@packages/firebase'
 import TeamBadge from './TeamBadge'
+import { teamReactKey } from '@/lib/operational/teamUtils'
 
 type ChangeTeamOnDutyModalProps = {
   isOpen: boolean
@@ -81,12 +82,12 @@ export default function ChangeTeamOnDutyModal({
               </p>
             ) : (
               <div className="mt-2 grid grid-cols-2 gap-2">
-                {teams.map((team) => {
+                {teams.map((team, index) => {
                   const id = team.id || team.code
                   const isSelected = selectedId === id
                   return (
                     <button
-                      key={id}
+                      key={teamReactKey(team, index)}
                       type="button"
                       onClick={() => setSelectedId(id)}
                       className={`h-10 rounded-lg border px-3 text-xs font-bold uppercase tracking-wider transition-colors ${

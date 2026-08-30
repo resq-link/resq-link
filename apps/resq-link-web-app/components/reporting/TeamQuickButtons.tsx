@@ -1,6 +1,7 @@
 'use client'
 
 import type { TeamRecord } from '@packages/firebase'
+import { teamReactKey } from '@/lib/operational/teamUtils'
 
 type TeamQuickButtonsProps = {
   teams: TeamRecord[]
@@ -30,9 +31,9 @@ export default function TeamQuickButtons({
         >
           All Teams
         </button>
-        {teams.map((team) => (
+        {teams.map((team, index) => (
           <button
-            key={team.id || team.code}
+            key={teamReactKey(team, index)}
             type="button"
             onClick={() => onSelectTeam(team.code)}
             className={`h-10 rounded-xl border px-4 text-xs font-black uppercase tracking-wider transition-colors ${

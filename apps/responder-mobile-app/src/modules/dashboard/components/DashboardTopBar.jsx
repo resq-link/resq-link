@@ -13,6 +13,8 @@ export default function DashboardTopBar({
   roleLabel,
   onDuty = false,
   dutyUnitLabel,
+  hasAssignedResource = false,
+  assignedUnitLabel,
   onPressDuty,
   notificationCount = 0,
   onPressNotifications,
@@ -39,11 +41,14 @@ export default function DashboardTopBar({
     onPressDuty();
   };
 
-  const dutyLabel = onDuty
-    ? dutyUnitLabel
-      ? `On duty · ${dutyUnitLabel}`
-      : "On duty"
-    : "Off duty";
+  const resourceAssigned = hasAssignedResource || onDuty;
+  const unitLabel = assignedUnitLabel ?? dutyUnitLabel;
+
+  const dutyLabel = resourceAssigned
+    ? unitLabel
+      ? `Assigned · ${unitLabel}`
+      : "Resource assigned"
+    : "No resource assigned";
 
   return (
     <View style={[styles.header, { paddingTop: topInset }]}>
@@ -60,7 +65,7 @@ export default function DashboardTopBar({
           style={({ pressed }) => [
             styles.dutyPill,
             {
-              backgroundColor: onDuty
+              backgroundColor: resourceAssigned
                 ? `${theme.statOnline ?? "#22C55E"}22`
                 : theme.chipBg ?? "rgba(100, 116, 139, 0.12)",
             },
@@ -68,16 +73,16 @@ export default function DashboardTopBar({
           ]}
           accessibilityRole={onPressDuty ? "button" : "text"}
           accessibilityLabel={
-            onDuty
-              ? `On duty${dutyUnitLabel ? `, ${dutyUnitLabel}` : ""}. Tap to view duty controls.`
-              : "Off duty. Tap to go on duty."
+            resourceAssigned
+              ? `Assigned resource${unitLabel ? `: ${unitLabel}` : ""}. Tap to view details.`
+              : "No resource assigned. Tap to view details."
           }
         >
           <View
             style={[
               styles.dutyDot,
               {
-                backgroundColor: onDuty
+                backgroundColor: resourceAssigned
                   ? theme.statOnline ?? "#22C55E"
                   : theme.textMuted,
               },
@@ -86,7 +91,7 @@ export default function DashboardTopBar({
           <Text
             style={[
               styles.dutyPillText,
-              { color: onDuty ? theme.statOnline ?? "#22C55E" : theme.textMuted },
+              { color: resourceAssigned ? theme.statOnline ?? "#22C55E" : theme.textMuted },
             ]}
             numberOfLines={1}
           >

@@ -24,11 +24,12 @@ import {
 } from "lucide-react-native";
 import {
   uploadImageToStorage,
-  hasResponderSceneAssessment,
+  hasSceneReport,
   startIncidentCallSession,
   subscribeToUserIncomingCalls,
   acceptIncidentCallSession,
   declineIncidentCallSession,
+  isResponderAssignmentPendingAccept,
 } from "@packages/firebase";
 import { toast } from "@/utils/toast";
 import * as Haptics from "expo-haptics";
@@ -37,15 +38,13 @@ import {
   acceptIncidentCase as acceptCase,
   declineIncidentCase as declineCase,
   markIncidentCaseTouchdown as markCaseTouchdown,
-  submitIncidentPostReport as submitPostIncidentReport,
-  submitIncidentSceneAssessment,
+  submitIncidentSceneReport,
 } from "@/services/incidentService";
 import useUserStore from "@/store/userStore";
+import { useAssignedResource } from "@/modules/dashboard/hooks/useAssignedResource";
 
-import PostReportModal from "./PostReportModal";
-import SceneAssessmentModal from "./SceneAssessmentModal";
-import TouchdownTimeModal from "./TouchdownTimeModal";
-import SceneAssessmentSection from "./SceneAssessmentSection";
+import OnSceneModal from "./OnSceneModal";
+import SceneReportModal from "./SceneReportModal";
 import DeclineModal from "./DeclineModal";
 import CaseTimeline from "./CaseTimeline";
 import Section from "./Section";
@@ -176,22 +175,27 @@ export default function CaseInfoCard({
   const [streetLevelLocation, setStreetLevelLocation] = useState("");
   const [locationError, setLocationError] = useState("");
   const [now, setNow] = useState(new Date());
-  const [isTouchdownUpdating, setIsTouchdownUpdating] = useState(false);
-  const [isTouchdownModalVisible, setIsTouchdownModalVisible] = useState(false);
-  const [isPostReportModalVisible, setIsPostReportModalVisible] = useState(false);
-  const [isSubmittingPostReport, setIsSubmittingPostReport] = useState(false);
-  const [isSceneAssessmentModalVisible, setIsSceneAssessmentModalVisible] = useState(false);
-  const [isSubmittingSceneAssessment, setIsSubmittingSceneAssessment] = useState(false);
-  const [postReportForm, setPostReportForm] = useState({
-    reasonForIncident: "",
-    notes: "",
-    peopleInvolved: "",
-    peopleStatus: "",
-    hospital: "",
+  const [isOnSceneUpdating, setIsOnSceneUpdating] = useState(false);
+  const [isOnSceneModalVisible, setIsOnSceneModalVisible] = useState(false);
+  const [isSceneReportModalVisible, setIsSceneReportModalVisible] = useState(false);
+  const [isSubmittingSceneReport, setIsSubmittingSceneReport] = useState(false);
+  const [onSceneDraft, setOnSceneDraft] = useState({
+    arrivalTime: null,
+    photoUri: "",
+    gps: null,
+  });
+  const [sceneReportForm, setSceneReportForm] = useState({
+    situationStatus: "",
+    peopleAffected: ["none"],
+    peopleAffectedCounts: { injured: 0, rescued: 0, fatality: 0 },
+    actionsTaken: [],
+    actionsTakenOther: "",
     actionPhotoUri: "",
+    remarks: "",
   });
   const [error, setError] = useState("");
   const { user } = useUserStore();
+  const { assignedResource } = useAssignedResource(user?.uid || user?.id);
 
   const [activeCallSession, setActiveCallSession] = useState(null);
   const [isCallModalVisible, setIsCallModalVisible] = useState(false);
@@ -339,17 +343,12 @@ export default function CaseInfoCard({
   };
 
   const userAssignment = user?.uid && caseData?.responderAssignments?.[user.uid];
-  const isAssignedResponder =
-    (user && caseData.assignedResourceIds && caseData.assignedResourceIds.includes(user.uid)) ||
-    Boolean(userAssignment);
-
-  const showAcceptButton =
-    isAssignedResponder &&
-    (userAssignment
-      ? userAssignment.status === "assigned"
-      : // Resource-dispatch path with no per-user slot yet: keep Accept visible
-        // even if a peer already flipped top-level status to enroute.
-        true);
+  const isAssignedResponder = Boolean(
+    user?.uid &&
+      (caseData?.responderAssignments?.[user.uid] ||
+        caseData?.assignedResourceIds?.includes(user.uid))
+  );
+  const showAcceptButton = isResponderAssignmentPendingAccept(caseData, user?.uid);
 
   const formatDate = (dateString) => {
     if (!dateString) return "Unknown";
@@ -426,60 +425,36 @@ export default function CaseInfoCard({
     ? (userAssignment?.status || 'assigned')
     : (userAssignment?.status || caseData.status);
 
-  const canMarkTouchdown =
+  const canMarkOnScene =
     isAssignedResponder &&
     !userHasTouchdown &&
     (userStatus === "enroute" || userStatus === "on_scene");
 
-  // Multi-agency: only own assignment assessment counts (BFP must not unlock PNP).
-  // Single-agency / legacy: fall back to shared root responderAssessment.
-  const hasSceneAssessment = hasResponderSceneAssessment(
-    hasMultipleAssignments
-      ? userAssignment?.responderAssessment
-      : (userAssignment?.responderAssessment || caseData.responderAssessment),
-  );
-  const sceneAssessmentInitialFields = useMemo(
-    () =>
-      (hasMultipleAssignments
-        ? userAssignment?.responderAssessment?.fields
-        : (userAssignment?.responderAssessment?.fields || caseData.responderAssessment?.fields)
-      ) ?? {},
-    [
-      hasMultipleAssignments,
-      userAssignment?.responderAssessment?.fields,
-      caseData.responderAssessment?.fields,
-    ],
-  );
-
-  // Multi-agency: only read own UID-keyed sources. The shared caseData.postIncidentReport is
-  // overwritten by the last submitter, so PNP must NOT pick up BFP's completed report.
-  // Single-agency / legacy: shared field fallback is acceptable.
+  const userSceneReport = hasMultipleAssignments
+    ? (userAssignment?.sceneReport || caseData.sceneReports?.[user?.uid])
+    : (userAssignment?.sceneReport || caseData.sceneReports?.[user?.uid]);
   const userPostReport = hasMultipleAssignments
     ? (userAssignment?.postIncidentReport || caseData.postIncidentReports?.[user?.uid])
     : (userAssignment?.postIncidentReport || caseData.postIncidentReports?.[user?.uid] || (isAssignedResponder ? caseData.postIncidentReport : null));
-  const hasUserPostReport = Boolean(userPostReport?.submittedAt);
+  const hasUserSceneReport = hasSceneReport(userSceneReport);
 
-  const canSubmitSceneAssessment =
+  const canSubmitSceneReport =
     isAssignedResponder &&
     userHasTouchdown &&
     userStatus !== "done" &&
     userStatus !== "resolved" &&
-    !hasUserPostReport &&
+    !hasUserSceneReport &&
     (!hasMultipleAssignments ? (caseData.status !== "done" && caseData.status !== "resolved") : true);
-
-  const canSubmitPostReport =
-    canSubmitSceneAssessment &&
-    hasSceneAssessment &&
-    !hasUserPostReport;
-
-  const showPostReportBlocked =
-    canSubmitSceneAssessment && !hasSceneAssessment;
 
   const displayLocationText = streetLevelLocation || caseData.locationText;
   const status = String(userStatus || caseData.status || "").toLowerCase();
   const hasTouchdown = userHasTouchdown;
-  const hasPostReport = hasUserPostReport;
-  const isResolved = status === "done" || status === "resolved" || hasPostReport;
+  const hasPostReport = hasUserSceneReport || Boolean(userPostReport?.submittedAt);
+  const isResolved =
+    status === "done" ||
+    status === "resolved" ||
+    hasUserSceneReport ||
+    Boolean(userPostReport?.submittedAt);
   const isEnRouteOrBeyond =
     status === "enroute" ||
     status === "on_scene" ||
@@ -609,38 +584,42 @@ export default function CaseInfoCard({
     return () => clearInterval(interval);
   }, [enRouteActive]);
 
-  const handleTouchdown = async (touchdownAt, onScenePhotoUri, distanceMeters = null) => {
-    if (!caseData.id || !canMarkTouchdown || isTouchdownUpdating || !touchdownAt || !onScenePhotoUri?.trim()) {
+  const handleOnSceneConfirm = async ({ arrivalTime, photoUri, gps }) => {
+    if (!caseData.id || !canMarkOnScene || isOnSceneUpdating || !arrivalTime || !photoUri?.trim()) {
       return;
     }
 
     let loadingId;
     try {
-      setIsTouchdownUpdating(true);
+      setIsOnSceneUpdating(true);
       setError("");
       loadingId = toast.loading("Uploading on-scene photo…");
       const onScenePhotoUrl = await uploadImageToStorage(
-        onScenePhotoUri,
+        photoUri,
         "emergencies/photos/",
         `responder-on-scene_${caseData.id}_${Date.now()}.jpg`,
       );
-      toast.loading("Confirming touchdown…", { id: loadingId });
+      toast.loading("Confirming on scene…", { id: loadingId });
       await markCaseTouchdown(caseData.id, {
-        source: "manual",
-        distanceMeters,
-        touchdownAt,
+        source: gps?.latitude != null ? "gps" : "manual",
+        distanceMeters: touchdownDistanceMeters,
+        touchdownAt: arrivalTime,
         onScenePhotoUrl,
+        onSceneLatitude: gps?.latitude ?? null,
+        onSceneLongitude: gps?.longitude ?? null,
+        onSceneGpsCapturedAt: gps?.capturedAt ?? null,
       });
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      toast.success("On Scene", { id: loadingId });
-      setIsTouchdownModalVisible(false);
+      toast.success("On Scene confirmed", { id: loadingId });
+      setIsOnSceneModalVisible(false);
+      setOnSceneDraft({ arrivalTime: null, photoUri: "", gps: null });
       onStatusUpdate?.();
     } catch (err) {
-      const message = toOperationalError(err, "Unable to mark touchdown");
+      const message = toOperationalError(err, "Unable to confirm on scene");
       setError(message);
       toast.error(message, loadingId ? { id: loadingId } : undefined);
     } finally {
-      setIsTouchdownUpdating(false);
+      setIsOnSceneUpdating(false);
     }
   };
 
@@ -660,79 +639,95 @@ export default function CaseInfoCard({
     }
   };
 
-  const handleSubmitPostReport = async () => {
-    if (!caseData.id) return;
+  const handleSubmitSceneReport = async () => {
+    if (!caseData.id || isSubmittingSceneReport) return;
 
-    const ownAssessment = hasMultipleAssignments
-      ? userAssignment?.responderAssessment
-      : (userAssignment?.responderAssessment || caseData.responderAssessment);
-    if (!hasResponderSceneAssessment(ownAssessment)) {
-      setError("Complete the Scene Assessment before submitting the Post Report.");
-      toast.message("Complete Scene Assessment first");
+    if (hasUserSceneReport || userStatus === "resolved") {
+      toast.message("Scene report already submitted.");
+      return;
+    }
+
+    const hasNonNonePeople = sceneReportForm.peopleAffected.some((value) => value !== "none");
+    if (!sceneReportForm.situationStatus) {
+      setError("Select a situation status.");
+      return;
+    }
+    if (!sceneReportForm.peopleAffected.length) {
+      setError("Select people affected.");
+      return;
+    }
+    if (hasNonNonePeople) {
+      const missingCount = sceneReportForm.peopleAffected
+        .filter((value) => value !== "none")
+        .some((category) => {
+          const key = category === "fatality" ? "fatality" : category;
+          const val = sceneReportForm.peopleAffectedCounts?.[key];
+          return typeof val !== "number" || val < 0;
+        });
+      if (missingCount) {
+        setError("Enter a valid count for each selected people category.");
+        return;
+      }
+    }
+    if (!sceneReportForm.actionsTaken.length) {
+      setError("Select at least one action taken.");
       return;
     }
 
     try {
-      setIsSubmittingPostReport(true);
+      setIsSubmittingSceneReport(true);
       setError("");
-      const peopleInvolvedValue = postReportForm.peopleInvolved.trim();
+
       let actionPhotoUrl = null;
-      if (postReportForm.actionPhotoUri?.trim()) {
+      if (sceneReportForm.actionPhotoUri?.trim()) {
         actionPhotoUrl = await uploadImageToStorage(
-          postReportForm.actionPhotoUri,
+          sceneReportForm.actionPhotoUri,
           "emergencies/photos/",
-          `responder-post-report_${caseData.id}_${Date.now()}.jpg`,
+          `responder-action_${caseData.id}_${Date.now()}.jpg`,
         );
       }
-      await submitPostIncidentReport(caseData.id, {
-        reasonForIncident: postReportForm.reasonForIncident,
-        notes: postReportForm.notes,
-        peopleInvolved: peopleInvolvedValue ? Number(peopleInvolvedValue) : null,
-        peopleStatus: postReportForm.peopleStatus,
-        hospital: postReportForm.hospital,
+
+      await submitIncidentSceneReport(caseData.id, {
+        situationStatus: sceneReportForm.situationStatus,
+        peopleAffected: sceneReportForm.peopleAffected,
+        peopleAffectedCounts: hasNonNonePeople
+          ? {
+              injured: sceneReportForm.peopleAffected.includes("injured")
+                ? Number(sceneReportForm.peopleAffectedCounts?.injured ?? 0)
+                : 0,
+              rescued: sceneReportForm.peopleAffected.includes("rescued")
+                ? Number(sceneReportForm.peopleAffectedCounts?.rescued ?? 0)
+                : 0,
+              fatality: sceneReportForm.peopleAffected.includes("fatality")
+                ? Number(sceneReportForm.peopleAffectedCounts?.fatality ?? 0)
+                : 0,
+            }
+          : { injured: 0, rescued: 0, fatality: 0 },
+        actionsTaken: sceneReportForm.actionsTaken,
+        actionsTakenOther: sceneReportForm.actionsTakenOther,
+        additionalResourcesNeeded: false,
         actionPhotoUrl,
+        remarks: sceneReportForm.remarks,
       });
-      setIsPostReportModalVisible(false);
-      setPostReportForm({
-        reasonForIncident: "",
-        notes: "",
-        peopleInvolved: "",
-        peopleStatus: "",
-        hospital: "",
+
+      setIsSceneReportModalVisible(false);
+      setSceneReportForm({
+        situationStatus: "",
+        peopleAffected: ["none"],
+        peopleAffectedCounts: { injured: 0, rescued: 0, fatality: 0 },
+        actionsTaken: [],
+        actionsTakenOther: "",
         actionPhotoUri: "",
+        remarks: "",
       });
       onStatusUpdate?.();
-      toast.success("Post report submitted successfully.");
+      toast.success("Incident resolved successfully.");
     } catch (err) {
-      console.error("[post-report] Submit failed:", err);
-      setError("Unable to submit post report. Check your connection and try again.");
-      toast.error("Unable to submit post report. Check your connection and try again.");
+      console.error("[scene-report] Submit failed:", err);
+      setError(toOperationalError(err, "Unable to submit scene report. Check your connection and try again."));
+      toast.error("Unable to submit scene report. Check your connection and try again.");
     } finally {
-      setIsSubmittingPostReport(false);
-    }
-  };
-
-  const handleSubmitSceneAssessment = async (fields) => {
-    if (!caseData.id) return;
-
-    try {
-      setIsSubmittingSceneAssessment(true);
-      setError("");
-      const responderName =
-        user?.displayName || user?.email || user?.uid || null;
-
-      await submitIncidentSceneAssessment(caseData.id, fields, {
-        updatedByName: responderName,
-      });
-      setIsSceneAssessmentModalVisible(false);
-      toast.success("Scene Assessment submitted successfully.");
-      onStatusUpdate?.();
-    } catch (err) {
-      console.error("[scene-assessment] Submit failed:", err);
-      setError("Unable to submit scene assessment. Check your connection and try again.");
-      toast.error("Unable to submit scene assessment. Check your connection and try again.");
-    } finally {
-      setIsSubmittingSceneAssessment(false);
+      setIsSubmittingSceneReport(false);
     }
   };
 
@@ -1143,9 +1138,9 @@ export default function CaseInfoCard({
   const scrollPaddingBottom = bottomPadding + 76;
   const progressSteps = [
     {
-      key: "accepted",
-      label: "Accepted",
-      detail: acceptedTime ? "Case accepted" : "Waiting",
+      key: "assigned",
+      label: "Assigned",
+      detail: acceptedTime ? "Accepted" : "Awaiting accept",
       state: acceptedTime ? "completed" : "active",
       icon: Check,
     },
@@ -1161,15 +1156,22 @@ export default function CaseInfoCard({
       icon: Navigation,
     },
     {
-      key: "touchdown",
-      label: "Touchdown",
+      key: "on_scene",
+      label: "On Scene",
       detail: hasTouchdown
-        ? formatDate(caseData.touchdownAt)
+        ? formatDate(userTouchdownAt || caseData.touchdownAt)
         : touchdownComplete
           ? "Arrived"
           : "Pending",
       state: touchdownComplete ? "completed" : "future",
       icon: MapPin,
+    },
+    {
+      key: "resolved",
+      label: "Resolved",
+      detail: isResolved ? "Completed" : canSubmitSceneReport ? "Scene report pending" : "Pending",
+      state: isResolved ? "completed" : canSubmitSceneReport ? "active" : "future",
+      icon: Check,
     },
   ];
 
@@ -1443,7 +1445,7 @@ export default function CaseInfoCard({
             ) : null}
 
             {hasTouchdown ? (
-              <Section title="Touchdown — On-Scene Photo" colors={colors} embedded={true}>
+              <Section title="On Scene — Arrival Photo" colors={colors} embedded={true}>
                 <PhotoPurposeBadge purpose="onScene" colors={colors} />
                 {caseData.onScenePhotoUrl ? (
                   <TouchableOpacity
@@ -1490,21 +1492,9 @@ export default function CaseInfoCard({
               embedded={true}
             />
 
-            <SceneAssessmentSection
-              caseData={caseData}
-              assessment={
-                hasMultipleAssignments
-                  ? userAssignment?.responderAssessment
-                  : (userAssignment?.responderAssessment || caseData.responderAssessment)
-              }
-              colors={colors}
-              formatDate={formatDate}
-              embedded={true}
-            />
-
             {postReportsList.length > 0 ? (
               <Section
-                title={postReportsList.length > 1 ? "Post-Incident Reports (Multi-Agency)" : "Post Report — What We Did"}
+                title={postReportsList.length > 1 ? "Scene Reports (Multi-Agency)" : "Scene Report"}
                 colors={colors}
                 embedded={true}
               >
@@ -1696,51 +1686,39 @@ export default function CaseInfoCard({
           colors={colors}
         />
 
-        <PostReportModal
-          visible={isPostReportModalVisible}
+        <SceneReportModal
+          visible={isSceneReportModalVisible}
           onClose={() => {
-            setIsPostReportModalVisible(false);
-            setError("");
-          }}
-          onSubmit={handleSubmitPostReport}
-          isSubmitting={isSubmittingPostReport}
-          form={postReportForm}
-          setForm={setPostReportForm}
-          error={error}
-          colors={colors}
-        />
-
-        <SceneAssessmentModal
-          visible={isSceneAssessmentModalVisible}
-          onClose={() => {
-            if (!isSubmittingSceneAssessment) {
-              setIsSceneAssessmentModalVisible(false);
+            if (!isSubmittingSceneReport) {
+              setIsSceneReportModalVisible(false);
               setError("");
             }
           }}
-          onSubmit={handleSubmitSceneAssessment}
-          isSubmitting={isSubmittingSceneAssessment}
-          incidentType={caseData.assessmentIncidentType || caseData.incidentType}
-          initialFields={sceneAssessmentInitialFields}
+          onSubmit={handleSubmitSceneReport}
+          isSubmitting={isSubmittingSceneReport}
+          form={sceneReportForm}
+          setForm={setSceneReportForm}
           error={error}
           colors={colors}
+          agency={userAssignment?.agency || assignedResource?.agency}
+          resourceType={assignedResource?.type}
         />
 
-        <TouchdownTimeModal
-          visible={isTouchdownModalVisible}
+        <OnSceneModal
+          visible={isOnSceneModalVisible}
           onClose={() => {
-            if (!isTouchdownUpdating) {
-              setIsTouchdownModalVisible(false);
+            if (!isOnSceneUpdating) {
+              setIsOnSceneModalVisible(false);
               setError("");
             }
           }}
-          onSubmit={(touchdownAt, photoUri) =>
-            handleTouchdown(touchdownAt, photoUri, touchdownDistanceMeters)
-          }
-          isSubmitting={isTouchdownUpdating}
+          onSubmit={handleOnSceneConfirm}
+          isSubmitting={isOnSceneUpdating}
           acceptedAt={acceptedTime}
           error={error}
           colors={colors}
+          draft={onSceneDraft}
+          onDraftChange={setOnSceneDraft}
         />
       </ScrollView>
 
@@ -1757,26 +1735,18 @@ export default function CaseInfoCard({
           setError("");
           setIsDeclineModalVisible(true);
         }}
-        canMarkTouchdown={canMarkTouchdown}
-        isTouchdownUpdating={isTouchdownUpdating}
+        canMarkOnScene={canMarkOnScene}
+        isOnSceneUpdating={isOnSceneUpdating}
         touchdownDistanceMeters={touchdownDistanceMeters}
-        onTouchdown={() => {
+        onOpenOnScene={() => {
           setError("");
-          setIsTouchdownModalVisible(true);
+          setIsOnSceneModalVisible(true);
         }}
-        canSubmitSceneAssessment={canSubmitSceneAssessment}
-        canSubmitPostReport={canSubmitPostReport}
-        showPostReportBlocked={showPostReportBlocked}
-        hasSceneAssessment={hasSceneAssessment}
-        isSubmittingSceneAssessment={isSubmittingSceneAssessment}
-        isSubmittingPostReport={isSubmittingPostReport}
-        onOpenSceneAssessment={() => {
+        canSubmitSceneReport={canSubmitSceneReport}
+        isSubmittingSceneReport={isSubmittingSceneReport}
+        onOpenSceneReport={() => {
           setError("");
-          setIsSceneAssessmentModalVisible(true);
-        }}
-        onOpenPostReport={() => {
-          setError("");
-          setIsPostReportModalVisible(true);
+          setIsSceneReportModalVisible(true);
         }}
         isResolved={isResolved}
       />

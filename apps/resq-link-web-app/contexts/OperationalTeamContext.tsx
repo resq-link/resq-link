@@ -13,13 +13,13 @@ import {
   ensureDefaultOperationalTeams,
   incidentMatchesTeamFilter,
   setCommandCenterCurrentTeamOnDuty,
-  sortTeamsByOrder,
   subscribeToCommandCenterCurrentTeamOnDuty,
   subscribeToTeams,
   type CurrentTeamOnDutyState,
   type IncidentRecord,
   type TeamRecord,
 } from '@packages/firebase'
+import { normalizeOperationalTeams } from '@/lib/operational/teamUtils'
 import { useAuth } from '@/contexts/AuthContext'
 
 type ListTeamFilter = 'all' | string
@@ -89,12 +89,9 @@ export function OperationalTeamProvider({ children }: { children: ReactNode }) {
     const timeoutId = window.setTimeout(clearLoadingSafely, LOAD_TIMEOUT_MS)
 
     ensureDefaultOperationalTeams()
-      .then((seeded) => {
-        if (cancelled || seeded.length === 0) return
-        // If the live subscription is slow/empty, show seeded teams immediately.
-        setTeams((current) =>
-          current.length > 0 ? current : sortTeamsByOrder(seeded.filter((team) => team.isActive !== false))
-        )
+      .then((ensured) => {
+        if (cancelled || ensured.length === 0) return
+        setTeams(normalizeOperationalTeams(ensured))
         setIsLoading(false)
       })
       .catch((error) => {
@@ -107,7 +104,7 @@ export function OperationalTeamProvider({ children }: { children: ReactNode }) {
     try {
       unsubscribeTeams = subscribeToTeams((nextTeams) => {
         if (cancelled) return
-        setTeams(sortTeamsByOrder(nextTeams.filter((team) => team.isActive !== false)))
+        setTeams(normalizeOperationalTeams(nextTeams))
         setIsLoading(false)
       })
     } catch (error) {

@@ -7,13 +7,13 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { BlurView } from "expo-blur";
-import { Check, ClipboardList, Navigation } from "lucide-react-native";
-import { toast } from "@/utils/toast";
+import { Check, ClipboardList, MapPin } from "lucide-react-native";
 import ErrorAlert from "@/components/feedback/ErrorAlert";
 import { radii, spacing } from "@/theme";
 
 /**
- * Single primary CTA for incident workflow — secondary actions stay subordinate.
+ * Single primary CTA for incident workflow — simplified:
+ * Accept → On Scene → Scene Report → Completed
  */
 export default function WorkflowActionPanel({
   colors,
@@ -25,18 +25,13 @@ export default function WorkflowActionPanel({
   isUpdating,
   onAccept,
   onDecline,
-  canMarkTouchdown,
-  isTouchdownUpdating,
+  canMarkOnScene,
+  isOnSceneUpdating,
   touchdownDistanceMeters,
-  onTouchdown,
-  canSubmitSceneAssessment,
-  canSubmitPostReport,
-  showPostReportBlocked,
-  hasSceneAssessment,
-  isSubmittingSceneAssessment,
-  isSubmittingPostReport,
-  onOpenSceneAssessment,
-  onOpenPostReport,
+  onOpenOnScene,
+  canSubmitSceneReport,
+  isSubmittingSceneReport,
+  onOpenSceneReport,
   isResolved,
 }) {
   const styles = useMemo(
@@ -87,22 +82,6 @@ export default function WorkflowActionPanel({
           fontSize: 14,
           color: colors.error,
         },
-        secondaryOutlineActionButton: {
-          minHeight: 52,
-          borderRadius: radii.lg,
-          alignItems: "center",
-          justifyContent: "center",
-          flexDirection: "row",
-          paddingHorizontal: spacing.md,
-          borderWidth: 1,
-          borderColor: colors.border,
-          backgroundColor: colors.surface,
-        },
-        secondaryOutlineActionText: {
-          fontFamily: "Inter_700Bold",
-          fontSize: 15,
-          color: colors.text,
-        },
         actionIcon: {
           marginRight: spacing.sm,
         },
@@ -141,32 +120,6 @@ export default function WorkflowActionPanel({
           fontSize: 12,
           color: colors.text,
           marginTop: 2,
-        },
-        disabledPostReportButton: {
-          minHeight: 52,
-          borderRadius: radii.lg,
-          alignItems: "center",
-          justifyContent: "center",
-          flexDirection: "row",
-          paddingHorizontal: spacing.md,
-          borderWidth: 1,
-          borderColor: colors.border,
-          backgroundColor: colors.surfaceHighlight,
-          opacity: 0.72,
-        },
-        disabledPostReportText: {
-          fontFamily: "Inter_600SemiBold",
-          fontSize: 15,
-          color: colors.textMuted,
-        },
-        postReportHelperText: {
-          fontFamily: "Inter_400Regular",
-          fontSize: 12,
-          lineHeight: 17,
-          color: colors.textMuted,
-          textAlign: "center",
-          paddingHorizontal: spacing.sm,
-          marginTop: spacing.xs,
         },
       }),
     [colors, insets.bottom, resolvedScheme]
@@ -216,109 +169,54 @@ export default function WorkflowActionPanel({
         </TouchableOpacity>
       </View>
     );
-  } else if (canMarkTouchdown) {
+  } else if (canMarkOnScene) {
     primary = (
       <>
         {touchdownDistanceMeters != null ? (
           <Text style={styles.proximityText}>{formatDistance(touchdownDistanceMeters)}</Text>
         ) : null}
         <TouchableOpacity
-          onPress={onTouchdown}
-          disabled={isTouchdownUpdating}
+          onPress={onOpenOnScene}
+          disabled={isOnSceneUpdating}
           activeOpacity={0.85}
           style={[
             styles.primaryActionButton,
             { backgroundColor: colors.accent },
-            isTouchdownUpdating && styles.actionDisabled,
+            isOnSceneUpdating && styles.actionDisabled,
           ]}
           accessibilityRole="button"
-          accessibilityLabel="Mark arrival at scene"
+          accessibilityLabel="Confirm arrival on scene"
         >
-          {isTouchdownUpdating ? (
+          {isOnSceneUpdating ? (
             <ActivityIndicator size="small" color="#FFFFFF" style={styles.actionIcon} />
           ) : (
-            <Navigation size={20} color="#FFFFFF" style={styles.actionIcon} />
+            <MapPin size={20} color="#FFFFFF" style={styles.actionIcon} />
           )}
           <Text style={styles.primaryActionText}>
-            {isTouchdownUpdating ? "Marking Touchdown…" : "Touchdown"}
+            {isOnSceneUpdating ? "Confirming On Scene…" : "On Scene"}
           </Text>
         </TouchableOpacity>
       </>
     );
-  } else if (canSubmitSceneAssessment && !hasSceneAssessment) {
+  } else if (canSubmitSceneReport) {
     primary = (
       <TouchableOpacity
-        onPress={onOpenSceneAssessment}
-        disabled={isSubmittingSceneAssessment}
+        onPress={onOpenSceneReport}
+        disabled={isSubmittingSceneReport}
         activeOpacity={0.85}
         style={[
           styles.primaryActionButton,
           { backgroundColor: colors.accent },
-          isSubmittingSceneAssessment && styles.actionDisabled,
+          isSubmittingSceneReport && styles.actionDisabled,
         ]}
         accessibilityRole="button"
-        accessibilityLabel="Submit scene assessment"
+        accessibilityLabel="Submit scene report and resolve incident"
       >
         <ClipboardList size={19} color="#FFFFFF" style={styles.actionIcon} />
         <Text style={styles.primaryActionText}>
-          {isSubmittingSceneAssessment ? "Submitting…" : "Scene Assessment"}
+          {isSubmittingSceneReport ? "Submitting…" : "Scene Report"}
         </Text>
       </TouchableOpacity>
-    );
-  } else if (canSubmitPostReport) {
-    primary = (
-      <TouchableOpacity
-        onPress={onOpenPostReport}
-        disabled={isSubmittingPostReport}
-        activeOpacity={0.85}
-        style={[
-          styles.primaryActionButton,
-          { backgroundColor: colors.accent },
-          isSubmittingPostReport && styles.actionDisabled,
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel="Submit post incident report"
-      >
-        <Check size={19} color="#FFFFFF" style={styles.actionIcon} />
-        <Text style={styles.primaryActionText}>
-          {isSubmittingPostReport ? "Submitting…" : "Post Report"}
-        </Text>
-      </TouchableOpacity>
-    );
-  } else if (canSubmitSceneAssessment && hasSceneAssessment) {
-    primary = (
-      <TouchableOpacity
-        onPress={onOpenSceneAssessment}
-        disabled={isSubmittingSceneAssessment}
-        activeOpacity={0.85}
-        style={[
-          styles.secondaryOutlineActionButton,
-          isSubmittingSceneAssessment && styles.actionDisabled,
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel="Update scene assessment"
-      >
-        <ClipboardList size={19} color={colors.text} style={styles.actionIcon} />
-        <Text style={styles.secondaryOutlineActionText}>Update Assessment</Text>
-      </TouchableOpacity>
-    );
-  } else if (showPostReportBlocked) {
-    primary = (
-      <>
-        <TouchableOpacity
-          onPress={() => toast.message("Complete Scene Assessment first")}
-          activeOpacity={0.85}
-          style={styles.disabledPostReportButton}
-          accessibilityRole="button"
-          accessibilityState={{ disabled: true }}
-        >
-          <Check size={19} color={colors.textMuted} style={styles.actionIcon} />
-          <Text style={styles.disabledPostReportText}>Post Report</Text>
-        </TouchableOpacity>
-        <Text style={styles.postReportHelperText}>
-          Complete Scene Assessment before submitting your final report.
-        </Text>
-      </>
     );
   } else if (isResolved) {
     primary = (

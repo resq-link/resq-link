@@ -11,6 +11,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "test": "npm run build && node --test dist/__tests__/sceneReport.test.js dist/__tests__/incidents.test.js dist/__tests__/civilianIncidentStatus.test.js",
     "dev": "tsc --watch",
     "seed:incident-types": "ts-node scripts/seed-incident-type-rules.ts",
     "seed:civilians": "ts-node scripts/create-civilian-users.ts",

@@ -26,6 +26,10 @@ import { useActiveIncident } from "@/hooks/useActiveIncident";
 import useUserStore from "@/stores/userStore";
 import { getIncidentMeta } from "@/features/history/constants";
 import {
+  getCivilianStatusColor,
+  getCivilianStatusShortLabel,
+} from "@/features/emergency/utils/incidentStatus";
+import {
   startIncidentCallSession,
   acceptIncidentCallSession,
   declineIncidentCallSession,
@@ -105,25 +109,14 @@ export default function ActiveIncidentBottomBar() {
   const meta = getIncidentMeta(activeIncident.incidentType, activeIncident.typeProfile) || {};
   const Icon = meta.Icon || meta.icon || AlertTriangle;
 
-  const rawStatus = (activeIncident.status || "pending").toLowerCase();
-  const statusLabel =
-    rawStatus === "pending"
-      ? "Awaiting Dispatch"
-      : rawStatus === "enroute"
-      ? "Responder En Route"
-      : rawStatus === "on_scene"
-      ? "Responders On Scene"
-      : "Active Response";
-
-  const statusColor =
-    rawStatus === "on_scene"
-      ? "#059669"
-      : rawStatus === "enroute"
-      ? "#0284C7"
-      : "#D97706";
+  const statusLabel = getCivilianStatusShortLabel(activeIncident);
+  const statusColor = getCivilianStatusColor(activeIncident);
 
   const isResponderAssigned = Boolean(
-    activeIncident.responder || activeIncident.assignedResponderId
+    activeIncident.responder ||
+      activeIncident.assignedResponderId ||
+      (Array.isArray(activeIncident.assignedResponderIds) &&
+        activeIncident.assignedResponderIds.length > 0)
   );
   const responderName =
     activeIncident.responderName || activeIncident.responder || "Response Unit";
@@ -272,7 +265,9 @@ export default function ActiveIncidentBottomBar() {
                   <View style={[styles.statusMiniDot, { backgroundColor: statusColor }]} />
                   <Text style={[styles.statusDescText, { color: statusColor }]} numberOfLines={1}>
                     {statusLabel}
-                    {isResponderAssigned && rawStatus === "enroute" ? ` (${responderName})` : ""}
+                    {isResponderAssigned && activeIncident.acceptedAt
+                      ? ` (${responderName})`
+                      : ""}
                   </Text>
                 </View>
               </View>

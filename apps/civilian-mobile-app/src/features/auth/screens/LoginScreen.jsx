@@ -364,22 +364,31 @@ export default function LoginScreen() {
         }
       }, 1500);
     } catch (err) {
-      console.error("Login error:", err);
       setIsLoading(false);
 
       let errorMessage = "Login failed. Please try again.";
-      if (err.message?.includes("user-not-found")) {
+      const authCode = err?.code;
+      if (
+        authCode === "auth/invalid-credential" ||
+        err.message?.includes("invalid-credential") ||
+        err.message?.includes("Incorrect email or password")
+      ) {
+        errorMessage = "Incorrect email or password. Please try again.";
+      } else if (err.message?.includes("user-not-found")) {
         errorMessage = "No account found with this email.";
       } else if (err.message?.includes("wrong-password")) {
         errorMessage = "Incorrect password. Please try again.";
       } else if (err.message?.includes("invalid-email")) {
         errorMessage = "Invalid email address.";
+      } else if (err.message?.includes("too-many-requests")) {
+        errorMessage = "Too many failed attempts. Please wait and try again.";
       } else if (err.message?.includes("network")) {
         errorMessage = "Network error. Please check your connection.";
       } else if (err.message) {
-        errorMessage = err.message;
+        errorMessage = err.message.replace(/^Failed to sign in:\s*/i, "");
       }
 
+      console.warn("Login failed:", errorMessage);
       setError(errorMessage);
     }
   };

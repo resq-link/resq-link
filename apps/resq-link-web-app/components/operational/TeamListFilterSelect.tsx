@@ -1,6 +1,7 @@
 'use client'
 
 import { useOperationalTeams } from '@/contexts/OperationalTeamContext'
+import { teamReactKey } from '@/lib/operational/teamUtils'
 
 type TeamListFilterSelectProps = {
   className?: string
@@ -18,8 +19,8 @@ export default function TeamListFilterSelect({ className = '' }: TeamListFilterS
       aria-label="Filter by assigned team"
     >
       <option value="all">Team: All</option>
-      {teams.map((team) => (
-        <option key={team.id || team.code} value={team.code}>
+      {teams.map((team, index) => (
+        <option key={teamReactKey(team, index)} value={team.code}>
           Team: {team.label}
         </option>
       ))}

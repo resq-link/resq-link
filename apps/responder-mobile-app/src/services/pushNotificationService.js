@@ -3,10 +3,11 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 import { isRunningInExpoGo } from "expo";
 import {
-  acknowledgeIncidentAlert,
   saveResponderPushToken,
   removeResponderPushToken,
 } from "@packages/firebase";
+import { acknowledgeIncidentCase } from "@/services/incidentService";
+import { stopPriorityAlerts } from "@/services/priorityAlertService";
 
 /**
  * Remote push for incident assignments.
@@ -248,11 +249,12 @@ export async function dismissIncidentNotifications(incidentId) {
 async function acknowledgeFromNotification(incidentId) {
   if (!incidentId || incidentId === "undefined" || incidentId === "null") return;
   try {
-    await acknowledgeIncidentAlert(incidentId);
+    await acknowledgeIncidentCase(incidentId);
+    await stopPriorityAlerts();
     await dismissIncidentNotifications(incidentId);
   } catch (error) {
     console.warn(
-      "[push] Failed to acknowledge from notification action:",
+      "[push] Failed to acknowledge and accept from notification action:",
       error?.message ?? error
     );
   }
@@ -286,12 +288,8 @@ export function subscribeToIncidentNotificationActions({ onView } = {}) {
       const incidentId = typeof data.incidentId === "string" ? data.incidentId : null;
       if (!incidentId) return;
 
-      // Default tap and Acknowledge both clear the alarm; View also opens the case.
-      if (
-        actionId === ACKNOWLEDGE_ACTION ||
-        actionId === VIEW_ACTION ||
-        actionId === Notifications.DEFAULT_ACTION_IDENTIFIER
-      ) {
+      // Acknowledge accepts the assignment; View only opens the case.
+      if (actionId === ACKNOWLEDGE_ACTION) {
         await acknowledgeFromNotification(incidentId);
       }
 

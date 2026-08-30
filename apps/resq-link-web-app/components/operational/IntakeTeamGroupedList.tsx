@@ -10,8 +10,11 @@ import {
 } from '@packages/firebase'
 import IntakeListItem, { type IntakeQueueItem } from '@/components/IntakeListItem'
 import { getTeamCardTheme } from '@/lib/reporting/teamSummaryTheme'
+import { teamReactKey } from '@/lib/operational/teamUtils'
 
 const INCOMING_KEY = '__incoming__'
+
+const normalizeTeamCode = (value: string): string => value.trim().toLowerCase()
 
 const TEAM_SECTION_EMOJI: Record<string, string> = {
   Whiskey: '🟠',
@@ -102,9 +105,19 @@ export default function IntakeTeamGroupedList({
   )
 
   const teamCodeByLabel = useMemo(
-    () => new Map(teams.map((team) => [team.label, team.code])),
+    () => new Map(teams.map((team) => [team.label, normalizeTeamCode(team.code)])),
     [teams]
   )
+
+  const uniqueTeams = useMemo(() => {
+    const seen = new Set<string>()
+    return teams.filter((team) => {
+      const code = normalizeTeamCode(team.code)
+      if (seen.has(code)) return false
+      seen.add(code)
+      return true
+    })
+  }, [teams])
 
   const groupedSections = useMemo(() => {
     const buckets = new Map<string, IntakeQueueItem[]>()
@@ -133,11 +146,12 @@ export default function IntakeTeamGroupedList({
       })
     }
 
-    teams.forEach((team, index) => {
-      const bucket = buckets.get(team.code) ?? []
+    uniqueTeams.forEach((team, index) => {
+      const teamCode = normalizeTeamCode(team.code)
+      const bucket = buckets.get(teamCode) ?? []
       if (!showEmptyTeams && !bucket.length) return
       sections.push({
-        key: team.code,
+        key: teamReactKey(team, index),
         label: team.label,
         items: sortOperationalItems(bucket),
         themeIndex: index,
@@ -146,19 +160,20 @@ export default function IntakeTeamGroupedList({
 
     // Legacy / unknown team labels
     buckets.forEach((bucket, key) => {
+      const normalizedKey = normalizeTeamCode(key)
       if (key === INCOMING_KEY) return
-      if (teams.some((team) => team.code === key)) return
+      if (uniqueTeams.some((team) => normalizeTeamCode(team.code) === normalizedKey)) return
       if (!bucket.length) return
       sections.push({
-        key,
+        key: `unknown-${normalizedKey}`,
         label: key,
         items: sortOperationalItems(bucket),
-        themeIndex: teams.length,
+        themeIndex: uniqueTeams.length,
       })
     })
 
     return sections
-  }, [items, teams, incidentsById, teamCodeByLabel])
+  }, [items, uniqueTeams, incidentsById, teamCodeByLabel, showEmptyTeams])
 
   if (groupedSections.length === 0) {
     return (

@@ -120,6 +120,33 @@ export {
 } from './responderAssessment';
 
 export {
+  SITUATION_STATUS_OPTIONS,
+  PEOPLE_AFFECTED_OPTIONS,
+  ADDITIONAL_RESOURCE_OPTIONS,
+  getActionsTakenOptionsForAgency,
+  getSituationStatusLabel,
+  getPeopleAffectedLabels,
+  getPeopleAffectedDisplay,
+  parsePeopleAffectedCounts,
+  computeTotalPeopleAffected,
+  getAdditionalResourceLabel,
+  hasSceneReport,
+  mapSceneReportToLegacyPostReport,
+  parseSceneReportRecord,
+  parseSceneReportsMap,
+  normalizeResponderReport,
+  validateArrivalTime,
+  validateSceneReportInput,
+  type SceneReportRecord,
+  type SituationStatus,
+  type PeopleAffectedOption,
+  type PeopleAffectedCounts,
+  type PeopleAffectedDisplay,
+  type AdditionalResourceType,
+  type NormalizedResponderReport,
+} from './sceneReport';
+
+export {
   isLiveIncident,
   isLiveEmergencyReport,
   isResolvedIncidentRecord,
@@ -170,6 +197,16 @@ export {
   type IncidentStatusVisualToken,
   type StatusColorSet,
 } from './incidentStatusVisual';
+
+export {
+  isCivilianIncidentResolved,
+  getCivilianIncidentStatusPresentation,
+  getCivilianStatusShortLabel,
+  type CivilianStatusKey,
+  type CivilianStatusPresentation,
+  type CivilianReportStatusInput,
+  type LinkedIncidentStatusSnapshot,
+} from './civilianIncidentStatus';
 
 export {
   acknowledgeEmergencyAlert,
@@ -224,6 +261,7 @@ export {
   deleteResource,
   getAllResources,
   subscribeToResources,
+  subscribeToAssignedResource,
   type ResourceRecord,
   type ResourceStatus,
   type ResourceType,
@@ -263,6 +301,7 @@ export {
   resolveTeamById,
   resolveTeamFromInput,
   sortTeamsByOrder,
+  deduplicateTeamsByCode,
   type AssignedTeamSnapshot,
   type TeamAssignmentHistoryEntry,
 } from './operationalTeams';
@@ -349,14 +388,18 @@ export {
   incidentAgencyCatalog,
   subscribeToResponderAssignedIncidents,
   acceptIncident,
+  acknowledgeIncidentAssignment,
   declineIncident,
   markIncidentTouchdown,
   submitPostIncidentReportForIncident,
+  submitSceneReportForIncident,
+  areAllResponderAssignmentsComplete,
   updateResourcesForIncidentStatus,
   acknowledgeIncidentAlert,
   hasResponderAcknowledgedAlert,
   updateIncidentCaseStatus,
   getResponderAssignment,
+  isResponderAssignmentPendingAccept,
   type AgencyCode,
   type CreateIncidentInput,
   type IncidentCategory,

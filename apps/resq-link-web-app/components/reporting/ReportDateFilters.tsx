@@ -4,6 +4,7 @@ import { CalendarDays } from 'lucide-react'
 import type { DatePreset } from '@/lib/reporting/types'
 import { applyPreset } from '@/lib/reporting/dates'
 import { useOperationalTeams } from '@/contexts/OperationalTeamContext'
+import { teamReactKey } from '@/lib/operational/teamUtils'
 
 type ReportDateFiltersProps = {
   preset: DatePreset
@@ -112,8 +113,8 @@ export default function ReportDateFilters({
             className="h-11 rounded-xl border border-slate-700 bg-slate-950 px-3 text-sm font-semibold text-slate-100 outline-none transition-colors focus:border-primary-400"
           >
             <option value="all">All teams</option>
-            {teams.map((team) => (
-              <option key={team.id || team.code} value={team.code}>
+            {teams.map((team, index) => (
+              <option key={teamReactKey(team, index)} value={team.code}>
                 {team.label}
               </option>
             ))}

@@ -1,27 +1,46 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Platform } from 'react-native';
-import { registerGlobals, AudioSession } from '@livekit/react-native';
-import { Room, RoomEvent } from 'livekit-client';
 import { getFirebaseAuth, markIncidentCallConnected } from '@packages/firebase';
 import { getApiUrl, apiConfig } from '@/services/api';
 import { appDebug, appError, appWarn } from '@/utils/logger';
 
+let liveKitNativeModule = null;
+let livekitClientModule = null;
 let globalsRegistered = false;
 
-function ensureLiveKitGlobals() {
-  if (!globalsRegistered) {
-    try {
+const LIVEKIT_UNAVAILABLE_MESSAGE =
+  'Voice calling requires a development build with WebRTC support. Expo Go does not include the native WebRTC module.';
+
+async function loadLiveKitNative() {
+  if (liveKitNativeModule) return liveKitNativeModule;
+  liveKitNativeModule = await import('@livekit/react-native');
+  return liveKitNativeModule;
+}
+
+async function loadLiveKitClient() {
+  if (livekitClientModule) return livekitClientModule;
+  livekitClientModule = await import('livekit-client');
+  return livekitClientModule;
+}
+
+async function ensureLiveKitGlobals() {
+  try {
+    const { registerGlobals } = await loadLiveKitNative();
+    if (!globalsRegistered) {
       registerGlobals();
       globalsRegistered = true;
       appDebug('[useLiveKitCall] LiveKit globals registered.');
-    } catch (err) {
-      appWarn('[useLiveKitCall] Failed to register LiveKit globals:', err);
     }
+  } catch (err) {
+    appWarn('[useLiveKitCall] Failed to register LiveKit globals:', err);
+    throw new Error(LIVEKIT_UNAVAILABLE_MESSAGE);
   }
 }
 
 /**
  * Custom hook for LiveKit emergency voice calling in civilian mobile app.
+ *
+ * LiveKit is loaded lazily so the app can boot in Expo Go without the WebRTC
+ * native module. Voice calls only work in a dev/production build with WebRTC.
  *
  * @param {Object} options
  * @param {Object|null} options.session - IncidentCallSession object from Firebase
@@ -45,7 +64,9 @@ export function useLiveKitCall({ session, isActive, participantName }) {
         await roomRef.current.disconnect().catch(() => undefined);
         roomRef.current = null;
       }
-      await AudioSession.stopAudioSession().catch(() => undefined);
+      if (liveKitNativeModule) {
+        await liveKitNativeModule.AudioSession.stopAudioSession().catch(() => undefined);
+      }
     } catch (err) {
       appWarn('[useLiveKitCall] Cleanup warning:', err);
     } finally {
@@ -58,12 +79,15 @@ export function useLiveKitCall({ session, isActive, participantName }) {
   const connectToLiveKit = useCallback(async () => {
     if (!session || !isActive) return;
 
-    ensureLiveKitGlobals();
     setIsConnecting(true);
     setConnectionError(null);
     setRoomState('connecting');
 
     try {
+      await ensureLiveKitGlobals();
+      const { AudioSession } = await loadLiveKitNative();
+      const { Room, RoomEvent } = await loadLiveKitClient();
+
       const auth = getFirebaseAuth();
       const currentUser = auth?.currentUser;
 
@@ -101,7 +125,6 @@ export function useLiveKitCall({ session, isActive, participantName }) {
         throw new Error('Invalid calling token received from server.');
       }
 
-      // Configure native audio session for voice call
       await AudioSession.startAudioSession();
 
       const room = new Room({
@@ -139,14 +162,11 @@ export function useLiveKitCall({ session, isActive, participantName }) {
         setRoomState('disconnected');
       });
 
-      // Connect to LiveKit SFU server
       await room.connect(livekitUrl, token);
 
-      // Publish local microphone track
       await room.localParticipant.setMicrophoneEnabled(true);
       setIsMuted(false);
 
-      // Notify backend / Firestore that the call is connected
       if (session.id) {
         await markIncidentCallConnected(session.id).catch((e) => {
           appWarn('[useLiveKitCall] markIncidentCallConnected non-blocking error:', e);

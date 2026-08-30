@@ -1,4 +1,4 @@
-import { normalizeOperationalStatus } from "@packages/firebase";
+import { normalizeOperationalStatus, isCivilianIncidentResolved } from "@packages/firebase";
 import { formatTimestamp } from "@/features/incident-map/utils/mapUtils";
 
 function toDate(value) {
@@ -48,25 +48,17 @@ export function buildIncidentTimeline(report) {
   }
 
   if (report.assignedResponderId || report.responder || report.assignedTeamName) {
-    push(
-      "responder_assigned",
-      "Responder Assigned",
-      report.acceptedAt || report.updatedAt
-    );
+    push("responder_assigned", "Responder Assigned", report.updatedAt || report.createdAt);
   }
 
   if (report.acceptedAt) {
     push("responder_accepted", "Responder Accepted", report.acceptedAt);
-  }
-
-  if (
+    push("en_route", "En Route", report.acceptedAt);
+  } else if (
     rawStatus === "enroute" ||
     rawStatus === "en_route" ||
-    rawStatus === "responding" ||
-    rawStatus === "dispatched"
+    rawStatus === "responding"
   ) {
-    push("en_route", "En Route", report.updatedAt);
-  } else if (status === "active" && report.acceptedAt) {
     push("en_route", "En Route", report.updatedAt);
   }
 
@@ -75,12 +67,10 @@ export function buildIncidentTimeline(report) {
   }
 
   if (
-    status === "resolved" ||
-    rawStatus === "done" ||
-    rawStatus === "resolved" ||
+    isCivilianIncidentResolved(report) ||
     report.movedToHistoryAt
   ) {
-    push("resolved", "Resolved", report.movedToHistoryAt || report.updatedAt);
+    push("resolved", "Resolved", report.movedToHistoryAt || report.resolvedAt || report.updatedAt);
   }
 
   return steps;
@@ -88,10 +78,12 @@ export function buildIncidentTimeline(report) {
 
 export function getCurrentTimelineKey(report) {
   if (!report) return null;
+
+  if (isCivilianIncidentResolved(report)) return "resolved";
+
   const status = normalizeOperationalStatus(report.status);
   const rawStatus = (report.status || "").toLowerCase();
 
-  if (status === "resolved" || rawStatus === "done") return "resolved";
   if (status === "on_scene" || report.touchdownAt) return "on_scene";
   if (
     rawStatus === "enroute" ||

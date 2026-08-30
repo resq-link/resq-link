@@ -91,12 +91,20 @@ service cloud.firestore {
     
     // Dispatchers collection - dispatchers can read their own, command center can read all
     match /dispatchers/{userId} {
+      function isDispatcherSelfServiceUpdate() {
+        return isOwner(userId) &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+            'onDutyResourceId',
+            'onDutySince'
+          ]);
+      }
+
       // Allow reading individual dispatcher documents and collection queries
       // Command center can read all dispatchers (needed for getAllDispatchers query)
       // Any dispatcher/responder account can read peer dispatchers (online counts, team views)
       allow read: if isOwner(userId) || isCommandCenter() || isSuperAdmin() || isDispatcher();
       allow create: if (isAuthenticated() && isOwner(userId)) || isSuperAdmin();
-      allow update: if isOwner(userId) || isCommandCenter() || isSuperAdmin();
+      allow update: if isCommandCenter() || isSuperAdmin() || isDispatcherSelfServiceUpdate();
       allow delete: if isCommandCenter() || isSuperAdmin();
     }
     
@@ -224,11 +232,41 @@ service cloud.firestore {
       allow create, update, delete: if isCommandCenter() || isSuperAdmin();
     }
 
-    // Resources collection
+    // Resources collection — assignment is Command Center managed.
     match /resources/{resourceId} {
+      function isResourcePrimaryResponder() {
+        return isAuthenticated() && (
+          resource.data.primaryResponderId == request.auth.uid ||
+          resource.data.assignedResponderId == request.auth.uid
+        );
+      }
+
+      function resourceAssignmentFieldsUnchanged() {
+        return request.resource.data.primaryResponderId == resource.data.primaryResponderId &&
+          request.resource.data.assignedResponderId == resource.data.assignedResponderId &&
+          request.resource.data.assignedResponderIds == resource.data.assignedResponderIds;
+      }
+
+      function isPrimaryResponderOperationalUpdate() {
+        return isResourcePrimaryResponder() &&
+          resourceAssignmentFieldsUnchanged() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'currentLatitude',
+            'currentLongitude',
+            'lastLocationAt',
+            'status',
+            'assignedIncidentId',
+            'updatedAt'
+          ]);
+      }
+
       allow read: if isAuthenticated();
       allow create, delete: if isAuthenticated() && (isCommandCenter() || isDispatcher() || isSuperAdmin());
-      allow update: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        isCommandCenter() ||
+        isSuperAdmin() ||
+        isPrimaryResponderOperationalUpdate()
+      );
     }
 
     // Resource dispatch ledger for incident/resource assignments.

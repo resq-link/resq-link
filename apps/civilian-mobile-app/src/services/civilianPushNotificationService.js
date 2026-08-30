@@ -1,37 +1,71 @@
-import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import Constants from "expo-constants";
 import { Platform, PermissionsAndroid } from "react-native";
+import { isRunningInExpoGo } from "expo";
 import {
   saveCivilianPushToken,
   removeCivilianPushToken,
 } from "@packages/firebase";
+
+/**
+ * Civilian remote push for advisories and emergency report status updates.
+ * Lazy-loaded so Expo Go (SDK 53+) does not throw on import — Android push
+ * was removed from Expo Go. Use a development build for real push testing.
+ */
 
 export const EMERGENCY_UPDATE_CHANNEL = "emergency-updates";
 export const CIVILIAN_ALERT_CHANNEL = "civilian-alerts";
 
 let cachedToken = null;
 let responseSubscription = null;
+let notificationsModule = null;
+let handlerConfigured = false;
+let loggedExpoGoSkip = false;
 
-// Present alert banner, sound, and badge even if app is in foreground
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+/** Remote push requires a dev/production build — not Expo Go on Android (SDK 53+). */
+export function isRemotePushAvailable() {
+  return !isRunningInExpoGo();
+}
+
+async function getNotificationsModule() {
+  if (!isRemotePushAvailable()) {
+    if (__DEV__ && !loggedExpoGoSkip) {
+      loggedExpoGoSkip = true;
+      console.info(
+        "[civilian-push] Remote push skipped in Expo Go — use a development build for push."
+      );
+    }
+    return null;
+  }
+
+  if (!notificationsModule) {
+    notificationsModule = await import("expo-notifications");
+
+    if (!handlerConfigured) {
+      notificationsModule.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowAlert: true,
+          shouldShowBanner: true,
+          shouldShowList: true,
+          shouldPlaySound: true,
+          shouldSetBadge: true,
+        }),
+      });
+      handlerConfigured = true;
+    }
+  }
+
+  return notificationsModule;
+}
 
 /**
  * Configure MAX-importance Android notification channels for advisories and emergency updates.
  */
 export async function ensureCivilianNotificationChannels() {
-  if (Platform.OS !== "android") return;
+  const Notifications = await getNotificationsModule();
+  if (!Notifications || Platform.OS !== "android") return;
 
   try {
-    // 1. Channel for Public Advisories & Broadcasts
     await Notifications.setNotificationChannelAsync(CIVILIAN_ALERT_CHANNEL, {
       name: "Public Advisories & Bulletins",
       description: "Critical city-wide advisories, weather warnings, and safety notices.",
@@ -44,7 +78,6 @@ export async function ensureCivilianNotificationChannels() {
       bypassDnd: true,
     });
 
-    // 2. Channel for Emergency Report Updates
     await Notifications.setNotificationChannelAsync(EMERGENCY_UPDATE_CHANNEL, {
       name: "Emergency Report Updates",
       description: "Real-time dispatch and status updates for your reported emergencies.",
@@ -70,14 +103,15 @@ const resolveProjectId = () =>
  * Request notification permissions, fetch Expo push token, and save to Firestore users/{uid}.
  */
 export async function registerForCivilianPush(explicitUid = null) {
+  const Notifications = await getNotificationsModule();
+  if (!Notifications) return null;
+
   await ensureCivilianNotificationChannels();
 
   if (!Device.isDevice) {
-    // Simulators cannot receive remote push notifications
     return null;
   }
 
-  // Check Android 13+ (API 33+) runtime POST_NOTIFICATIONS permission
   if (Platform.OS === "android" && Platform.Version >= 33) {
     try {
       const granted = await PermissionsAndroid.check(
@@ -134,7 +168,6 @@ export async function registerForCivilianPush(explicitUid = null) {
   }
 }
 
-
 /**
  * Detach this device's token on sign-out.
  */
@@ -153,10 +186,8 @@ export async function unregisterCivilianPush(explicitUid = null) {
  * Subscribe to notification tap / interaction responses (both foreground and cold-start).
  */
 export function subscribeToCivilianNotificationResponse({ onNavigate } = {}) {
-  if (responseSubscription) {
-    responseSubscription.remove();
-    responseSubscription = null;
-  }
+  let disposed = false;
+  let localSubscription = null;
 
   const handleResponse = (response) => {
     if (!response) return;
@@ -166,15 +197,27 @@ export function subscribeToCivilianNotificationResponse({ onNavigate } = {}) {
     }
   };
 
-  responseSubscription = Notifications.addNotificationResponseReceivedListener(handleResponse);
+  void getNotificationsModule().then((Notifications) => {
+    if (!Notifications || disposed) return;
 
-  // Check if app was opened via notification on cold start
-  void Notifications.getLastNotificationResponseAsync().then((response) => {
-    if (response) handleResponse(response);
+    if (responseSubscription) {
+      responseSubscription.remove();
+      responseSubscription = null;
+    }
+
+    localSubscription = Notifications.addNotificationResponseReceivedListener(handleResponse);
+    responseSubscription = localSubscription;
+
+    void Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response && !disposed) handleResponse(response);
+    });
   });
 
   return () => {
-    responseSubscription?.remove();
-    responseSubscription = null;
+    disposed = true;
+    localSubscription?.remove();
+    if (responseSubscription === localSubscription) {
+      responseSubscription = null;
+    }
   };
 }
