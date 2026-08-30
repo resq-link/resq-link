@@ -20,15 +20,12 @@ import {
   doc,
   getFirebaseFirestore,
   onSnapshot,
-  acknowledgeIncidentAlert,
   parseResponderAssessment,
   resolveIncidentDisplayFields,
 } from "@packages/firebase";
 import CaseInfoCard from "@/modules/incidents/components/CaseInfoCard";
 import CaseDetailSkeleton from "@/modules/incidents/components/CaseDetailSkeleton";
 import ErrorAlert from "@/components/feedback/ErrorAlert";
-import { dismissIncidentNotifications } from "@/services/pushNotificationService";
-import { stopPriorityAlerts } from "@/services/priorityAlertService";
 import { spacing, useResqTheme } from "@/theme";
 
 const toDateValue = (value) => {
@@ -62,24 +59,6 @@ export default function CaseDetailView() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
-
-  // Opening a case is proof the responder saw the assignment — silence the alarm.
-  useEffect(() => {
-    if (!caseId || caseId === "undefined" || caseId === "null") return;
-    let cancelled = false;
-    (async () => {
-      try {
-        await stopPriorityAlerts();
-        await acknowledgeIncidentAlert(caseId);
-        if (!cancelled) void dismissIncidentNotifications(caseId);
-      } catch {
-        // Non-fatal: detail screen should still load even if ack write fails.
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [caseId]);
 
   useEffect(() => {
     if (!caseId || caseId === "undefined" || caseId === "null") {
@@ -148,6 +127,7 @@ export default function CaseDetailView() {
             additionalDetailsSubmittedAt: toDateValue(data.additionalDetailsSubmittedAt),
             acceptedAt: toDateValue(data.acceptedAt),
             touchdownAt: toDateValue(data.touchdownAt),
+            touchdownRecordedAt: toDateValue(data.touchdownRecordedAt),
             touchdownSource: data.touchdownSource || null,
             touchdownDistanceMeters:
               typeof data.touchdownDistanceMeters === "number"
@@ -156,6 +136,11 @@ export default function CaseDetailView() {
             onScenePhotoUrl: data.onScenePhotoUrl || null,
             onScenePhotoUploadedAt: toDateValue(data.onScenePhotoUploadedAt),
             onScenePhotoUploadedBy: data.onScenePhotoUploadedBy || null,
+            onSceneLatitude:
+              typeof data.onSceneLatitude === "number" ? data.onSceneLatitude : null,
+            onSceneLongitude:
+              typeof data.onSceneLongitude === "number" ? data.onSceneLongitude : null,
+            onSceneGpsCapturedAt: toDateValue(data.onSceneGpsCapturedAt),
             responseTimeSeconds:
               typeof data.responseTimeSeconds === "number"
                 ? data.responseTimeSeconds
@@ -179,7 +164,16 @@ export default function CaseDetailView() {
                         ...assignment,
                         acceptedAt: toDateValue(assignment.acceptedAt),
                         touchdownAt: toDateValue(assignment.touchdownAt),
+                        touchdownRecordedAt: toDateValue(assignment.touchdownRecordedAt),
                         declinedAt: toDateValue(assignment.declinedAt),
+                        onSceneGpsCapturedAt: toDateValue(assignment.onSceneGpsCapturedAt),
+                        sceneReport:
+                          assignment.sceneReport && typeof assignment.sceneReport === "object"
+                            ? {
+                                ...assignment.sceneReport,
+                                submittedAt: toDateValue(assignment.sceneReport.submittedAt),
+                              }
+                            : null,
                         responderAssessment: parseResponderAssessment(
                           assignment.responderAssessment,
                         ),
@@ -200,6 +194,18 @@ export default function CaseDetailView() {
               data.postIncidentReports && typeof data.postIncidentReports === "object"
                 ? Object.fromEntries(
                     Object.entries(data.postIncidentReports).map(([uid, report]) => [
+                      uid,
+                      {
+                        ...report,
+                        submittedAt: toDateValue(report.submittedAt),
+                      },
+                    ]),
+                  )
+                : null,
+            sceneReports:
+              data.sceneReports && typeof data.sceneReports === "object"
+                ? Object.fromEntries(
+                    Object.entries(data.sceneReports).map(([uid, report]) => [
                       uid,
                       {
                         ...report,

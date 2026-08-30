@@ -53,21 +53,24 @@ async function ensureTeams(db: FirebaseFirestore.Firestore) {
 
     if (dryRun) {
       console.log(`[dry-run] Would create team: ${template.label}`);
-      teamIdByLabel.set(template.label.toLowerCase(), `dry-run-${template.code}`);
+      teamIdByLabel.set(template.label.toLowerCase(), template.code);
       continue;
     }
 
-    const created = await teamsRef.add({
-      code: template.code,
-      label: template.label,
-      description: `Operational duty team ${template.label}`,
-      isActive: true,
-      sortOrder: DEFAULT_TEAMS.indexOf(template) + 1,
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now(),
-    });
-    teamIdByLabel.set(template.label.toLowerCase(), created.id);
-    console.log(`Created team ${template.label} (${created.id})`);
+    await teamsRef.doc(template.code).set(
+      {
+        code: template.code,
+        label: template.label,
+        description: `Operational duty team ${template.label}`,
+        isActive: true,
+        sortOrder: DEFAULT_TEAMS.indexOf(template) + 1,
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
+      },
+      { merge: true }
+    );
+    teamIdByLabel.set(template.label.toLowerCase(), template.code);
+    console.log(`Ensured team ${template.label} (${template.code})`);
   }
 
   return teamIdByLabel;

@@ -231,7 +231,7 @@ export function StaffAccountsPage({ kind }: { kind: Kind }) {
   ];
 
   return (
-    <>
+    <div className="space-y-4">
       <PageHeader
         actions={
           <Button type="button" onClick={() => setCreateOpen(true)}>
@@ -241,7 +241,7 @@ export function StaffAccountsPage({ kind }: { kind: Kind }) {
         }
       />
 
-      <div className="mb-4">
+      <div className="mb-0">
         <TableFilters
           actions={
             <TableExportMenu
@@ -523,6 +523,6 @@ export function StaffAccountsPage({ kind }: { kind: Kind }) {
           );
         }}
       />
-    </>
+    </div>
   );
 }

@@ -25,16 +25,14 @@ import { filterIncidents, formatIncidentDateTime } from '@/lib/reporting/inciden
 import { computeReportAnalytics, createDailyTrend } from '@/lib/reporting/analytics'
 import { useReportIncidents } from '@/lib/reporting/useReportIncidents'
 import { useOperationalTeams } from '@/contexts/OperationalTeamContext'
+import { buildTeamOptions } from '@/lib/operational/teamUtils'
 import { getAssignedTeamName } from '@packages/firebase'
 import InlineLoader from '@/components/InlineLoader'
 
 export default function ReportPage() {
   const { incidents, isLoading } = useReportIncidents()
   const { teams } = useOperationalTeams()
-  const teamOptions = useMemo(
-    () => teams.map((team) => ({ code: team.code, label: team.label })),
-    [teams]
-  )
+  const teamOptions = useMemo(() => buildTeamOptions(teams), [teams])
   const [preset, setPreset] = useState<DatePreset>('30d')
   const [selectedTeam, setSelectedTeam] = useState<string | 'all'>('all')
   const [fromDate, setFromDate] = useState(() => applyPreset('30d').fromDate)

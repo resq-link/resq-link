@@ -3,6 +3,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   limit,
   onSnapshot,
@@ -10,11 +11,16 @@ import {
   setDoc,
   Timestamp,
   updateDoc,
+  where,
+  writeBatch,
   type DocumentData,
   type QuerySnapshot,
 } from 'firebase/firestore';
 import { getFirebaseAuth, getFirebaseFirestore } from './config';
-import { DEFAULT_OPERATIONAL_TEAMS } from './operationalTeams';
+import {
+  DEFAULT_OPERATIONAL_TEAMS,
+  deduplicateTeamsByCode,
+} from './operationalTeams';
 
 export interface TeamRecord {
   id?: string;
@@ -40,6 +46,10 @@ const normalizeNullableString = (value?: string | null): string | null => {
   return normalized ? normalized : null;
 };
 
+const normalizeTeamCode = (value: string): string => value.trim().toLowerCase();
+
+const normalizeTeamLabel = (value: string): string => value.trim().toLowerCase();
+
 const convertFirestoreDoc = (snapshot: DocumentData): TeamRecord => {
   const data = snapshot.data();
   return {
@@ -54,26 +64,203 @@ const convertFirestoreDoc = (snapshot: DocumentData): TeamRecord => {
   };
 };
 
+function teamMatchesTemplate(
+  team: TeamRecord,
+  template: { code: string; label: string }
+): boolean {
+  const code = normalizeTeamCode(team.code || team.label);
+  const label = normalizeTeamLabel(team.label || team.code);
+  const templateCode = normalizeTeamCode(template.code);
+  const templateLabel = normalizeTeamLabel(template.label);
+  return code === templateCode || label === templateLabel || label === templateCode;
+}
+
+async function repointTeamReferences(
+  fromTeamId: string,
+  canonical: TeamRecord
+): Promise<void> {
+  if (!canonical.id || fromTeamId === canonical.id) return;
+
+  const db = getFirebaseFirestore();
+  let batch = writeBatch(db);
+  let batchOps = 0;
+
+  const commitIfNeeded = async (force = false) => {
+    if (batchOps === 0) return;
+    if (force || batchOps >= 400) {
+      await batch.commit();
+      batch = writeBatch(db);
+      batchOps = 0;
+    }
+  };
+
+  const queueUpdate = async (ref: ReturnType<typeof doc>, data: Record<string, unknown>) => {
+    batch.update(ref, data);
+    batchOps += 1;
+    await commitIfNeeded();
+  };
+
+  const incidentsRef = collection(db, 'incidents');
+  const [assignedSnap, teamIdSnap] = await Promise.all([
+    getDocs(query(incidentsRef, where('assignedTeamId', '==', fromTeamId), limit(500))),
+    getDocs(query(incidentsRef, where('teamId', '==', fromTeamId), limit(500))),
+  ]);
+
+  const incidentDocIds = new Set<string>();
+  assignedSnap.docs.forEach((snap) => incidentDocIds.add(snap.id));
+  teamIdSnap.docs.forEach((snap) => incidentDocIds.add(snap.id));
+
+  const incidentPatch = {
+    assignedTeamId: canonical.id,
+    assignedTeamName: canonical.label,
+    assignedTeamCode: canonical.code,
+    teamId: canonical.id,
+    teamName: canonical.label,
+    teamOnDuty: canonical.label,
+    updatedAt: Timestamp.now(),
+  };
+
+  for (const incidentId of incidentDocIds) {
+    await queueUpdate(doc(db, 'incidents', incidentId), incidentPatch);
+  }
+
+  const reportsRef = collection(db, 'emergency_reports');
+  const reportSnap = await getDocs(
+    query(reportsRef, where('assignedTeamId', '==', fromTeamId), limit(500))
+  );
+  for (const reportDoc of reportSnap.docs) {
+    await queueUpdate(reportDoc.ref, {
+      assignedTeamId: canonical.id,
+      assignedTeamName: canonical.label,
+      assignedTeamCode: canonical.code,
+      updatedAt: Timestamp.now(),
+    });
+  }
+
+  const dispatchersSnap = await getDocs(collection(db, 'dispatchers'));
+  for (const dispatcherDoc of dispatchersSnap.docs) {
+    const data = dispatcherDoc.data();
+    if (data.teamId === fromTeamId) {
+      await queueUpdate(dispatcherDoc.ref, {
+        teamId: canonical.id,
+        teamCode: canonical.code,
+        teamLabel: canonical.label,
+        updatedAt: Timestamp.now(),
+      });
+    }
+  }
+
+  const commandCentersSnap = await getDocs(collection(db, 'commandCenters'));
+  for (const centerDoc of commandCentersSnap.docs) {
+    const current = centerDoc.data().currentTeamOnDuty;
+    if (current?.teamId === fromTeamId) {
+      await queueUpdate(centerDoc.ref, {
+        currentTeamOnDuty: {
+          teamId: canonical.id,
+          teamName: canonical.label,
+          teamCode: canonical.code,
+          setAt: current.setAt ?? Timestamp.now(),
+          setBy: current.setBy ?? null,
+          setByName: current.setByName ?? null,
+        },
+        updatedAt: Timestamp.now(),
+      });
+    }
+  }
+
+  await commitIfNeeded(true);
+}
+
+/**
+ * Remove duplicate operational team docs and keep one canonical record per default code.
+ */
+async function cleanupDuplicateOperationalTeams(
+  existingDocs: DocumentData[]
+): Promise<void> {
+  const db = getFirebaseFirestore();
+  const teamsRef = collection(db, 'teams');
+  const allTeams = existingDocs.map(convertFirestoreDoc);
+
+  for (const template of DEFAULT_OPERATIONAL_TEAMS) {
+    const canonicalRef = doc(teamsRef, template.code);
+    const canonicalSnap = await getDoc(canonicalRef);
+    const canonical: TeamRecord = canonicalSnap.exists()
+      ? convertFirestoreDoc(canonicalSnap)
+      : {
+          id: template.code,
+          code: template.code,
+          label: template.label,
+          description: template.description,
+          isActive: true,
+          sortOrder: template.sortOrder,
+        };
+
+    const duplicates = allTeams.filter(
+      (team) => team.id && team.id !== template.code && teamMatchesTemplate(team, template)
+    );
+
+    for (const duplicate of duplicates) {
+      if (!duplicate.id) continue;
+      try {
+        await repointTeamReferences(duplicate.id, canonical);
+        await deleteDoc(doc(teamsRef, duplicate.id));
+      } catch (error) {
+        console.warn(`Could not remove duplicate team ${duplicate.id}:`, error);
+      }
+    }
+  }
+}
+
 export async function createTeam(
   team: Omit<TeamRecord, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<TeamRecord> {
   ensureAuthenticated();
-  if (!team.code.trim()) {
+  const code = team.code.trim();
+  const label = team.label.trim();
+  if (!code) {
     throw new Error('Team code is required');
   }
-  if (!team.label.trim()) {
+  if (!label) {
     throw new Error('Team label is required');
   }
 
-  const teamsRef = collection(getFirebaseFirestore(), 'teams');
+  const normalizedCode = normalizeTeamCode(code);
+  const db = getFirebaseFirestore();
+  const teamsRef = collection(db, 'teams');
+  const existingSnap = await getDocs(teamsRef);
+
+  const duplicate = existingSnap.docs
+    .map(convertFirestoreDoc)
+    .find((entry) => normalizeTeamCode(entry.code || entry.label) === normalizedCode);
+
+  if (duplicate) {
+    throw new Error(`Team code "${code}" already exists (${duplicate.label}).`);
+  }
+
+  const defaultTemplate = DEFAULT_OPERATIONAL_TEAMS.find(
+    (entry) => normalizeTeamCode(entry.code) === normalizedCode
+  );
+
   const payload = {
-    code: team.code.trim(),
-    label: team.label.trim(),
+    code,
+    label,
     description: normalizeNullableString(team.description),
     isActive: team.isActive !== false,
+    sortOrder: team.sortOrder ?? defaultTemplate?.sortOrder,
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now(),
   };
+
+  if (defaultTemplate) {
+    const docRef = doc(teamsRef, defaultTemplate.code);
+    await setDoc(docRef, payload, { merge: true });
+    return {
+      ...payload,
+      id: docRef.id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+  }
 
   const docRef = await addDoc(teamsRef, payload);
   return {
@@ -112,10 +299,9 @@ export async function getAllTeams(limitCount: number = 50): Promise<TeamRecord[]
   const teamsRef = collection(getFirebaseFirestore(), 'teams');
   const q = query(teamsRef, limit(limitCount));
   const snapshot = await getDocs(q);
-  return snapshot.docs
-    .map(convertFirestoreDoc)
-    .filter((team) => team.isActive !== false)
-    .sort((left, right) => left.label.localeCompare(right.label));
+  return deduplicateTeamsByCode(
+    snapshot.docs.map(convertFirestoreDoc).filter((team) => team.isActive !== false)
+  ).sort((left, right) => left.label.localeCompare(right.label));
 }
 
 function isPermissionDenied(error: any): boolean {
@@ -135,15 +321,14 @@ export function subscribeToTeams(
 ): () => void {
   try {
     const teamsRef = collection(getFirebaseFirestore(), 'teams');
-    // Avoid orderBy('label') so docs missing `label` still appear; sort client-side.
     const q = query(teamsRef, limit(limitCount));
 
     return onSnapshot(
       q,
       (snapshot: QuerySnapshot) => {
-        const teams = snapshot.docs
-          .map(convertFirestoreDoc)
-          .sort((left, right) => left.label.localeCompare(right.label));
+        const teams = deduplicateTeamsByCode(snapshot.docs.map(convertFirestoreDoc)).sort((left, right) =>
+          left.label.localeCompare(right.label)
+        );
         callback(teams);
       },
       (error) => {
@@ -166,29 +351,20 @@ export function subscribeToTeams(
 
 /**
  * Idempotently ensure the four default operational teams exist in Firestore.
- * Prefer stable document IDs (= code) so resolveTeamById(code) also works.
+ * Uses stable document IDs (= code). Removes legacy duplicate team documents.
  */
 export async function ensureDefaultOperationalTeams(): Promise<TeamRecord[]> {
   ensureAuthenticated();
   const db = getFirebaseFirestore();
   const teamsRef = collection(db, 'teams');
   const existingSnap = await getDocs(teamsRef);
-  const existingByCode = new Map<string, TeamRecord>();
 
-  existingSnap.docs.forEach((teamDoc) => {
-    const team = convertFirestoreDoc(teamDoc);
-    existingByCode.set(team.code.toLowerCase(), team);
-  });
+  await cleanupDuplicateOperationalTeams(existingSnap.docs);
 
+  const refreshedSnap = await getDocs(teamsRef);
   const ensured: TeamRecord[] = [];
 
   for (const template of DEFAULT_OPERATIONAL_TEAMS) {
-    const existing = existingByCode.get(template.code.toLowerCase());
-    if (existing?.id) {
-      ensured.push(existing);
-      continue;
-    }
-
     const payload = {
       code: template.code,
       label: template.label,

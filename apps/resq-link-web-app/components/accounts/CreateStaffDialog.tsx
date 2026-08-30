@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Dialog } from '@/components/ui/Dialog';
 import { Loader2 } from 'lucide-react';
 import type { AgencyOption } from '@/lib/agencyTypes';
+import { teamOptionKey } from '@/lib/operational/teamUtils';
 
 export function CreateStaffDialog({
   open,
@@ -129,8 +130,8 @@ export function CreateStaffDialog({
                 className="h-10 w-full rounded-lg border border-admin-border px-3 text-sm"
               >
                 <option value="">Unassigned</option>
-                {teams.map((team) => (
-                  <option key={team.code} value={team.code}>
+                {teams.map((team, index) => (
+                  <option key={teamOptionKey(team, index)} value={team.code}>
                     {team.label}
                   </option>
                 ))}

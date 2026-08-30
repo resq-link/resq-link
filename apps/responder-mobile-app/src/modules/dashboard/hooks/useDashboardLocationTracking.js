@@ -10,13 +10,11 @@ import {
  * When `shouldTrack` is true (signed-in dispatcher, Firebase session present, location not paused),
  * push GPS to Firestore and mark the dispatcher online (matches previous `dashboard.jsx` behavior).
  *
- * When the responder is on duty as the primary crew member, the same fix also
- * updates their vehicle's position, which is what the dispatcher map tracks.
- * Crew members other than the primary do not write, so two phones never fight
- * over one ambulance's location.
+ * When the responder has a Command Center assigned resource, the same fix also
+ * updates that vehicle's position on the dispatcher map.
  *
  * @param shouldTrack   whether to run the GPS watcher at all
- * @param vehicleTarget `{ resourceId, isPrimary }` for the crewed vehicle, if any
+ * @param vehicleTarget `{ resourceId, isPrimary }` for the assigned resource, if any
  */
 export function useDashboardLocationTracking(shouldTrack, vehicleTarget) {
   // Held in a ref so changing vehicle mid-shift does not tear down and restart

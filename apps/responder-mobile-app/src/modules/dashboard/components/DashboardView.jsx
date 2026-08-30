@@ -44,8 +44,8 @@ import { LOCATION_PAUSED_KEY } from "@/constants/location";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/query/queryKeys";
 import { useAssignedEmergencies } from "@/modules/incidents/hooks/useAssignedEmergencies";
-import { useResponderDuty } from "@/modules/dashboard/hooks/useResponderDuty";
-import DutyResourceCard from "@/modules/dashboard/components/DutyResourceCard";
+import { useAssignedResource } from "@/modules/dashboard/hooks/useAssignedResource";
+import AssignedResourceCard from "@/modules/dashboard/components/AssignedResourceCard";
 import { useDashboardLocationTracking } from "@/modules/dashboard/hooks/useDashboardLocationTracking";
 import { useResponderLocationSnapshot } from "@/modules/dashboard/hooks/useResponderLocationSnapshot";
 import {
@@ -107,7 +107,7 @@ export default function DashboardView() {
     { onRealtimeSnapshot: () => setRefreshing(false) }
   );
 
-  const duty = useResponderDuty(authUid);
+  const assignment = useAssignedResource(authUid);
 
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -156,8 +156,8 @@ export default function DashboardView() {
 
   const trackingEnabled = !!(user && authReady && firebaseUid && !locationPaused);
   useDashboardLocationTracking(trackingEnabled, {
-    resourceId: duty.duty.resourceId,
-    isPrimary: duty.isPrimary,
+    resourceId: assignment.assignedResource?.id ?? null,
+    isPrimary: Boolean(assignment.assignedResource),
   });
 
   const responderCoords = useResponderLocationSnapshot(trackingEnabled);
@@ -199,12 +199,12 @@ export default function DashboardView() {
     [user?.email, displayName]
   );
   const roleLabel = useMemo(
-    () => getResponderRoleLabel(duty.activeResource),
-    [duty.activeResource]
+    () => getResponderRoleLabel(assignment.assignedResource),
+    [assignment.assignedResource]
   );
 
-  const onDuty = Boolean(duty.activeResource);
-  const dutyUnitLabel = duty.activeResource?.name ?? null;
+  const hasAssignedResource = assignment.hasAssignedResource;
+  const assignedUnitLabel = assignment.assignedResource?.name ?? null;
 
   const handlePressDuty = useCallback(() => {
     scrollRef.current?.scrollTo({
@@ -243,17 +243,11 @@ export default function DashboardView() {
         dutySectionYRef.current = event.nativeEvent.layout.y;
       }}
     >
-      <DutyResourceCard
+      <AssignedResourceCard
         D={D}
-        activeResource={duty.activeResource}
-        claimableResources={duty.claimableResources}
-        isPrimary={duty.isPrimary}
-        isSaving={duty.isSaving}
-        error={duty.error}
-        clearError={duty.clearError}
-        onGoOnDuty={duty.goOnDuty}
-        onGoOffDuty={duty.goOffDuty}
-        showStatusPill={false}
+        assignedResource={assignment.assignedResource}
+        isLoading={assignment.isLoading}
+        error={assignment.error}
       />
     </View>
   );
@@ -287,8 +281,8 @@ export default function DashboardView() {
           initials={initials}
           displayName={displayName}
           roleLabel={roleLabel}
-          onDuty={onDuty}
-          dutyUnitLabel={dutyUnitLabel}
+          hasAssignedResource={hasAssignedResource}
+          assignedUnitLabel={assignedUnitLabel}
           onPressDuty={handlePressDuty}
           notificationCount={alertingCount}
           onPressNotifications={() => router.push("/notifications")}

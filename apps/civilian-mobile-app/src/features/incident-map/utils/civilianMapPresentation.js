@@ -1,4 +1,4 @@
-import { normalizeOperationalStatus } from "@packages/firebase";
+import { normalizeOperationalStatus, isCivilianIncidentResolved } from "@packages/firebase";
 import { formatTimestamp } from "@/features/incident-map/utils/mapUtils";
 
 /** Fixed civilian-facing timeline stages — no operational details exposed. */
@@ -60,6 +60,21 @@ function toDate(value) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+function isEnRouteReport(report) {
+  const rawStatus = (report.status || "").toLowerCase();
+  const explicitEnRoute = new Set(["enroute", "en_route", "responding"]);
+  return explicitEnRoute.has(rawStatus) || Boolean(report.acceptedAt);
+}
+
+function hasAssignedResponder(report) {
+  return Boolean(
+    report.assignedResponderId ||
+      report.responder ||
+      (Array.isArray(report.assignedResponderIds) && report.assignedResponderIds.length > 0) ||
+      report.assignedTeamName,
+  );
+}
+
 function formatTimeOnly(value) {
   const date = toDate(value);
   if (!date) return null;
@@ -77,12 +92,12 @@ export function getCivilianStatusPresentation(report) {
     return { key: "monitoring", ...STATUS_PRESENTATION.monitoring };
   }
 
-  const normalized = normalizeOperationalStatus(report.status);
-  const rawStatus = (report.status || "").toLowerCase();
-
-  if (normalized === "resolved" || rawStatus === "done") {
+  if (isCivilianIncidentResolved(report)) {
     return { key: "completed", ...STATUS_PRESENTATION.completed };
   }
+
+  const normalized = normalizeOperationalStatus(report.status);
+  const rawStatus = (report.status || "").toLowerCase();
 
   if (normalized === "cancelled") {
     const raw = (report.status || "").toLowerCase();
@@ -101,25 +116,15 @@ export function getCivilianStatusPresentation(report) {
     return { key: "arrived", ...STATUS_PRESENTATION.arrived };
   }
 
-  const enRouteStatuses = new Set([
-    "enroute",
-    "en_route",
-    "responding",
-    "dispatched",
-  ]);
-  if (
-    enRouteStatuses.has(rawStatus) ||
-    (normalized === "active" && report.acceptedAt)
-  ) {
+  if (isEnRouteReport(report)) {
     return { key: "en_route", ...STATUS_PRESENTATION.en_route };
   }
 
-  if (
-    report.assignedResponderId ||
-    report.responder ||
-    report.assignedTeamName ||
-    report.acceptedAt
-  ) {
+  if (hasAssignedResponder(report)) {
+    return { key: "dispatching", ...STATUS_PRESENTATION.dispatching };
+  }
+
+  if (report.incidentId) {
     return { key: "dispatching", ...STATUS_PRESENTATION.dispatching };
   }
 
@@ -136,36 +141,22 @@ export function getCivilianStatusPresentation(report) {
 export function getCivilianTimelineIndex(report) {
   if (!report) return 0;
 
-  const normalized = normalizeOperationalStatus(report.status);
-  const rawStatus = (report.status || "").toLowerCase();
-
-  if (normalized === "resolved" || rawStatus === "done" || report.movedToHistoryAt) {
+  if (isCivilianIncidentResolved(report)) {
     return 5;
   }
+
+  const normalized = normalizeOperationalStatus(report.status);
+  const rawStatus = (report.status || "").toLowerCase();
 
   if (normalized === "on_scene" || report.touchdownAt || rawStatus === "on_scene") {
     return 4;
   }
 
-  const enRouteStatuses = new Set([
-    "enroute",
-    "en_route",
-    "responding",
-    "dispatched",
-  ]);
-  if (
-    enRouteStatuses.has(rawStatus) ||
-    (normalized === "active" && report.acceptedAt)
-  ) {
+  if (isEnRouteReport(report)) {
     return 3;
   }
 
-  if (
-    report.assignedResponderId ||
-    report.responder ||
-    report.assignedTeamName ||
-    report.acceptedAt
-  ) {
+  if (hasAssignedResponder(report) || report.incidentId) {
     return 2;
   }
 
@@ -213,33 +204,20 @@ export function buildCivilianActivityFeed(report) {
     );
   }
 
-  if (
-    report.assignedResponderId ||
-    report.responder ||
-    report.assignedTeamName ||
-    report.acceptedAt
-  ) {
+  if (hasAssignedResponder(report) || report.incidentId) {
     push(
       "assigned",
-      report.acceptedAt || report.updatedAt,
+      report.updatedAt || report.createdAt,
       "A response team has been assigned."
     );
   }
 
-  const rawStatus = (report.status || "").toLowerCase();
-  const normalized = normalizeOperationalStatus(report.status);
-  const enRouteStatuses = new Set([
-    "enroute",
-    "en_route",
-    "responding",
-    "dispatched",
-  ]);
-
-  if (
-    enRouteStatuses.has(rawStatus) ||
-    (normalized === "active" && report.acceptedAt)
-  ) {
-    push("en_route", report.updatedAt, "The response team is on the way.");
+  if (isEnRouteReport(report)) {
+    push(
+      "en_route",
+      report.acceptedAt || report.updatedAt,
+      "The response team is on the way."
+    );
   }
 
   if (report.touchdownAt || normalized === "on_scene" || rawStatus === "on_scene") {

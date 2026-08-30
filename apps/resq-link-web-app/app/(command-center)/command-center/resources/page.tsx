@@ -23,6 +23,7 @@ import { useDispatcherData } from '@/contexts/DispatcherDataContext'
 import { useOperationalTeams } from '@/contexts/OperationalTeamContext'
 import InlineLoader from '@/components/InlineLoader'
 import { MapPin, Pencil, Plus, Radio, Search, Trash2, X, Ambulance, ShieldCheck } from 'lucide-react'
+import { mergeTeamOptions, teamReactKey } from '@/lib/operational/teamUtils'
 
 const ResourceLocationMap = dynamic(() => import('@/components/ResourceLocationMap'), {
   ssr: false,
@@ -219,28 +220,26 @@ export default function ResourcesPage() {
     () => new Map(dispatcherLocations.map((location) => [location.dispatcherId, location])),
     [dispatcherLocations]
   )
-  const teamOptions = useMemo(() => {
-    const merged = new Map<string, TeamRecord>()
-
+  const responderTeamRecords = useMemo(() => {
+    const records: TeamRecord[] = []
     responders.forEach((responder) => {
       const code = responder.account.teamCode?.trim()
       const label = responder.account.teamLabel?.trim()
-      if (code) {
-        merged.set(code, {
-          id: code,
-          code,
-          label: label || code,
-          isActive: true,
-        })
-      }
+      if (!code) return
+      records.push({
+        id: code,
+        code,
+        label: label || code,
+        isActive: true,
+      })
     })
+    return records
+  }, [responders])
 
-    teams.forEach((team) => {
-      merged.set(team.id || team.code, team)
-    })
-
-    return Array.from(merged.values()).sort((left, right) => left.label.localeCompare(right.label))
-  }, [responders, teams])
+  const teamOptions = useMemo(
+    () => mergeTeamOptions(teams, responderTeamRecords),
+    [teams, responderTeamRecords]
+  )
 
   const resolveResourceLocation = (resource: ResourceRecord): ResourceRecord => {
     const primaryResponderId = resource.primaryResponderId || resource.assignedResponderId || resource.assignedResponderIds?.[0]
@@ -795,8 +794,8 @@ export default function ResourcesPage() {
                       className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
                     >
                       <option value="">Unassigned</option>
-                      {teamOptions.map((team) => (
-                        <option key={team.id || team.code} value={team.id || team.code}>
+                      {teamOptions.map((team, index) => (
+                        <option key={teamReactKey(team, index)} value={team.id || team.code}>
                           {team.label}
                         </option>
                       ))}

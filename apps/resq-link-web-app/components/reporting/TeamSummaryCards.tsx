@@ -53,7 +53,7 @@ export default function TeamSummaryCards({ cards }: TeamSummaryCardsProps) {
 
           return (
             <div
-              key={card.team}
+              key={`${card.team}-${index}`}
               className={[
                 'relative flex w-full flex-col overflow-hidden rounded-lg border border-slate-800/90 border-l-[3px]',
                 'bg-gradient-to-b from-slate-900/90 to-slate-950/95',

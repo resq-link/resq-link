@@ -61,6 +61,45 @@ const isStillAssignable = (incident: IncidentData): boolean => {
   return !['enroute', 'on_scene', 'resolved', 'done', 'unresolved'].includes(status);
 };
 
+/** Responder UIDs newly assigned (status `assigned`) — not raw resource doc IDs. */
+function getNewlyAssignedResponderIds(
+  before: IncidentData | undefined,
+  after: IncidentData,
+): string[] {
+  const prevAssignments = (before?.responderAssignments ?? {}) as Record<
+    string,
+    { status?: string }
+  >;
+  const currAssignments = (after.responderAssignments ?? {}) as Record<
+    string,
+    { status?: string }
+  >;
+  const ids = new Set<string>();
+
+  for (const uid of Object.keys(currAssignments)) {
+    const curr = currAssignments[uid];
+    if (!curr || String(curr.status ?? '').toLowerCase() !== 'assigned') continue;
+    const prev = prevAssignments[uid];
+    if (!prev || String(prev.status ?? '').toLowerCase() !== 'assigned') {
+      ids.add(uid);
+    }
+  }
+
+  const prevArr = new Set<string>(
+    Array.isArray(before?.assignedResourceIds) ? before!.assignedResourceIds : [],
+  );
+  const currArr = Array.isArray(after.assignedResourceIds) ? after.assignedResourceIds : [];
+  for (const id of currArr) {
+    if (!id || prevArr.has(id)) continue;
+    const slot = currAssignments[id];
+    if (slot && String(slot.status ?? '').toLowerCase() === 'assigned') {
+      ids.add(id);
+    }
+  }
+
+  return [...ids];
+}
+
 const titleFor = (incident: IncidentData): string => {
   const priority = priorityOf(incident).toUpperCase();
   const type =
@@ -164,13 +203,14 @@ export const onIncidentAssigned = onDocumentWritten(
       ? after.assignedResourceIds
       : [];
 
-    const newlyAssigned = current.filter((id) => id && !previous.has(id));
-    if (newlyAssigned.length === 0) return;
-
-    // assignedResourceIds mixes resource ids and responder uids; loadResponderTokens
-    // silently drops anything without a dispatchers/{uid} doc carrying tokens,
-    // and also drops responders who are not currently on duty.
-    await alertResponders(incidentId, after, newlyAssigned, false);
+    const newlyAssigned = getNewlyAssignedResponderIds(before, after);
+    if (newlyAssigned.length === 0) {
+      const legacyNewIds = current.filter((id) => id && !previous.has(id));
+      if (legacyNewIds.length === 0) return;
+      await alertResponders(incidentId, after, legacyNewIds, false);
+    } else {
+      await alertResponders(incidentId, after, newlyAssigned, false);
+    }
 
     await event.data!.after.ref.update({
       lastAlertAt: Timestamp.now(),

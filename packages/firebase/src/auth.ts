@@ -464,10 +464,23 @@ export async function signInCivilian(
     firebaseInfo('User authenticated');
     return { user, profile };
   } catch (error: any) {
-    const wrapped = new Error(`Failed to sign in: ${error.message}`) as Error & {
-      code?: string;
-    };
-    wrapped.code = error.code;
+    const code = typeof error?.code === 'string' ? error.code : '';
+    let message = typeof error?.message === 'string' ? error.message : String(error);
+
+    if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
+      message = 'Incorrect email or password.';
+    } else if (code === 'auth/invalid-email') {
+      message = 'Invalid email address.';
+    } else if (code === 'auth/too-many-requests') {
+      message = 'Too many failed attempts. Please wait a moment and try again.';
+    } else if (code === 'auth/network-request-failed') {
+      message = 'Network error. Check your connection and try again.';
+    }
+
+    const wrapped = new Error(
+      message.startsWith('Failed to sign in') ? message : `Failed to sign in: ${message}`
+    ) as Error & { code?: string };
+    wrapped.code = code || error?.code;
     throw wrapped;
   }
 }

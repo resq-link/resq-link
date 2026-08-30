@@ -11,6 +11,10 @@
     "dev:web": "npm run dev --workspace=resq-link-web-app",
     "build:web": "npm run build --workspace=resq-link-web-app",
     "start:web": "npm run start --workspace=resq-link-web-app",
+    "dev:civilian": "npm run start:lan --workspace=civilian-mobile-app",
+    "dev:civilian:clear": "npm run start:lan:clear --workspace=civilian-mobile-app",
+    "dev:responder": "npm exec --workspace=responder-mobile-app -- npx expo start --lan",
+    "dev:responder:clear": "npm exec --workspace=responder-mobile-app -- npx expo start --lan --clear",
     "postinstall": "patch-package || true"
   },
   "devDependencies": {

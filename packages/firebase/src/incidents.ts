@@ -38,6 +38,14 @@ import {
   hasResponderSceneAssessment,
   parseResponderAssessment,
 } from './responderAssessment';
+import {
+  computeTotalPeopleAffected,
+  mapSceneReportToLegacyPostReport,
+  parseSceneReportRecord,
+  parseSceneReportsMap,
+  hasSceneReport,
+  type SceneReportRecord,
+} from './sceneReport';
 
 export type { IncidentPriority };
 export type IncidentSource = 'civilian_app' | 'call' | 'sms' | 'walk_in' | 'radio' | 'manual';
@@ -97,12 +105,19 @@ export interface IncidentResponderAssignment {
   resourceName?: string | null;
   status: 'assigned' | 'enroute' | 'on_scene' | 'resolved' | 'declined';
   acceptedAt?: Date | Timestamp | null;
+  /** Responder-confirmed operational arrival time */
   touchdownAt?: Date | Timestamp | null;
+  /** Server timestamp when On Scene was submitted */
+  touchdownRecordedAt?: Date | Timestamp | null;
   declinedAt?: Date | Timestamp | null;
   declineReason?: string | null;
   responseTimeSeconds?: number | null;
   onScenePhotoUrl?: string | null;
   onScenePhotoUploadedAt?: Date | Timestamp | null;
+  onSceneLatitude?: number | null;
+  onSceneLongitude?: number | null;
+  onSceneGpsCapturedAt?: Date | Timestamp | null;
+  sceneReport?: import('./sceneReport').SceneReportRecord | null;
   responderAssessment?: import('./responderAssessment').ResponderAssessmentRecord | null;
   postIncidentReport?: {
     reasonForIncident?: string | null;
@@ -191,16 +206,35 @@ export interface IncidentRecord {
   movedToHistoryAt?: Date | Timestamp | null;
   // Responder Tracking Fields (1 team per incident)
   acceptedAt?: Date | Timestamp | null;
+  /** Responder-confirmed operational arrival time */
   touchdownAt?: Date | Timestamp | null;
+  /** Server timestamp when On Scene was submitted */
+  touchdownRecordedAt?: Date | Timestamp | null;
   responseTimeSeconds?: number | null;
   touchdownByDispatcherId?: string | null;
   touchdownByName?: string | null;
   touchdownSource?: 'gps' | 'manual' | null;
   touchdownDistanceMeters?: number | null;
-  /** Responder arrival evidence captured at manual Touchdown */
+  /** Responder arrival evidence captured at On Scene confirmation */
   onScenePhotoUrl?: string | null;
   onScenePhotoUploadedAt?: Date | Timestamp | null;
   onScenePhotoUploadedBy?: string | null;
+  onSceneLatitude?: number | null;
+  onSceneLongitude?: number | null;
+  onSceneGpsCapturedAt?: Date | Timestamp | null;
+  /** Combined scene reports keyed by responder UID */
+  sceneReports?: Record<string, import('./sceneReport').SceneReportRecord>;
+  /** Responder-initiated requests for additional resource types (Command Center assigns actual units) */
+  pendingResourceRequests?: Record<
+    string,
+    {
+      additionalResourceType?: import('./sceneReport').AdditionalResourceType | null;
+      additionalResourceTypeOther?: string | null;
+      requestedAt?: Date | Timestamp | null;
+      requestedBy?: string | null;
+      requestedByName?: string | null;
+    }
+  >;
   postIncidentReport?: {
     reasonForIncident?: string | null;
     notes?: string | null;
@@ -474,11 +508,24 @@ const toIncidentRecord = (snapshot: DocumentData): IncidentRecord => {
                   status: item.status || 'assigned',
                   acceptedAt: item.acceptedAt?.toDate ? item.acceptedAt.toDate() : item.acceptedAt ? new Date(item.acceptedAt) : null,
                   touchdownAt: item.touchdownAt?.toDate ? item.touchdownAt.toDate() : item.touchdownAt ? new Date(item.touchdownAt) : null,
+                  touchdownRecordedAt: item.touchdownRecordedAt?.toDate
+                    ? item.touchdownRecordedAt.toDate()
+                    : item.touchdownRecordedAt
+                      ? new Date(item.touchdownRecordedAt)
+                      : null,
                   declinedAt: item.declinedAt?.toDate ? item.declinedAt.toDate() : item.declinedAt ? new Date(item.declinedAt) : null,
                   declineReason: item.declineReason || null,
                   responseTimeSeconds: typeof item.responseTimeSeconds === 'number' ? item.responseTimeSeconds : null,
                   onScenePhotoUrl: item.onScenePhotoUrl || null,
                   onScenePhotoUploadedAt: item.onScenePhotoUploadedAt?.toDate ? item.onScenePhotoUploadedAt.toDate() : item.onScenePhotoUploadedAt ? new Date(item.onScenePhotoUploadedAt) : null,
+                  onSceneLatitude: typeof item.onSceneLatitude === 'number' ? item.onSceneLatitude : null,
+                  onSceneLongitude: typeof item.onSceneLongitude === 'number' ? item.onSceneLongitude : null,
+                  onSceneGpsCapturedAt: item.onSceneGpsCapturedAt?.toDate
+                    ? item.onSceneGpsCapturedAt.toDate()
+                    : item.onSceneGpsCapturedAt
+                      ? new Date(item.onSceneGpsCapturedAt)
+                      : null,
+                  sceneReport: parseSceneReportRecord(item.sceneReport),
                   responderAssessment: parseResponderAssessment(item.responderAssessment),
                   postIncidentReport:
                     item.postIncidentReport && typeof item.postIncidentReport === 'object'
@@ -533,6 +580,38 @@ const toIncidentRecord = (snapshot: DocumentData): IncidentRecord => {
             {}
           )
         : undefined,
+    sceneReports: parseSceneReportsMap(data.sceneReports),
+    pendingResourceRequests:
+      data.pendingResourceRequests && typeof data.pendingResourceRequests === 'object'
+        ? Object.entries(data.pendingResourceRequests).reduce<
+            NonNullable<IncidentRecord['pendingResourceRequests']>
+          >((acc, [uid, val]) => {
+            if (!val || typeof val !== 'object') return acc;
+            const item = val as Record<string, unknown>;
+            acc[uid] = {
+              additionalResourceType:
+                typeof item.additionalResourceType === 'string'
+                  ? (item.additionalResourceType as import('./sceneReport').AdditionalResourceType)
+                  : null,
+              additionalResourceTypeOther:
+                typeof item.additionalResourceTypeOther === 'string'
+                  ? item.additionalResourceTypeOther
+                  : null,
+              requestedAt:
+                typeof item.requestedAt === 'object' &&
+                item.requestedAt &&
+                'toDate' in item.requestedAt &&
+                typeof (item.requestedAt as { toDate?: () => Date }).toDate === 'function'
+                  ? (item.requestedAt as { toDate: () => Date }).toDate()
+                  : item.requestedAt
+                    ? new Date(item.requestedAt as string | number)
+                    : null,
+              requestedBy: typeof item.requestedBy === 'string' ? item.requestedBy : null,
+              requestedByName: typeof item.requestedByName === 'string' ? item.requestedByName : null,
+            };
+            return acc;
+          }, {})
+        : undefined,
     assignedTeamId: data.assignedTeamId || data.teamId || null,
     assignedTeamName: data.assignedTeamName || data.teamOnDuty || data.teamName || null,
     assignedTeamCode: data.assignedTeamCode || null,
@@ -554,8 +633,18 @@ const toIncidentRecord = (snapshot: DocumentData): IncidentRecord => {
     createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
     updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : null,
     resolvedAt: data.resolvedAt?.toDate ? data.resolvedAt.toDate() : null,
+    movedToHistoryAt: data.movedToHistoryAt?.toDate
+      ? data.movedToHistoryAt.toDate()
+      : data.movedToHistoryAt
+        ? new Date(data.movedToHistoryAt)
+        : null,
     acceptedAt: data.acceptedAt?.toDate ? data.acceptedAt.toDate() : (data.acceptedAt ? new Date(data.acceptedAt) : null),
     touchdownAt: data.touchdownAt?.toDate ? data.touchdownAt.toDate() : (data.touchdownAt ? new Date(data.touchdownAt) : null),
+    touchdownRecordedAt: data.touchdownRecordedAt?.toDate
+      ? data.touchdownRecordedAt.toDate()
+      : data.touchdownRecordedAt
+        ? new Date(data.touchdownRecordedAt)
+        : null,
     touchdownByDispatcherId: data.touchdownByDispatcherId || null,
     touchdownByName: data.touchdownByName || null,
     touchdownSource: data.touchdownSource || null,
@@ -572,6 +661,13 @@ const toIncidentRecord = (snapshot: DocumentData): IncidentRecord => {
         : null,
     onScenePhotoUploadedBy:
       typeof data.onScenePhotoUploadedBy === 'string' ? data.onScenePhotoUploadedBy : null,
+    onSceneLatitude: typeof data.onSceneLatitude === 'number' ? data.onSceneLatitude : null,
+    onSceneLongitude: typeof data.onSceneLongitude === 'number' ? data.onSceneLongitude : null,
+    onSceneGpsCapturedAt: data.onSceneGpsCapturedAt?.toDate
+      ? data.onSceneGpsCapturedAt.toDate()
+      : data.onSceneGpsCapturedAt
+        ? new Date(data.onSceneGpsCapturedAt)
+        : null,
     responseTimeSeconds: typeof data.responseTimeSeconds === 'number' ? data.responseTimeSeconds : null,
     postIncidentReport:
       data.postIncidentReport && typeof data.postIncidentReport === 'object'
@@ -1962,8 +2058,12 @@ async function propagateIncidentUpdatesToReports(incidentId: string, updates: an
     }
     if (updates.acceptedAt) reportUpdates.acceptedAt = updates.acceptedAt;
     if (updates.touchdownAt) reportUpdates.touchdownAt = updates.touchdownAt;
+    if (updates.touchdownRecordedAt) reportUpdates.touchdownRecordedAt = updates.touchdownRecordedAt;
     if (updates.responseTimeSeconds) reportUpdates.responseTimeSeconds = updates.responseTimeSeconds;
     if (updates.onScenePhotoUrl) reportUpdates.onScenePhotoUrl = updates.onScenePhotoUrl;
+    if (updates.onSceneLatitude != null) reportUpdates.onSceneLatitude = updates.onSceneLatitude;
+    if (updates.onSceneLongitude != null) reportUpdates.onSceneLongitude = updates.onSceneLongitude;
+    if (updates.onSceneGpsCapturedAt) reportUpdates.onSceneGpsCapturedAt = updates.onSceneGpsCapturedAt;
     if (updates.onScenePhotoUploadedAt) {
       reportUpdates.onScenePhotoUploadedAt = updates.onScenePhotoUploadedAt;
     }
@@ -1971,7 +2071,22 @@ async function propagateIncidentUpdatesToReports(incidentId: string, updates: an
       reportUpdates.onScenePhotoUploadedBy = updates.onScenePhotoUploadedBy;
     }
     if (updates.postIncidentReport) reportUpdates.postIncidentReport = updates.postIncidentReport;
+    if (updates.sceneReports) reportUpdates.sceneReports = updates.sceneReports;
+    if (updates.pendingResourceRequests) {
+      reportUpdates.pendingResourceRequests = updates.pendingResourceRequests;
+    }
     if (updates.resolvedAt && !reportUpdates.resolvedAt) reportUpdates.resolvedAt = updates.resolvedAt;
+
+    // Scene report / resolution payloads may include postIncidentReport without an explicit status.
+    if (
+      !reportUpdates.status &&
+      updates.postIncidentReport?.submittedAt
+    ) {
+      reportUpdates.status = 'resolved';
+      const resolvedAt = updates.resolvedAt ?? Timestamp.now();
+      reportUpdates.resolvedAt = resolvedAt;
+      reportUpdates.movedToHistoryAt = updates.movedToHistoryAt ?? resolvedAt;
+    }
     
     snap.forEach((docSnap) => {
       updatePromises.push(updateDoc(docSnap.ref, reportUpdates));
@@ -2017,22 +2132,17 @@ export async function updateResourcesForIncidentStatus(
       }
     }
 
-    // If specific responderId provided, update only resources belonging to that responder
+    // If specific responderId provided, update only their primary assigned resource
     if (options?.responderId) {
       try {
-        const queries = [
-          query(collection(db, 'resources'), where('primaryResponderId', '==', options.responderId)),
-          query(collection(db, 'resources'), where('assignedResponderId', '==', options.responderId)),
-          query(collection(db, 'resources'), where('assignedResponderIds', 'array-contains', options.responderId)),
-        ];
-        const querySnaps = await Promise.all(queries.map((qItem) => getDocs(qItem)));
-        querySnaps.forEach((resSnap) => {
-          resSnap.docs.forEach((rDoc) => {
-            if (!updatedResourceDocIds.has(rDoc.id)) {
-              updatedResourceDocIds.add(rDoc.id);
-              updatePromises.push(updateDoc(rDoc.ref, updates));
-            }
-          });
+        const resSnap = await getDocs(
+          query(collection(db, 'resources'), where('primaryResponderId', '==', options.responderId))
+        );
+        resSnap.docs.forEach((rDoc) => {
+          if (!updatedResourceDocIds.has(rDoc.id)) {
+            updatedResourceDocIds.add(rDoc.id);
+            updatePromises.push(updateDoc(rDoc.ref, updates));
+          }
         });
       } catch {
         // Ignore sub-query failure
@@ -2102,6 +2212,38 @@ export async function updateResourcesForIncidentStatus(
   }
 }
 
+/** Whether the responder may accept, decline, or acknowledge this incident. */
+async function canResponderActOnIncident(
+  incident: IncidentRecord,
+  responderId: string,
+): Promise<boolean> {
+  const resourceIds = incident.assignedResourceIds || [];
+  if (resourceIds.includes(responderId)) return true;
+  if (incident.responderAssignments?.[responderId]) return true;
+
+  const db = getFirebaseFirestore();
+  for (const id of resourceIds) {
+    if (!id || id === responderId) continue;
+    try {
+      const resSnap = await getDoc(doc(db, 'resources', id));
+      if (!resSnap.exists()) continue;
+      const data = resSnap.data() as {
+        primaryResponderId?: string;
+        assignedResponderId?: string;
+      };
+      if (
+        data.primaryResponderId === responderId ||
+        data.assignedResponderId === responderId
+      ) {
+        return true;
+      }
+    } catch {
+      // Best-effort ownership lookup
+    }
+  }
+  return false;
+}
+
 export async function acceptIncident(incidentId: string): Promise<IncidentRecord> {
   const currentUser = ensureAuthenticated();
   const db = getFirebaseFirestore();
@@ -2110,13 +2252,35 @@ export async function acceptIncident(incidentId: string): Promise<IncidentRecord
   if (!snap.exists()) throw new Error('Incident not found');
   
   const currentData = snap.data() as IncidentRecord;
-  if (!currentData.assignedResourceIds.includes(currentUser.uid)) {
+  if (!(await canResponderActOnIncident(currentData, currentUser.uid))) {
     throw new Error('Only an assigned responder can accept this incident');
   }
-  
-  const acceptedAt = Timestamp.now();
+
   const existingAssignments = currentData.responderAssignments || {};
-  const currentAssignment = existingAssignments[currentUser.uid] || {
+  const currentAssignment = existingAssignments[currentUser.uid];
+  const assignmentStatus = currentAssignment?.status;
+
+  const ackFields: Record<string, unknown> = {
+    responderAlertAcknowledgedBy: arrayUnion(currentUser.uid),
+    updatedAt: Timestamp.now(),
+  };
+  if (!hasResponderAcknowledgedAlert(currentData, currentUser.uid)) {
+    ackFields.responderAlertAcknowledgedAt = Timestamp.now();
+  }
+
+  // Idempotent: already accepted or beyond — acknowledge alert only, never regress status.
+  if (assignmentStatus && assignmentStatus !== 'assigned') {
+    await updateDoc(incidentRef, ackFields);
+    const updatedSnap = await getDoc(incidentRef);
+    return toIncidentRecord(updatedSnap);
+  }
+
+  const acceptedAt =
+    currentAssignment?.acceptedAt instanceof Timestamp
+      ? currentAssignment.acceptedAt
+      : Timestamp.now();
+
+  const currentAssignmentBase = currentAssignment || {
     responderId: currentUser.uid,
     responderName: currentUser.displayName || currentUser.email || currentUser.uid,
     status: 'assigned' as const,
@@ -2125,13 +2289,12 @@ export async function acceptIncident(incidentId: string): Promise<IncidentRecord
   const updatedAssignments = {
     ...existingAssignments,
     [currentUser.uid]: {
-      ...currentAssignment,
+      ...currentAssignmentBase,
       status: 'enroute' as const,
       acceptedAt,
     },
   };
 
-  // Compute most-advanced top-level status across all assignments
   const statusPriority: Record<string, number> = {
     assigned: 0,
     dispatched: 0,
@@ -2151,11 +2314,11 @@ export async function acceptIncident(incidentId: string): Promise<IncidentRecord
     currentData.status || ('enroute' as IncidentStatus),
   );
 
-  const updateData: any = {
+  const updateData: Record<string, unknown> = {
+    ...ackFields,
     responderAssignments: updatedAssignments,
     status: topLevelStatus,
     acceptedAt: currentData.acceptedAt || acceptedAt,
-    updatedAt: Timestamp.now(),
   };
 
   await updateDoc(incidentRef, updateData);
@@ -2166,6 +2329,14 @@ export async function acceptIncident(incidentId: string): Promise<IncidentRecord
   return toIncidentRecord(updatedSnap);
 }
 
+/**
+ * Acknowledge a priority alert and accept the assignment for the current responder.
+ * Uses the same acceptance path as `acceptIncident` (idempotent, per-responder only).
+ */
+export async function acknowledgeIncidentAssignment(incidentId: string): Promise<IncidentRecord> {
+  return acceptIncident(incidentId);
+}
+
 export async function markIncidentTouchdown(
   incidentId: string,
   options: {
@@ -2173,6 +2344,9 @@ export async function markIncidentTouchdown(
     distanceMeters?: number | null;
     touchdownAt?: Date | string | number | Timestamp | null;
     onScenePhotoUrl?: string | null;
+    onSceneLatitude?: number | null;
+    onSceneLongitude?: number | null;
+    onSceneGpsCapturedAt?: Date | string | number | Timestamp | null;
   }
 ): Promise<IncidentRecord> {
   const currentUser = ensureAuthenticated();
@@ -2183,7 +2357,7 @@ export async function markIncidentTouchdown(
   
   const currentData = snap.data() as IncidentRecord;
   if (!currentData.assignedResourceIds.includes(currentUser.uid)) {
-    throw new Error('Only an assigned responder can mark touchdown');
+    throw new Error('Only an assigned responder can confirm on scene');
   }
 
   const resolveTouchdownTimestamp = (
@@ -2237,16 +2411,57 @@ export async function markIncidentTouchdown(
           : null;
 
   if (!existingTouchdown && !onScenePhotoUrl) {
-    throw new Error('On-scene photo is required to confirm touchdown');
+    throw new Error('On-scene photo is required to confirm on scene');
   }
+
+  const resolveOptionalTimestamp = (
+    value: Date | string | number | Timestamp | null | undefined,
+  ): Timestamp | null => {
+    if (value == null) return null;
+    if (value instanceof Timestamp) return value;
+    if (value instanceof Date) return Timestamp.fromDate(value);
+    if (typeof value === 'number') return Timestamp.fromMillis(value);
+    if (typeof value === 'string') {
+      const parsed = new Date(value);
+      if (!Number.isNaN(parsed.getTime())) return Timestamp.fromDate(parsed);
+    }
+    return null;
+  };
+
+  const touchdownRecordedAt = existingTouchdown
+    ? resolveOptionalTimestamp(currentAssignment.touchdownRecordedAt) || Timestamp.now()
+    : Timestamp.now();
+
+  const onSceneLatitude =
+    typeof options.onSceneLatitude === 'number' && Number.isFinite(options.onSceneLatitude)
+      ? options.onSceneLatitude
+      : typeof currentAssignment.onSceneLatitude === 'number'
+        ? currentAssignment.onSceneLatitude
+        : null;
+
+  const onSceneLongitude =
+    typeof options.onSceneLongitude === 'number' && Number.isFinite(options.onSceneLongitude)
+      ? options.onSceneLongitude
+      : typeof currentAssignment.onSceneLongitude === 'number'
+        ? currentAssignment.onSceneLongitude
+        : null;
+
+  const onSceneGpsCapturedAt =
+    resolveOptionalTimestamp(options.onSceneGpsCapturedAt) ||
+    resolveOptionalTimestamp(currentAssignment.onSceneGpsCapturedAt) ||
+    (onSceneLatitude != null && onSceneLongitude != null ? touchdownRecordedAt : null);
   
   const updatedAssignment: IncidentResponderAssignment = {
     ...currentAssignment,
     status: 'on_scene',
     touchdownAt,
+    touchdownRecordedAt,
     responseTimeSeconds,
     onScenePhotoUrl: onScenePhotoUrl || null,
     onScenePhotoUploadedAt: onScenePhotoUrl ? Timestamp.now() : null,
+    onSceneLatitude,
+    onSceneLongitude,
+    onSceneGpsCapturedAt,
   };
 
   const updatedAssignments = {
@@ -2272,6 +2487,7 @@ export async function markIncidentTouchdown(
     responderAssignments: updatedAssignments,
     status: topLevelStatus,
     touchdownAt: currentData.touchdownAt || touchdownAt,
+    touchdownRecordedAt: currentData.touchdownRecordedAt || touchdownRecordedAt,
     touchdownByDispatcherId: currentData.touchdownByDispatcherId || currentUser.uid,
     touchdownByName: currentData.touchdownByName || (currentUser.displayName || currentUser.email || currentUser.uid),
     touchdownSource: currentData.touchdownSource || options.source,
@@ -2279,6 +2495,12 @@ export async function markIncidentTouchdown(
     responseTimeSeconds: currentData.responseTimeSeconds ?? responseTimeSeconds,
     updatedAt: Timestamp.now(),
   };
+
+  if (onSceneLatitude != null && onSceneLongitude != null) {
+    updateData.onSceneLatitude = onSceneLatitude;
+    updateData.onSceneLongitude = onSceneLongitude;
+    updateData.onSceneGpsCapturedAt = onSceneGpsCapturedAt;
+  }
 
   if (onScenePhotoUrl && !currentData.onScenePhotoUrl) {
     updateData.onScenePhotoUrl = onScenePhotoUrl;
@@ -2404,6 +2626,196 @@ export async function submitPostIncidentReportForIncident(
   return toIncidentRecord(updatedSnap);
 }
 
+export function areAllResponderAssignmentsComplete(
+  assignments: Record<string, IncidentResponderAssignment>,
+): boolean {
+  const assignedUids = Object.keys(assignments);
+  if (assignedUids.length === 0) return false;
+  return assignedUids.every((uid) => {
+    const assignment = assignments[uid];
+    return assignment && (assignment.status === 'resolved' || assignment.status === 'declined');
+  });
+}
+
+export async function submitSceneReportForIncident(
+  incidentId: string,
+  sceneReportInput: SceneReportRecord,
+): Promise<IncidentRecord> {
+  const currentUser = ensureAuthenticated();
+  const db = getFirebaseFirestore();
+  const incidentRef = doc(db, 'incidents', incidentId);
+  const snap = await getDoc(incidentRef);
+  if (!snap.exists()) throw new Error('Incident not found');
+
+  const currentData = snap.data() as IncidentRecord;
+  const isAssignedResponder =
+    currentData.assignedResourceIds.includes(currentUser.uid) ||
+    Boolean(currentData.responderAssignments?.[currentUser.uid]);
+  if (!isAssignedResponder) {
+    throw new Error('Only an assigned responder can submit a scene report');
+  }
+
+  const existingAssignments = currentData.responderAssignments || {};
+  const currentAssignment = existingAssignments[currentUser.uid] || {
+    responderId: currentUser.uid,
+    responderName: currentUser.displayName || currentUser.email || currentUser.uid,
+    status: 'on_scene' as const,
+  };
+
+  if (
+    currentAssignment.status === 'resolved' &&
+    (hasSceneReport(currentAssignment.sceneReport) ||
+      Boolean(currentAssignment.postIncidentReport?.submittedAt))
+  ) {
+    const updatedSnap = await getDoc(incidentRef);
+    return toIncidentRecord(updatedSnap);
+  }
+
+  const myAssignment = currentAssignment;
+  const hasTouchdown = Boolean(myAssignment?.touchdownAt || currentData.touchdownAt);
+  const assignmentStatus = myAssignment?.status;
+
+  if (!hasTouchdown && assignmentStatus !== 'on_scene' && assignmentStatus !== 'resolved') {
+    throw new Error('Confirm On Scene before submitting the Scene Report.');
+  }
+
+  if (!sceneReportInput.situationStatus) {
+    throw new Error('Situation status is required.');
+  }
+  if (!sceneReportInput.peopleAffected?.length) {
+    throw new Error('People affected is required.');
+  }
+  const hasNonNonePeople = sceneReportInput.peopleAffected.some((value) => value !== 'none');
+  if (hasNonNonePeople) {
+    const counts = sceneReportInput.peopleAffectedCounts;
+    if (counts) {
+      for (const category of sceneReportInput.peopleAffected.filter((value) => value !== 'none')) {
+        const key =
+          category === 'fatality' ? 'fatality' : (category as 'injured' | 'rescued');
+        const value = counts[key];
+        if (typeof value !== 'number' || value < 0) {
+          throw new Error(`Enter a valid count for ${category}.`);
+        }
+      }
+    } else if (typeof sceneReportInput.numberOfPeople !== 'number') {
+      throw new Error('Number of people is required when people are affected.');
+    }
+  }
+  if (!sceneReportInput.actionsTaken?.length) {
+    throw new Error('At least one action taken is required.');
+  }
+  if (typeof sceneReportInput.additionalResourcesNeeded !== 'boolean') {
+    throw new Error('Additional resources question must be answered.');
+  }
+  if (
+    sceneReportInput.additionalResourcesNeeded &&
+    !sceneReportInput.additionalResourceType
+  ) {
+    throw new Error('Select the type of additional resources needed.');
+  }
+
+  const resolvedAt = Timestamp.now();
+  const peopleAffectedCounts = sceneReportInput.peopleAffectedCounts || null;
+  const numberOfPeople =
+    peopleAffectedCounts
+      ? computeTotalPeopleAffected(peopleAffectedCounts)
+      : typeof sceneReportInput.numberOfPeople === 'number'
+        ? sceneReportInput.numberOfPeople
+        : null;
+
+  const sceneReportPayload: SceneReportRecord = {
+    situationStatus: sceneReportInput.situationStatus,
+    peopleAffected: sceneReportInput.peopleAffected,
+    numberOfPeople,
+    peopleAffectedCounts,
+    actionsTaken: sceneReportInput.actionsTaken,
+    actionsTakenOther: sceneReportInput.actionsTakenOther?.trim() || null,
+    additionalResourcesNeeded: sceneReportInput.additionalResourcesNeeded,
+    additionalResourceType: sceneReportInput.additionalResourcesNeeded
+      ? sceneReportInput.additionalResourceType || null
+      : null,
+    additionalResourceTypeOther: sceneReportInput.additionalResourceTypeOther?.trim() || null,
+    actionPhotoUrl: sceneReportInput.actionPhotoUrl?.trim() || null,
+    remarks: sceneReportInput.remarks?.trim() || null,
+    submittedAt: resolvedAt,
+    submittedByDispatcherId: currentUser.uid,
+    submittedByName: currentUser.displayName || currentUser.email || currentUser.uid,
+  };
+
+  const reportPayload = mapSceneReportToLegacyPostReport(sceneReportPayload);
+
+  const updatedAssignment: IncidentResponderAssignment = {
+    ...currentAssignment,
+    status: 'resolved',
+    sceneReport: sceneReportPayload,
+    postIncidentReport: reportPayload,
+  };
+
+  const updatedAssignments = {
+    ...existingAssignments,
+    [currentUser.uid]: updatedAssignment,
+  };
+
+  const existingReports = (currentData as any).postIncidentReports || {};
+  const updatedReports = {
+    ...existingReports,
+    [currentUser.uid]: reportPayload,
+  };
+
+  const existingSceneReports = (currentData as any).sceneReports || {};
+  const updatedSceneReports = {
+    ...existingSceneReports,
+    [currentUser.uid]: sceneReportPayload,
+  };
+
+  const allResolved = areAllResponderAssignmentsComplete(updatedAssignments);
+
+  const updateData: any = {
+    responderAssignments: updatedAssignments,
+    postIncidentReports: updatedReports,
+    postIncidentReport: reportPayload,
+    sceneReports: updatedSceneReports,
+    updatedAt: Timestamp.now(),
+  };
+
+  if (sceneReportPayload.additionalResourcesNeeded) {
+    const existingRequests = (currentData as any).pendingResourceRequests || {};
+    updateData.pendingResourceRequests = {
+      ...existingRequests,
+      [currentUser.uid]: {
+        additionalResourceType: sceneReportPayload.additionalResourceType || null,
+        additionalResourceTypeOther: sceneReportPayload.additionalResourceTypeOther || null,
+        requestedAt: resolvedAt,
+        requestedBy: currentUser.uid,
+        requestedByName: currentUser.displayName || currentUser.email || currentUser.uid,
+      },
+    };
+  }
+
+  if (allResolved) {
+    updateData.status = 'resolved' as IncidentStatus;
+    updateData.resolutionStatus = 'resolved' as ResolutionStatus;
+    updateData.resolvedAt = resolvedAt;
+    updateData.movedToHistoryAt = resolvedAt;
+  }
+
+  await updateDoc(incidentRef, updateData);
+  await propagateIncidentUpdatesToReports(incidentId, updateData);
+  if (allResolved) {
+    await updateResourcesForIncidentStatus(incidentId, 'available', {
+      clearAssignment: true,
+    });
+  } else {
+    await updateResourcesForIncidentStatus(incidentId, 'available', {
+      clearAssignment: true,
+      responderId: currentUser.uid,
+    });
+  }
+
+  const updatedSnap = await getDoc(incidentRef);
+  return toIncidentRecord(updatedSnap);
+}
+
 export async function declineIncident(
   incidentId: string,
   reason: string
@@ -2488,6 +2900,28 @@ export function getResponderAssignment(
   };
 }
 
+/** True when the responder must still tap Accept (assignment status is `assigned`). */
+export function isResponderAssignmentPendingAccept(
+  incident: IncidentRecord | null | undefined,
+  responderId: string | null | undefined,
+): boolean {
+  if (!incident || !responderId) return false;
+
+  const assignment = getResponderAssignment(incident, responderId);
+  if (assignment) {
+    return assignment.status === 'assigned';
+  }
+
+  if (!(incident.assignedResourceIds || []).includes(responderId)) {
+    return false;
+  }
+
+  const status = String(incident.status || '').toLowerCase();
+  return !['enroute', 'on_scene', 'resolved', 'done', 'declined', 'unresolved'].includes(
+    status,
+  );
+}
+
 export async function updateIncidentCaseStatus(
   incidentId: string,
   newStatus: 'enroute' | 'on_scene' | 'done' | 'resolved'
@@ -2538,22 +2972,8 @@ export async function updateIncidentCaseStatus(
  * acknowledged rather than a single flag, so each device stops only when that
  * responder has actually seen it.
  */
-export async function acknowledgeIncidentAlert(incidentId: string): Promise<void> {
-  const currentUser = ensureAuthenticated();
-  const incidentRef = doc(getFirebaseFirestore(), 'incidents', incidentId);
-  const snap = await getDoc(incidentRef);
-  if (!snap.exists()) throw new Error('Incident not found');
-
-  const incident = snap.data() as IncidentRecord;
-  if (!(incident.assignedResourceIds || []).includes(currentUser.uid)) {
-    throw new Error('Only an assigned responder can acknowledge this alert');
-  }
-
-  await updateDoc(incidentRef, {
-    responderAlertAcknowledgedBy: arrayUnion(currentUser.uid),
-    responderAlertAcknowledgedAt: Timestamp.now(),
-    updatedAt: Timestamp.now(),
-  });
+export async function acknowledgeIncidentAlert(incidentId: string): Promise<IncidentRecord> {
+  return acceptIncident(incidentId);
 }
 
 /** Has this responder already acknowledged the alert for this incident? */

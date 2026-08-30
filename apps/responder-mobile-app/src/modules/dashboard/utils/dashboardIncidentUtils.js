@@ -1,6 +1,7 @@
 import { distanceKm, formatDistance } from "@/utils/mapIncidentHelpers";
 import {
-  hasResponderSceneAssessment,
+  hasSceneReport,
+  isResponderAssignmentPendingAccept,
   resolveIncidentDisplayFields,
 } from "@packages/firebase";
 
@@ -78,18 +79,19 @@ export function getCompactNextAction(caseData, user) {
 
   if (!isAssigned) return "Open";
 
+  if (isResponderAssignmentPendingAccept(caseData, user.uid)) {
+    return "Accept";
+  }
+
   if (userAssignment) {
-    if (userAssignment.status === "assigned") {
-      return "Accept";
-    }
     if (userAssignment.status === "enroute" && !userAssignment.touchdownAt) {
-      return "Touchdown";
+      return "On Scene";
     }
     if (userAssignment.status === "on_scene" || userAssignment.touchdownAt) {
-      if (!hasResponderSceneAssessment(caseData.responderAssessment || userAssignment.responderAssessment)) {
-        return "Assess";
-      }
+      const sceneReport =
+        userAssignment.sceneReport || caseData.sceneReports?.[user.uid];
       if (
+        !hasSceneReport(sceneReport) &&
         !userAssignment.postIncidentReport?.submittedAt &&
         !caseData.postIncidentReports?.[user.uid]?.submittedAt
       ) {
@@ -123,20 +125,16 @@ export function getCompactNextAction(caseData, user) {
     return "Accept";
   }
   if (status === "enroute" && !caseData.touchdownAt) {
-    return "Touchdown";
+    return "On Scene";
   }
-  if (
-    caseData.touchdownAt &&
-    !hasResponderSceneAssessment(caseData.responderAssessment)
-  ) {
-    return "Assess";
-  }
-  if (
-    hasResponderSceneAssessment(caseData.responderAssessment) &&
-    !caseData.postIncidentReport?.submittedAt
-  ) {
-    return "Report";
+  if (caseData.touchdownAt) {
+    const hasReport =
+      hasSceneReport(caseData.sceneReports?.[user.uid]) ||
+      caseData.postIncidentReport?.submittedAt;
+    if (!hasReport) {
+      return "Report";
+    }
   }
   return "Open";
 }
-
+

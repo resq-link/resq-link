@@ -31,10 +31,8 @@ const priorityColor = (colors, level) =>
 /**
  * Blocking assignment alarm.
  *
- * Deliberately not dismissible by back button or backdrop tap: the alarm is
- * only silenced by an explicit acknowledgement, which is also what gets
- * recorded against the incident. "View details" acknowledges too — opening the
- * case is proof the responder saw it.
+ * Acknowledge accepts the incident and stops the alarm.
+ * View details opens the case without accepting.
  */
 export default function IncidentAlertModal({
   incident,
@@ -79,8 +77,7 @@ export default function IncidentAlertModal({
   const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.09] });
   const glow = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.28, 0.62] });
 
-  const openDetails = async () => {
-    await onAcknowledge?.();
+  const openDetails = () => {
     if (incident.id) router.push(`/incident/${incident.id}`);
   };
 
@@ -146,7 +143,8 @@ export default function IncidentAlertModal({
           <View style={styles.noticeRow}>
             <AlertTriangle size={13} color={colors.textMuted} />
             <Text style={[styles.notice, { color: colors.textMuted }]}>
-              Alarm keeps going until you Acknowledge here or from the notification.
+              Acknowledge accepts this incident and marks you En Route. View opens
+              the case without accepting.
             </Text>
           </View>
 
@@ -159,7 +157,7 @@ export default function IncidentAlertModal({
               isAcknowledging && styles.disabled,
             ]}
             accessibilityRole="button"
-            accessibilityLabel="Acknowledge incident alert and stop the alarm"
+            accessibilityLabel="Acknowledge alert, accept incident, and go en route"
           >
             <Text style={[styles.primaryText, { color: colors.white ?? "#FFFFFF" }]}>
               {isAcknowledging ? "ACKNOWLEDGING…" : "ACKNOWLEDGE"}
@@ -175,7 +173,7 @@ export default function IncidentAlertModal({
               isAcknowledging && styles.disabled,
             ]}
             accessibilityRole="button"
-            accessibilityLabel="Acknowledge and open the incident"
+            accessibilityLabel="View incident details without accepting"
           >
             <Text style={[styles.secondaryText, { color: colors.textSecondary }]}>
               View details

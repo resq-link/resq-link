@@ -11,6 +11,7 @@ import {
   query,
   Timestamp,
   updateDoc,
+  where,
   type DocumentData,
   type QuerySnapshot,
 } from 'firebase/firestore';
@@ -120,6 +121,45 @@ const normalizeNullableNumber = (value?: number | null): number | null => {
 const normalizeResponderIds = (ids?: string[] | null): string[] =>
   Array.from(new Set((ids || []).map((id) => id.trim()).filter(Boolean)));
 
+/**
+ * When Command Center assigns a responder as primary on one resource, clear them
+ * from any other resource where they were primary — one responder, one primary unit.
+ */
+async function releasePrimaryResponderFromOtherResources(
+  primaryResponderId: string,
+  keepResourceId: string
+): Promise<void> {
+  const trimmedId = primaryResponderId.trim();
+  if (!trimmedId) return;
+
+  const db = getFirebaseFirestore();
+  const q = query(
+    collection(db, 'resources'),
+    where('primaryResponderId', '==', trimmedId)
+  );
+  const snapshot = await getDocs(q);
+  const timestamp = Timestamp.now();
+
+  await Promise.all(
+    snapshot.docs
+      .filter((docSnap) => docSnap.id !== keepResourceId)
+      .map(async (docSnap) => {
+        const data = docSnap.data();
+        const crew: string[] = Array.isArray(data.assignedResponderIds)
+          ? data.assignedResponderIds.filter((id: string) => id && id !== trimmedId)
+          : [];
+        const nextPrimary = crew[0] ?? null;
+
+        await updateDoc(docSnap.ref, {
+          assignedResponderIds: crew,
+          primaryResponderId: nextPrimary,
+          assignedResponderId: nextPrimary,
+          updatedAt: timestamp,
+        });
+      })
+  );
+}
+
 const normalizeResourceResponderBinding = (
   resource: Pick<ResourceRecord, 'primaryResponderId' | 'assignedResponderId' | 'assignedResponderIds'>
 ) => {
@@ -225,6 +265,11 @@ export async function createResource(
     };
 
     const docRef = await addDoc(resourcesRef, payload);
+
+    if (normalized.primaryResponderId) {
+      await releasePrimaryResponderFromOtherResources(normalized.primaryResponderId, docRef.id);
+    }
+
     return {
       ...payload,
       id: docRef.id,
@@ -306,7 +351,14 @@ export async function updateResource(
 
     normalizedUpdates.updatedAt = Timestamp.now();
 
+    const previousPrimary = existing.data().primaryResponderId ?? null;
+    const nextPrimary = binding.primaryResponderId;
+
     await updateDoc(resourceRef, normalizedUpdates);
+
+    if (nextPrimary && nextPrimary !== previousPrimary) {
+      await releasePrimaryResponderFromOtherResources(nextPrimary, resourceId);
+    }
 
     const updated = await getDoc(resourceRef);
     if (!updated.exists()) {
@@ -358,6 +410,83 @@ export type ResourcesSnapshotMeta = {
   fromCache: boolean;
   hasPendingWrites: boolean;
 };
+
+/**
+ * Realtime listener for resources this responder is bound to — primary owner or crew member.
+ * Returns the primary-owned resource first, otherwise the first crew assignment.
+ */
+export function subscribeToAssignedResource(
+  callback: (resource: ResourceRecord | null) => void,
+  options?: { onError?: (error: Error) => void }
+): () => void {
+  try {
+    const currentUser = getFirebaseAuth().currentUser;
+    if (!currentUser) {
+      callback(null);
+      return () => {};
+    }
+
+    const db = getFirebaseFirestore();
+    const resourcesRef = collection(db, 'resources');
+    const primaryQuery = query(
+      resourcesRef,
+      where('primaryResponderId', '==', currentUser.uid),
+      limit(5)
+    );
+    const crewQuery = query(
+      resourcesRef,
+      where('assignedResponderIds', 'array-contains', currentUser.uid),
+      limit(5)
+    );
+
+    let primaryResources: ResourceRecord[] = [];
+    let crewResources: ResourceRecord[] = [];
+
+    const emit = () => {
+      const active = [...primaryResources, ...crewResources].filter(
+        (resource) => resource.isActive !== false
+      );
+      const primaryOwned = active.find((r) => r.primaryResponderId === currentUser.uid);
+      callback(primaryOwned ?? active[0] ?? null);
+    };
+
+    const handleError = (error: unknown) => {
+      if (isPermissionDenied(error)) {
+        callback(null);
+        return;
+      }
+      options?.onError?.(error instanceof Error ? error : new Error(String(error)));
+      callback(null);
+    };
+
+    const unsubPrimary = onSnapshot(
+      primaryQuery,
+      (snapshot) => {
+        primaryResources = snapshot.docs.map(convertFirestoreDoc);
+        emit();
+      },
+      handleError
+    );
+
+    const unsubCrew = onSnapshot(
+      crewQuery,
+      (snapshot) => {
+        crewResources = snapshot.docs.map(convertFirestoreDoc);
+        emit();
+      },
+      handleError
+    );
+
+    return () => {
+      unsubPrimary();
+      unsubCrew();
+    };
+  } catch (error: any) {
+    console.error('Error setting up assigned resource subscription:', error);
+    callback(null);
+    return () => {};
+  }
+}
 
 export function subscribeToResources(
   callback: (resources: ResourceRecord[], meta?: ResourcesSnapshotMeta) => void,
