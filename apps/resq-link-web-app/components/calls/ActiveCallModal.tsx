@@ -3,8 +3,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Room, RoomEvent, Track, type RemoteTrack, type RemoteTrackPublication, type RemoteParticipant } from 'livekit-client';
 import { PhoneOff, Mic, MicOff, Volume2, VolumeX, Radio, Clock, ShieldAlert } from 'lucide-react';
-import { endIncidentCallSession, markIncidentCallConnected, type IncidentCallSession } from '@packages/firebase';
+import {
+  endIncidentCallSession,
+  markIncidentCallConnected,
+  subscribeToIncidentCallSession,
+  type IncidentCallSession,
+} from '@packages/firebase';
 import { useAuth } from '@/contexts/AuthContext';
+
+const TERMINAL_STATUSES = ['ended', 'missed', 'declined', 'failed'] as const;
 
 interface ActiveCallModalProps {
   session: IncidentCallSession | null;
@@ -21,9 +28,15 @@ export default function ActiveCallModal({ session, isOpen, onClose }: ActiveCall
   const [duration, setDuration] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
+  const [sessionStatus, setSessionStatus] = useState<string | null>(session?.status || null);
+  const [remoteLeft, setRemoteLeft] = useState(false);
+
   const roomRef = useRef<Room | null>(null);
   const audioElementsRef = useRef<HTMLAudioElement[]>([]);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const didCloseRef = useRef(false);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   const cleanUpRoom = useCallback(async () => {
     if (timerRef.current) {
@@ -100,6 +113,12 @@ export default function ActiveCallModal({ session, isOpen, onClose }: ActiveCall
         setIsConnected(false);
       });
 
+      room.on(RoomEvent.ParticipantDisconnected, () => {
+        if (room.remoteParticipants.size === 0) {
+          setRemoteLeft(true);
+        }
+      });
+
       await room.connect(url, token);
       await room.localParticipant.setMicrophoneEnabled(true);
 
@@ -147,13 +166,51 @@ export default function ActiveCallModal({ session, isOpen, onClose }: ActiveCall
     setIsSpeakerMuted(newMuteSpeaker);
   };
 
-  const handleEndCall = async () => {
-    if (session?.id) {
+  const handleEndCall = useCallback(async (alreadyEnded = false) => {
+    if (didCloseRef.current) return;
+    didCloseRef.current = true;
+    if (!alreadyEnded && session?.id) {
       await endIncidentCallSession(session.id).catch(() => undefined);
     }
     await cleanUpRoom();
-    onClose();
-  };
+    onCloseRef.current();
+  }, [session?.id, cleanUpRoom]);
+
+  useEffect(() => {
+    didCloseRef.current = false;
+    setRemoteLeft(false);
+    setSessionStatus(session?.status || null);
+  }, [isOpen, session?.id]);
+
+  useEffect(() => {
+    if (!isOpen || !session?.id) return undefined;
+
+    const unsubscribe = subscribeToIncidentCallSession(session.id, (liveSession) => {
+      if (liveSession?.status) {
+        setSessionStatus(liveSession.status);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [isOpen, session?.id]);
+
+  useEffect(() => {
+    if (!isOpen) return undefined;
+    const isTerminal = TERMINAL_STATUSES.includes(sessionStatus as (typeof TERMINAL_STATUSES)[number]);
+    if (!isTerminal && !remoteLeft) return undefined;
+
+    const timeout = setTimeout(() => {
+      handleEndCall(isTerminal);
+    }, 1500);
+
+    return () => clearTimeout(timeout);
+  }, [isOpen, sessionStatus, remoteLeft, handleEndCall]);
+
+  useEffect(() => {
+    if (!isOpen || !remoteLeft || !session?.id) return;
+    if (TERMINAL_STATUSES.includes(sessionStatus as (typeof TERMINAL_STATUSES)[number])) return;
+    endIncidentCallSession(session.id).catch(() => undefined);
+  }, [isOpen, remoteLeft, session?.id, sessionStatus]);
 
   if (!isOpen || !session) return null;
 
@@ -200,7 +257,9 @@ export default function ActiveCallModal({ session, isOpen, onClose }: ActiveCall
 
         {/* Status / Timer */}
         <div className="mt-4 mb-6 flex items-center gap-1.5 text-sm font-semibold">
-          {isConnecting ? (
+          {TERMINAL_STATUSES.includes(sessionStatus as (typeof TERMINAL_STATUSES)[number]) || remoteLeft ? (
+            <span className="text-slate-400">Call Ended</span>
+          ) : isConnecting ? (
             <span className="text-amber-400 animate-pulse">Connecting to audio room...</span>
           ) : isConnected ? (
             <span className="flex items-center gap-1.5 text-emerald-400 font-mono text-base">
@@ -236,7 +295,7 @@ export default function ActiveCallModal({ session, isOpen, onClose }: ActiveCall
 
           {/* End Call */}
           <button
-            onClick={handleEndCall}
+            onClick={() => handleEndCall()}
             className="w-14 h-14 rounded-full bg-red-600 hover:bg-red-500 border border-red-500 text-white flex items-center justify-center shadow-lg shadow-red-900/40 transition-all hover:scale-105"
             title="End Call"
           >
