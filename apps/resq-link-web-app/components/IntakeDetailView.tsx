@@ -65,6 +65,7 @@ import {
   Ambulance,
   Truck,
   ShieldCheck,
+  ChevronDown,
 } from "lucide-react";
 
 const PinnedLocationMap = dynamic(() => import("./PinnedLocationMap"), {
@@ -182,6 +183,7 @@ export default function IntakeDetailView({
   const [isMessagingOpen, setIsMessagingOpen] = useState(false);
   const [activeCallSession, setActiveCallSession] = useState<IncidentCallSession | null>(null);
   const [isCallModalOpen, setIsCallModalOpen] = useState(false);
+  const [expandedResponderIds, setExpandedResponderIds] = useState<string[]>([]);
 
   useEffect(() => {
     setIsElevateModalOpen(false);
@@ -805,7 +807,6 @@ export default function IntakeDetailView({
 
     const primarySelected = selectedList[0];
     const allAgencies = Array.from(new Set(selectedList.map((r) => r.account.role)));
-    const allLabels = selectedList.map((r) => r.account.fullName || r.account.email);
     const boundResourceIds: string[] = [];
     selectedList.forEach((r) => {
       const bound = getResponderResource(resources, r.uid);
@@ -817,7 +818,7 @@ export default function IntakeDetailView({
         report,
         {
           uid: primarySelected.uid,
-          label: allLabels.join(', '),
+          label: primarySelected.account.fullName || primarySelected.account.email,
           agency: primarySelected.account.role,
           suggestedAgency: primarySuggestedAgency,
         },
@@ -849,10 +850,25 @@ export default function IntakeDetailView({
     report?.responder,
     ...associatedReports.map(r => r.responder)
   ].filter(Boolean)));
-  
-  const displayResponder = derivedResponders.length > 0
-    ? derivedResponders.join(", ")
-    : ((incident?.assignedResourceIds?.length || 0) > 0 ? `${incident?.assignedResourceIds?.length} resource(s) dispatched` : 'Unassigned');
+
+  const assignmentResponderLabels = incident?.responderAssignments
+    ? Object.values(incident.responderAssignments)
+        .map((a) => {
+          const name = a.responderName?.trim();
+          if (!name) return null;
+          return a.agency ? `[${a.agency}] ${name}` : name;
+        })
+        .filter((label): label is string => Boolean(label))
+    : [];
+
+  const displayResponder =
+    assignmentResponderLabels.length > 0
+      ? assignmentResponderLabels.join(", ")
+      : derivedResponders.length > 0
+        ? derivedResponders.join(", ")
+        : (incident?.assignedResourceIds?.length || 0) > 0
+          ? `${incident?.assignedResourceIds?.length} resource(s) dispatched`
+          : "Unassigned";
 
   const assignedTeamLabel = incident ? getAssignedTeamName(incident) : null;
   const canReassignTeam =
@@ -1727,59 +1743,164 @@ export default function IntakeDetailView({
           </section>
         ) : null}
 
-        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2 xl:items-stretch">
-          <DetailSection
-            compact
-            emphasis
-            className="flex h-full flex-col"
-            contentClassName="flex min-h-0 flex-1 flex-col"
-            icon={<MapPin className="w-4 h-4" />}
-            title="On Scene / Arrival"
-          >
-            <TouchdownArrivalPanel
-              incident={incident}
-              report={report}
-              assignment={primaryResponderAssignment}
-            />
-          </DetailSection>
+        {incident?.responderAssignments && Object.keys(incident.responderAssignments).length > 0 ? (
+          <section className="w-full rounded-lg border border-slate-800/80 bg-slate-950/30 p-3">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5 text-primary-400" />
+                <h3 className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                  Responder Evidence & Reports
+                </h3>
+              </div>
+              <span className="rounded-full border border-slate-700 bg-slate-900/80 px-2 py-px text-[9px] font-black uppercase tracking-wider text-slate-300">
+                {Object.keys(incident.responderAssignments).length} Responder
+                {Object.keys(incident.responderAssignments).length === 1 ? "" : "s"}
+              </span>
+            </div>
 
-          {sceneReportsList.length === 0 ? (
+            <div className="space-y-2">
+              {Object.entries(incident.responderAssignments).map(([rid, assign]) => {
+                const isExpanded = expandedResponderIds.includes(rid);
+                const sceneReportEntry = sceneReportsList.find((entry) => entry.id === rid);
+                const sceneReport = sceneReportEntry || assign.sceneReport || null;
+                const statusColor =
+                  assign.status === "on_scene"
+                    ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                    : assign.status === "enroute"
+                      ? "border-blue-500/40 bg-blue-500/10 text-blue-300"
+                      : assign.status === "resolved"
+                        ? "border-purple-500/40 bg-purple-500/10 text-purple-300"
+                        : assign.status === "declined"
+                          ? "border-red-500/40 bg-red-500/10 text-red-300"
+                          : "border-amber-500/40 bg-amber-500/10 text-amber-300";
+
+                return (
+                  <div
+                    key={rid}
+                    className="overflow-hidden rounded-lg border border-slate-800 bg-slate-950/50"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setExpandedResponderIds((prev) =>
+                          prev.includes(rid)
+                            ? prev.filter((id) => id !== rid)
+                            : [...prev, rid]
+                        );
+                      }}
+                      className="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left transition-colors hover:bg-slate-900/60"
+                      aria-expanded={isExpanded}
+                    >
+                      <div className="flex min-w-0 items-center gap-2">
+                        <ChevronDown
+                          className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${
+                            isExpanded ? "rotate-0" : "-rotate-90"
+                          }`}
+                        />
+                        <span className="truncate text-xs font-semibold text-slate-100">
+                          {assign.agency ? `[${assign.agency}] ` : ""}
+                          {assign.responderName || rid}
+                        </span>
+                      </div>
+                      <span
+                        className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider border ${statusColor}`}
+                      >
+                        {assign.status.replace("_", " ")}
+                      </span>
+                    </button>
+
+                    {isExpanded ? (
+                      <div className="space-y-3 border-t border-slate-800/80 px-3 py-3">
+                        <div>
+                          <p className="mb-2 text-[9px] font-black uppercase tracking-widest text-slate-500">
+                            On Scene / Arrival
+                          </p>
+                          <TouchdownArrivalPanel
+                            incident={null}
+                            report={null}
+                            assignment={assign}
+                          />
+                        </div>
+                        <div>
+                          <p className="mb-2 text-[9px] font-black uppercase tracking-widest text-slate-500">
+                            Scene Report
+                          </p>
+                          <SceneReportPanel
+                            sceneReport={sceneReport}
+                            responderName={
+                              sceneReportEntry?.responderName || assign.responderName
+                            }
+                            resourceName={
+                              sceneReportEntry?.resourceName || assign.resourceName
+                            }
+                            arrivalTimeLabel={getDateLabel(
+                              sceneReportEntry?.arrivalTime || assign.touchdownAt
+                            )}
+                            resolvedAtLabel={getDateLabel(sceneReport?.submittedAt)}
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 xl:grid-cols-2 xl:items-stretch">
             <DetailSection
               compact
               emphasis
               className="flex h-full flex-col"
               contentClassName="flex min-h-0 flex-1 flex-col"
-              icon={<AlertTriangle className="w-4 h-4" />}
-              title="Scene Assessment (Legacy)"
+              icon={<MapPin className="w-4 h-4" />}
+              title="On Scene / Arrival"
             >
-              <SceneAssessmentPanel
-                assessment={sceneAssessmentContext.assessment}
-                incidentType={sceneAssessmentContext.incidentType}
-                isLoading={
-                  !sceneAssessmentContext.assessment &&
-                  (item?.channel === "incident" ? incidentsLoading : false)
-                }
+              <TouchdownArrivalPanel
+                incident={incident}
+                report={report}
+                assignment={primaryResponderAssignment}
               />
             </DetailSection>
-          ) : (
-            <DetailSection
-              compact
-              emphasis
-              className="flex h-full flex-col"
-              contentClassName="flex min-h-0 flex-1 flex-col"
-              icon={<AlertTriangle className="w-4 h-4" />}
-              title="Scene Report"
-            >
-              <SceneReportPanel
-                sceneReport={sceneReportsList[0]}
-                responderName={sceneReportsList[0]?.responderName}
-                resourceName={sceneReportsList[0]?.resourceName}
-                arrivalTimeLabel={getDateLabel(sceneReportsList[0]?.arrivalTime)}
-                resolvedAtLabel={getDateLabel(sceneReportsList[0]?.submittedAt)}
-              />
-            </DetailSection>
-          )}
-        </div>
+
+            {sceneReportsList.length === 0 ? (
+              <DetailSection
+                compact
+                emphasis
+                className="flex h-full flex-col"
+                contentClassName="flex min-h-0 flex-1 flex-col"
+                icon={<AlertTriangle className="w-4 h-4" />}
+                title="Scene Assessment (Legacy)"
+              >
+                <SceneAssessmentPanel
+                  assessment={sceneAssessmentContext.assessment}
+                  incidentType={sceneAssessmentContext.incidentType}
+                  isLoading={
+                    !sceneAssessmentContext.assessment &&
+                    (item?.channel === "incident" ? incidentsLoading : false)
+                  }
+                />
+              </DetailSection>
+            ) : (
+              <DetailSection
+                compact
+                emphasis
+                className="flex h-full flex-col"
+                contentClassName="flex min-h-0 flex-1 flex-col"
+                icon={<AlertTriangle className="w-4 h-4" />}
+                title="Scene Report"
+              >
+                <SceneReportPanel
+                  sceneReport={sceneReportsList[0]}
+                  responderName={sceneReportsList[0]?.responderName}
+                  resourceName={sceneReportsList[0]?.resourceName}
+                  arrivalTimeLabel={getDateLabel(sceneReportsList[0]?.arrivalTime)}
+                  resolvedAtLabel={getDateLabel(sceneReportsList[0]?.submittedAt)}
+                />
+              </DetailSection>
+            )}
+          </div>
+        )}
 
       </div>
     </div>

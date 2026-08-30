@@ -1537,12 +1537,11 @@ async function assignRespondersToExistingIncident(
     ),
   );
 
-  const nameByIndex = [
-    ...(Array.isArray(input.responderNames) ? input.responderNames : []),
-  ];
-  if (input.responderName && !nameByIndex.includes(input.responderName)) {
-    nameByIndex.unshift(input.responderName);
-  }
+  const nameByIndex = (
+    Array.isArray(input.responderNames) && input.responderNames.length > 0
+      ? input.responderNames
+      : [input.responderName]
+  ).filter((n): n is string => Boolean(n?.trim()));
 
   const agencyByIndex = [
     ...(Array.isArray(input.assignedAgencies) ? input.assignedAgencies : []),
@@ -1731,14 +1730,10 @@ export async function elevateEmergencyToIncident(
     )
   );
 
-  const rawResponderNames = Array.from(
-    new Set(
-      [
-        input.responderName,
-        ...(Array.isArray(input.responderNames) ? input.responderNames : []),
-      ].filter((n): n is string => Boolean(n?.trim()))
-    )
-  );
+  const rawResponderNames =
+    Array.isArray(input.responderNames) && input.responderNames.length > 0
+      ? input.responderNames.filter((n): n is string => Boolean(n?.trim()))
+      : [input.responderName].filter((n): n is string => Boolean(n?.trim()));
 
   const primaryResponderId = rawResponderIds[0] || null;
   const primaryAgency = rawAgencies[0] || null;
