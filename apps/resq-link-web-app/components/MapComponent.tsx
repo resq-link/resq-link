@@ -59,12 +59,36 @@ interface MapComponentProps {
   centerLocation?: [number, number] | null
 }
 
-// Component to handle map center updates
-function MapCenter({ center, zoom }: { center: [number, number]; zoom: number }) {
+// Component to handle map center updates without resetting manual user zoom
+function MapCenterController({
+  centerLocation,
+  selectedIncident,
+}: {
+  centerLocation?: [number, number] | null
+  selectedIncident?: string | null
+}) {
   const map = useMap()
+  const lastTargetRef = useRef<string | null>(null)
+
   useEffect(() => {
-    map.setView(center, zoom)
-  }, [map, center, zoom])
+    if (!centerLocation || !centerLocation[0] || !centerLocation[1]) {
+      return
+    }
+
+    const targetKey = `${centerLocation[0].toFixed(6)},${centerLocation[1].toFixed(6)}-${selectedIncident || ''}`
+    if (lastTargetRef.current === targetKey) {
+      return
+    }
+
+    lastTargetRef.current = targetKey
+    const currentZoom = map.getZoom()
+    const targetZoom = Math.max(currentZoom || 12, 15)
+
+    map.flyTo(centerLocation, targetZoom, {
+      duration: 0.8,
+    })
+  }, [centerLocation, map, selectedIncident])
+
   return null
 }
 
@@ -400,7 +424,7 @@ export default function MapComponent({
         ref={mapRef}
         zoomControl={false}
       >
-        <MapCenter center={mapCenter} zoom={mapZoom} />
+        <MapCenterController centerLocation={centerLocation} selectedIncident={selectedIncident} />
         <TileLayer
           attribution='&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url={mapboxUrl!}

@@ -3,7 +3,7 @@
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 // Fix for default marker icons in Next.js
 if (typeof window !== 'undefined') {
@@ -25,7 +25,12 @@ interface IncidentMapProps {
 
 function MapCenter({ center, zoom }: { center: [number, number]; zoom: number }) {
   const map = useMap()
+  const lastCenterRef = useRef<string | null>(null)
+
   useEffect(() => {
+    const key = `${center[0].toFixed(6)},${center[1].toFixed(6)}`
+    if (lastCenterRef.current === key) return
+    lastCenterRef.current = key
     map.setView(center, zoom)
   }, [map, center, zoom])
   return null

@@ -130,6 +130,8 @@ export default function ResponderMapScreen() {
     });
   }, [fabStackHeight, incidentCoord, isIncidentMode, sheetHeight, userLocation]);
 
+  const hasInitiallyFittedRef = useRef(false);
+
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
       reduceMotionRef.current = enabled;
@@ -137,10 +139,11 @@ export default function ResponderMapScreen() {
   }, []);
 
   useEffect(() => {
-    if (mapStageHeight > 0) {
+    if (mapStageHeight > 0 && (!hasInitiallyFittedRef.current || isIncidentMode)) {
+      hasInitiallyFittedRef.current = true;
       fitMapToPersonalView();
     }
-  }, [fitMapToPersonalView, isIncidentMode, liveReport?.id, mapStageHeight]);
+  }, [isIncidentMode, liveReport?.id, mapStageHeight]);
 
   useEffect(() => {
     sheetRef.current?.snapToIndex(isIncidentMode ? 1 : 0);

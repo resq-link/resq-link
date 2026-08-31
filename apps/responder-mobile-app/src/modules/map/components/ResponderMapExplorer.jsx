@@ -112,6 +112,7 @@ export default function ResponderMapExplorer() {
     Inter_700Bold,
   });
 
+  const hasInitializedCenter = useRef(false);
   const initialCenter = useRef({
     latitude: 17.6132,
     longitude: 121.727,
@@ -134,13 +135,16 @@ export default function ResponderMapExplorer() {
         });
         const { latitude, longitude } = location.coords;
         setUserLocation({ latitude, longitude });
-        initialCenter.current = {
-          latitude,
-          longitude,
-          latitudeDelta: 0.06,
-          longitudeDelta: 0.06,
-        };
-        mapRef.current?.animateToRegion(initialCenter.current, 600);
+        if (!hasInitializedCenter.current) {
+          hasInitializedCenter.current = true;
+          initialCenter.current = {
+            latitude,
+            longitude,
+            latitudeDelta: 0.06,
+            longitudeDelta: 0.06,
+          };
+          mapRef.current?.animateToRegion(initialCenter.current, 600);
+        }
       } catch {
         setLocationError("GPS unavailable");
         setShowUserOnMap(false);
@@ -155,6 +159,7 @@ export default function ResponderMapExplorer() {
   }, [user, router]);
 
   useEffect(() => {
+    if (hasInitializedCenter.current) return;
     const mapped = cases.filter((c) => hasValidCoordinate(c.latitude, c.longitude));
     if (mapped.length > 0 && !userLocation) {
       const first = mapped[0];
@@ -165,6 +170,7 @@ export default function ResponderMapExplorer() {
         longitudeDelta: 0.04,
       };
       initialCenter.current = r;
+      hasInitializedCenter.current = true;
       mapRef.current?.animateToRegion(r, 500);
     }
   }, [cases, userLocation]);
