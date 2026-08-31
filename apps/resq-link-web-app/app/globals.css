@@ -890,3 +890,163 @@ html.admin-dark ::-webkit-scrollbar-thumb:hover {
   animation: priority-marker-flash 0.8s ease-in-out infinite;
 }
 
+/* ==========================================================================
+   Map Bouncing Incident Pins & Pulsing Radar Waves
+   ========================================================================== */
+.incident-custom-marker-root {
+  background: transparent !important;
+  border: none !important;
+}
+
+.incident-marker-container {
+  position: relative;
+  width: 36px;
+  height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* Ground radar wave expanding around the incident base */
+.incident-ground-radar {
+  position: absolute;
+  bottom: 0px;
+  left: 50%;
+  width: 32px;
+  height: 16px;
+  border-radius: 50%;
+  transform: translate(-50%, 50%);
+  background: radial-gradient(ellipse at center, var(--radar-color, #dc2626) 0%, rgba(220, 38, 38, 0) 75%);
+  animation: incident-radar-wave 1.6s cubic-bezier(0.2, 0.8, 0.4, 1) infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.incident-ground-pulse-critical {
+  animation: incident-radar-wave-critical 1.1s cubic-bezier(0.2, 0.8, 0.4, 1) infinite !important;
+}
+
+@keyframes incident-radar-wave {
+  0% {
+    transform: translate(-50%, 50%) scale(0.3);
+    opacity: 0.95;
+  }
+  60% {
+    transform: translate(-50%, 50%) scale(1.8);
+    opacity: 0.4;
+  }
+  100% {
+    transform: translate(-50%, 50%) scale(2.6);
+    opacity: 0;
+  }
+}
+
+@keyframes incident-radar-wave-critical {
+  0% {
+    transform: translate(-50%, 50%) scale(0.3);
+    opacity: 1;
+  }
+  60% {
+    transform: translate(-50%, 50%) scale(2.1);
+    opacity: 0.55;
+  }
+  100% {
+    transform: translate(-50%, 50%) scale(3.0);
+    opacity: 0;
+  }
+}
+
+/* Ground drop shadow that contracts when pin is up, expands when pin is down */
+.incident-ground-shadow {
+  position: absolute;
+  bottom: 0px;
+  left: 50%;
+  width: 14px;
+  height: 6px;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.5);
+  filter: blur(1px);
+  z-index: 2;
+  transition: transform 0.2s ease;
+}
+
+.incident-marker-container.incident-pin-bouncing .incident-ground-shadow {
+  animation: incident-shadow-pulse 1.3s ease-in-out infinite alternate;
+}
+
+@keyframes incident-shadow-pulse {
+  0% {
+    transform: translateX(-50%) scale(1);
+    opacity: 0.55;
+  }
+  100% {
+    transform: translateX(-50%) scale(0.55);
+    opacity: 0.2;
+  }
+}
+
+/* Pin wrapper that bounces up and down */
+.incident-pin-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 3;
+  transition: transform 0.2s ease;
+}
+
+.incident-marker-container.incident-pin-bouncing .incident-pin-wrapper {
+  animation: incident-pin-bounce 1.3s ease-in-out infinite alternate;
+  transform-origin: bottom center;
+}
+
+@keyframes incident-pin-bounce {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-9px);
+  }
+}
+
+.incident-pin-body {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2.5px solid #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 13px;
+  transition: transform 0.2s ease;
+}
+
+.incident-pin-beak {
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 8px solid;
+  margin-top: -2px;
+}
+
+.incident-pin-badge {
+  display: inline-block;
+  line-height: 1;
+}
+
+/* Selected marker highlight ring */
+.incident-custom-marker-root.incident-pin-selected .incident-pin-body {
+  border-color: #38bdf8;
+  transform: scale(1.15);
+}
+
+.incident-custom-marker-root:hover .incident-pin-body {
+  transform: scale(1.18);
+}
+
+

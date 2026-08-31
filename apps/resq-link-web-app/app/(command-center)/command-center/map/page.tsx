@@ -32,7 +32,8 @@ const convertToMapIncident = (report: EmergencyReport) => {
     type: getIncidentTypeName(report.incidentType),
     location: report.locationText,
     priority: (report.priority || 'medium') as 'low' | 'medium' | 'high' | 'critical',
-    status: (report.status === 'resolved' ? 'resolved' : (report.status === 'active' ? 'active' : 'pending')) as 'active' | 'pending' | 'resolved',
+    status: (report.status === 'resolved' || report.status === 'done' ? 'resolved' : (report.status === 'active' || report.status === 'enroute' || report.status === 'on_scene' ? 'active' : 'pending')) as 'active' | 'pending' | 'resolved',
+    rawStatus: report.status,
     lat: report.latitude || 0,
     lng: report.longitude || 0,
     reportedAt: report.createdAt instanceof Date 
@@ -40,8 +41,11 @@ const convertToMapIncident = (report: EmergencyReport) => {
       : (report.createdAt && typeof report.createdAt === 'object' && 'toDate' in report.createdAt)
       ? (report.createdAt as any).toDate()
       : new Date(report.createdAt || Date.now()),
-    responder: report.responder || null,
-    dispatcherId: report.dispatcherId || null,
+    responder: report.responder || report.assignedTeamName || null,
+    dispatcherId: report.dispatcherId || report.assignedResponderId || null,
+    assignedTeamName: report.assignedTeamName || null,
+    peopleInvolved: report.peopleInvolved || null,
+    landmark: report.landmark || null,
   }
 }
 
