@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -32,6 +32,8 @@ import {
   MessageSquare,
   Megaphone,
   Radio,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import SmsGatewaySettingsModal from "@/components/SmsGatewaySettingsModal";
 
@@ -89,11 +91,20 @@ type NavigationProps = {
   children: React.ReactNode;
 };
 
-const BrandBlock = ({ compact = false, onNavigate }: { compact?: boolean, onNavigate?: () => void }) => (
+const BrandBlock = ({
+  compact = false,
+  collapsed = false,
+  onNavigate,
+}: {
+  compact?: boolean;
+  collapsed?: boolean;
+  onNavigate?: () => void;
+}) => (
   <Link
     href={routes.commandCenter.overview}
-    className={`flex items-center gap-3 group shrink-0 rounded-lg outline-none ring-primary-500/40 focus-visible:ring-2 ${compact ? "min-w-0" : ""}`}
+    className={`flex items-center ${collapsed ? "justify-center" : "gap-3"} group shrink-0 rounded-lg outline-none ring-primary-500/40 focus-visible:ring-2 ${compact || collapsed ? "min-w-0" : ""}`}
     aria-label="RESQ-Link Command - Home"
+    title={collapsed ? "RESQ-Link Command Center" : undefined}
     onClick={onNavigate}
   >
     <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-900/80 border border-slate-700/60 shadow-inner group-hover:border-primary-500/40 transition-colors">
@@ -106,7 +117,7 @@ const BrandBlock = ({ compact = false, onNavigate }: { compact?: boolean, onNavi
         className="opacity-95"
       />
     </div>
-    {!compact && (
+    {!compact && !collapsed && (
       <div className="flex min-w-0 flex-col">
         <span className="text-lg font-semibold tracking-tight text-slate-100 truncate">
           RESQ-Link
@@ -126,13 +137,15 @@ const UserMenu = ({
   handleSignOut,
   onOpenSmsSettings,
   alignUp = false,
-}: { 
-  user: any, 
-  userMenuOpen: boolean, 
-  setUserMenuOpen: (o: boolean) => void, 
-  handleSignOut: () => void, 
-  onOpenSmsSettings?: () => void,
-  alignUp?: boolean 
+  collapsed = false,
+}: {
+  user: any;
+  userMenuOpen: boolean;
+  setUserMenuOpen: (o: boolean) => void;
+  handleSignOut: () => void;
+  onOpenSmsSettings?: () => void;
+  alignUp?: boolean;
+  collapsed?: boolean;
 }) =>
   user ? (
     <div className="relative" data-user-menu>
@@ -140,33 +153,44 @@ const UserMenu = ({
         data-user-trigger
         type="button"
         onClick={() => setUserMenuOpen(!userMenuOpen)}
-        className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-slate-800/60 min-w-0"
+        className={`flex items-center rounded-lg transition-colors hover:bg-slate-800/60 ${
+          collapsed
+            ? "h-10 w-10 justify-center mx-auto"
+            : "w-full gap-2.5 px-3 py-2.5 text-left min-w-0"
+        }`}
         aria-expanded={userMenuOpen}
         aria-haspopup="true"
         aria-label="User menu"
+        title={collapsed ? (user.email?.split("@")[0] || "User Menu") : undefined}
       >
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-600/20 text-primary-400 border border-primary-500/30">
           <User size={18} aria-hidden />
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-slate-200">
-            {user.email?.split("@")[0] || "User"}
-          </p>
-          <p className="truncate text-[11px] text-slate-500">
-            Command Center
-          </p>
-        </div>
-        <ChevronDown
-          size={16}
-          className={`shrink-0 text-slate-500 transition-transform ${userMenuOpen ? "rotate-180" : ""}`}
-          aria-hidden
-        />
+        {!collapsed && (
+          <>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-slate-200">
+                {user.email?.split("@")[0] || "User"}
+              </p>
+              <p className="truncate text-[11px] text-slate-500">
+                Command Center
+              </p>
+            </div>
+            <ChevronDown
+              size={16}
+              className={`shrink-0 text-slate-500 transition-transform ${userMenuOpen ? "rotate-180" : ""}`}
+              aria-hidden
+            />
+          </>
+        )}
       </button>
 
       {userMenuOpen && (
         <div
-          className={`absolute left-0 right-0 z-50 mx-2 rounded-xl border border-slate-700/80 bg-slate-900/95 shadow-xl shadow-black/20 backdrop-blur-xl py-1.5 ${
-            alignUp ? "bottom-full mb-1.5" : "top-full mt-1.5"
+          className={`rounded-xl border border-slate-700/80 bg-slate-900/95 shadow-2xl shadow-black/40 backdrop-blur-xl py-1.5 z-50 ${
+            collapsed
+              ? "fixed left-16 bottom-3 ml-2 w-64"
+              : `absolute left-0 right-0 mx-2 ${alignUp ? "bottom-full mb-1.5" : "top-full mt-1.5"}`
           }`}
           role="menu"
         >
@@ -205,35 +229,95 @@ const UserMenu = ({
     </div>
   ) : null;
 
-const NavLinks = ({ 
-  pathname, 
+const NavLinks = ({
+  pathname,
   badges,
-  onNavigate 
-}: { 
-  pathname: string, 
-  badges: Record<NavBadgeKey, number>,
-  onNavigate?: () => void 
+  collapsed = false,
+  onNavigate,
+}: {
+  pathname: string;
+  badges: Record<NavBadgeKey, number>;
+  collapsed?: boolean;
+  onNavigate?: () => void;
 }) => {
   return (
-    <nav className="flex flex-col px-3 pb-6" aria-label="Main navigation">
+    <nav
+      className={`flex flex-col ${collapsed ? "px-2 pb-4" : "px-3 pb-6"}`}
+      aria-label="Main navigation"
+    >
       {navGroups.map((group, groupIdx) => (
-        <div key={group.title} className={groupIdx > 0 ? "mt-6" : ""}>
-          <h3 className="px-3 mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-            {group.title}
-          </h3>
-          <div className="flex flex-col gap-0.5">
+        <div key={group.title} className={groupIdx > 0 ? (collapsed ? "mt-3" : "mt-6") : ""}>
+          {collapsed ? (
+            groupIdx > 0 && <div className="my-2 mx-1 border-t border-slate-800/80" aria-hidden="true" />
+          ) : (
+            <h3 className="px-3 mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+              {group.title}
+            </h3>
+          )}
+          <div className={`flex flex-col ${collapsed ? "gap-1.5 items-center" : "gap-0.5"}`}>
             {group.items.map((item) => {
-              const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href));
+              const isActive =
+                pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href));
               const IconComponent = item.icon;
               const badgeValue = item.badgeKey ? badges[item.badgeKey] : 0;
               const hasBadge = badgeValue > 0;
               const displayBadge = badgeValue > 99 ? "99+" : String(badgeValue);
 
+              if (collapsed) {
+                return (
+                  <div key={item.href} className="relative group flex justify-center w-full">
+                    <Link
+                      href={item.href}
+                      prefetch={process.env.NODE_ENV === "development" ? false : item.prefetch}
+                      aria-label={item.label}
+                      onClick={onNavigate}
+                      className={`
+                        relative flex h-10 w-10 items-center justify-center rounded-lg transition-all duration-200
+                        ${
+                          isActive
+                            ? "bg-primary-600 text-white shadow-md shadow-primary-900/40 font-semibold"
+                            : "text-slate-400 hover:bg-slate-800/80 hover:text-slate-100"
+                        }
+                      `}
+                    >
+                      <IconComponent size={20} className="shrink-0" aria-hidden />
+                      {hasBadge && (
+                        <span
+                          className={`
+                            absolute -top-1 -right-1 min-w-[1.125rem] h-[1.125rem] px-1 inline-flex items-center justify-center rounded-full text-[9px] font-black tabular-nums shadow-md ring-2 ring-slate-950
+                            ${
+                              isActive
+                                ? "bg-amber-400 text-slate-950"
+                                : "bg-amber-500 text-slate-950"
+                            }
+                          `}
+                          aria-label={`${badgeValue} items`}
+                        >
+                          {displayBadge}
+                        </span>
+                      )}
+                    </Link>
+
+                    {/* Popover tooltip on hover */}
+                    <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 hidden group-hover:flex items-center z-50">
+                      <div className="flex items-center gap-2 rounded-md bg-slate-900/95 border border-slate-700/80 px-2.5 py-1.5 text-xs font-medium text-slate-100 shadow-xl shadow-black/50 backdrop-blur-md whitespace-nowrap">
+                        <span>{item.label}</span>
+                        {hasBadge && (
+                          <span className="rounded-full bg-amber-500/20 text-amber-300 px-1.5 py-0.5 text-[10px] font-bold border border-amber-500/30">
+                            {displayBadge}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  prefetch={process.env.NODE_ENV === 'development' ? false : item.prefetch}
+                  prefetch={process.env.NODE_ENV === "development" ? false : item.prefetch}
                   title={item.label}
                   onClick={onNavigate}
                   className={`
@@ -249,7 +333,7 @@ const NavLinks = ({
                     <IconComponent size={20} className="shrink-0" aria-hidden />
                     <span className="truncate">{item.label}</span>
                   </div>
-                  
+
                   {hasBadge && (
                     <span
                       className={`
@@ -285,6 +369,8 @@ const SidebarChrome = ({
   badges,
   onNavigate,
   showClose = false,
+  collapsed = false,
+  onToggleCollapse,
 }: {
   user: any;
   userMenuOpen: boolean;
@@ -295,10 +381,21 @@ const SidebarChrome = ({
   badges: Record<NavBadgeKey, number>;
   onNavigate?: () => void;
   showClose?: boolean;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }) => (
   <>
-    <div className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-slate-800/70 px-4">
-      <BrandBlock onNavigate={onNavigate} />
+    <div
+      className={`flex h-16 shrink-0 items-center border-b border-slate-800/70 ${
+        collapsed
+          ? "flex-col justify-center px-1.5 gap-1"
+          : "justify-between gap-2 px-4"
+      }`}
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        <BrandBlock collapsed={collapsed} onNavigate={onNavigate} />
+      </div>
+
       {showClose && (
         <button
           type="button"
@@ -309,23 +406,41 @@ const SidebarChrome = ({
           <X size={22} />
         </button>
       )}
+
+      {!showClose && onToggleCollapse && (
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          className={`flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-800/80 hover:text-slate-100 transition-colors ${
+            collapsed ? "h-6 w-6 mt-0.5" : "h-8 w-8"
+          }`}
+          title={collapsed ? "Expand sidebar (Ctrl+B)" : "Minimize sidebar (Ctrl+B)"}
+          aria-label={collapsed ? "Expand sidebar" : "Minimize sidebar"}
+        >
+          {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={18} />}
+        </button>
+      )}
     </div>
-    <div className="flex-1 overflow-y-auto pt-5 pb-4 custom-scrollbar">
-      <NavLinks 
+
+    <div className="flex-1 overflow-y-auto pt-4 pb-3 custom-scrollbar overflow-x-hidden">
+      <NavLinks
         pathname={pathname}
         badges={badges}
+        collapsed={collapsed}
         onNavigate={onNavigate}
       />
     </div>
+
     {user && (
-      <div className="shrink-0 border-t border-slate-800/70 p-3">
-        <UserMenu 
+      <div className={`shrink-0 border-t border-slate-800/70 ${collapsed ? "p-2" : "p-3"}`}>
+        <UserMenu
           user={user}
           userMenuOpen={userMenuOpen}
           setUserMenuOpen={setUserMenuOpen}
           handleSignOut={handleSignOut}
           onOpenSmsSettings={onOpenSmsSettings}
-          alignUp 
+          alignUp
+          collapsed={collapsed}
         />
       </div>
     )}
@@ -338,12 +453,58 @@ export default function Navigation({ children }: NavigationProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [smsGatewaySettingsOpen, setSmsGatewaySettingsOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+
   const { footageRequests } = useDispatcherData();
   const { unacknowledgedCriticalCount, intakeAwaitingTriageCount } = usePriorityAlerts();
   const pendingFootageCount = useMemo(
     () => footageRequests.filter((request) => request.status === "pending").length,
     [footageRequests],
   );
+
+  // Restore collapsed preference from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("resq_command_center_sidebar_collapsed");
+      if (saved !== null) {
+        setIsCollapsed(saved === "true");
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, []);
+
+  const toggleCollapsed = useCallback(() => {
+    setIsCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("resq_command_center_sidebar_collapsed", String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, []);
+
+  // Keyboard shortcut Ctrl+B / Cmd+B
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b") {
+        const target = e.target as HTMLElement;
+        if (
+          target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable
+        ) {
+          return;
+        }
+        e.preventDefault();
+        toggleCollapsed();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [toggleCollapsed]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -384,17 +545,19 @@ export default function Navigation({ children }: NavigationProps) {
 
   const badges: Record<NavBadgeKey, number> = {
     intakeCount: intakeAwaitingTriageCount,
-    pendingFootageCount
+    pendingFootageCount,
   };
 
   return (
     <div className="h-screen bg-slate-950 text-slate-100 overflow-hidden">
       {/* Desktop: fixed to viewport so it never stretches with page content */}
       <aside
-        className="hidden lg:flex lg:flex-col fixed inset-y-0 left-0 z-40 w-64 xl:w-72 border-r border-slate-800/80 bg-slate-950/95 backdrop-blur-xl min-h-0"
+        className={`hidden lg:flex lg:flex-col fixed inset-y-0 left-0 z-40 border-r border-slate-800/80 bg-slate-950/95 backdrop-blur-xl min-h-0 transition-[width] duration-300 ease-in-out ${
+          isCollapsed ? "w-16" : "w-64 xl:w-72"
+        }`}
         aria-label="Command navigation"
       >
-        <SidebarChrome 
+        <SidebarChrome
           user={user}
           userMenuOpen={userMenuOpen}
           setUserMenuOpen={setUserMenuOpen}
@@ -402,6 +565,8 @@ export default function Navigation({ children }: NavigationProps) {
           onOpenSmsSettings={() => setSmsGatewaySettingsOpen(true)}
           pathname={pathname}
           badges={badges}
+          collapsed={isCollapsed}
+          onToggleCollapse={toggleCollapsed}
         />
       </aside>
 
@@ -435,7 +600,11 @@ export default function Navigation({ children }: NavigationProps) {
         </>
       )}
 
-      <div className="flex h-screen min-w-0 flex-col lg:pl-64 xl:pl-72 focus:outline-none">
+      <div
+        className={`flex h-screen min-w-0 flex-col focus:outline-none transition-[padding] duration-300 ease-in-out ${
+          isCollapsed ? "lg:pl-16" : "lg:pl-64 xl:pl-72"
+        }`}
+      >
         <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center justify-between gap-3 border-b border-slate-800/80 bg-slate-950/95 px-4 backdrop-blur-xl lg:hidden">
           <button
             type="button"

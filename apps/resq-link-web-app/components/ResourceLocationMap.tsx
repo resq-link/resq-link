@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { MapContainer, Marker, Popup, TileLayer, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -17,8 +17,12 @@ if (typeof window !== 'undefined') {
 
 function MapCenter({ center }: { center: [number, number] }) {
   const map = useMap()
+  const lastCenterRef = useRef<string | null>(null)
 
   useEffect(() => {
+    const key = `${center[0].toFixed(6)},${center[1].toFixed(6)}`
+    if (lastCenterRef.current === key) return
+    lastCenterRef.current = key
     map.setView(center, 14)
   }, [center, map])
 

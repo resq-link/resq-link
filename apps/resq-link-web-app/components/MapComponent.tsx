@@ -30,11 +30,57 @@ interface Incident {
   location: string
   priority: 'low' | 'medium' | 'high' | 'critical'
   status: 'active' | 'pending' | 'resolved'
+  rawStatus?: string
   lat: number
   lng: number
   reportedAt: Date
   responder: string | null
   dispatcherId?: string | null
+  assignedTeamName?: string | null
+  peopleInvolved?: number | null
+  landmark?: string | null
+}
+
+// Calculate distance in kilometers using Haversine formula
+const calculateDistanceKm = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const R = 6371 // Earth radius in km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180
+  const dLon = ((lon2 - lon1) * Math.PI) / 180
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c
+}
+
+// Calculate estimated travel time & distance for emergency response
+const calculateETA = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const distanceKm = calculateDistanceKm(lat1, lon1, lat2, lon2)
+  if (distanceKm < 0.05) {
+    return {
+      distanceKm,
+      minutes: 0,
+      text: 'Arrived on scene',
+      shortText: 'On Scene',
+      isOnScene: true,
+    }
+  }
+
+  // 1.3x routing multiplier for city road grid, average speed 35km/h, 1 min dispatch buffer
+  const roadDistanceKm = distanceKm * 1.3
+  const minutes = Math.max(1, Math.round((roadDistanceKm / 35) * 60 + 1))
+  const distLabel = distanceKm < 1 ? `${Math.round(distanceKm * 1000)}m` : `${distanceKm.toFixed(1)} km`
+
+  return {
+    distanceKm,
+    minutes,
+    text: `~${minutes} min${minutes > 1 ? 's' : ''} (${distLabel})`,
+    shortText: `ETA ~${minutes}m (${distLabel})`,
+    isOnScene: false,
+  }
 }
 
 // Helper to calculate position along a line segment at fraction t
@@ -59,12 +105,36 @@ interface MapComponentProps {
   centerLocation?: [number, number] | null
 }
 
-// Component to handle map center updates
-function MapCenter({ center, zoom }: { center: [number, number]; zoom: number }) {
+// Component to handle map center updates without resetting manual user zoom
+function MapCenterController({
+  centerLocation,
+  selectedIncident,
+}: {
+  centerLocation?: [number, number] | null
+  selectedIncident?: string | null
+}) {
   const map = useMap()
+  const lastTargetRef = useRef<string | null>(null)
+
   useEffect(() => {
-    map.setView(center, zoom)
-  }, [map, center, zoom])
+    if (!centerLocation || !centerLocation[0] || !centerLocation[1]) {
+      return
+    }
+
+    const targetKey = `${centerLocation[0].toFixed(6)},${centerLocation[1].toFixed(6)}-${selectedIncident || ''}`
+    if (lastTargetRef.current === targetKey) {
+      return
+    }
+
+    lastTargetRef.current = targetKey
+    const currentZoom = map.getZoom()
+    const targetZoom = Math.max(currentZoom || 12, 15)
+
+    map.flyTo(centerLocation, targetZoom, {
+      duration: 0.8,
+    })
+  }, [centerLocation, map, selectedIncident])
+
   return null
 }
 
@@ -129,43 +199,39 @@ export default function MapComponent({
     return getPriorityMapColor(level)
   }
 
-  const createCustomIcon = (priority: string, status: string) => {
+  const createCustomIcon = (priority: string, status: string, isSelected: boolean = false) => {
     const color = getMarkerColor(priority, status)
     const level = normalizePriority(priority)
-    const flashClass = level === 'critical' ? 'priority-marker-critical' : ''
+    const isActive = status === 'active' || status === 'pending'
+    const isCritical = level === 'critical'
+
+    const bounceClass = isActive ? 'incident-pin-bouncing' : ''
+    const pulseClass = isActive ? (isCritical ? 'incident-ground-pulse-critical' : 'incident-ground-pulse') : ''
+    const selectedClass = isSelected ? 'incident-pin-selected' : ''
+    const iconSymbol = level === 'critical' ? '⚡' : level === 'high' ? '!' : '⚠'
+
     return L.divIcon({
-      className: `custom-marker ${flashClass}`,
+      className: `incident-custom-marker-root ${selectedClass}`,
       html: `
-        <div style="
-          background-color: ${color};
-          width: 24px;
-          height: 24px;
-          border-radius: 50% 50% 50% 0;
-          transform: rotate(-45deg);
-          border: 3px solid white;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-        " class="${flashClass}">
-          <div style="
-            transform: rotate(45deg);
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 12px;
-          ">!</div>
+        <div class="incident-marker-container ${bounceClass}">
+          ${isActive ? `<div class="incident-ground-radar ${pulseClass}" style="--radar-color: ${color};"></div>` : ''}
+          <div class="incident-ground-shadow"></div>
+          <div class="incident-pin-wrapper">
+            <div class="incident-pin-body" style="background-color: ${color}; box-shadow: 0 4px 14px ${color}88;">
+              <span class="incident-pin-badge">${iconSymbol}</span>
+            </div>
+            <div class="incident-pin-beak" style="border-top-color: ${color};"></div>
+          </div>
         </div>
       `,
-      iconSize: [24, 24],
-      iconAnchor: [12, 24],
-      popupAnchor: [0, -24],
+      iconSize: [36, 44],
+      iconAnchor: [18, 42],
+      popupAnchor: [0, -42],
     })
   }
 
-  // Create minimal dispatcher location marker icon
-  const createDispatcherIcon = (role: string) => {
+  // Create responder location marker icon
+  const createDispatcherIcon = (role: string, isAssigned: boolean = false) => {
     const roleColors: Record<string, string> = {
       BFP: '#dc2626', // red
       PNP: '#1e40af', // blue
@@ -174,28 +240,55 @@ export default function MapComponent({
       PCG: '#0284c7', // cyan
     }
     const color = roleColors[role] || '#6b7280' // gray default
-    
+    const roleInitials: Record<string, string> = {
+      BFP: '🔥',
+      PNP: '👮',
+      MDRRMO: '🚑',
+      AMBULANCE: '🏥',
+      PCG: '⚓',
+    }
+    const initial = roleInitials[role] || '🛡️'
+
     return L.divIcon({
       className: 'dispatcher-marker',
       html: `
         <div style="
           position: relative;
-          width: 24px;
-          height: 24px;
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         ">
+          ${
+            isAssigned
+              ? `<div style="
+                  position: absolute;
+                  inset: -4px;
+                  border-radius: 50%;
+                  background: ${color};
+                  opacity: 0.35;
+                  animation: pulse 1.4s infinite;
+                "></div>`
+              : ''
+          }
           <div style="
-            width: 24px;
-            height: 24px;
+            width: 28px;
+            height: 28px;
             background-color: ${color};
             border-radius: 50%;
-            border: 3px solid white;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-          "></div>
+            border: 2.5px solid white;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.45);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+          ">${initial}</div>
         </div>
       `,
-      iconSize: [24, 24],
-      iconAnchor: [12, 12],
-      popupAnchor: [0, -12],
+      iconSize: [32, 32],
+      iconAnchor: [16, 16],
+      popupAnchor: [0, -16],
     })
   }
 
@@ -400,7 +493,7 @@ export default function MapComponent({
         ref={mapRef}
         zoomControl={false}
       >
-        <MapCenter center={mapCenter} zoom={mapZoom} />
+        <MapCenterController centerLocation={centerLocation} selectedIncident={selectedIncident} />
         <TileLayer
           attribution='&copy; <a href="https://www.mapbox.com/about/maps/">Mapbox</a> &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url={mapboxUrl!}
@@ -459,54 +552,112 @@ export default function MapComponent({
                 console.warn('Invalid dispatcher coordinates:', dispatcher)
                 return null
               }
-              
+
+              // Match active assigned incident
+              const assignedIncident = incidents.find(
+                (inc) =>
+                  (inc.dispatcherId && inc.dispatcherId === dispatcher.dispatcherId) ||
+                  (inc.responder && dispatcher.email && inc.responder.toLowerCase().includes(dispatcher.email.toLowerCase()))
+              )
+
+              const isAssigned = !!assignedIncident
+              const etaInfo = assignedIncident
+                ? calculateETA(
+                    dispatcher.latitude,
+                    dispatcher.longitude,
+                    assignedIncident.lat,
+                    assignedIncident.lng
+                  )
+                : null
+
+              const roleColors: Record<string, string> = {
+                BFP: '#dc2626',
+                PNP: '#1e40af',
+                MDRRMO: '#059669',
+                AMBULANCE: '#ea580c',
+                PCG: '#0284c7',
+              }
+              const color = roleColors[dispatcher.role] || '#6b7280'
+
               return (
                 <Marker
                   key={dispatcher.dispatcherId}
                   position={[dispatcher.latitude, dispatcher.longitude]}
-                  icon={createDispatcherIcon(dispatcher.role)}
+                  icon={createDispatcherIcon(dispatcher.role, isAssigned)}
                   zIndexOffset={1000}
                 >
                   <Popup>
-                    <div className="p-3 min-w-[200px]">
-                      <div className="flex items-center gap-2 mb-2">
+                    <div className="p-3.5 min-w-[230px] max-w-[290px]">
+                      <div className="flex items-center gap-2.5 mb-2.5">
                         <div
-                          className="w-3 h-3 rounded-full"
-                          style={{
-                            backgroundColor:
-                              dispatcher.role === 'BFP'
-                                ? '#dc2626'
-                                : dispatcher.role === 'PNP'
-                                ? '#1e40af'
-                                : dispatcher.role === 'MDRRMO'
-                                ? '#059669'
-                                : dispatcher.role === 'AMBULANCE'
-                                ? '#ea580c'
-                                : dispatcher.role === 'PCG'
-                                ? '#0284c7'
-                                : '#6b7280',
-                          }}
-                        ></div>
-                        <h3 className="font-bold text-slate-100 text-base">
-                          {dispatcher.role} Dispatcher
-                        </h3>
+                          className="w-3.5 h-3.5 rounded-full ring-2 ring-white/30"
+                          style={{ backgroundColor: color }}
+                        />
+                        <div>
+                          <h3 className="font-bold text-slate-100 text-sm leading-tight">
+                            {dispatcher.role} Responder Unit
+                          </h3>
+                          <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block"></span>
+                            Online & Transmitting
+                          </span>
+                        </div>
                       </div>
-                      <div className="space-y-1">
-                        <p className="text-sm text-slate-300">
-                          <span className="font-medium">Email:</span> {dispatcher.email}
+
+                      <div className="space-y-1 text-xs text-slate-300 border-t border-slate-800/80 pt-2 mb-2.5">
+                        <p>
+                          <span className="text-slate-400 font-medium">Email:</span> {dispatcher.email}
                         </p>
-                        <p className="text-xs text-slate-400">
-                          <span className="font-medium">Status:</span>{' '}
-                          <span className="text-green-400">● Online</span>
-                        </p>
-                        <p className="text-xs text-slate-400">
-                          <span className="font-medium">Last updated:</span>{' '}
+                        <p>
+                          <span className="text-slate-400 font-medium">Last GPS Ping:</span>{' '}
                           {(getLastUpdatedDate(dispatcher.lastUpdated) || new Date()).toLocaleTimeString()}
                         </p>
-                        <p className="text-xs text-slate-500 mt-2">
+                        <p className="text-[11px] text-slate-500">
                           {dispatcher.latitude.toFixed(6)}, {dispatcher.longitude.toFixed(6)}
                         </p>
                       </div>
+
+                      {assignedIncident ? (
+                        <div className="p-2.5 rounded-lg bg-slate-900/90 border border-slate-700/70 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping inline-block"></span>
+                              Active Response
+                            </span>
+                            <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/30">
+                              {assignedIncident.priority}
+                            </span>
+                          </div>
+
+                          <div>
+                            <p className="text-xs font-bold text-slate-100 line-clamp-1">
+                              {assignedIncident.type}
+                            </p>
+                            <p className="text-[11px] text-slate-400 line-clamp-1">
+                              📍 {assignedIncident.location || 'Pinned Coordinates'}
+                            </p>
+                          </div>
+
+                          <div className="pt-1.5 border-t border-slate-800 flex items-center justify-between">
+                            <span className="text-[11px] text-slate-400 font-medium">Estimated Arrival (ETA):</span>
+                            <span className="text-[11px] font-bold text-emerald-400">
+                              {etaInfo?.text}
+                            </span>
+                          </div>
+
+                          <button
+                            onClick={() => onIncidentSelect(assignedIncident.id)}
+                            className="w-full mt-1 py-1 px-2 bg-blue-600/25 hover:bg-blue-600/35 text-blue-200 border border-blue-500/40 rounded text-xs font-semibold transition flex items-center justify-center gap-1"
+                          >
+                            Focus Incident on Map →
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="p-2 rounded bg-slate-900/60 border border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
+                          <span>Status:</span>
+                          <span className="font-semibold text-slate-300">Available / Patrolling</span>
+                        </div>
+                      )}
                     </div>
                   </Popup>
                 </Marker>
@@ -514,126 +665,221 @@ export default function MapComponent({
             })}
           </>
         )}
+
         {/* Connection lines from assigned dispatchers/responders to their incidents */}
-        {dispatcherLocations.length > 0 && incidents.map((incident) => {
-          if (!incident.dispatcherId) return null
-          
-          const dispatcher = dispatcherLocations.find(
-            (d) => d.dispatcherId === incident.dispatcherId
-          )
-          
-          if (!dispatcher) return null
-          
-          if (!dispatcher.latitude || !dispatcher.longitude || !incident.lat || !incident.lng) return null
+        {dispatcherLocations.length > 0 &&
+          incidents.map((incident) => {
+            if (!incident.dispatcherId && !incident.responder) return null
 
-          const roleColors: Record<string, string> = {
-            BFP: '#dc2626', // red
-            PNP: '#1e40af', // blue
-            MDRRMO: '#059669', // green
-            AMBULANCE: '#ea580c', // orange
-            PCG: '#0284c7', // cyan
-          }
-          const color = roleColors[dispatcher.role] || '#6b7280'
+            const dispatcher = dispatcherLocations.find(
+              (d) =>
+                (incident.dispatcherId && d.dispatcherId === incident.dispatcherId) ||
+                (incident.responder && d.email && incident.responder.toLowerCase().includes(d.email.toLowerCase()))
+            )
 
-          const responderPos: [number, number] = [dispatcher.latitude, dispatcher.longitude]
-          const incidentPos: [number, number] = [incident.lat, incident.lng]
+            if (!dispatcher) return null
+            if (!dispatcher.latitude || !dispatcher.longitude || !incident.lat || !incident.lng) return null
 
-          // Place the arrowhead at 65% of the distance from dispatcher to incident
-          const arrowPos = getPointAlongLine(dispatcher.latitude, dispatcher.longitude, incident.lat, incident.lng, 0.65)
-          const angle = getAngle(dispatcher.latitude, dispatcher.longitude, incident.lat, incident.lng)
+            const roleColors: Record<string, string> = {
+              BFP: '#dc2626',
+              PNP: '#1e40af',
+              MDRRMO: '#059669',
+              AMBULANCE: '#ea580c',
+              PCG: '#0284c7',
+            }
+            const color = roleColors[dispatcher.role] || '#6b7280'
 
-          return (
-            <Fragment key={`assignment-${incident.id}-${dispatcher.dispatcherId}`}>
-              <Polyline
-                positions={[responderPos, incidentPos]}
-                pathOptions={{
-                  color,
-                  weight: 3,
-                  opacity: 0.8,
-                  className: 'flow-line'
-                }}
-              />
-              <Marker
-                position={arrowPos}
-                icon={L.divIcon({
-                  className: 'arrowhead-marker',
-                  html: `
-                    <div style="
-                      transform: rotate(${angle}deg);
-                      display: flex;
-                      align-items: center;
-                      justify-content: center;
-                      width: 20px;
-                      height: 20px;
-                    ">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="${color}" style="filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));">
-                        <path d="M8 5v14l11-7z"/>
-                      </svg>
-                    </div>
-                  `,
-                  iconSize: [20, 20],
-                  iconAnchor: [10, 10],
-                })}
-                interactive={false}
-              />
-            </Fragment>
-          )
-        })}
+            const responderPos: [number, number] = [dispatcher.latitude, dispatcher.longitude]
+            const incidentPos: [number, number] = [incident.lat, incident.lng]
+
+            const etaInfo = calculateETA(
+              dispatcher.latitude,
+              dispatcher.longitude,
+              incident.lat,
+              incident.lng
+            )
+
+            // Place the ETA badge at 45% of the path
+            const badgePos = getPointAlongLine(
+              dispatcher.latitude,
+              dispatcher.longitude,
+              incident.lat,
+              incident.lng,
+              0.45
+            )
+
+            // Place the arrowhead at 75% of the path
+            const arrowPos = getPointAlongLine(
+              dispatcher.latitude,
+              dispatcher.longitude,
+              incident.lat,
+              incident.lng,
+              0.75
+            )
+            const angle = getAngle(
+              dispatcher.latitude,
+              dispatcher.longitude,
+              incident.lat,
+              incident.lng
+            )
+
+            return (
+              <Fragment key={`assignment-${incident.id}-${dispatcher.dispatcherId}`}>
+                <Polyline
+                  positions={[responderPos, incidentPos]}
+                  pathOptions={{
+                    color,
+                    weight: 3.5,
+                    opacity: 0.85,
+                    className: 'flow-line',
+                  }}
+                />
+                {/* Floating ETA Pill Badge on line */}
+                <Marker
+                  position={badgePos}
+                  icon={L.divIcon({
+                    className: 'eta-line-badge-root',
+                    html: `
+                      <div style="
+                        background: rgba(15, 23, 42, 0.95);
+                        border: 1.5px solid ${color};
+                        border-radius: 9999px;
+                        padding: 2px 8px;
+                        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+                        display: flex;
+                        align-items: center;
+                        gap: 5px;
+                        white-space: nowrap;
+                        cursor: pointer;
+                        backdrop-filter: blur(4px);
+                      ">
+                        <span style="width: 7px; height: 7px; border-radius: 50%; background: ${color}; display: inline-block; animation: pulse 1.2s infinite;"></span>
+                        <span style="font-size: 11px; font-weight: 700; color: #f8fafc; letter-spacing: 0.02em;">
+                          ${etaInfo.shortText}
+                        </span>
+                      </div>
+                    `,
+                    iconSize: [130, 24],
+                    iconAnchor: [65, 12],
+                  })}
+                  eventHandlers={{
+                    click: () => onIncidentSelect(incident.id),
+                  }}
+                />
+                {/* Directional Arrowhead */}
+                <Marker
+                  position={arrowPos}
+                  icon={L.divIcon({
+                    className: 'arrowhead-marker',
+                    html: `
+                      <div style="
+                        transform: rotate(${angle}deg);
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        width: 22px;
+                        height: 22px;
+                      ">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="${color}" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));">
+                          <path d="M8 5v14l11-7z"/>
+                        </svg>
+                      </div>
+                    `,
+                    iconSize: [22, 22],
+                    iconAnchor: [11, 11],
+                  })}
+                  interactive={false}
+                />
+              </Fragment>
+            )
+          })}
 
         {/* Incident Markers */}
-        {incidents.map((incident) => (
-          <Marker
-            key={incident.id}
-            position={[incident.lat, incident.lng]}
-            icon={createCustomIcon(incident.priority, incident.status)}
-            eventHandlers={{
-              click: () => onIncidentSelect(incident.id),
-            }}
-          >
-            <Popup>
-              <div className="p-2 min-w-[200px]">
-                <h3 className="font-bold text-slate-100 text-base mb-1">
-                  {incident.type}
-                </h3>
-                <p className="text-xs text-slate-400 mb-2.5">
-                  {incident.location}
-                </p>
-                <div className="flex items-center gap-2 mb-2.5">
-                  <span
-                    className={`px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded border ${
-                      incident.priority === 'critical'
-                        ? 'bg-red-500/20 text-red-300 border-red-500/30'
-                        : incident.priority === 'high'
-                        ? 'bg-violet-500/20 text-violet-300 border-violet-500/30'
-                        : 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30'
-                    }`}
-                  >
-                    {incident.priority}
-                  </span>
-                  <span
-                    className={`px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded border ${
-                      incident.status === 'active'
-                        ? 'bg-red-500/20 text-red-300 border-red-500/30'
-                        : incident.status === 'pending'
-                        ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30'
-                        : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                    }`}
-                  >
-                    {incident.status}
-                  </span>
-                </div>
-                {incident.responder && (
-                  <p className="text-xs text-slate-300 font-medium">
-                    Responder: {incident.responder}
+        {incidents.map((incident) => {
+          const isSelected = selectedIncident === incident.id
+          const assignedResponder = dispatcherLocations.find(
+            (d) =>
+              (incident.dispatcherId && d.dispatcherId === incident.dispatcherId) ||
+              (incident.responder && d.email && incident.responder.toLowerCase().includes(d.email.toLowerCase()))
+          )
+
+          const incidentEta =
+            assignedResponder && assignedResponder.latitude && assignedResponder.longitude
+              ? calculateETA(
+                  assignedResponder.latitude,
+                  assignedResponder.longitude,
+                  incident.lat,
+                  incident.lng
+                )
+              : null
+
+          return (
+            <Marker
+              key={incident.id}
+              position={[incident.lat, incident.lng]}
+              icon={createCustomIcon(incident.priority, incident.status, isSelected)}
+              eventHandlers={{
+                click: () => onIncidentSelect(incident.id),
+              }}
+            >
+              <Popup>
+                <div className="p-2.5 min-w-[220px] max-w-[280px]">
+                  <h3 className="font-bold text-slate-100 text-base mb-1">
+                    {incident.type}
+                  </h3>
+                  <p className="text-xs text-slate-400 mb-2.5">
+                    {incident.location || 'Pinned Coordinates'}
                   </p>
-                )}
-                <p className="text-[11px] text-slate-500 mt-1">
-                  {incident.reportedAt.toLocaleString()}
-                </p>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
+                  <div className="flex items-center gap-2 mb-2.5">
+                    <span
+                      className={`px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded border ${
+                        incident.priority === 'critical'
+                          ? 'bg-red-500/20 text-red-300 border-red-500/30'
+                          : incident.priority === 'high'
+                          ? 'bg-violet-500/20 text-violet-300 border-violet-500/30'
+                          : 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30'
+                      }`}
+                    >
+                      {incident.priority}
+                    </span>
+                    <span
+                      className={`px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded border ${
+                        incident.status === 'active'
+                          ? 'bg-red-500/20 text-red-300 border-red-500/30'
+                          : incident.status === 'pending'
+                          ? 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30'
+                          : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                      }`}
+                    >
+                      {incident.status}
+                    </span>
+                  </div>
+
+                  {assignedResponder && incidentEta ? (
+                    <div className="mb-2 p-2 rounded-md bg-slate-900/90 border border-slate-700/60 space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-400">Assigned Unit:</span>
+                        <span className="font-semibold text-slate-200">{assignedResponder.role} Unit</span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-slate-400">Responder ETA:</span>
+                        <span className="font-bold text-emerald-400">{incidentEta.text}</span>
+                      </div>
+                    </div>
+                  ) : incident.responder ? (
+                    <p className="text-xs text-slate-300 font-medium mb-1">
+                      Responder: {incident.responder}
+                    </p>
+                  ) : null}
+
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    {incident.reportedAt.toLocaleString()}
+                  </p>
+                </div>
+              </Popup>
+            </Marker>
+          )
+        })}
       </MapContainer>
     </div>
   )

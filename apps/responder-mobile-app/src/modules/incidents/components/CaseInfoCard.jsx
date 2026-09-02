@@ -1198,7 +1198,7 @@ export default function CaseInfoCard({
             <MapView
               provider={mapProvider}
               style={styles.map}
-              region={mapRegion}
+              initialRegion={mapRegion}
               scrollEnabled={true}
               zoomEnabled={true}
               pitchEnabled={true}

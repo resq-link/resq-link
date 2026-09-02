@@ -61,14 +61,18 @@ export async function updateDispatcherLocation(
     const dispatcherDoc = await getDoc(dispatcherRef);
     const dispatcherData = dispatcherDoc.exists() ? dispatcherDoc.data() : {};
 
-    await updateDoc(dispatcherRef, {
-      latitude,
-      longitude,
-      lastUpdated: Timestamp.now(),
-      isOnline: true,
-      email: dispatcherData.email || currentUser.email || '',
-      role: dispatcherData.role || '',
-    });
+    await setDoc(
+      dispatcherRef,
+      {
+        latitude,
+        longitude,
+        lastUpdated: Timestamp.now(),
+        isOnline: true,
+        email: dispatcherData.email || currentUser.email || '',
+        role: dispatcherData.role || 'responder',
+      },
+      { merge: true }
+    );
 
     console.log('✅ Dispatcher location updated');
   } catch (error: any) {
@@ -96,10 +100,14 @@ export async function setDispatcherOnlineStatus(isOnline: boolean): Promise<void
     }
 
     const dispatcherRef = doc(getFirebaseFirestore(), 'dispatchers', currentUser.uid);
-    await updateDoc(dispatcherRef, {
-      isOnline,
-      lastUpdated: Timestamp.now(),
-    });
+    await setDoc(
+      dispatcherRef,
+      {
+        isOnline,
+        lastUpdated: Timestamp.now(),
+      },
+      { merge: true }
+    );
 
     console.log(`✅ Dispatcher online status set to: ${isOnline}`);
   } catch (error: any) {
@@ -118,26 +126,23 @@ export function subscribeToDispatcherLocations(
 ): () => void {
   try {
     const dispatchersRef = collection(getFirebaseFirestore(), 'dispatchers');
-    
-    // Query for online dispatchers with location data
-    const q = query(
-      dispatchersRef,
-      where('isOnline', '==', true)
-    );
 
     const unsubscribe = onSnapshot(
-      q,
+      dispatchersRef,
       (snapshot: QuerySnapshot) => {
         const locations: DispatcherLocation[] = [];
-        
+
         snapshot.forEach((doc) => {
           const data = doc.data();
-          // Only include dispatchers with valid location data
+          const lat = Number(data.latitude);
+          const lng = Number(data.longitude);
+          // Only include dispatchers with valid coordinate data who are not explicitly offline
           if (
-            data.latitude != null &&
-            data.longitude != null &&
-            data.latitude !== 0 &&
-            data.longitude !== 0
+            !Number.isNaN(lat) &&
+            !Number.isNaN(lng) &&
+            lat !== 0 &&
+            lng !== 0 &&
+            data.isOnline !== false
           ) {
             locations.push(convertFirestoreDoc(doc));
           }

@@ -155,11 +155,6 @@ export default function DashboardView() {
   }, [user, router]);
 
   const trackingEnabled = !!(user && authReady && firebaseUid && !locationPaused);
-  useDashboardLocationTracking(trackingEnabled, {
-    resourceId: assignment.assignedResource?.id ?? null,
-    isPrimary: Boolean(assignment.assignedResource),
-  });
-
   const responderCoords = useResponderLocationSnapshot(trackingEnabled);
 
   useFocusEffect(

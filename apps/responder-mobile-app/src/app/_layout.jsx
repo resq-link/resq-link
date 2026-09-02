@@ -25,6 +25,7 @@ import { ResqThemeProvider, useResqTheme } from "@/theme";
 import MessagingProvider from "@/providers/MessagingProvider";
 import MessagingUnreadTracker from "@/modules/messaging/components/MessagingUnreadTracker";
 import PriorityAlertProvider from "@/providers/PriorityAlertProvider";
+import ResponderLocationProvider from "@/providers/ResponderLocationProvider";
 import { Toaster } from "sonner-native";
 import { useImmersiveAndroidNavigation } from "@/hooks/useImmersiveAndroidNavigation";
 
@@ -106,6 +107,7 @@ export default function RootLayout() {
       <ResqThemeProvider>
         <MessagingProvider>
         <PriorityAlertProvider>
+        <ResponderLocationProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <View style={{ flex: 1 }}>
             <Stack
@@ -117,6 +119,7 @@ export default function RootLayout() {
             <ThemedToaster />
           </View>
         </GestureHandlerRootView>
+        </ResponderLocationProvider>
         </PriorityAlertProvider>
         </MessagingProvider>
       </ResqThemeProvider>
