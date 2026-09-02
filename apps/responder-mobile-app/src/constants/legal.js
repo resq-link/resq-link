@@ -6,6 +6,7 @@ export const LEGAL_URLS = {
   privacyPolicy: `${LEGAL_BASE_URL}/privacy-policy`,
   dataPrivacyNotice: `${LEGAL_BASE_URL}/data-privacy`,
   termsOfUse: `${LEGAL_BASE_URL}/terms-of-use`,
+  deleteAccount: `${LEGAL_BASE_URL}/delete-account`,
   contact: `${LEGAL_BASE_URL}/contact`,
 };
 

@@ -126,6 +126,7 @@ export default function PrivacySecurityView() {
       label: "Contact privacy office",
       onPress: () => Linking.openURL(`mailto:${PRIVACY_CONTACT_EMAIL}`),
     },
+    { label: "Delete account & data", url: LEGAL_URLS.deleteAccount },
   ];
 
   return (

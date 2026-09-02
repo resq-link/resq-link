@@ -50,6 +50,7 @@ import { useAppTheme } from "@/hooks/useAppTheme";
 import { getBottomNavHeight } from "@/utils/navigationInsets";
 import { LEGAL_URLS } from "@/constants/legal";
 import CustomSwitch from "@/features/settings/components/CustomSwitch";
+import { useActiveIncident } from "@/hooks/useActiveIncident";
 
 const STORAGE_KEY_PAUSE_NOTIF = "settings_pause_notifications";
 const STORAGE_KEY_LANGUAGE = "settings_app_language";
@@ -69,6 +70,7 @@ export default function ProfileScreen() {
   const { user, logout } = useUserStore();
   const { setAuth } = useAuthStore();
   const { isLight, setThemePreference } = useAppTheme();
+  const { activeIncident } = useActiveIncident();
 
   const [pauseNotifications, setPauseNotifications] = useState(true);
   const [selectedLanguage, setSelectedLanguage] = useState("en");
@@ -245,7 +247,7 @@ export default function ProfileScreen() {
     }
   }, [router]);
 
-  const bottomPadding = getBottomNavHeight(insets) + 24;
+  const bottomPadding = getBottomNavHeight(insets) + 260;
 
   const displayName =
     user?.name ||

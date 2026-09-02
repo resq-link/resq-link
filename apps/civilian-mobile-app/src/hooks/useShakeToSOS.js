@@ -1,12 +1,22 @@
 import { useEffect, useRef } from "react";
 import { AppState } from "react-native";
-import { Accelerometer } from "expo-sensors";
 import * as Haptics from "expo-haptics";
 import { usePathname } from "expo-router";
 import { useSOS } from "@/hooks/useSOS";
 import useUserStore from "@/stores/userStore";
 import useSOSStore from "@/stores/sosStore";
 import { HIDE_NAV_SCREENS } from "@/constants/routes";
+
+let Accelerometer = null;
+try {
+  const Sensors = require("expo-sensors");
+  Accelerometer = Sensors.Accelerometer;
+} catch {
+  try {
+    const AccelModule = require("expo-sensors/build/Accelerometer");
+    Accelerometer = AccelModule.default || AccelModule.Accelerometer || AccelModule;
+  } catch {}
+}
 
 const UPDATE_INTERVAL_MS = 50;
 const SHAKE_THRESHOLD = 4.5;
@@ -48,7 +58,9 @@ export function useShakeToSOS() {
       isShakeScreen(pathname) &&
       !sosLoading &&
       !confirmVisible &&
-      appStateRef.current === "active";
+      appStateRef.current === "active" &&
+      !!Accelerometer &&
+      typeof Accelerometer.addListener === "function";
 
     if (!active) {
       shakeWindowRef.current = { count: 0, start: 0, lastPeak: 0 };

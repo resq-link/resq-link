@@ -762,18 +762,18 @@ export default function DashboardScreen() {
     try {
       const targetId = incident.responder || incident.assignedResponderId;
       const session = await startIncidentCallSession({
-        incidentId: incident.id,
+        incidentId: incident?.id,
         callerUserId: userId,
         callerRole: "civilian",
         callerName: user?.name || user?.fullName || "Citizen",
         callerPhone: user?.phoneNumber || user?.phone || null,
         targetUserId: targetId,
         targetRole: "responder",
-        targetName: incident.responderName || incident.responder || "Response Unit",
+        targetName: incident?.responderName || incident?.responder || "Response Unit",
         assignedResponderId: targetId,
-        incidentReferenceNumber: incident.id ? `APP-${incident.id.slice(-5).toUpperCase()}` : null,
-        incidentType: incident.incidentType,
-        incidentLocationText: incident.locationText,
+        incidentReferenceNumber: incident?.id ? `APP-${incident.id.slice(-5).toUpperCase()}` : null,
+        incidentType: incident?.incidentType || null,
+        incidentLocationText: incident?.locationText || null,
       });
       setActiveCallSession(session);
       setIsIncomingCall(false);

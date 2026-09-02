@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -94,6 +94,13 @@ export default function PrivacySecurityScreen() {
           label="Contact privacy office"
           onPress={() => Linking.openURL(`mailto:${PRIVACY_CONTACT_EMAIL}`)}
           textColor={colors.text}
+          separatorColor={colors.separator}
+          external
+        />
+        <RowItem
+          label="Delete account & data"
+          onPress={() => openLegalDocument(LEGAL_URLS.deleteAccount, "Delete account & data")}
+          textColor="#EF4444"
           separatorColor={colors.separator}
           external
           isLast
