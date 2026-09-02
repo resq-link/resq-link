@@ -31,6 +31,7 @@ import {
   Info,
   ShieldAlert,
   LogOut,
+  Trash2,
   Check,
   X,
   Phone,
@@ -44,6 +45,7 @@ import {
 import { useFonts } from "expo-font";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import useUserStore from "@/stores/userStore";
+import { useAuthStore } from "@/stores/authStore";
 import { useAppTheme } from "@/hooks/useAppTheme";
 import { getBottomNavHeight } from "@/utils/navigationInsets";
 import { LEGAL_URLS } from "@/constants/legal";
@@ -65,6 +67,7 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { user, logout } = useUserStore();
+  const { setAuth } = useAuthStore();
   const { isLight, setThemePreference } = useAppTheme();
 
   const [pauseNotifications, setPauseNotifications] = useState(true);
@@ -179,6 +182,42 @@ export default function ProfileScreen() {
       },
     ]);
   }, [logout, router]);
+
+  const handleDeleteAccount = useCallback(() => {
+    Alert.alert(
+      "Delete Account",
+      "This will permanently delete your account and all associated data. This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete Account",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              const { deleteCivilianAccount } = require("@packages/firebase/civilian-auth");
+              const { getFirebaseAuth } = require("@packages/firebase");
+              const firebaseUser = getFirebaseAuth().currentUser;
+              if (firebaseUser) {
+                await deleteCivilianAccount(firebaseUser);
+              }
+              await logout();
+              setAuth(null);
+              router.replace("/login");
+            } catch (err) {
+              if (err?.code === "auth/requires-recent-login") {
+                Alert.alert(
+                  "Session Expired",
+                  "Please sign out and sign in again, then try deleting your account."
+                );
+              } else {
+                Alert.alert("Error", "Failed to delete your account. Please try again.");
+              }
+            }
+          },
+        },
+      ]
+    );
+  }, [logout, setAuth, router]);
 
   const handleOpenTerms = useCallback(async () => {
     try {
@@ -529,6 +568,17 @@ export default function ProfileScreen() {
             isLight={isLight}
           />
         </Animated.View>
+
+        {/* Delete Account Button */}
+        <Animated.View entering={FadeInDown.duration(300).delay(300)}>
+          <DeleteAccountButton
+            onPress={handleDeleteAccount}
+            bgColor={isLight ? "rgba(229,57,53,0.06)" : "rgba(229,57,53,0.10)"}
+            textColor="#E53935"
+            borderColor={isLight ? "rgba(229,57,53,0.18)" : "transparent"}
+            isLight={isLight}
+          />
+        </Animated.View>
       </ScrollView>
 
       {/* Language Selection Modal */}
@@ -820,6 +870,44 @@ function LogoutPillButton({ onPress, bgColor, textColor, borderColor, isLight })
     >
       <LogOut size={20} color={textColor} strokeWidth={2.2} />
       <Text style={[styles.logoutPillText, { color: textColor }]}>Log Out</Text>
+    </AnimatedPressable>
+  );
+}
+
+function DeleteAccountButton({ onPress, bgColor, textColor, borderColor, isLight }) {
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handlePressIn = () => {
+    scale.value = withSpring(0.97, { damping: 15, stiffness: 350 });
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(1, { damping: 15, stiffness: 350 });
+  };
+
+  return (
+    <AnimatedPressable
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      style={[
+        styles.logoutPill,
+        {
+          backgroundColor: bgColor,
+          borderColor: borderColor,
+          borderWidth: isLight ? 1 : 0,
+        },
+        animatedStyle,
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel="Delete Account"
+    >
+      <Trash2 size={20} color={textColor} strokeWidth={2.2} />
+      <Text style={[styles.logoutPillText, { color: textColor }]}>Delete Account</Text>
     </AnimatedPressable>
   );
 }

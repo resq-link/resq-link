@@ -779,3 +779,20 @@ export async function getAllDispatchers(): Promise<Array<{ uid: string; account:
   }
 }
 
+/**
+ * Permanently delete a civilian account: Firestore profile and Firebase Auth user.
+ */
+export async function deleteCivilianAccount(user: User): Promise<void> {
+  try {
+    await deleteDoc(doc(getFirebaseFirestore(), 'users', user.uid));
+    await deleteUser(user);
+  } catch (error: unknown) {
+    const err = error as { code?: string; message?: string };
+    const wrapped = new Error(
+      typeof err?.message === 'string' ? err.message : 'Failed to delete account.'
+    ) as Error & { code?: string };
+    wrapped.code = err?.code;
+    throw wrapped;
+  }
+}
+

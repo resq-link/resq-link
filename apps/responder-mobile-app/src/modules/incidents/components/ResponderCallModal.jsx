@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -23,8 +23,13 @@ import {
 } from "lucide-react-native";
 import {
   endIncidentCallSession,
-  markIncidentCallConnected,
+  subscribeToIncidentCallSession,
 } from "@packages/firebase";
+import { useResponderLiveKitCall } from "../hooks/useResponderLiveKitCall";
+
+const TERMINAL_STATUSES = ["ended", "missed", "declined", "failed"];
+const RINGING_STATUSES = ["ringing", "queued"];
+const LIVEKIT_READY_STATUSES = ["accepted", "connected"];
 
 export default function ResponderCallModal({
   visible,
@@ -34,11 +39,50 @@ export default function ResponderCallModal({
   onAnswer,
   onDecline,
 }) {
-  const [isConnected, setIsConnected] = useState(!isIncoming);
-  const [isMuted, setIsMuted] = useState(false);
-  const [isSpeakerOn, setIsSpeakerOn] = useState(true);
+  const [isAnswered, setIsAnswered] = useState(!isIncoming);
   const [duration, setDuration] = useState(0);
+  const [sessionStatus, setSessionStatus] = useState(callSession?.status || null);
+  const [ringDots, setRingDots] = useState(".");
   const timerRef = useRef(null);
+  const didAutoDismissRef = useRef(false);
+
+  useEffect(() => {
+    setIsAnswered(!isIncoming);
+    setDuration(0);
+    setSessionStatus(callSession?.status || null);
+    didAutoDismissRef.current = false;
+  }, [visible, isIncoming, callSession?.id]);
+
+  useEffect(() => {
+    if (!visible || !callSession?.id) return undefined;
+
+    const unsubscribe = subscribeToIncidentCallSession(callSession.id, (session) => {
+      if (session?.status) {
+        setSessionStatus(session.status);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [visible, callSession?.id]);
+
+  const isLiveKitReady = LIVEKIT_READY_STATUSES.includes(sessionStatus);
+  const shouldConnectLiveKit =
+    visible && (!isIncoming || isAnswered) && isLiveKitReady;
+
+  const {
+    isConnecting,
+    isConnected,
+    isMuted,
+    isSpeakerOn,
+    connectionError,
+    roomState,
+    toggleMute,
+    toggleSpeaker,
+    disconnect,
+  } = useResponderLiveKitCall({
+    session: callSession,
+    isActive: shouldConnectLiveKit,
+  });
 
   useEffect(() => {
     if (visible && isConnected) {
@@ -59,16 +103,66 @@ export default function ResponderCallModal({
     };
   }, [visible, isConnected]);
 
-  const handleEndCall = async () => {
+  useEffect(() => {
+    const showRingingDots =
+      visible &&
+      RINGING_STATUSES.includes(sessionStatus) &&
+      !(isIncoming && !isAnswered) &&
+      !isConnecting &&
+      !isConnected;
+
+    if (!showRingingDots) {
+      setRingDots(".");
+      return undefined;
+    }
+
+    const frames = [".", "..", "..."];
+    let index = 0;
+    const interval = setInterval(() => {
+      index = (index + 1) % frames.length;
+      setRingDots(frames[index]);
+    }, 450);
+
+    return () => clearInterval(interval);
+  }, [visible, sessionStatus, isIncoming, isAnswered, isConnecting, isConnected]);
+
+  const handleEndCall = useCallback(async () => {
+    didAutoDismissRef.current = true;
+    await disconnect();
     if (callSession?.id) {
       await endIncidentCallSession(callSession.id).catch(() => undefined);
     }
     onClose?.();
+  }, [disconnect, callSession?.id, onClose]);
+
+  const handleEndCallRef = useRef(handleEndCall);
+  handleEndCallRef.current = handleEndCall;
+
+  const handleAnswerCall = () => {
+    setIsAnswered(true);
+    onAnswer?.();
+  };
+
+  const handleDeclineCall = async () => {
+    await disconnect();
+    onDecline?.();
   };
 
   const handleCallHotline = () => {
     Linking.openURL("tel:911").catch(() => undefined);
   };
+
+  useEffect(() => {
+    if (!visible || !TERMINAL_STATUSES.includes(sessionStatus)) return undefined;
+    if (didAutoDismissRef.current) return undefined;
+
+    const timeout = setTimeout(() => {
+      didAutoDismissRef.current = true;
+      handleEndCallRef.current();
+    }, 1500);
+
+    return () => clearTimeout(timeout);
+  }, [visible, sessionStatus]);
 
   if (!visible) return null;
 
@@ -76,6 +170,18 @@ export default function ResponderCallModal({
     const mins = Math.floor(secs / 60);
     const remainder = secs % 60;
     return `${mins.toString().padStart(2, "0")}:${remainder.toString().padStart(2, "0")}`;
+  };
+
+  const getStatusLabel = () => {
+    if (isIncoming && !isAnswered) return "Incoming Call...";
+    if (sessionStatus === "declined") return "Call Declined";
+    if (sessionStatus === "missed") return "No Answer";
+    if (isConnecting) return "Connecting to audio room...";
+    if (roomState === "reconnecting") return "Reconnecting voice link...";
+    if (isConnected) return null;
+    if (sessionStatus === "ended" || sessionStatus === "failed") return "Call Ended";
+    if (RINGING_STATUSES.includes(sessionStatus)) return `Ringing${ringDots}`;
+    return "Connecting...";
   };
 
   const targetName =
@@ -88,10 +194,12 @@ export default function ResponderCallModal({
     ? "Incoming Tactical Voice Call"
     : `Tactical Voice Call • ${callSession?.incidentReferenceNumber || "Field Ops"}`;
 
+  const statusLabel = getStatusLabel();
+  const showIncomingActions = isIncoming && !isAnswered;
+
   return (
     <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={handleEndCall}>
       <LinearGradient colors={["#0F172A", "#020617"]} style={styles.container}>
-        {/* Top Header */}
         <View style={styles.topBadgeRow}>
           <View style={styles.badge}>
             <Radio size={14} color="#34D399" />
@@ -99,7 +207,6 @@ export default function ResponderCallModal({
           </View>
         </View>
 
-        {/* Center Avatar & Status */}
         <View style={styles.centerSection}>
           <View style={[styles.avatarCircle, isConnected && styles.avatarConnected]}>
             <ShieldAlert size={48} color={isConnected ? "#34D399" : "#F59E0B"} />
@@ -107,30 +214,47 @@ export default function ResponderCallModal({
 
           <Text style={styles.calleeName}>{targetName}</Text>
           <Text style={styles.calleeSub}>
-            {callSession?.callerPhone ? `Contact: ${callSession.callerPhone}` : "High-Priority Emergency Voice Link"}
+            {callSession?.callerPhone
+              ? `Contact: ${callSession.callerPhone}`
+              : "High-Priority Emergency Voice Link"}
           </Text>
 
           <View style={styles.timerRow}>
-            {isIncoming && !isConnected ? (
-              <Text style={styles.ringingText}>Incoming Call...</Text>
-            ) : isConnected ? (
+            {isConnected ? (
               <View style={styles.connectedTimer}>
                 <Clock size={16} color="#34D399" />
                 <Text style={styles.timerText}>{formatTime(duration)}</Text>
               </View>
             ) : (
-              <Text style={styles.connectingText}>Connecting to audio room...</Text>
+              <Text
+                style={
+                  showIncomingActions
+                    ? styles.ringingText
+                    : RINGING_STATUSES.includes(sessionStatus)
+                      ? styles.ringingText
+                      : styles.connectingText
+                }
+              >
+                {statusLabel}
+              </Text>
             )}
           </View>
+
+          {connectionError ? (
+            <View style={styles.errorContainer}>
+              <AlertCircle size={14} color="#F87171" />
+              <Text style={styles.errorText} numberOfLines={3}>
+                {connectionError}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
-        {/* Bottom Control Bar */}
         <View style={styles.bottomSection}>
-          {isIncoming && !isConnected ? (
-            /* Incoming Call Actions */
+          {showIncomingActions ? (
             <View style={styles.incomingActions}>
               <Pressable
-                onPress={onDecline}
+                onPress={handleDeclineCall}
                 style={[styles.callBtn, styles.declineBtn]}
                 accessibilityRole="button"
                 accessibilityLabel="Decline incoming call"
@@ -140,7 +264,7 @@ export default function ResponderCallModal({
               </Pressable>
 
               <Pressable
-                onPress={onAnswer}
+                onPress={handleAnswerCall}
                 style={[styles.callBtn, styles.answerBtn]}
                 accessibilityRole="button"
                 accessibilityLabel="Answer incoming call"
@@ -150,12 +274,15 @@ export default function ResponderCallModal({
               </Pressable>
             </View>
           ) : (
-            /* Active Call Controls */
             <View style={styles.activeActions}>
-              {/* Mute Button */}
               <Pressable
-                onPress={() => setIsMuted((p) => !p)}
-                style={[styles.controlBtn, isMuted && styles.controlBtnActive]}
+                onPress={toggleMute}
+                disabled={!isConnected}
+                style={[
+                  styles.controlBtn,
+                  isMuted && styles.controlBtnActive,
+                  !isConnected && { opacity: 0.5 },
+                ]}
                 accessibilityRole="button"
                 accessibilityLabel={isMuted ? "Unmute microphone" : "Mute microphone"}
               >
@@ -163,7 +290,6 @@ export default function ResponderCallModal({
                 <Text style={styles.controlBtnText}>{isMuted ? "Muted" : "Mute"}</Text>
               </Pressable>
 
-              {/* End Call Button */}
               <Pressable
                 onPress={handleEndCall}
                 style={[styles.callBtn, styles.hangUpBtn]}
@@ -173,20 +299,22 @@ export default function ResponderCallModal({
                 <PhoneOff size={28} color="#FFFFFF" />
               </Pressable>
 
-              {/* Speakerphone Toggle */}
               <Pressable
-                onPress={() => setIsSpeakerOn((p) => !p)}
+                onPress={toggleSpeaker}
                 style={[styles.controlBtn, isSpeakerOn && styles.controlBtnActive]}
                 accessibilityRole="button"
                 accessibilityLabel={isSpeakerOn ? "Speaker on" : "Speaker off"}
               >
-                {isSpeakerOn ? <Volume2 size={24} color="#34D399" /> : <VolumeX size={24} color="#F8FAFC" />}
+                {isSpeakerOn ? (
+                  <Volume2 size={24} color="#34D399" />
+                ) : (
+                  <VolumeX size={24} color="#F8FAFC" />
+                )}
                 <Text style={styles.controlBtnText}>{isSpeakerOn ? "Speaker" : "Ear"}</Text>
               </Pressable>
             </View>
           )}
 
-          {/* Hotline Fallback */}
           <Pressable onPress={handleCallHotline} style={styles.hotlineFallback}>
             <AlertCircle size={13} color="#94A3B8" />
             <Text style={styles.hotlineText}>Tap to dial 911 / Command Center directly</Text>
@@ -287,6 +415,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#38BDF8",
     fontStyle: "italic",
+  },
+  errorContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(239, 68, 68, 0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(239, 68, 68, 0.4)",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginTop: 16,
+    maxWidth: "100%",
+  },
+  errorText: {
+    flex: 1,
+    fontSize: 12,
+    color: "#F87171",
   },
   bottomSection: {
     alignItems: "center",
